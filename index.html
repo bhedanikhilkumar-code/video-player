@@ -312,7 +312,7 @@
       <div class="input-row">
         <input id="dlUrl" type="url" inputmode="url" placeholder="https://site.com/video-link" aria-label="Video link from another site">
       </div>
-      <div class="actions"><button class="btn" id="dlInfoBtn">Get formats</button></div>
+      <div class="actions"><button class="btn" id="dlInfoBtn">Get formats</button><button class="chip" id="dlPasteBtn" type="button">Paste</button><button class="chip" id="dlRetryBtn" type="button" hidden>Retry</button></div>
       <p class="hint" id="dlStatus" role="status">YouTube links download nahi hote - YouTube ko upar wale player me chalao. Baaki sites (jaise TikTok, TED, SoundCloud, Streamable) try karo.</p>
       <p class="error" id="dlError" role="alert" hidden></p>
       <div id="dlBox" hidden>
@@ -877,7 +877,8 @@
   function isYT(u) {
     try { var h = new URL(u).hostname.toLowerCase(); return /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com|youtubekids\.com|yt\.be)$/.test(h); } catch (e) { return false; }
   }
-  function showErr(m) { errEl.textContent = m; errEl.hidden = !m; }
+  var retryFn = null, retryBtn = $("dlRetryBtn");
+  function showErr(m) { errEl.textContent = m; errEl.hidden = !m; if (!m) { retryBtn.hidden = true; } }
   function setBusy(b, msg) { busy = b; infoBtn.disabled = vBtn.disabled = mBtn.disabled = b; if (msg) statusEl.textContent = msg; }
   function parseT(v) {
     v = (v || "").trim(); if (!v) return null;
@@ -889,6 +890,13 @@
 
   function warm() { if (warmed) return; warmed = true; try { fetch(API + "/health", { mode: "no-cors" }); } catch (e) {} }
   urlIn.addEventListener("focus", warm);
+  try { var lu = localStorage.getItem("vp-dl-url"); if (lu) urlIn.value = lu; } catch (e) {}
+  retryBtn.addEventListener("click", function () { if (retryFn) { showErr(""); retryFn(); } });
+  $("dlPasteBtn").addEventListener("click", function () {
+    if (!navigator.clipboard || !navigator.clipboard.readText) return showErr("Is browser me paste button nahi chalta. Link khud paste karo.");
+    navigator.clipboard.readText().then(function (t) { urlIn.value = (t || "").trim(); showErr(""); warm(); }).catch(function () { showErr("Clipboard ki permission nahi mili. Link khud paste karo."); });
+  });
+  urlIn.addEventListener("keydown", function (e) { if (e.key === "Enter") infoBtn.click(); });
 
   function api(path, opts) {
     var c = new AbortController(), t = setTimeout(function () { c.abort(); }, 90000);
@@ -918,6 +926,7 @@
       ? "Server se connect nahi ho paya. Net check karo ya 1 minute baad try karo (free server soya hua ho sakta hai)." : "Kuch galat hua. Dobara try karo."));
     setBusy(false, "");
     bar.hidden = true;
+    if (retryFn && code !== "youtube_blocked" && code !== "bad_url" && code !== "bad_range") retryBtn.hidden = false;
   }
 
   infoBtn.addEventListener("click", function () {
@@ -925,6 +934,8 @@
     if (!u) return showErr("Pehle link paste karo.");
     if (!/^https?:\/\//i.test(u)) u = "https://" + u;
     if (isYT(u)) return showErr(ERR.youtube_blocked);
+    try { localStorage.setItem("vp-dl-url", u); } catch (e) {}
+    retryFn = function () { infoBtn.click(); };
     box.hidden = true; subsEl.innerHTML = "";
     setBusy(true, "Formats dhundh raha hu... (pehli baar 1 minute lag sakta hai)");
     runTask({ type: "info", url: u }).then(function (s) {
@@ -957,6 +968,7 @@
     if (busy || !info) return; showErr("");
     var from = parseT($("dlFrom").value), to = parseT($("dlTo").value);
     if (isNaN(from) || isNaN(to) || (from !== null && to !== null && to <= from)) return showErr(ERR.bad_range);
+    retryFn = function () { download(kind); };
     var opt = fmtSel.options[fmtSel.selectedIndex], body = { type: "download", url: info.url, kind: kind };
     if (kind === "video" && opt.value !== "best") { body.format = opt.value; if (opt.dataset.mux === "1") body.mux = true; }
     if (from !== null) body.from = from; if (to !== null) body.to = to;
