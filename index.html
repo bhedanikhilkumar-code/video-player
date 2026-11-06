@@ -86,7 +86,7 @@
       <button class="btn" id="loadBtn">Load video</button>
     </div>
     <p class="error" id="linkError" role="alert" hidden></p>
-    <p class="hint">Watch, share, Shorts, and live links are all supported.</p>
+    <p class="hint">Watch, share, Shorts, and live links are all supported. You can also open this page with ?url=LINK&amp;from=30&amp;to=90 to start and stop at set seconds.</p>
   </section>
 
   <section>
@@ -258,7 +258,7 @@
   vol.value = prefs.volume; volLabel.textContent = prefs.volume + "%";
   if (prefs.loop) { loopBtn.classList.add("active"); loopBtn.textContent = "🔁 Loop on"; }
 
-  loadBtn.addEventListener("click", function () {
+  function loadVideo(startSec, endSec) {
     var id = parseVideoId(linkInput.value);
     if (!id) {
       linkError.textContent = "That link does not look valid. Paste a full YouTube link, such as https://youtube.com/watch?v=...";
@@ -270,7 +270,10 @@
     timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1;
     if (iframe) { iframe.remove(); iframe = null; }
     iframe = document.createElement("iframe");
-    iframe.src = YT_ORIGIN + "/embed/" + id + "?enablejsapi=1&rel=0&playsinline=1&origin=" + encodeURIComponent(location.origin);
+    var clip = "";
+    if (startSec != null) clip += "&start=" + startSec;
+    if (endSec != null) clip += "&end=" + endSec;
+    iframe.src = YT_ORIGIN + "/embed/" + id + "?enablejsapi=1&rel=0&playsinline=1" + clip + "&origin=" + encodeURIComponent(location.origin);
     iframe.title = "YouTube video player";
     iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen";
     iframe.allowFullScreen = true;
@@ -285,7 +288,35 @@
     frameBox.appendChild(iframe);
     placeholder.style.display = "none";
     controls.hidden = false;
-  });
+  }
+  loadBtn.addEventListener("click", function () { loadVideo(null, null); });
+
+  // Link shortcuts: ?url= (or ?v=) loads a video, ?text= picks the last link out of shared text,
+  // ?from= and ?to= (seconds) set a start and end time.
+  (function readLinkParams() {
+    var q;
+    try { q = new URLSearchParams(location.search); } catch (e) { return; }
+    var link = q.get("url");
+    if (!link && q.get("v")) link = q.get("v");
+    if (!link && q.has("text")) {
+      var found = q.get("text").match(/https?:\/\/[^\s]+/gi);
+      if (!found) {
+        linkError.textContent = "No link found in the shared text.";
+        linkError.hidden = false;
+        return;
+      }
+      link = found[found.length - 1];
+    }
+    if (!link) return;
+    function secs(name) {
+      var n = parseInt(q.get(name), 10);
+      return isFinite(n) && n >= 0 ? n : null;
+    }
+    var from = secs("from"), to = secs("to");
+    if (from != null && to != null && to <= from) to = null;
+    linkInput.value = link;
+    loadVideo(from, to);
+  })();
 
   linkInput.addEventListener("keydown", function (e) { if (e.key === "Enter") loadBtn.click(); });
 
