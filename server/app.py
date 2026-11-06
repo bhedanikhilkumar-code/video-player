@@ -35,17 +35,17 @@ def is_yt(host):
     return any(host == h or host.endswith("." + h) for h in YT_HOSTS)
 
 def check_url(u):
-    if not isinstance(u, str) or len(u) > 2000: raise Bad("bad_url", "Link sahi nahi hai.")
+    if not isinstance(u, str) or len(u) > 2000: raise Bad("bad_url", "Invalid link.")
     p = urlparse(u.strip())
-    if p.scheme not in ("http", "https") or not p.hostname: raise Bad("bad_url", "Sirf http/https link chalta hai.")
-    if is_yt(p.hostname): raise Bad("youtube_blocked", "YouTube links download nahi hote. Player me play kar sakte ho.")
+    if p.scheme not in ("http", "https") or not p.hostname: raise Bad("bad_url", "Only http/https links are supported.")
+    if is_yt(p.hostname): raise Bad("youtube_blocked", "YouTube links can't be downloaded. Play them in the player.")
     try:
         for ai in socket.getaddrinfo(p.hostname, None):
             ip = ipaddress.ip_address(ai[4][0])
             if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-                raise Bad("bad_url", "Ye address allowed nahi hai.")
+                raise Bad("bad_url", "This address is not allowed.")
     except socket.gaierror:
-        raise Bad("bad_url", "Site ka address nahi mila.")
+        raise Bad("bad_url", "Could not find that site's address.")
     return u.strip()
 
 def base_opts():
@@ -62,7 +62,7 @@ def do_info(url):
     if (i.get("extractor_key") or "").lower().startswith("youtube"): raise Bad("youtube_blocked", "YouTube blocked.")
     if i.get("_type") == "playlist" and i.get("entries"):
         i = next(e for e in i["entries"] if e)
-    if (i.get("duration") or 0) > MAX_SECONDS: raise Bad("too_long", "Video bahut lamba hai.")
+    if (i.get("duration") or 0) > MAX_SECONDS: raise Bad("too_long", "The video is too long.")
     fmts = []
     for f in i.get("formats") or []:
         if f.get("protocol") in ("mhtml",) or not f.get("format_id"): continue
@@ -79,15 +79,15 @@ def do_info(url):
 def sec(x):
     if x in (None, ""): return None
     x = float(x)
-    if x < 0: raise Bad("bad_range", "Time galat hai.")
+    if x < 0: raise Bad("bad_range", "Invalid time.")
     return x
 
 def do_download(t, p):
     url = p["url"]; kind = p.get("kind", "video")  # video | mp3
     fid = p.get("format")
-    if fid is not None and not re.fullmatch(r"[A-Za-z0-9_\-\.\+]{1,60}", str(fid)): raise Bad("bad_format", "Format galat hai.")
+    if fid is not None and not re.fullmatch(r"[A-Za-z0-9_\-\.\+]{1,60}", str(fid)): raise Bad("bad_format", "Invalid format.")
     start, end = sec(p.get("from")), sec(p.get("to"))
-    if start is not None and end is not None and end <= start: raise Bad("bad_range", "'To' 'From' se bada hona chahiye.")
+    if start is not None and end is not None and end <= start: raise Bad("bad_range", "'To' must be later than 'From'.")
     d = os.path.join(WORK, t["id"]); os.makedirs(d)
     t["dir"] = d
     o = base_opts()
@@ -116,7 +116,7 @@ def do_download(t, p):
         i = y.extract_info(url, download=True)
     if (i.get("extractor_key") or "").lower().startswith("youtube"): raise Bad("youtube_blocked", "YouTube blocked.")
     files = [f for f in os.listdir(d) if f.startswith("out.")]
-    if not files: raise Bad("no_file", "File ban nahi payi.")
+    if not files: raise Bad("no_file", "The file could not be created.")
     f = files[0]
     title = re.sub(r"[^\w\-. ]+", "", i.get("title") or "video").strip()[:80] or "video"
     t["file"] = f; t["name"] = f"{title}.{f.rsplit('.',1)[-1]}"
@@ -153,11 +153,11 @@ def create():
     b = request.get_json(silent=True) or {}
     try:
         typ = b.get("type")
-        if typ not in ("info", "download"): raise Bad("bad_type", "type info ya download hona chahiye.")
+        if typ not in ("info", "download"): raise Bad("bad_type", "type must be info or download.")
         b["url"] = check_url(b.get("url"))
         with LOCK:
             if sum(1 for v in TASKS.values() if v["status"] in ("queued", "running")) >= MAX_TASKS:
-                raise Bad("busy", "Server busy hai, thodi der baad try karo.")
+                raise Bad("busy", "Server is busy, try again shortly.")
             t = {"id": uuid.uuid4().hex[:12], "type": typ, "status": "queued", "progress": 0, "created": time.time()}
             TASKS[t["id"]] = t
     except Bad as e:
