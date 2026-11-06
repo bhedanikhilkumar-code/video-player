@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>HD Video Player</title>
-<meta name="description" content="Paste a YouTube link and play it here with HD quality, volume, speed, and loop controls.">
+<meta name="description" content="Paste a YouTube link and play it here with HD quality, volume, speed, loop, queue and favourites.">
+<meta name="theme-color" content="#3f8f7d">
 <script>
 (function () {
   try {
@@ -16,51 +17,82 @@
 </script>
 <style>
   :root {
-    --ink: #251f21; --ink2: #585254; --hairline: #eae9ea;
-    --teal: #3f8f7d; --red: #ed313e; --page: #f7f4f2; --card: #ffffff;
-    --chipbg: #ffffff; --notebg: #faf3e8;
+    --ink: #1f1a1c; --ink2: #5a5457; --hairline: #e6e2e3;
+    --teal: #3a8a77; --teal-ink: #ffffff; --red: #c9252f; --page: #f4f1ef; --card: #ffffff;
+    --chipbg: #ffffff; --notebg: #faf3e8; --soft: #f1f6f4;
+    --radius: 16px; --shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 20px rgba(0,0,0,.05);
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
-    --ink: #f1ecee; --ink2: #b9b1b4; --hairline: #3b3438; --page: #151214; --card: #211c1f;
-    --red: #ff6b75; --chipbg: #2b2528; --notebg: #2b2620;
+    --ink: #f1ecee; --ink2: #bcb4b7; --hairline: #3b3438; --page: #131012; --card: #1f1a1d;
+    --red: #ff7a83; --chipbg: #2a2427; --notebg: #2b2620; --soft: #1b2623;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
   }
-  .topbar { display: flex; justify-content: flex-end; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
     background: var(--page); color: var(--ink);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
     line-height: 1.5; -webkit-text-size-adjust: 100%;
+    padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
   }
-  .wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 48px; }
-  header h1 { font-size: 28px; margin: 12px 0 4px; font-weight: 700; letter-spacing: -0.02em; }
-  header .fact { color: var(--ink2); font-size: 14px; margin: 0 0 6px; }
-  header .intro { font-size: 15px; margin: 0 0 8px; }
-  section { background: var(--card); border-radius: 16px; padding: 16px; margin-top: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
-  h2 { font-size: 18px; margin: 0 0 12px; }
-  .input-row { display: flex; gap: 10px; }
+  .skip { position: absolute; left: -999px; top: 8px; background: var(--card); color: var(--ink); padding: 10px 14px; border-radius: 8px; z-index: 10; }
+  .skip:focus { left: 8px; }
+  :focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 14px 14px calc(40px + env(safe-area-inset-bottom)); }
+
+  /* Header */
+  .site-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 2px 10px; }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .logo { width: 44px; height: 44px; flex: none; border-radius: 12px; background: var(--teal); display: flex; align-items: center; justify-content: center; }
+  .logo::after { content: ""; border-left: 15px solid #fff; border-top: 9px solid transparent; border-bottom: 9px solid transparent; margin-left: 4px; }
+  .brand h1 { font-size: 21px; margin: 0; line-height: 1.15; letter-spacing: -0.02em; }
+  .brand p { margin: 2px 0 0; color: var(--ink2); font-size: 13px; }
+
+  /* Cards */
+  section, .ctl-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); }
+  section { padding: 16px; margin-top: 14px; }
+  h2 { font-size: 17px; margin: 0 0 12px; letter-spacing: -0.01em; }
+  h3 { font-size: 14px; margin: 0; }
+
+  /* Link input */
+  .input-row { display: flex; gap: 10px; flex-wrap: wrap; }
   .input-row input {
-    flex: 1; min-width: 0; min-height: 48px; padding: 12px 14px; font-size: 16px;
-    border: 1px solid var(--hairline); border-radius: 8px; color: var(--ink); background: var(--chipbg);
+    flex: 1 1 240px; min-width: 0; min-height: 52px; padding: 12px 14px; font-size: 16px;
+    border: 1px solid var(--hairline); border-radius: 12px; color: var(--ink); background: var(--chipbg);
   }
-  .input-row input:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
+  .input-row input::placeholder { color: var(--ink2); opacity: .8; }
+  .actions { display: flex; gap: 10px; margin-top: 10px; }
+  .actions > button { flex: 1; }
   .btn {
-    min-height: 48px; padding: 10px 18px; font-size: 15px; font-weight: 600; cursor: pointer;
-    border-radius: 8px; border: 1px solid var(--teal); background: var(--teal); color: #fff;
+    min-height: 52px; padding: 10px 20px; font-size: 16px; font-weight: 700; cursor: pointer;
+    border-radius: 12px; border: 1px solid var(--teal); background: var(--teal); color: var(--teal-ink);
   }
-  .btn:active { opacity: .85; }
-  .hint { color: var(--ink2); font-size: 13px; margin: 8px 0 0; }
-  .error { color: var(--red); font-size: 14px; margin: 8px 0 0; }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .btn:active, .chip:active { transform: scale(.98); }
+  .chip {
+    min-height: 46px; padding: 8px 16px; border-radius: 12px; font-size: 15px; cursor: pointer;
+    border: 1px solid var(--hairline); background: var(--chipbg); color: var(--ink);
+  }
+  .chip:hover { border-color: var(--teal); }
+  .chip.active { border-color: var(--teal); color: var(--teal); font-weight: 700; box-shadow: inset 0 0 0 1px var(--teal); }
+  :root[data-theme="dark"] .chip.active { color: #7fd2bf; }
+  .hint { color: var(--ink2); font-size: 13px; margin: 10px 0 0; }
+  .error { color: var(--red); font-size: 14px; margin: 10px 0 0; font-weight: 600; }
+  .tips { margin-top: 10px; font-size: 14px; color: var(--ink2); }
+  .tips summary, .shortcuts summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; font-weight: 600; color: var(--ink); }
+  .tips p { margin: 0 0 8px; }
+
+  /* Player */
   .frame {
     position: relative; aspect-ratio: 16 / 9; width: 100%;
-    background: #141114; border-radius: 12px; overflow: hidden;
+    background: #141114; border-radius: 14px; overflow: hidden;
   }
   .frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
   .placeholder {
     position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    gap: 12px; color: #cfc6c4; background: radial-gradient(ellipse at center, #2a2226 0%, #141114 70%);
-    text-align: center; padding: 16px;
+    gap: 12px; color: #d6cecc; background: radial-gradient(ellipse at center, #2a2226 0%, #141114 70%);
+    text-align: center; padding: 16px; font-size: 15px;
   }
   .placeholder .play-glyph {
     width: 72px; height: 72px; border-radius: 50%; background: var(--teal);
@@ -69,163 +101,223 @@
   .placeholder .play-glyph::after {
     content: ""; border-left: 24px solid #fff; border-top: 15px solid transparent; border-bottom: 15px solid transparent; margin-left: 5px;
   }
-  .controls[hidden] { display: none; }
-  .controls { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
-  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .time { color: var(--ink2); font-variant-numeric: tabular-nums; font-size: 13px; flex: 1; }
-  .label { color: var(--ink2); font-size: 13px; }
-  .slider { width: 100%; min-height: 36px; accent-color: var(--teal); }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-  .chip {
-    min-height: 44px; padding: 8px 14px; border-radius: 8px; font-size: 14px; cursor: pointer;
-    border: 1px solid var(--hairline); background: var(--chipbg); color: var(--ink);
-  }
-  .chip.active { border-color: var(--teal); color: var(--teal); font-weight: 700; box-shadow: inset 0 0 0 1px var(--teal); }
-  .note { background: var(--notebg); border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--ink2); }
-  .note strong { color: var(--ink); display: block; margin-bottom: 2px; }
-  .lib-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 8px; }
-  .lib-head h3 { font-size: 15px; margin: 0; }
-  .lib-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-  .lib-item { display: flex; align-items: center; gap: 10px; }
-  .lib-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; min-height: 56px; padding: 4px 8px 4px 4px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--chipbg); color: var(--ink); cursor: pointer; font-size: 14px; }
-  .lib-open img { width: 80px; height: 45px; object-fit: cover; border-radius: 4px; background: #141114; flex: none; }
-  .lib-open span { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .lib-empty { color: var(--ink2); font-size: 13px; margin: 0; }
-  .shortcuts { font-size: 14px; color: var(--ink2); }
-  .shortcuts summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; color: var(--ink); }
-  .shortcuts ul { margin: 4px 0 8px; padding-left: 20px; }
-  .info-card { display: flex; gap: 12px; align-items: center; margin-top: 12px; padding: 10px; border: 1px solid var(--hairline); border-radius: 12px; }
+  #playerError { margin-top: 10px; }
+  .info-card { display: flex; gap: 12px; align-items: center; margin-top: 12px; padding: 10px; background: var(--soft); border-radius: 14px; }
   .info-card[hidden] { display: none; }
-  .info-card img { width: 120px; height: 68px; object-fit: cover; border-radius: 8px; background: #141114; flex: none; }
+  .info-card img { width: 112px; height: 63px; object-fit: cover; border-radius: 10px; background: #141114; flex: none; }
   .info-text { min-width: 0; flex: 1; }
   .info-title { font-weight: 700; font-size: 15px; line-height: 1.3; overflow-wrap: anywhere; }
-  .info-meta { color: var(--ink2); font-size: 13px; margin-top: 2px; display: flex; flex-wrap: wrap; gap: 4px 12px; }
-  .info-meta a, .info-yt { color: var(--teal); text-decoration: none; }
+  .info-meta { color: var(--ink2); font-size: 13px; margin-top: 2px; display: flex; flex-wrap: wrap; gap: 2px 12px; }
+  .info-meta a, .info-yt { color: var(--teal); text-decoration: none; font-weight: 600; }
+  :root[data-theme="dark"] .info-meta a, :root[data-theme="dark"] .info-yt { color: #7fd2bf; }
   .info-yt { font-size: 13px; display: inline-block; margin-top: 4px; min-height: 24px; }
+
+  /* Controls */
+  .controls[hidden] { display: none; }
+  .controls { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 14px; }
+  .ctl-card { padding: 14px; box-shadow: none; background: var(--soft); display: flex; flex-direction: column; gap: 10px; }
+  .ctl-card h3 { color: var(--ink2); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .time { color: var(--ink2); font-variant-numeric: tabular-nums; font-size: 14px; flex: 1; text-align: center; }
+  .label { color: var(--ink2); font-size: 14px; }
+  .slider { width: 100%; height: 44px; margin: 0; accent-color: var(--teal); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .transport .btn { min-width: 128px; }
+  .shortcuts { font-size: 14px; color: var(--ink2); background: var(--soft); border-radius: var(--radius); padding: 4px 14px; }
+  .shortcuts ul { margin: 4px 0 8px; padding-left: 20px; }
+
+  /* Library */
+  .lib-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 16px 0 8px; flex-wrap: wrap; }
+  .lib-head:first-of-type { margin-top: 0; }
+  .lib-head h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink2); }
+  .lib-head .chip { min-height: 40px; padding: 6px 12px; font-size: 14px; }
+  .lib-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .lib-item { display: flex; align-items: center; gap: 8px; }
+  .lib-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; min-height: 60px; padding: 5px 10px 5px 5px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--chipbg); color: var(--ink); cursor: pointer; font-size: 14px; }
+  .lib-open:hover { border-color: var(--teal); }
+  .lib-open img { width: 80px; height: 45px; object-fit: cover; border-radius: 8px; background: #141114; flex: none; }
+  .lib-open span { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.3; }
+  .lib-item .chip { min-height: 44px; padding: 6px 12px; font-size: 14px; }
+  .lib-empty { color: var(--ink2); font-size: 14px; margin: 0; padding: 6px 2px; }
+
+  .note { background: var(--notebg); border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--ink2); }
+  .note strong { color: var(--ink); display: block; margin-bottom: 2px; }
   footer { text-align: center; color: var(--ink2); font-size: 13px; margin-top: 24px; }
-  #playerError { margin-top: 10px; }
+
+  /* Phone */
+  @media (max-width: 520px) {
+    .brand p { display: none; }
+    .info-card img { width: 96px; height: 54px; }
+    .transport .btn { flex: 1 1 100%; }
+    .time { flex: 1 1 auto; text-align: left; }
+    .chip { min-height: 48px; }
+    .chips .chip { flex: 1 1 auto; }
+  }
+  /* Tablet: two-column controls */
+  @media (min-width: 700px) {
+    .wrap { padding: 20px 20px 48px; }
+    .controls { grid-template-columns: 1fr 1fr; }
+    .controls .wide { grid-column: 1 / -1; }
+    .brand h1 { font-size: 24px; }
+  }
+  /* Laptop: player on the left, library panel on the right */
+  @media (min-width: 1040px) {
+    .wrap { max-width: 1240px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }
+    .side { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; }
+    .side section:first-child, .main section:first-child { margin-top: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } .btn:active, .chip:active { transform: none; } }
 </style>
 </head>
 <body>
+<a class="skip" href="#player">Skip to player</a>
 <div class="wrap">
-  <header>
-    <div class="topbar"><button class="chip" id="themeBtn" type="button" aria-label="Change theme">Theme: Auto</button></div>
-    <h1>HD Video Player</h1>
-    <p class="fact">HD quality, volume, and speed controls</p>
-    <p class="intro">Paste a YouTube link and play it here - control the quality, volume, and speed.</p>
+  <header class="site-head">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <div>
+        <h1>HD Video Player</h1>
+        <p>HD quality, speed, loop, queue and favourites</p>
+      </div>
+    </div>
+    <button class="chip" id="themeBtn" type="button" aria-label="Change theme">Theme: Auto</button>
   </header>
 
-  <section>
-    <h2>YouTube link</h2>
-    <div class="input-row">
-      <input id="linkInput" type="url" inputmode="url" placeholder="https://youtube.com/watch?v=..." aria-label="YouTube link">
-      <button class="btn" id="loadBtn">Load video</button>
-    </div>
-    <div class="input-row" style="margin-top:10px"><button class="chip" id="queueBtn">+ Add to queue</button></div>
-    <p class="error" id="linkError" role="alert" hidden></p>
-    <p class="hint">Watch, share, Shorts, and live links are all supported. To queue several videos, paste their links separated by spaces and tap Add to queue; they play one after another. You can also open this page with ?url=LINK&amp;from=30&amp;to=90 to start and stop at set seconds.</p>
-  </section>
-
-  <section>
-    <h2>Player</h2>
-    <div class="frame" id="frameBox">
-      <div class="placeholder" id="placeholder">
-        <div class="play-glyph"></div>
-        <div>Enter a link above to play a video here</div>
+  <div class="layout">
+  <main class="main">
+    <section aria-labelledby="linkHeading">
+      <h2 id="linkHeading">YouTube link</h2>
+      <div class="input-row">
+        <input id="linkInput" type="url" inputmode="url" placeholder="https://youtube.com/watch?v=..." aria-label="YouTube link">
       </div>
-    </div>
-    <p class="error" id="playerError" role="alert" hidden></p>
-
-    <div class="info-card" id="infoCard" hidden>
-      <img id="infoThumb" alt="" width="120" height="68">
-      <div class="info-text">
-        <div class="info-title" id="infoTitle"></div>
-        <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><span id="infoDur"></span></div>
-        <a class="info-yt" id="infoYt" target="_blank" rel="noopener noreferrer">Watch on YouTube</a>
+      <div class="actions">
+        <button class="btn" id="loadBtn">Load video</button>
+        <button class="chip" id="queueBtn">+ Add to queue</button>
       </div>
-    </div>
-
-    <div class="controls" id="controls" hidden>
-      <div class="row">
-        <button class="btn" id="playBtn" disabled>▶ Play</button>
-        <span class="time" id="timeLabel">0:00 / 0:00</span>
-        <button class="chip" id="fsBtn">⛶ Full screen</button>
-      </div>
-
-      <label class="label" for="seek">Seek through video</label>
-      <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0">
-
-      <div class="row">
-        <button class="chip" id="muteBtn">🔊 Mute</button>
-        <label class="label" for="vol" >Volume: <span id="volLabel">80%</span></label>
-      </div>
-      <input class="slider" id="vol" type="range" min="0" max="100" step="1" value="80">
-
-      <span class="label">Speed</span>
-      <div class="chips" id="speedChips"></div>
-
-      <span class="label">Quality</span>
-      <div class="chips" id="qualityChips"></div>
-
-      <div class="row">
-        <button class="chip" id="loopBtn">🔁 Loop off</button>
-      </div>
-
-      <span class="label">Repeat a section (A-B loop)</span>
-      <div class="row">
-        <button class="chip" id="aBtn">Set A</button>
-        <button class="chip" id="bBtn">Set B</button>
-        <button class="chip" id="abClearBtn">Clear</button>
-        <span class="label" id="abLabel">Off</span>
-      </div>
-
-      <span class="label">Sleep timer</span>
-      <div class="row">
-        <div class="chips" id="sleepChips"></div>
-        <span class="label" id="sleepLabel" role="status">Off</span>
-      </div>
-
-      <details class="shortcuts">
-        <summary>Keyboard shortcuts</summary>
-        <ul>
-          <li><b>Space</b> or <b>K</b>: play / pause</li>
-          <li><b>Left / Right</b>: back / forward 5 seconds</li>
-          <li><b>J / L</b>: back / forward 10 seconds</li>
-          <li><b>Up / Down</b>: volume up / down</li>
-          <li><b>M</b>: mute, <b>F</b>: full screen, <b>R</b>: loop on / off, <b>N</b>: next in queue</li>
-          <li><b>0 - 9</b>: jump to 0% - 90% of the video</li>
-        </ul>
-        <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
+      <p class="error" id="linkError" role="alert" hidden></p>
+      <p class="hint">Watch, share, Shorts, and live links are all supported.</p>
+      <details class="tips">
+        <summary>Tips: queue and time links</summary>
+        <p>To queue several videos, paste their links separated by spaces and tap Add to queue. They play one after another.</p>
+        <p>You can also open this page with ?url=LINK&amp;from=30&amp;to=90 to start and stop at set seconds.</p>
       </details>
+    </section>
 
-      <span class="label">Share and save</span>
-      <div class="row">
-        <button class="chip" id="favBtn">☆ Add to favourites</button>
-        <button class="chip" id="shareBtn">🔗 Copy link at this time</button>
-        <span class="label" id="shareMsg" role="status"></span>
+    <section id="player" aria-labelledby="playerHeading">
+      <h2 id="playerHeading">Player</h2>
+      <div class="frame" id="frameBox">
+        <div class="placeholder" id="placeholder">
+          <div class="play-glyph"></div>
+          <div>Enter a link above to play a video here</div>
+        </div>
       </div>
-    </div>
-  </section>
+      <p class="error" id="playerError" role="alert" hidden></p>
 
-  <section>
-    <h2>Your videos</h2>
-    <div class="lib-head"><h3>Up next (queue)</h3><span><button class="chip" id="nextBtn">Next ⏭</button> <button class="chip" id="clearQueueBtn">Clear queue</button></span></div>
-    <ul class="lib-list" id="queueList"></ul>
-    <div class="lib-head"><h3>Favourites</h3></div>
-    <ul class="lib-list" id="favList"></ul>
-    <div class="lib-head"><h3>Recent</h3><button class="chip" id="clearHistBtn">Clear recent</button></div>
-    <ul class="lib-list" id="histList"></ul>
-    <p class="hint">Saved on this device only.</p>
-  </section>
+      <div class="info-card" id="infoCard" hidden>
+        <img id="infoThumb" alt="" width="112" height="63">
+        <div class="info-text">
+          <div class="info-title" id="infoTitle"></div>
+          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><span id="infoDur"></span></div>
+          <a class="info-yt" id="infoYt" target="_blank" rel="noopener noreferrer">Watch on YouTube</a>
+        </div>
+      </div>
 
-  <section>
-    <div class="note">
-      <strong>Good to know</strong>
-      Quality is a request - YouTube chooses the closest option based on your network. Volume in the official player goes up to 100% (YouTube's limit); raise your phone volume if you need it louder. This app adds no ads, banners, or pop-ups of its own. YouTube may still show its own ads inside videos; those are controlled by YouTube and cannot be turned off here.
-    </div>
-  </section>
+      <div class="controls" id="controls" hidden>
+        <div class="ctl-card wide transport">
+          <div class="row">
+            <button class="btn" id="playBtn" disabled>▶ Play</button>
+            <span class="time" id="timeLabel">0:00 / 0:00</span>
+            <button class="chip" id="fsBtn">⛶ Full screen</button>
+          </div>
+          <label class="label" for="seek">Seek through video</label>
+          <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0">
+        </div>
 
-  <footer>Want another feature, such as playlists or subtitles? Let us know.</footer>
+        <div class="ctl-card">
+          <h3>Sound</h3>
+          <div class="row">
+            <button class="chip" id="muteBtn">🔊 Mute</button>
+            <label class="label" for="vol">Volume: <span id="volLabel">80%</span></label>
+          </div>
+          <input class="slider" id="vol" type="range" min="0" max="100" step="1" value="80">
+        </div>
+
+        <div class="ctl-card">
+          <h3>Speed</h3>
+          <div class="chips" id="speedChips"></div>
+        </div>
+
+        <div class="ctl-card wide">
+          <h3>Quality</h3>
+          <div class="chips" id="qualityChips"></div>
+        </div>
+
+        <div class="ctl-card">
+          <h3>Repeat</h3>
+          <div class="row"><button class="chip" id="loopBtn">🔁 Loop off</button></div>
+          <span class="label">Repeat a section (A-B loop)</span>
+          <div class="row">
+            <button class="chip" id="aBtn">Set A</button>
+            <button class="chip" id="bBtn">Set B</button>
+            <button class="chip" id="abClearBtn">Clear</button>
+          </div>
+          <span class="label" id="abLabel" role="status">Off</span>
+        </div>
+
+        <div class="ctl-card">
+          <h3>Sleep timer</h3>
+          <div class="chips" id="sleepChips"></div>
+          <span class="label" id="sleepLabel" role="status">Off</span>
+        </div>
+
+        <div class="ctl-card wide">
+          <h3>Share and save</h3>
+          <div class="row">
+            <button class="chip" id="favBtn">☆ Add to favourites</button>
+            <button class="chip" id="shareBtn">🔗 Copy link at this time</button>
+          </div>
+          <span class="label" id="shareMsg" role="status"></span>
+        </div>
+
+        <details class="shortcuts wide">
+          <summary>Keyboard shortcuts</summary>
+          <ul>
+            <li><b>Space</b> or <b>K</b>: play / pause</li>
+            <li><b>Left / Right</b>: back / forward 5 seconds</li>
+            <li><b>J / L</b>: back / forward 10 seconds</li>
+            <li><b>Up / Down</b>: volume up / down</li>
+            <li><b>M</b>: mute, <b>F</b>: full screen, <b>R</b>: loop on / off, <b>N</b>: next in queue</li>
+            <li><b>0 - 9</b>: jump to 0% - 90% of the video</li>
+          </ul>
+          <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <aside class="side" aria-label="Queue, favourites and recent videos">
+    <section aria-labelledby="libHeading">
+      <h2 id="libHeading">Your videos</h2>
+      <div class="lib-head"><h3>Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
+      <ul class="lib-list" id="queueList"></ul>
+      <div class="lib-head"><h3>Favourites</h3></div>
+      <ul class="lib-list" id="favList"></ul>
+      <div class="lib-head"><h3>Recent</h3><button class="chip" id="clearHistBtn">Clear</button></div>
+      <ul class="lib-list" id="histList"></ul>
+      <p class="hint">Saved on this device only.</p>
+    </section>
+
+    <section>
+      <div class="note">
+        <strong>Good to know</strong>
+        Quality is a request - YouTube chooses the closest option based on your network. Volume in the official player goes up to 100% (YouTube's limit); raise your phone volume if you need it louder. This app adds no ads, banners, or pop-ups of its own. YouTube may still show its own ads inside videos; those are controlled by YouTube and cannot be turned off here.
+      </div>
+    </section>
+  </aside>
+  </div>
+
+  <footer>Paste a link, queue a few videos, and watch them your way.</footer>
 </div>
 
 <script>
