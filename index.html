@@ -75,6 +75,9 @@
   .lib-open img { width: 80px; height: 45px; object-fit: cover; border-radius: 4px; background: #141114; flex: none; }
   .lib-open span { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .lib-empty { color: var(--ink2); font-size: 13px; margin: 0; }
+  .shortcuts { font-size: 14px; color: var(--ink2); }
+  .shortcuts summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; color: var(--ink); }
+  .shortcuts ul { margin: 4px 0 8px; padding-left: 20px; }
   footer { text-align: center; color: var(--ink2); font-size: 13px; margin-top: 24px; }
   #playerError { margin-top: 10px; }
 </style>
@@ -141,6 +144,25 @@
         <button class="chip" id="abClearBtn">Clear</button>
         <span class="label" id="abLabel">Off</span>
       </div>
+
+      <span class="label">Sleep timer</span>
+      <div class="row">
+        <div class="chips" id="sleepChips"></div>
+        <span class="label" id="sleepLabel" role="status">Off</span>
+      </div>
+
+      <details class="shortcuts">
+        <summary>Keyboard shortcuts</summary>
+        <ul>
+          <li><b>Space</b> or <b>K</b>: play / pause</li>
+          <li><b>Left / Right</b>: back / forward 5 seconds</li>
+          <li><b>J / L</b>: back / forward 10 seconds</li>
+          <li><b>Up / Down</b>: volume up / down</li>
+          <li><b>M</b>: mute, <b>F</b>: full screen, <b>R</b>: loop on / off, <b>N</b>: next in queue</li>
+          <li><b>0 - 9</b>: jump to 0% - 90% of the video</li>
+        </ul>
+        <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
+      </details>
 
       <span class="label">Share and save</span>
       <div class="row">
@@ -536,6 +558,75 @@
     function done(ok) { shareMsg.textContent = ok ? "Link copied" : "Copy this link: " + link; }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(function () { done(true); }, function () { done(false); });
     else done(false);
+  });
+
+  // Sleep timer: pauses the video (and stops the queue) when time is up.
+  var sleepChips = $("sleepChips"), sleepLabel = $("sleepLabel");
+  var sleepEnd = 0, sleepTick = null;
+  function sleepRender() {
+    var left = Math.max(0, Math.round((sleepEnd - Date.now()) / 1000));
+    sleepLabel.textContent = sleepEnd ? "Pauses in " + fmt(left) : "Off";
+  }
+  function sleepSet(mins) {
+    if (sleepTick) { clearInterval(sleepTick); sleepTick = null; }
+    sleepEnd = mins ? Date.now() + mins * 60000 : 0;
+    markActive(sleepChips, String(mins));
+    sleepRender();
+    if (!mins) return;
+    sleepTick = setInterval(function () {
+      if (Date.now() >= sleepEnd) {
+        clearInterval(sleepTick); sleepTick = null; sleepEnd = 0;
+        send("pauseVideo");
+        markActive(sleepChips, "0");
+        sleepLabel.textContent = "Sleep timer finished - paused";
+        return;
+      }
+      sleepRender();
+    }, 1000);
+  }
+  [[0, "Off"], [15, "15 min"], [30, "30 min"], [45, "45 min"], [60, "60 min"]].forEach(function (o) {
+    var b = document.createElement("button");
+    b.className = "chip"; b.type = "button"; b.textContent = o[1]; b.dataset.value = String(o[0]);
+    b.addEventListener("click", function () { sleepSet(o[0]); });
+    sleepChips.appendChild(b);
+  });
+  markActive(sleepChips, "0");
+
+  // Keyboard shortcuts
+  function seekBy(d) {
+    var t = Math.max(0, curTime + d);
+    if (duration > 0) t = Math.min(t, duration);
+    send("seekTo", [t, true]); curTime = t; seek.value = t;
+    timeLabel.textContent = fmt(t) + " / " + fmt(duration);
+  }
+  function volBy(d) {
+    var v = Math.max(0, Math.min(100, prefs.volume + d));
+    prefs.volume = v; savePrefs(); vol.value = v; volLabel.textContent = v + "%";
+    send("setVolume", [v]);
+    if (v > 0 && muted) send("unMute");
+  }
+  document.addEventListener("keydown", function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey || !iframe || controls.hidden) return;
+    var tag = e.target && e.target.tagName, type = e.target && e.target.type, k = e.key;
+    if (tag === "TEXTAREA" || tag === "SELECT") return;
+    if (tag === "INPUT" && type !== "range" && type !== "checkbox") return;
+    if (tag === "INPUT" && type === "range" && (k === "ArrowLeft" || k === "ArrowRight" || k === "ArrowUp" || k === "ArrowDown")) return;
+    if (tag === "BUTTON" && (k === " " || k === "Enter")) return;
+    var handled = true;
+    if (k === " " || k === "k" || k === "K") playBtn.click();
+    else if (k === "ArrowLeft") seekBy(-5);
+    else if (k === "ArrowRight") seekBy(5);
+    else if (k === "j" || k === "J") seekBy(-10);
+    else if (k === "l" || k === "L") seekBy(10);
+    else if (k === "ArrowUp") volBy(5);
+    else if (k === "ArrowDown") volBy(-5);
+    else if (k === "m" || k === "M") muteBtn.click();
+    else if (k === "f" || k === "F") fsBtn.click();
+    else if (k === "r" || k === "R") loopBtn.click();
+    else if (k === "n" || k === "N") nextBtn.click();
+    else if (/^[0-9]$/.test(k) && duration > 0) { var t = duration * Number(k) / 10; send("seekTo", [t, true]); curTime = t; seek.value = t; }
+    else handled = false;
+    if (handled) e.preventDefault();
   });
 
   fsBtn.addEventListener("click", function () {
