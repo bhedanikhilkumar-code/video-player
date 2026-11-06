@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Apna HD Video Player</title>
+<meta name="description" content="YouTube link paste karo, video yahin chalao - HD quality, awaaz, speed aur loop controls ke saath.">
+<style>
+  :root {
+    --ink: #251f21; --ink2: #585254; --hairline: #eae9ea;
+    --teal: #3f8f7d; --red: #ed313e; --page: #f7f4f2; --card: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5; -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 20px 16px 48px; }
+  header h1 { font-size: 28px; margin: 12px 0 4px; font-weight: 700; letter-spacing: -0.02em; }
+  header .fact { color: var(--ink2); font-size: 14px; margin: 0 0 6px; }
+  header .intro { font-size: 15px; margin: 0 0 8px; }
+  section { background: var(--card); border-radius: 16px; padding: 16px; margin-top: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  h2 { font-size: 18px; margin: 0 0 12px; }
+  .input-row { display: flex; gap: 10px; }
+  .input-row input {
+    flex: 1; min-width: 0; min-height: 48px; padding: 12px 14px; font-size: 16px;
+    border: 1px solid var(--hairline); border-radius: 8px; color: var(--ink);
+  }
+  .input-row input:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
+  .btn {
+    min-height: 48px; padding: 10px 18px; font-size: 15px; font-weight: 600; cursor: pointer;
+    border-radius: 8px; border: 1px solid var(--teal); background: var(--teal); color: #fff;
+  }
+  .btn:active { opacity: .85; }
+  .hint { color: var(--ink2); font-size: 13px; margin: 8px 0 0; }
+  .error { color: var(--red); font-size: 14px; margin: 8px 0 0; }
+  .frame {
+    position: relative; aspect-ratio: 16 / 9; width: 100%;
+    background: #141114; border-radius: 12px; overflow: hidden;
+  }
+  .frame iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .placeholder {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; color: #cfc6c4; background: radial-gradient(ellipse at center, #2a2226 0%, #141114 70%);
+    text-align: center; padding: 16px;
+  }
+  .placeholder .play-glyph {
+    width: 72px; height: 72px; border-radius: 50%; background: var(--teal);
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 0 32px rgba(63,143,125,.45);
+  }
+  .placeholder .play-glyph::after {
+    content: ""; border-left: 24px solid #fff; border-top: 15px solid transparent; border-bottom: 15px solid transparent; margin-left: 5px;
+  }
+  .controls { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .time { color: var(--ink2); font-variant-numeric: tabular-nums; font-size: 13px; flex: 1; }
+  .label { color: var(--ink2); font-size: 13px; }
+  .slider { width: 100%; min-height: 36px; accent-color: var(--teal); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    min-height: 44px; padding: 8px 14px; border-radius: 8px; font-size: 14px; cursor: pointer;
+    border: 1px solid var(--hairline); background: #fff; color: var(--ink);
+  }
+  .chip.active { border-color: var(--teal); color: var(--teal); font-weight: 700; box-shadow: inset 0 0 0 1px var(--teal); }
+  .note { background: #faf3e8; border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--ink2); }
+  .note strong { color: var(--ink); display: block; margin-bottom: 2px; }
+  footer { text-align: center; color: var(--ink2); font-size: 13px; margin-top: 24px; }
+  #playerError { margin-top: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Apna HD Video Player</h1>
+    <p class="fact">HD quality, awaaz aur speed control</p>
+    <p class="intro">YouTube link paste karo aur video yahin chalao - quality, awaaz, speed, sab tumhare haath mein.</p>
+  </header>
+
+  <section>
+    <h2>YouTube link</h2>
+    <div class="input-row">
+      <input id="linkInput" type="url" inputmode="url" placeholder="https://youtube.com/watch?v=..." aria-label="YouTube link">
+      <button class="btn" id="loadBtn">Load karo</button>
+    </div>
+    <p class="error" id="linkError" role="alert" hidden></p>
+    <p class="hint">watch, share, shorts, live - sab tarah ke YouTube links chalenge.</p>
+  </section>
+
+  <section>
+    <h2>Player</h2>
+    <div class="frame" id="frameBox">
+      <div class="placeholder" id="placeholder">
+        <div class="play-glyph"></div>
+        <div>Upar link daalo, video yahan chalega</div>
+      </div>
+    </div>
+    <p class="error" id="playerError" role="alert" hidden></p>
+
+    <div class="controls" id="controls" hidden>
+      <div class="row">
+        <button class="btn" id="playBtn" disabled>▶ Play</button>
+        <span class="time" id="timeLabel">0:00 / 0:00</span>
+        <button class="chip" id="fsBtn">⛶ Full screen</button>
+      </div>
+
+      <label class="label" for="seek">Video aage-peeche</label>
+      <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0">
+
+      <div class="row">
+        <button class="chip" id="muteBtn">🔊 Mute</button>
+        <label class="label" for="vol">Awaaz: <span id="volLabel">80%</span></label>
+      </div>
+      <input class="slider" id="vol" type="range" min="0" max="100" step="1" value="80">
+
+      <span class="label">Speed</span>
+      <div class="chips" id="speedChips"></div>
+
+      <span class="label">Quality</span>
+      <div class="chips" id="qualityChips"></div>
+
+      <div class="row">
+        <button class="chip" id="loopBtn">🔁 Loop off</button>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="note">
+      <strong>Dhyan rakhna</strong>
+      Quality ek request hai - YouTube network ke hisaab se sabse close quality deta hai. Awaaz official player mein 100% tak hi jaati hai (YouTube ka limit); aur loud chahiye toh phone ka volume badhao. Ye app khud 100% ad-free hai - koi banner ya pop-up nahi. Video ke andar kabhi-kabhi YouTube ke apne ads aa sakte hain, wo YouTube control karta hai.
+    </div>
+  </section>
+
+  <footer>Koi aur feature chahiye - jaise playlist ya subtitles - toh bata do.</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var YT_ORIGIN = "https://www.youtube-nocookie.com";
+  var SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+  var QUALITIES = [
+    { label: "Auto", value: "auto" },
+    { label: "Best (4K/2K)", value: "highres" },
+    { label: "1080p HD", value: "hd1080" },
+    { label: "720p HD", value: "hd720" },
+    { label: "480p", value: "large" },
+    { label: "360p", value: "medium" },
+    { label: "240p", value: "small" }
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var linkInput = $("linkInput"), loadBtn = $("loadBtn"), linkError = $("linkError");
+  var frameBox = $("frameBox"), placeholder = $("placeholder"), controls = $("controls");
+  var playerError = $("playerError"), playBtn = $("playBtn"), timeLabel = $("timeLabel");
+  var seek = $("seek"), vol = $("vol"), volLabel = $("volLabel"), muteBtn = $("muteBtn");
+  var speedChips = $("speedChips"), qualityChips = $("qualityChips"), loopBtn = $("loopBtn"), fsBtn = $("fsBtn");
+
+  var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
+  var prefs = { volume: 80, speed: 1, loop: false };
+  try {
+    var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; }
+  } catch (e) {}
+  function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
+
+  function parseVideoId(input) {
+    var text = input.trim();
+    if (/^[a-zA-Z0-9_-]{11}$/.test(text)) return text;
+    try {
+      var url = new URL(text.indexOf("://") >= 0 ? text : "https://" + text);
+      var host = url.hostname.replace(/^(www|m)\./, "");
+      if (host === "youtu.be") {
+        var id = url.pathname.slice(1).split("/")[0];
+        return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
+      }
+      if (host === "youtube.com" || host.slice(-12) === ".youtube.com" || host === "youtube-nocookie.com") {
+        var v = url.searchParams.get("v");
+        if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
+        var parts = url.pathname.split("/").filter(Boolean);
+        for (var i = 0; i < parts.length; i++) {
+          if (["embed", "shorts", "live", "v"].indexOf(parts[i]) >= 0 && /^[a-zA-Z0-9_-]{11}$/.test(parts[i + 1] || "")) return parts[i + 1];
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  function fmt(s) {
+    if (!isFinite(s) || s < 0) return "0:00";
+    s = Math.floor(s);
+    var h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
+    var mm = h > 0 ? String(m).padStart(2, "0") : String(m);
+    return (h > 0 ? h + ":" : "") + mm + ":" + String(sec).padStart(2, "0");
+  }
+
+  function send(func, args) {
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: args || [] }), YT_ORIGIN);
+    }
+  }
+
+  window.addEventListener("message", function (e) {
+    if (e.origin !== YT_ORIGIN && e.origin !== "https://www.youtube.com") return;
+    var data;
+    try { data = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch (err) { return; }
+    if (!data || typeof data !== "object") return;
+    if (data.event === "onReady") {
+      ready = true; playBtn.disabled = false;
+      send("setVolume", [prefs.volume]);
+      if (prefs.speed !== 1) send("setPlaybackRate", [prefs.speed]);
+    }
+    if (data.event === "onStateChange" && typeof data.info === "number") {
+      playing = data.info === 1;
+      playBtn.textContent = playing ? "⏸ Pause" : "▶ Play";
+      if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); }
+    }
+    if (data.event === "onPlaybackQualityChange" && typeof data.info === "string") markActive(qualityChips, data.info);
+    if (data.event === "onPlaybackRateChange" && typeof data.info === "number") { prefs.speed = data.info; savePrefs(); markActive(speedChips, String(data.info)); }
+    if (data.event === "onError") {
+      playerError.textContent = "Ye video yahan embed nahi ho sakta - video ke malik ne bahar play karne ki rok lagayi hai. Doosra link try karo.";
+      playerError.hidden = false;
+    }
+    if ((data.event === "infoDelivery" || data.event === "initialDelivery") && data.info && typeof data.info === "object") {
+      var i = data.info;
+      if (typeof i.currentTime === "number" && !seeking) seek.value = i.currentTime;
+      if (typeof i.duration === "number" && i.duration > 0) { duration = i.duration; seek.max = duration; }
+      if (typeof i.volume === "number") { prefs.volume = Math.round(i.volume); vol.value = prefs.volume; volLabel.textContent = prefs.volume + "%"; }
+      if (typeof i.muted === "boolean") { muted = i.muted; muteBtn.textContent = muted ? "🔇 Mute hai" : "🔊 Mute"; }
+      var t = (seeking ? Number(seek.value) : i.currentTime) || 0;
+      timeLabel.textContent = fmt(t) + " / " + fmt(duration);
+    }
+  });
+
+  function markActive(container, value) {
+    Array.prototype.forEach.call(container.children, function (chip) {
+      chip.classList.toggle("active", chip.dataset.value === String(value));
+    });
+  }
+
+  SPEEDS.forEach(function (s) {
+    var b = document.createElement("button");
+    b.className = "chip"; b.textContent = s + "x"; b.dataset.value = String(s);
+    b.addEventListener("click", function () { prefs.speed = s; savePrefs(); send("setPlaybackRate", [s]); markActive(speedChips, String(s)); });
+    speedChips.appendChild(b);
+  });
+  QUALITIES.forEach(function (q) {
+    var b = document.createElement("button");
+    b.className = "chip"; b.textContent = q.label; b.dataset.value = q.value;
+    b.addEventListener("click", function () { send("setPlaybackQuality", [q.value]); markActive(qualityChips, q.value); });
+    qualityChips.appendChild(b);
+  });
+  markActive(speedChips, String(prefs.speed));
+  markActive(qualityChips, "auto");
+  vol.value = prefs.volume; volLabel.textContent = prefs.volume + "%";
+  if (prefs.loop) { loopBtn.classList.add("active"); loopBtn.textContent = "🔁 Loop on"; }
+
+  loadBtn.addEventListener("click", function () {
+    var id = parseVideoId(linkInput.value);
+    if (!id) {
+      linkError.textContent = "Link samajh nahi aaya. Poora YouTube link paste karo, jaise https://youtube.com/watch?v=...";
+      linkError.hidden = false;
+      return;
+    }
+    linkError.hidden = true; playerError.hidden = true;
+    ready = false; playing = false; duration = 0; playBtn.disabled = true; playBtn.textContent = "▶ Play";
+    timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1;
+    if (iframe) { iframe.remove(); iframe = null; }
+    iframe = document.createElement("iframe");
+    iframe.src = YT_ORIGIN + "/embed/" + id + "?enablejsapi=1&autoplay=1&rel=0&playsinline=1&origin=" + encodeURIComponent(location.origin);
+    iframe.title = "YouTube video player";
+    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen";
+    iframe.allowFullScreen = true;
+    iframe.addEventListener("load", function () {
+      if (!iframe || !iframe.contentWindow) return;
+      iframe.contentWindow.postMessage(JSON.stringify({ event: "listening" }), YT_ORIGIN);
+      send("addEventListener", ["onStateChange"]);
+      send("addEventListener", ["onPlaybackQualityChange"]);
+      send("addEventListener", ["onPlaybackRateChange"]);
+      send("addEventListener", ["onError"]);
+    });
+    frameBox.appendChild(iframe);
+    placeholder.style.display = "none";
+    controls.hidden = false;
+  });
+
+  linkInput.addEventListener("keydown", function (e) { if (e.key === "Enter") loadBtn.click(); });
+
+  playBtn.addEventListener("click", function () { send(playing ? "pauseVideo" : "playVideo"); });
+  muteBtn.addEventListener("click", function () { send(muted ? "unMute" : "mute"); });
+  vol.addEventListener("input", function () {
+    var v = Number(vol.value);
+    prefs.volume = v; savePrefs(); volLabel.textContent = v + "%";
+    send("setVolume", [v]);
+    if (v > 0 && muted) send("unMute");
+  });
+  seek.addEventListener("input", function () {
+    seeking = true;
+    timeLabel.textContent = fmt(Number(seek.value)) + " / " + fmt(duration);
+  });
+  function commitSeek() { if (seeking) { send("seekTo", [Number(seek.value), true]); seeking = false; } }
+  seek.addEventListener("change", commitSeek);
+  seek.addEventListener("pointerup", commitSeek);
+  loopBtn.addEventListener("click", function () {
+    prefs.loop = !prefs.loop; savePrefs();
+    loopBtn.classList.toggle("active", prefs.loop);
+    loopBtn.textContent = prefs.loop ? "🔁 Loop on" : "🔁 Loop off";
+  });
+  fsBtn.addEventListener("click", function () {
+    var el = frameBox;
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  });
+})();
+</script>
+</body>
+</html>
