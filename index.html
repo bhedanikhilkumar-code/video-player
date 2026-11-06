@@ -312,7 +312,7 @@
       <div class="input-row">
         <input id="dlUrl" type="url" inputmode="url" placeholder="https://site.com/video-link" aria-label="Video link from another site">
       </div>
-      <div class="actions"><button class="btn" id="dlInfoBtn">Get formats</button><button class="chip" id="dlPasteBtn" type="button">Paste</button><button class="chip" id="dlRetryBtn" type="button" hidden>Retry</button></div>
+      <div class="actions"><button class="btn" id="dlInfoBtn">Get formats</button><button class="chip" id="dlPasteBtn" type="button">Paste</button><button class="chip" id="dlRetryBtn" type="button" hidden>Retry</button><button class="chip" id="dlCopyErr" type="button" hidden>Copy error</button></div>
       <p class="hint" id="dlStatus" role="status">YouTube links download nahi hote - YouTube ko upar wale player me chalao. Baaki sites (jaise TikTok, TED, SoundCloud, Streamable) try karo.</p>
       <p class="error" id="dlError" role="alert" hidden></p>
       <div id="dlBox" hidden>
@@ -330,6 +330,10 @@
         <div class="actions"><button class="chip" id="dlPlayBtn" hidden>Play last download here (with boost)</button></div>
         <div class="dl-bar" id="dlBar" hidden><div id="dlBarFill"></div></div>
         <div id="dlSubs"></div>
+      </div>
+      <div id="dlHistWrap" hidden>
+        <div class="lib-head"><h3>Recent downloads</h3><button class="chip" id="dlHistClear" type="button">Clear</button></div>
+        <ul class="lib-list" id="dlHist"></ul>
       </div>
       <p class="hint">Server free hai, to pehli baar 1 minute lag sakta hai. Kuch sites (Vimeo, Facebook jaise) free server ko block kar deti hain. Sirf wahi download karo jiska tumhe haq ho.</p>
     </section>
@@ -878,7 +882,27 @@
     try { var h = new URL(u).hostname.toLowerCase(); return /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com|youtubekids\.com|yt\.be)$/.test(h); } catch (e) { return false; }
   }
   var retryFn = null, retryBtn = $("dlRetryBtn");
-  function showErr(m) { errEl.textContent = m; errEl.hidden = !m; if (!m) { retryBtn.hidden = true; } }
+  var copyBtn = $("dlCopyErr"), lastRaw = "";
+  function showErr(m) { errEl.textContent = m; errEl.hidden = !m; if (!m) { retryBtn.hidden = true; copyBtn.hidden = true; } }
+  copyBtn.addEventListener("click", function () {
+    var t = "Downloader error: " + errEl.textContent + (lastRaw ? " | " + lastRaw : "") + " | " + (info && info.url || urlIn.value);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { copyBtn.textContent = "Copied"; setTimeout(function () { copyBtn.textContent = "Copy error"; }, 1500); }, function () {});
+  });
+  var HK = "vp-dl-hist", histEl = $("dlHist"), histWrap = $("dlHistWrap");
+  function histGet() { try { return JSON.parse(localStorage.getItem(HK)) || []; } catch (e) { return []; } }
+  function histAdd(it) { var h = histGet().filter(function (x) { return !(x.url === it.url && x.kind === it.kind); }); h.unshift(it); try { localStorage.setItem(HK, JSON.stringify(h.slice(0, 10))); } catch (e) {} histRender(); }
+  function histRender() {
+    var h = histGet(); histWrap.hidden = !h.length; histEl.innerHTML = "";
+    h.forEach(function (it) {
+      var li = document.createElement("li"), b = document.createElement("button");
+      b.className = "chip"; b.type = "button"; b.style.textAlign = "left";
+      b.textContent = (it.kind === "mp3" ? "MP3 - " : "Video - ") + (it.title || it.url);
+      b.title = it.url; b.addEventListener("click", function () { urlIn.value = it.url; infoBtn.click(); });
+      li.appendChild(b); histEl.appendChild(li);
+    });
+  }
+  $("dlHistClear").addEventListener("click", function () { try { localStorage.removeItem(HK); } catch (e) {} histRender(); });
+  histRender();
   function setBusy(b, msg) { busy = b; infoBtn.disabled = vBtn.disabled = mBtn.disabled = b; if (msg) statusEl.textContent = msg; }
   function parseT(v) {
     v = (v || "").trim(); if (!v) return null;
@@ -926,6 +950,8 @@
       ? "Server se connect nahi ho paya. Net check karo ya 1 minute baad try karo (free server soya hua ho sakta hai)." : "Kuch galat hua. Dobara try karo."));
     setBusy(false, "");
     bar.hidden = true;
+    lastRaw = (e && (e.code || "") + " " + (e.message || "")).slice(0, 200);
+    copyBtn.hidden = false;
     if (retryFn && code !== "youtube_blocked" && code !== "bad_url" && code !== "bad_range") retryBtn.hidden = false;
   }
 
@@ -977,6 +1003,7 @@
     runTask(body, function (p) { fill.style.width = Math.max(5, p) + "%"; statusEl.textContent = (kind === "mp3" ? "MP3 ban raha hai... " : "Download ho raha hai... ") + p + "%"; })
       .then(function (s) {
         fill.style.width = "100%"; setBusy(false, "Ho gaya! Download shuru ho jayega: " + (s.name || "file"));
+        histAdd({ url: info.url, title: info.title, kind: kind, t: Date.now() });
         lastFile = API + s.file; $("dlPlayBtn").hidden = false; var a = document.createElement("a"); a.href = API + s.file; a.download = s.name || ""; document.body.appendChild(a); a.click(); a.remove();
       }).catch(fail);
   }
