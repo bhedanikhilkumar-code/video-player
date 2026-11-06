@@ -93,8 +93,9 @@
       <input id="linkInput" type="url" inputmode="url" placeholder="https://youtube.com/watch?v=..." aria-label="YouTube link">
       <button class="btn" id="loadBtn">Load video</button>
     </div>
+    <div class="input-row" style="margin-top:10px"><button class="chip" id="queueBtn">+ Add to queue</button></div>
     <p class="error" id="linkError" role="alert" hidden></p>
-    <p class="hint">Watch, share, Shorts, and live links are all supported. You can also open this page with ?url=LINK&amp;from=30&amp;to=90 to start and stop at set seconds.</p>
+    <p class="hint">Watch, share, Shorts, and live links are all supported. To queue several videos, paste their links separated by spaces and tap Add to queue; they play one after another. You can also open this page with ?url=LINK&amp;from=30&amp;to=90 to start and stop at set seconds.</p>
   </section>
 
   <section>
@@ -152,6 +153,8 @@
 
   <section>
     <h2>Your videos</h2>
+    <div class="lib-head"><h3>Up next (queue)</h3><span><button class="chip" id="nextBtn">Next ⏭</button> <button class="chip" id="clearQueueBtn">Clear queue</button></span></div>
+    <ul class="lib-list" id="queueList"></ul>
     <div class="lib-head"><h3>Favourites</h3></div>
     <ul class="lib-list" id="favList"></ul>
     <div class="lib-head"><h3>Recent</h3><button class="chip" id="clearHistBtn">Clear recent</button></div>
@@ -193,6 +196,8 @@
 
     var aBtn = $("aBtn"), bBtn = $("bBtn"), abClearBtn = $("abClearBtn"), abLabel = $("abLabel");
   var shareBtn = $("shareBtn"), shareMsg = $("shareMsg");
+  var queueList = $("queueList"), queueBtn = $("queueBtn"), nextBtn = $("nextBtn"), clearQueueBtn = $("clearQueueBtn");
+  var qPos = -1;
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
@@ -205,23 +210,24 @@
 
   // Recent videos and favourites, saved in this browser only.
   var LIB_KEY = "vp-library.v1", HIST_MAX = 20;
-  var lib = { hist: [], favs: [] };
+  var lib = { hist: [], favs: [], queue: [] };
   try {
     var savedLib = JSON.parse(localStorage.getItem(LIB_KEY) || "null");
     if (savedLib) {
       if (Array.isArray(savedLib.hist)) lib.hist = savedLib.hist.filter(validItem).slice(0, HIST_MAX);
       if (Array.isArray(savedLib.favs)) lib.favs = savedLib.favs.filter(validItem);
+      if (Array.isArray(savedLib.queue)) lib.queue = savedLib.queue.filter(validItem).slice(0, 50);
     }
   } catch (e) {}
   function validItem(x) { return x && typeof x.id === "string" && /^[a-zA-Z0-9_-]{11}$/.test(x.id); }
   function saveLib() { try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); } catch (e) {} }
   function findIn(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return i; return -1; }
   function titleFor(id) {
-    var h = findIn(lib.hist, id), f = findIn(lib.favs, id);
-    return (h >= 0 && lib.hist[h].title) || (f >= 0 && lib.favs[f].title) || "";
+    var h = findIn(lib.hist, id), f = findIn(lib.favs, id), q = findIn(lib.queue, id);
+    return (h >= 0 && lib.hist[h].title) || (f >= 0 && lib.favs[f].title) || (q >= 0 && lib.queue[q].title) || "";
   }
   function setTitle(id, title) {
-    [lib.hist, lib.favs].forEach(function (list) { var i = findIn(list, id); if (i >= 0) list[i].title = title; });
+    [lib.hist, lib.favs, lib.queue].forEach(function (list) { var i = findIn(list, id); if (i >= 0) list[i].title = title; });
     saveLib(); renderLib();
   }
   function fetchTitle(id) {
@@ -243,15 +249,15 @@
     if (i >= 0) lib.favs.splice(i, 1); else lib.favs.unshift({ id: id, title: titleFor(id) });
     saveLib(); renderLib(); if (i < 0) fetchTitle(id);
   }
-  function buildItem(item, actionLabel, onAction) {
+  function buildItem(item, actionLabel, onAction, onOpen, isCurrent) {
     var li = document.createElement("li"); li.className = "lib-item";
     var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
     var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
     img.src = "https://i.ytimg.com/vi/" + item.id + "/mqdefault.jpg";
-    var span = document.createElement("span"); span.textContent = item.title || ("Video " + item.id);
+    var span = document.createElement("span"); span.textContent = (isCurrent ? "▶ " : "") + (item.title || ("Video " + item.id));
     open.appendChild(img); open.appendChild(span);
     open.addEventListener("click", function () {
-      linkInput.value = item.id; loadVideo(null, null);
+      if (onOpen) onOpen(); else { linkInput.value = item.id; loadVideo(null, null); }
       if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: "smooth", block: "center" });
     });
     var act = document.createElement("button"); act.className = "chip"; act.type = "button";
@@ -260,12 +266,37 @@
     li.appendChild(open); li.appendChild(act);
     return li;
   }
-  function fillList(ul, items, emptyText, actionLabel, onAction) {
+  function fillList(ul, items, emptyText, actionLabel, onAction, onOpen) {
     ul.textContent = "";
     if (!items.length) { var li = document.createElement("li"); var p = document.createElement("p"); p.className = "lib-empty"; p.textContent = emptyText; li.appendChild(p); ul.appendChild(li); return; }
-    items.forEach(function (item) { ul.appendChild(buildItem(item, actionLabel, function () { onAction(item); })); });
+    items.forEach(function (item, idx) { ul.appendChild(buildItem(item, actionLabel, function () { onAction(item, idx); }, onOpen ? function () { onOpen(item, idx); } : null, ul === queueList && idx === qPos)); });
+  }
+  function queueAdd(text) {
+    var tokens = text.split(/[\s,]+/).filter(Boolean), added = 0;
+    tokens.forEach(function (t) {
+      var id = parseVideoId(t);
+      if (id && lib.queue.length < 50) { lib.queue.push({ id: id, title: titleFor(id) }); added++; fetchTitle(id); }
+    });
+    saveLib(); renderLib();
+    return added;
+  }
+  function playNext() {
+    var next = qPos + 1;
+    if (next >= lib.queue.length) return false;
+    playQueueAt(next);
+    return true;
+  }
+  function playQueueAt(i) {
+    if (i < 0 || i >= lib.queue.length) return;
+    linkInput.value = lib.queue[i].id;
+    loadVideo(null, null, i, true);
   }
   function renderLib() {
+    fillList(queueList, lib.queue, "Queue is empty. Add links with Add to queue.", "Remove", function (item, idx) {
+      lib.queue.splice(idx, 1);
+      if (idx < qPos) qPos--; else if (idx === qPos) qPos = -1;
+      saveLib(); renderLib();
+    }, function (item, idx) { playQueueAt(idx); });
     fillList(favList, lib.favs, "No favourites yet. Load a video and tap Add to favourites.", "Remove", function (item) { toggleFav(item.id); });
     fillList(histList, lib.hist, "Videos you play will show up here.", "☆ Save", function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); });
     updateFavBtn();
@@ -277,6 +308,21 @@
   }
   favBtn.addEventListener("click", function () { if (curId) toggleFav(curId); });
   clearHistBtn.addEventListener("click", function () { lib.hist = []; saveLib(); renderLib(); });
+  queueBtn.addEventListener("click", function () {
+    var n = queueAdd(linkInput.value);
+    if (!n) {
+      linkError.textContent = "No valid YouTube link found to add. Paste one or more full YouTube links.";
+      linkError.hidden = false;
+    } else {
+      linkError.hidden = true; linkInput.value = "";
+      if (!iframe) playQueueAt(0);
+    }
+  });
+  nextBtn.addEventListener("click", function () {
+    if (!lib.queue.length) { linkError.textContent = "The queue is empty."; linkError.hidden = false; }
+    else if (!playNext()) { linkError.textContent = "That was the last video in the queue."; linkError.hidden = false; }
+  });
+  clearQueueBtn.addEventListener("click", function () { lib.queue = []; qPos = -1; saveLib(); renderLib(); });
   renderLib();
 
   function parseVideoId(input) {
@@ -329,6 +375,9 @@
       playing = data.info === 1;
       playBtn.textContent = playing ? "⏸ Pause" : "▶ Play";
       if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); }
+      else if (data.info === 0 && lib.queue.length) {
+        if (qPos < 0) playQueueAt(0); else playNext();
+      }
     }
     if (data.event === "onPlaybackQualityChange" && typeof data.info === "string") markActive(qualityChips, data.info);
     if (data.event === "onPlaybackRateChange" && typeof data.info === "number") { prefs.speed = data.info; savePrefs(); markActive(speedChips, String(data.info)); }
@@ -374,7 +423,8 @@
   vol.value = prefs.volume; volLabel.textContent = prefs.volume + "%";
   if (prefs.loop) { loopBtn.classList.add("active"); loopBtn.textContent = "🔁 Loop on"; }
 
-  function loadVideo(startSec, endSec) {
+  function loadVideo(startSec, endSec, queueIndex, autoplay) {
+    qPos = typeof queueIndex === "number" ? queueIndex : -1;
     var id = parseVideoId(linkInput.value);
     if (!id) {
       linkError.textContent = "That link does not look valid. Paste a full YouTube link, such as https://youtube.com/watch?v=...";
@@ -391,7 +441,7 @@
     var clip = "";
     if (startSec != null) clip += "&start=" + startSec;
     if (endSec != null) clip += "&end=" + endSec;
-    iframe.src = YT_ORIGIN + "/embed/" + id + "?enablejsapi=1&rel=0&playsinline=1" + clip + "&origin=" + encodeURIComponent(location.origin);
+    iframe.src = YT_ORIGIN + "/embed/" + id + "?enablejsapi=1&rel=0&playsinline=1" + (autoplay ? "&autoplay=1" : "") + clip + "&origin=" + encodeURIComponent(location.origin);
     iframe.title = "YouTube video player";
     iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen";
     iframe.allowFullScreen = true;
