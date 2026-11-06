@@ -104,7 +104,7 @@ def do_download(t, p):
         o["format"] = fid or "bestaudio/best"
         pp.append({"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"})
     else:
-        if fid and "+" in str(fid): o["format"] = str(fid)
+        if fid and (p.get("mux") or "+" in str(fid)): o["format"] = str(fid)
         elif fid: o["format"] = f"{fid}+bestaudio/{fid}/best"
         else: o["format"] = "bv*+ba/b"
     if start is not None or end is not None:
