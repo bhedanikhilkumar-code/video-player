@@ -67,6 +67,14 @@
   .chip.active { border-color: var(--teal); color: var(--teal); font-weight: 700; box-shadow: inset 0 0 0 1px var(--teal); }
   .note { background: #faf3e8; border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--ink2); }
   .note strong { color: var(--ink); display: block; margin-bottom: 2px; }
+  .lib-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 8px; }
+  .lib-head h3 { font-size: 15px; margin: 0; }
+  .lib-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .lib-item { display: flex; align-items: center; gap: 10px; }
+  .lib-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; min-height: 56px; padding: 4px 8px 4px 4px; border: 1px solid var(--hairline); border-radius: 8px; background: #fff; color: var(--ink); cursor: pointer; font-size: 14px; }
+  .lib-open img { width: 80px; height: 45px; object-fit: cover; border-radius: 4px; background: #141114; flex: none; }
+  .lib-open span { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .lib-empty { color: var(--ink2); font-size: 13px; margin: 0; }
   footer { text-align: center; color: var(--ink2); font-size: 13px; margin-top: 24px; }
   #playerError { margin-top: 10px; }
 </style>
@@ -133,12 +141,22 @@
         <span class="label" id="abLabel">Off</span>
       </div>
 
-      <span class="label">Share</span>
+      <span class="label">Share and save</span>
       <div class="row">
+        <button class="chip" id="favBtn">☆ Add to favourites</button>
         <button class="chip" id="shareBtn">🔗 Copy link at this time</button>
         <span class="label" id="shareMsg" role="status"></span>
       </div>
     </div>
+  </section>
+
+  <section>
+    <h2>Your videos</h2>
+    <div class="lib-head"><h3>Favourites</h3></div>
+    <ul class="lib-list" id="favList"></ul>
+    <div class="lib-head"><h3>Recent</h3><button class="chip" id="clearHistBtn">Clear recent</button></div>
+    <ul class="lib-list" id="histList"></ul>
+    <p class="hint">Saved on this device only.</p>
   </section>
 
   <section>
@@ -175,6 +193,7 @@
 
     var aBtn = $("aBtn"), bBtn = $("bBtn"), abClearBtn = $("abClearBtn"), abLabel = $("abLabel");
   var shareBtn = $("shareBtn"), shareMsg = $("shareMsg");
+  var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
   var prefs = { volume: 80, speed: 1, loop: false };
@@ -183,6 +202,82 @@
     if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
+
+  // Recent videos and favourites, saved in this browser only.
+  var LIB_KEY = "vp-library.v1", HIST_MAX = 20;
+  var lib = { hist: [], favs: [] };
+  try {
+    var savedLib = JSON.parse(localStorage.getItem(LIB_KEY) || "null");
+    if (savedLib) {
+      if (Array.isArray(savedLib.hist)) lib.hist = savedLib.hist.filter(validItem).slice(0, HIST_MAX);
+      if (Array.isArray(savedLib.favs)) lib.favs = savedLib.favs.filter(validItem);
+    }
+  } catch (e) {}
+  function validItem(x) { return x && typeof x.id === "string" && /^[a-zA-Z0-9_-]{11}$/.test(x.id); }
+  function saveLib() { try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); } catch (e) {} }
+  function findIn(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return i; return -1; }
+  function titleFor(id) {
+    var h = findIn(lib.hist, id), f = findIn(lib.favs, id);
+    return (h >= 0 && lib.hist[h].title) || (f >= 0 && lib.favs[f].title) || "";
+  }
+  function setTitle(id, title) {
+    [lib.hist, lib.favs].forEach(function (list) { var i = findIn(list, id); if (i >= 0) list[i].title = title; });
+    saveLib(); renderLib();
+  }
+  function fetchTitle(id) {
+    if (!window.fetch || titleFor(id)) return;
+    fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d && typeof d.title === "string") setTitle(id, d.title); })
+      .catch(function () {});
+  }
+  function addHistory(id) {
+    var i = findIn(lib.hist, id), item = i >= 0 ? lib.hist.splice(i, 1)[0] : { id: id, title: titleFor(id) };
+    item.ts = Date.now();
+    lib.hist.unshift(item);
+    if (lib.hist.length > HIST_MAX) lib.hist.length = HIST_MAX;
+    saveLib(); renderLib(); fetchTitle(id);
+  }
+  function toggleFav(id) {
+    var i = findIn(lib.favs, id);
+    if (i >= 0) lib.favs.splice(i, 1); else lib.favs.unshift({ id: id, title: titleFor(id) });
+    saveLib(); renderLib(); if (i < 0) fetchTitle(id);
+  }
+  function buildItem(item, actionLabel, onAction) {
+    var li = document.createElement("li"); li.className = "lib-item";
+    var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
+    var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
+    img.src = "https://i.ytimg.com/vi/" + item.id + "/mqdefault.jpg";
+    var span = document.createElement("span"); span.textContent = item.title || ("Video " + item.id);
+    open.appendChild(img); open.appendChild(span);
+    open.addEventListener("click", function () {
+      linkInput.value = item.id; loadVideo(null, null);
+      if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    var act = document.createElement("button"); act.className = "chip"; act.type = "button";
+    act.textContent = actionLabel; act.setAttribute("aria-label", actionLabel + ": " + (item.title || item.id));
+    act.addEventListener("click", onAction);
+    li.appendChild(open); li.appendChild(act);
+    return li;
+  }
+  function fillList(ul, items, emptyText, actionLabel, onAction) {
+    ul.textContent = "";
+    if (!items.length) { var li = document.createElement("li"); var p = document.createElement("p"); p.className = "lib-empty"; p.textContent = emptyText; li.appendChild(p); ul.appendChild(li); return; }
+    items.forEach(function (item) { ul.appendChild(buildItem(item, actionLabel, function () { onAction(item); })); });
+  }
+  function renderLib() {
+    fillList(favList, lib.favs, "No favourites yet. Load a video and tap Add to favourites.", "Remove", function (item) { toggleFav(item.id); });
+    fillList(histList, lib.hist, "Videos you play will show up here.", "☆ Save", function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); });
+    updateFavBtn();
+  }
+  function updateFavBtn() {
+    var on = curId && findIn(lib.favs, curId) >= 0;
+    favBtn.textContent = on ? "★ In favourites" : "☆ Add to favourites";
+    favBtn.classList.toggle("active", !!on);
+  }
+  favBtn.addEventListener("click", function () { if (curId) toggleFav(curId); });
+  clearHistBtn.addEventListener("click", function () { lib.hist = []; saveLib(); renderLib(); });
+  renderLib();
 
   function parseVideoId(input) {
     var text = input.trim();
@@ -288,6 +383,7 @@
     }
     linkError.hidden = true; playerError.hidden = true;
     curId = id; curTime = startSec || 0; clearAB();
+    addHistory(id);
     ready = false; playing = false; duration = 0; playBtn.disabled = true; playBtn.textContent = "▶ Play";
     timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1;
     if (iframe) { iframe.remove(); iframe = null; }
