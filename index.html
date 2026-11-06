@@ -124,13 +124,27 @@
       <div class="row">
         <button class="chip" id="loopBtn">🔁 Loop off</button>
       </div>
+
+      <span class="label">Repeat a section (A-B loop)</span>
+      <div class="row">
+        <button class="chip" id="aBtn">Set A</button>
+        <button class="chip" id="bBtn">Set B</button>
+        <button class="chip" id="abClearBtn">Clear</button>
+        <span class="label" id="abLabel">Off</span>
+      </div>
+
+      <span class="label">Share</span>
+      <div class="row">
+        <button class="chip" id="shareBtn">🔗 Copy link at this time</button>
+        <span class="label" id="shareMsg" role="status"></span>
+      </div>
     </div>
   </section>
 
   <section>
     <div class="note">
       <strong>Good to know</strong>
-      Quality is a request - YouTube chooses the closest option based on your network. Volume in the official player goes up to 100% (YouTube's limit); raise your phone volume if you need it louder. This app is completely ad-free, with no banners or pop-ups. YouTube may still show its own ads inside videos; those are controlled by YouTube.
+      Quality is a request - YouTube chooses the closest option based on your network. Volume in the official player goes up to 100% (YouTube's limit); raise your phone volume if you need it louder. This app adds no ads, banners, or pop-ups of its own. YouTube may still show its own ads inside videos; those are controlled by YouTube and cannot be turned off here.
     </div>
   </section>
 
@@ -159,6 +173,9 @@
   var seek = $("seek"), vol = $("vol"), volLabel = $("volLabel"), muteBtn = $("muteBtn");
   var speedChips = $("speedChips"), qualityChips = $("qualityChips"), loopBtn = $("loopBtn"), fsBtn = $("fsBtn");
 
+    var aBtn = $("aBtn"), bBtn = $("bBtn"), abClearBtn = $("abClearBtn"), abLabel = $("abLabel");
+  var shareBtn = $("shareBtn"), shareMsg = $("shareMsg");
+  var curTime = 0, curId = null, abA = null, abB = null;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
   var prefs = { volume: 80, speed: 1, loop: false };
   try {
@@ -230,6 +247,10 @@
       if (typeof i.duration === "number" && i.duration > 0) { duration = i.duration; seek.max = duration; }
       if (typeof i.volume === "number") { prefs.volume = Math.round(i.volume); vol.value = prefs.volume; volLabel.textContent = prefs.volume + "%"; }
       if (typeof i.muted === "boolean") { muted = i.muted; muteBtn.textContent = muted ? "🔇 Unmute" : "🔊 Mute"; }
+      if (typeof i.currentTime === "number") {
+        curTime = i.currentTime;
+        if (abA != null && abB != null && !seeking && curTime >= abB) { send("seekTo", [abA, true]); curTime = abA; }
+      }
       var t = (seeking ? Number(seek.value) : i.currentTime) || 0;
       timeLabel.textContent = fmt(t) + " / " + fmt(duration);
     }
@@ -266,6 +287,7 @@
       return;
     }
     linkError.hidden = true; playerError.hidden = true;
+    curId = id; curTime = startSec || 0; clearAB();
     ready = false; playing = false; duration = 0; playBtn.disabled = true; playBtn.textContent = "▶ Play";
     timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1;
     if (iframe) { iframe.remove(); iframe = null; }
@@ -340,6 +362,36 @@
     loopBtn.classList.toggle("active", prefs.loop);
     loopBtn.textContent = prefs.loop ? "🔁 Loop on" : "🔁 Loop off";
   });
+  function updateAB() {
+    aBtn.classList.toggle("active", abA != null);
+    bBtn.classList.toggle("active", abB != null);
+    if (abA == null && abB == null) abLabel.textContent = "Off";
+    else if (abB == null) abLabel.textContent = "A " + fmt(abA) + " - set B to start repeating";
+    else if (abA == null) abLabel.textContent = "B " + fmt(abB) + " - set A to start repeating";
+    else abLabel.textContent = "Repeating " + fmt(abA) + " to " + fmt(abB);
+  }
+  function clearAB() { abA = null; abB = null; updateAB(); }
+  aBtn.addEventListener("click", function () {
+    abA = Math.floor(curTime);
+    if (abB != null && abB <= abA) abB = null;
+    updateAB();
+  });
+  bBtn.addEventListener("click", function () {
+    var b = Math.floor(curTime);
+    if (abA != null && b <= abA) { abLabel.textContent = "B must be after A"; return; }
+    abB = b; updateAB();
+    if (abA != null) send("seekTo", [abA, true]);
+  });
+  abClearBtn.addEventListener("click", clearAB);
+  shareBtn.addEventListener("click", function () {
+    if (!curId) return;
+    var from = abA != null ? abA : Math.floor(curTime), to = (abA != null && abB != null) ? abB : null;
+    var link = location.origin + location.pathname + "?v=" + curId + "&from=" + from + (to != null ? "&to=" + to : "");
+    function done(ok) { shareMsg.textContent = ok ? "Link copied" : "Copy this link: " + link; }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(function () { done(true); }, function () { done(false); });
+    else done(false);
+  });
+
   fsBtn.addEventListener("click", function () {
     var el = frameBox;
     if (el.requestFullscreen) el.requestFullscreen();
