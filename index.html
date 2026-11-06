@@ -5,11 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>HD Video Player</title>
 <meta name="description" content="Paste a YouTube link and play it here with HD quality, volume, speed, and loop controls.">
+<script>
+(function () {
+  try {
+    var p = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null"), t = p && p.theme;
+    var dark = t === "dark" || ((t !== "light") && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  } catch (e) {}
+})();
+</script>
 <style>
   :root {
     --ink: #251f21; --ink2: #585254; --hairline: #eae9ea;
     --teal: #3f8f7d; --red: #ed313e; --page: #f7f4f2; --card: #ffffff;
+    --chipbg: #ffffff; --notebg: #faf3e8;
   }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ink: #f1ecee; --ink2: #b9b1b4; --hairline: #3b3438; --page: #151214; --card: #211c1f;
+    --red: #ff6b75; --chipbg: #2b2528; --notebg: #2b2620;
+  }
+  .topbar { display: flex; justify-content: flex-end; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
@@ -26,7 +42,7 @@
   .input-row { display: flex; gap: 10px; }
   .input-row input {
     flex: 1; min-width: 0; min-height: 48px; padding: 12px 14px; font-size: 16px;
-    border: 1px solid var(--hairline); border-radius: 8px; color: var(--ink);
+    border: 1px solid var(--hairline); border-radius: 8px; color: var(--ink); background: var(--chipbg);
   }
   .input-row input:focus { outline: 2px solid var(--teal); outline-offset: 1px; }
   .btn {
@@ -62,16 +78,16 @@
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip {
     min-height: 44px; padding: 8px 14px; border-radius: 8px; font-size: 14px; cursor: pointer;
-    border: 1px solid var(--hairline); background: #fff; color: var(--ink);
+    border: 1px solid var(--hairline); background: var(--chipbg); color: var(--ink);
   }
   .chip.active { border-color: var(--teal); color: var(--teal); font-weight: 700; box-shadow: inset 0 0 0 1px var(--teal); }
-  .note { background: #faf3e8; border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--ink2); }
+  .note { background: var(--notebg); border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--ink2); }
   .note strong { color: var(--ink); display: block; margin-bottom: 2px; }
   .lib-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 14px 0 8px; }
   .lib-head h3 { font-size: 15px; margin: 0; }
   .lib-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   .lib-item { display: flex; align-items: center; gap: 10px; }
-  .lib-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; min-height: 56px; padding: 4px 8px 4px 4px; border: 1px solid var(--hairline); border-radius: 8px; background: #fff; color: var(--ink); cursor: pointer; font-size: 14px; }
+  .lib-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; min-height: 56px; padding: 4px 8px 4px 4px; border: 1px solid var(--hairline); border-radius: 8px; background: var(--chipbg); color: var(--ink); cursor: pointer; font-size: 14px; }
   .lib-open img { width: 80px; height: 45px; object-fit: cover; border-radius: 4px; background: #141114; flex: none; }
   .lib-open span { overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .lib-empty { color: var(--ink2); font-size: 13px; margin: 0; }
@@ -93,6 +109,7 @@
 <body>
 <div class="wrap">
   <header>
+    <div class="topbar"><button class="chip" id="themeBtn" type="button" aria-label="Change theme">Theme: Auto</button></div>
     <h1>HD Video Player</h1>
     <p class="fact">HD quality, volume, and speed controls</p>
     <p class="intro">Paste a YouTube link and play it here - control the quality, volume, and speed.</p>
@@ -242,10 +259,10 @@
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
-  var prefs = { volume: 80, speed: 1, loop: false };
+  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto" };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark") prefs.theme = saved.theme; }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
 
@@ -385,6 +402,20 @@
   });
   clearQueueBtn.addEventListener("click", function () { lib.queue = []; qPos = -1; saveLib(); renderLib(); });
   renderLib();
+
+  var themeBtn = $("themeBtn");
+  var darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  function applyTheme() {
+    var dark = prefs.theme === "dark" || (prefs.theme === "auto" && darkQuery && darkQuery.matches);
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    themeBtn.textContent = "Theme: " + (prefs.theme === "auto" ? "Auto" : prefs.theme === "dark" ? "Dark" : "Light");
+  }
+  themeBtn.addEventListener("click", function () {
+    prefs.theme = prefs.theme === "auto" ? "light" : prefs.theme === "light" ? "dark" : "auto";
+    savePrefs(); applyTheme();
+  });
+  if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", function () { if (prefs.theme === "auto") applyTheme(); });
+  applyTheme();
 
   function parseVideoId(input) {
     var text = input.trim();
