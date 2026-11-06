@@ -313,7 +313,7 @@
         <input id="dlUrl" type="url" inputmode="url" placeholder="https://site.com/video-link" aria-label="Video link from another site">
       </div>
       <div class="actions"><button class="btn" id="dlInfoBtn">Get formats</button><button class="chip" id="dlPasteBtn" type="button">Paste</button><button class="chip" id="dlRetryBtn" type="button" hidden>Retry</button><button class="chip" id="dlCopyErr" type="button" hidden>Copy error</button></div>
-      <p class="hint" id="dlStatus" role="status">YouTube links download nahi hote - YouTube ko upar wale player me chalao. Baaki sites (jaise TikTok, TED, SoundCloud, Streamable) try karo.</p>
+      <p class="hint" id="dlStatus" role="status">YouTube links can't be downloaded - play them in the player above. For other sites (for example TikTok, TED, SoundCloud, Streamable) paste the link here.</p>
       <p class="error" id="dlError" role="alert" hidden></p>
       <div id="dlBox" hidden>
         <div class="dl-meta"><img id="dlThumb" alt="" width="96" height="54"><div><strong id="dlTitle"></strong><div class="hint" id="dlSub"></div></div></div>
@@ -335,7 +335,7 @@
         <div class="lib-head"><h3>Recent downloads</h3><button class="chip" id="dlHistClear" type="button">Clear</button></div>
         <ul class="lib-list" id="dlHist"></ul>
       </div>
-      <p class="hint">Server free hai, to pehli baar 1 minute lag sakta hai. Kuch sites (Vimeo, Facebook jaise) free server ko block kar deti hain. Sirf wahi download karo jiska tumhe haq ho.</p>
+      <p class="hint">The server is on a free plan, so the first request can take up to a minute. Some sites (such as Vimeo and Facebook) block free servers. Only download content you have the right to download.</p>
     </section>
 
     <section id="lp" aria-labelledby="lpHeading">
@@ -345,11 +345,11 @@
       <div id="lpCtl" hidden>
         <label class="dl-lab" for="lpGain">Volume boost: <b id="lpGainVal">100%</b></label>
         <input id="lpGain" type="range" min="100" max="300" step="10" value="100" style="width:100%">
-        <p class="hint" id="lpWarn" hidden>Boost 200% se upar sound kharab (distort) ho sakti hai. Kaan aur speaker ka dhyan rakho.</p>
+        <p class="hint" id="lpWarn" hidden>Above 200% the sound can distort. Protect your ears and speakers.</p>
         <div class="lib-head"><h3>Speed</h3></div>
         <div class="row" id="lpSpeeds"></div>
       </div>
-      <p class="hint">Ye tumhari device ki file ya upar download ki hui file chalata hai. YouTube player ki awaaz 100% se upar nahi ja sakti (YouTube ki limit).</p>
+      <p class="hint">This plays a file from your device, or the file you just downloaded. The YouTube player's volume cannot go above 100% (a YouTube limit).</p>
     </section>
 
   </main>
@@ -869,14 +869,14 @@
       fmtSel = $("dlFmt"), vBtn = $("dlVideoBtn"), mBtn = $("dlMp3Btn"), bar = $("dlBar"), fill = $("dlBarFill"), subsEl = $("dlSubs");
   var info = null, busy = false, warmed = false, lastFile = null;
   var ERR = {
-    youtube_blocked: "YouTube links yahan download nahi hote. Upar wale player me chalao.",
-    bad_url: "Link sahi nahi lag raha. Poora https:// link daalo.",
-    busy: "Server abhi busy hai. Thodi der baad try karo.",
-    site_blocked: "Is site ne free server ko block kar diya (Vimeo/Facebook jaisi sites me aam hai). Koi dusri site try karo.",
-    unsupported: "Ye site ya link supported nahi hai.",
-    too_long: "Video bahut lamba hai.",
-    bad_range: "From/To time galat hai. 'To' 'From' se bada hona chahiye.",
-    extract_failed: "Is link se video nahi nikal paya. Link public hona chahiye."
+    youtube_blocked: "YouTube links can't be downloaded here. Play them in the player above.",
+    bad_url: "That link doesn't look right. Enter the full https:// link.",
+    busy: "The server is busy. Try again in a moment.",
+    site_blocked: "This site blocked the free server (common with Vimeo and Facebook). Try another site.",
+    unsupported: "This site or link is not supported.",
+    too_long: "The video is too long.",
+    bad_range: "The From/To time is not valid. 'To' must be later than 'From'.",
+    extract_failed: "Could not get a video from this link. The link must be public."
   };
   function isYT(u) {
     try { var h = new URL(u).hostname.toLowerCase(); return /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com|youtubekids\.com|yt\.be)$/.test(h); } catch (e) { return false; }
@@ -917,8 +917,8 @@
   try { var lu = localStorage.getItem("vp-dl-url"); if (lu) urlIn.value = lu; } catch (e) {}
   retryBtn.addEventListener("click", function () { if (retryFn) { showErr(""); retryFn(); } });
   $("dlPasteBtn").addEventListener("click", function () {
-    if (!navigator.clipboard || !navigator.clipboard.readText) return showErr("Is browser me paste button nahi chalta. Link khud paste karo.");
-    navigator.clipboard.readText().then(function (t) { urlIn.value = (t || "").trim(); showErr(""); warm(); }).catch(function () { showErr("Clipboard ki permission nahi mili. Link khud paste karo."); });
+    if (!navigator.clipboard || !navigator.clipboard.readText) return showErr("Paste is not available in this browser. Paste the link yourself.");
+    navigator.clipboard.readText().then(function (t) { urlIn.value = (t || "").trim(); showErr(""); warm(); }).catch(function () { showErr("Clipboard permission was denied. Paste the link yourself."); });
   });
   urlIn.addEventListener("keydown", function (e) { if (e.key === "Enter") infoBtn.click(); });
 
@@ -947,7 +947,7 @@
   function fail(e) {
     var code = e && e.code;
     showErr(ERR[code] || (code === "net" || (e && e.name === "AbortError") || e instanceof TypeError
-      ? "Server se connect nahi ho paya. Net check karo ya 1 minute baad try karo (free server soya hua ho sakta hai)." : "Kuch galat hua. Dobara try karo."));
+      ? "Could not reach the server. Check your connection or try again in a minute (the free server may be asleep)." : "Something went wrong. Please try again."));
     setBusy(false, "");
     bar.hidden = true;
     lastRaw = (e && (e.code || "") + " " + (e.message || "")).slice(0, 200);
@@ -957,15 +957,15 @@
 
   infoBtn.addEventListener("click", function () {
     showErr(""); var u = urlIn.value.trim();
-    if (!u) return showErr("Pehle link paste karo.");
+    if (!u) return showErr("Paste a link first.");
     if (!/^https?:\/\//i.test(u)) u = "https://" + u;
     if (isYT(u)) return showErr(ERR.youtube_blocked);
     try { localStorage.setItem("vp-dl-url", u); } catch (e) {}
     retryFn = function () { infoBtn.click(); };
     box.hidden = true; subsEl.innerHTML = "";
-    setBusy(true, "Formats dhundh raha hu... (pehli baar 1 minute lag sakta hai)");
+    setBusy(true, "Looking up formats... (the first time can take up to a minute)");
     runTask({ type: "info", url: u }).then(function (s) {
-      info = s.result; info.url = u; render(); setBusy(false, "Ready. Format chuno aur download karo.");
+      info = s.result; info.url = u; render(); setBusy(false, "Ready. Pick a format and download.");
     }).catch(fail);
   });
 
@@ -999,10 +999,10 @@
     if (kind === "video" && opt.value !== "best") { body.format = opt.value; if (opt.dataset.mux === "1") body.mux = true; }
     if (from !== null) body.from = from; if (to !== null) body.to = to;
     bar.hidden = false; fill.style.width = "3%";
-    setBusy(true, kind === "mp3" ? "MP3 ban raha hai..." : "Download ho raha hai...");
-    runTask(body, function (p) { fill.style.width = Math.max(5, p) + "%"; statusEl.textContent = (kind === "mp3" ? "MP3 ban raha hai... " : "Download ho raha hai... ") + p + "%"; })
+    setBusy(true, kind === "mp3" ? "Making the MP3..." : "Downloading...");
+    runTask(body, function (p) { fill.style.width = Math.max(5, p) + "%"; statusEl.textContent = (kind === "mp3" ? "Making the MP3... " : "Downloading... ") + p + "%"; })
       .then(function (s) {
-        fill.style.width = "100%"; setBusy(false, "Ho gaya! Download shuru ho jayega: " + (s.name || "file"));
+        fill.style.width = "100%"; setBusy(false, "Done! Your download will start: " + (s.name || "file"));
         histAdd({ url: info.url, title: info.title, kind: kind, t: Date.now() });
         lastFile = API + s.file; $("dlPlayBtn").hidden = false; var a = document.createElement("a"); a.href = API + s.file; a.download = s.name || ""; document.body.appendChild(a); a.click(); a.remove();
       }).catch(fail);
