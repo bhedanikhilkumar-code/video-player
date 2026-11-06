@@ -142,6 +142,17 @@
 
   .note { background: var(--notebg); border-radius: 12px; padding: 12px 14px; font-size: 14px; color: var(--ink2); }
   .note strong { color: var(--ink); display: block; margin-bottom: 2px; }
+  /* Downloader */
+  .dl-meta { display: flex; gap: 12px; align-items: center; margin: 14px 0 8px; }
+  .dl-meta img { width: 96px; height: 54px; object-fit: cover; border-radius: 8px; background: var(--soft); flex: none; }
+  .dl-meta strong { overflow-wrap: anywhere; }
+  .dl-lab { display: block; font-size: 13px; color: var(--ink2); margin: 10px 0 4px; }
+  .dl-sel, .dl-trim input { width: 100%; min-height: 44px; border-radius: 12px; border: 1px solid var(--hairline); background: var(--chipbg); color: var(--ink); padding: 8px 12px; font: inherit; }
+  .dl-trim { display: flex; gap: 10px; margin-top: 10px; }
+  .dl-trim label { flex: 1; font-size: 13px; color: var(--ink2); }
+  .dl-bar { height: 10px; border-radius: 6px; background: var(--soft); margin-top: 14px; overflow: hidden; }
+  .dl-bar div { height: 100%; width: 0; background: var(--teal); transition: width .4s; }
+  #dlSubs a { display: inline-block; margin: 8px 8px 0 0; color: var(--teal); font-weight: 600; }
   footer { text-align: center; color: var(--ink2); font-size: 13px; margin-top: 24px; }
 
   /* Phone */
@@ -294,6 +305,32 @@
         </details>
       </div>
     </section>
+    <section id="dl" aria-labelledby="dlHeading">
+      <h2 id="dlHeading">Downloader (non-YouTube sites)</h2>
+      <div class="input-row">
+        <input id="dlUrl" type="url" inputmode="url" placeholder="https://site.com/video-link" aria-label="Video link from another site">
+      </div>
+      <div class="actions"><button class="btn" id="dlInfoBtn">Get formats</button></div>
+      <p class="hint" id="dlStatus" role="status">YouTube links download nahi hote - YouTube ko upar wale player me chalao. Baaki sites (jaise TikTok, TED, SoundCloud, Streamable) try karo.</p>
+      <p class="error" id="dlError" role="alert" hidden></p>
+      <div id="dlBox" hidden>
+        <div class="dl-meta"><img id="dlThumb" alt="" width="96" height="54"><div><strong id="dlTitle"></strong><div class="hint" id="dlSub"></div></div></div>
+        <label class="dl-lab" for="dlFmt">Quality / format</label>
+        <select id="dlFmt" class="dl-sel"></select>
+        <div class="dl-trim">
+          <label>From <input id="dlFrom" inputmode="text" placeholder="0:00" aria-label="Trim from"></label>
+          <label>To <input id="dlTo" inputmode="text" placeholder="end" aria-label="Trim to"></label>
+        </div>
+        <div class="actions">
+          <button class="btn" id="dlVideoBtn">Download video</button>
+          <button class="chip" id="dlMp3Btn">Download MP3</button>
+        </div>
+        <div class="dl-bar" id="dlBar" hidden><div id="dlBarFill"></div></div>
+        <div id="dlSubs"></div>
+      </div>
+      <p class="hint">Server free hai, to pehli baar 1 minute lag sakta hai. Kuch sites (Vimeo, Facebook jaise) free server ko block kar deti hain. Sirf wahi download karo jiska tumhe haq ho.</p>
+    </section>
+
   </main>
 
   <aside class="side" aria-label="Queue, favourites and recent videos">
@@ -800,6 +837,122 @@
     if (el.requestFullscreen) el.requestFullscreen();
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
   });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var API = "https://vp-downloader.onrender.com";
+  var $ = function (id) { return document.getElementById(id); };
+  var urlIn = $("dlUrl"), infoBtn = $("dlInfoBtn"), statusEl = $("dlStatus"), errEl = $("dlError"), box = $("dlBox"),
+      fmtSel = $("dlFmt"), vBtn = $("dlVideoBtn"), mBtn = $("dlMp3Btn"), bar = $("dlBar"), fill = $("dlBarFill"), subsEl = $("dlSubs");
+  var info = null, busy = false, warmed = false;
+  var ERR = {
+    youtube_blocked: "YouTube links yahan download nahi hote. Upar wale player me chalao.",
+    bad_url: "Link sahi nahi lag raha. Poora https:// link daalo.",
+    busy: "Server abhi busy hai. Thodi der baad try karo.",
+    site_blocked: "Is site ne free server ko block kar diya (Vimeo/Facebook jaisi sites me aam hai). Koi dusri site try karo.",
+    unsupported: "Ye site ya link supported nahi hai.",
+    too_long: "Video bahut lamba hai.",
+    bad_range: "From/To time galat hai. 'To' 'From' se bada hona chahiye.",
+    extract_failed: "Is link se video nahi nikal paya. Link public hona chahiye."
+  };
+  function isYT(u) {
+    try { var h = new URL(u).hostname.toLowerCase(); return /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com|youtubekids\.com|yt\.be)$/.test(h); } catch (e) { return false; }
+  }
+  function showErr(m) { errEl.textContent = m; errEl.hidden = !m; }
+  function setBusy(b, msg) { busy = b; infoBtn.disabled = vBtn.disabled = mBtn.disabled = b; if (msg) statusEl.textContent = msg; }
+  function parseT(v) {
+    v = (v || "").trim(); if (!v) return null;
+    var p = v.split(":").map(Number); if (p.some(isNaN)) return NaN;
+    return p.reduce(function (a, x) { return a * 60 + x; }, 0);
+  }
+  function mb(n) { return n ? " (~" + (n / 1048576).toFixed(n > 10485760 ? 0 : 1) + " MB)" : ""; }
+  function dur(s) { if (!s) return ""; s = Math.round(s); return Math.floor(s / 60) + ":" + ("0" + (s % 60)).slice(-2); }
+
+  function warm() { if (warmed) return; warmed = true; try { fetch(API + "/health", { mode: "no-cors" }); } catch (e) {} }
+  urlIn.addEventListener("focus", warm);
+
+  function api(path, opts) {
+    var c = new AbortController(), t = setTimeout(function () { c.abort(); }, 90000);
+    opts = opts || {}; opts.signal = c.signal;
+    return fetch(API + path, opts).then(function (r) { clearTimeout(t); return r.json(); });
+  }
+  function runTask(body, onProg) {
+    return api("/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+      .then(function (r) {
+        if (r.error) throw r.error;
+        return new Promise(function (res, rej) {
+          var misses = 0;
+          (function poll() {
+            api("/tasks/" + r.id).then(function (s) {
+              if (s.status === "done") return res(s);
+              if (s.status === "error") return rej(s.error || { code: "extract_failed" });
+              if (onProg) onProg(s.progress || 0);
+              setTimeout(poll, 1500);
+            }).catch(function () { if (++misses > 5) rej({ code: "net" }); else setTimeout(poll, 2500); });
+          })();
+        });
+      });
+  }
+  function fail(e) {
+    var code = e && e.code;
+    showErr(ERR[code] || (code === "net" || (e && e.name === "AbortError") || e instanceof TypeError
+      ? "Server se connect nahi ho paya. Net check karo ya 1 minute baad try karo (free server soya hua ho sakta hai)." : "Kuch galat hua. Dobara try karo."));
+    setBusy(false, "");
+    bar.hidden = true;
+  }
+
+  infoBtn.addEventListener("click", function () {
+    showErr(""); var u = urlIn.value.trim();
+    if (!u) return showErr("Pehle link paste karo.");
+    if (!/^https?:\/\//i.test(u)) u = "https://" + u;
+    if (isYT(u)) return showErr(ERR.youtube_blocked);
+    box.hidden = true; subsEl.innerHTML = "";
+    setBusy(true, "Formats dhundh raha hu... (pehli baar 1 minute lag sakta hai)");
+    runTask({ type: "info", url: u }).then(function (s) {
+      info = s.result; info.url = u; render(); setBusy(false, "Ready. Format chuno aur download karo.");
+    }).catch(fail);
+  });
+
+  function render() {
+    $("dlTitle").textContent = info.title || "Video";
+    $("dlSub").textContent = [info.site, dur(info.duration)].filter(Boolean).join(" - ");
+    var th = $("dlThumb"); if (info.thumbnail && /^https:/.test(info.thumbnail)) { th.src = info.thumbnail; th.hidden = false; } else th.hidden = true;
+    var fs = (info.formats || []).filter(function (f) { return f.kind !== "audio"; });
+    fs.sort(function (a, b) { return (b.height || 0) - (a.height || 0) || (b.tbr || 0) - (a.tbr || 0); });
+    var seen = {}, html = '<option value="best">Best available (auto)</option>';
+    fs.forEach(function (f) {
+      var key = f.height + f.ext + f.kind; if (seen[key]) return; seen[key] = 1;
+      var lab = (f.height ? f.height + "p " : (f.note || "") + " ") + (f.ext || "") + mb(f.size) + (f.kind === "video" ? " + audio merge" : "");
+      html += '<option value="' + String(f.id).replace(/[^\w.+\-]/g, "") + '" data-mux="' + (f.kind === "video+audio" || f.kind === "other" ? 1 : 0) + '">' + lab.replace(/</g, "") + "</option>";
+    });
+    fmtSel.innerHTML = html;
+    var subs = info.subtitles || {}, sh = "";
+    Object.keys(subs).forEach(function (lang) {
+      var s = subs[lang][0]; if (s && /^https:/.test(s.url)) sh += '<a href="' + s.url + '" target="_blank" rel="noopener noreferrer">Subtitles: ' + lang.replace(/</g, "") + " (" + (s.ext || "") + ")</a>";
+    });
+    subsEl.innerHTML = sh;
+    box.hidden = false;
+  }
+
+  function download(kind) {
+    if (busy || !info) return; showErr("");
+    var from = parseT($("dlFrom").value), to = parseT($("dlTo").value);
+    if (isNaN(from) || isNaN(to) || (from !== null && to !== null && to <= from)) return showErr(ERR.bad_range);
+    var opt = fmtSel.options[fmtSel.selectedIndex], body = { type: "download", url: info.url, kind: kind };
+    if (kind === "video" && opt.value !== "best") { body.format = opt.value; if (opt.dataset.mux === "1") body.mux = true; }
+    if (from !== null) body.from = from; if (to !== null) body.to = to;
+    bar.hidden = false; fill.style.width = "3%";
+    setBusy(true, kind === "mp3" ? "MP3 ban raha hai..." : "Download ho raha hai...");
+    runTask(body, function (p) { fill.style.width = Math.max(5, p) + "%"; statusEl.textContent = (kind === "mp3" ? "MP3 ban raha hai... " : "Download ho raha hai... ") + p + "%"; })
+      .then(function (s) {
+        fill.style.width = "100%"; setBusy(false, "Ho gaya! Download shuru ho jayega: " + (s.name || "file"));
+        var a = document.createElement("a"); a.href = API + s.file; a.download = s.name || ""; document.body.appendChild(a); a.click(); a.remove();
+      }).catch(fail);
+  }
+  vBtn.addEventListener("click", function () { download("video"); });
+  mBtn.addEventListener("click", function () { download("mp3"); });
 })();
 </script>
 </body>
