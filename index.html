@@ -153,6 +153,8 @@
   .dl-bar { height: 10px; border-radius: 6px; background: var(--soft); margin-top: 14px; overflow: hidden; }
   .dl-bar div { height: 100%; width: 0; background: var(--teal); transition: width .4s; }
   #dlSubs a { display: inline-block; margin: 8px 8px 0 0; color: var(--teal); font-weight: 600; }
+  .lp-video { width: 100%; max-height: 60vh; margin-top: 12px; border-radius: 12px; background: #000; }
+  #lpSpeeds { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
   footer { text-align: center; color: var(--ink2); font-size: 13px; margin-top: 24px; }
 
   /* Phone */
@@ -325,10 +327,25 @@
           <button class="btn" id="dlVideoBtn">Download video</button>
           <button class="chip" id="dlMp3Btn">Download MP3</button>
         </div>
+        <div class="actions"><button class="chip" id="dlPlayBtn" hidden>Play last download here (with boost)</button></div>
         <div class="dl-bar" id="dlBar" hidden><div id="dlBarFill"></div></div>
         <div id="dlSubs"></div>
       </div>
       <p class="hint">Server free hai, to pehli baar 1 minute lag sakta hai. Kuch sites (Vimeo, Facebook jaise) free server ko block kar deti hain. Sirf wahi download karo jiska tumhe haq ho.</p>
+    </section>
+
+    <section id="lp" aria-labelledby="lpHeading">
+      <h2 id="lpHeading">Play a file with volume boost</h2>
+      <input id="lpFile" type="file" accept="video/*,audio/*" aria-label="Choose a video or audio file from your device">
+      <video id="lpVideo" controls playsinline preload="metadata" crossorigin="anonymous" class="lp-video" hidden></video>
+      <div id="lpCtl" hidden>
+        <label class="dl-lab" for="lpGain">Volume boost: <b id="lpGainVal">100%</b></label>
+        <input id="lpGain" type="range" min="100" max="300" step="10" value="100" style="width:100%">
+        <p class="hint" id="lpWarn" hidden>Boost 200% se upar sound kharab (distort) ho sakti hai. Kaan aur speaker ka dhyan rakho.</p>
+        <div class="lib-head"><h3>Speed</h3></div>
+        <div class="row" id="lpSpeeds"></div>
+      </div>
+      <p class="hint">Ye tumhari device ki file ya upar download ki hui file chalata hai. YouTube player ki awaaz 100% se upar nahi ja sakti (YouTube ki limit).</p>
     </section>
 
   </main>
@@ -846,7 +863,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var urlIn = $("dlUrl"), infoBtn = $("dlInfoBtn"), statusEl = $("dlStatus"), errEl = $("dlError"), box = $("dlBox"),
       fmtSel = $("dlFmt"), vBtn = $("dlVideoBtn"), mBtn = $("dlMp3Btn"), bar = $("dlBar"), fill = $("dlBarFill"), subsEl = $("dlSubs");
-  var info = null, busy = false, warmed = false;
+  var info = null, busy = false, warmed = false, lastFile = null;
   var ERR = {
     youtube_blocked: "YouTube links yahan download nahi hote. Upar wale player me chalao.",
     bad_url: "Link sahi nahi lag raha. Poora https:// link daalo.",
@@ -948,11 +965,42 @@
     runTask(body, function (p) { fill.style.width = Math.max(5, p) + "%"; statusEl.textContent = (kind === "mp3" ? "MP3 ban raha hai... " : "Download ho raha hai... ") + p + "%"; })
       .then(function (s) {
         fill.style.width = "100%"; setBusy(false, "Ho gaya! Download shuru ho jayega: " + (s.name || "file"));
-        var a = document.createElement("a"); a.href = API + s.file; a.download = s.name || ""; document.body.appendChild(a); a.click(); a.remove();
+        lastFile = API + s.file; $("dlPlayBtn").hidden = false; var a = document.createElement("a"); a.href = API + s.file; a.download = s.name || ""; document.body.appendChild(a); a.click(); a.remove();
       }).catch(fail);
   }
+  $("dlPlayBtn").addEventListener("click", function () { if (lastFile && window.vpPlayUrl) window.vpPlayUrl(lastFile); });
   vBtn.addEventListener("click", function () { download("video"); });
   mBtn.addEventListener("click", function () { download("mp3"); });
+})();
+</script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var file = $("lpFile"), vid = $("lpVideo"), ctl = $("lpCtl"), gain = $("lpGain"), gv = $("lpGainVal"), warn = $("lpWarn"), sp = $("lpSpeeds");
+  var ctx = null, node = null, curUrl = null;
+  function ensureAudio() {
+    if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
+    var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+    ctx = new AC(); var src = ctx.createMediaElementSource(vid);
+    node = ctx.createGain(); node.gain.value = gain.value / 100;
+    src.connect(node); node.connect(ctx.destination); window.__lpNode = node; window.__lpCtx = ctx;
+  }
+  function setGain() { var v = Number(gain.value); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
+  gain.addEventListener("input", function () { ensureAudio(); setGain(); });
+  vid.addEventListener("play", ensureAudio);
+  [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3].forEach(function (r) {
+    var b = document.createElement("button"); b.className = "chip" + (r === 1 ? " active" : ""); b.type = "button"; b.textContent = r + "x";
+    b.addEventListener("click", function () { vid.playbackRate = r; [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c === b); }); });
+    sp.appendChild(b);
+  });
+  function show(url, local) {
+    if (curUrl && curUrl.indexOf("blob:") === 0) URL.revokeObjectURL(curUrl);
+    curUrl = url; vid.src = url; vid.hidden = false; ctl.hidden = false; vid.playbackRate = 1;
+    [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c.textContent === "1x"); });
+  }
+  file.addEventListener("change", function () { var f = file.files[0]; if (f) show(URL.createObjectURL(f), true); });
+  window.vpPlayUrl = function (url) { show(url, false); $("lp").scrollIntoView({ behavior: "smooth" }); };
 })();
 </script>
 </body>
