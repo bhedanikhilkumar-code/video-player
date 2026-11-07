@@ -17,3 +17,8 @@ Endpoints: `GET /health`, `POST /tasks` (type `info` or `download`), `GET /tasks
 CORS allows only the Vercel site and localhost. Private addresses are refused. Files are deleted after 15 minutes.
 Some sites (Vimeo, Facebook, archive.org) block datacenter IPs, so they can fail on the free host.
 To redeploy: commit to `server/`; Render rebuilds. Keep yt-dlp updated by redeploying (it installs the latest).
+
+
+## Keep-alive
+A free cron-job.org job calls `https://vp-downloader.onrender.com/health` every 10 minutes, from 00:00 to 18:59 UTC (about 05:30 to 00:29 IST), so the free Render server stays awake while the app is in use. It sleeps overnight on purpose: Render gives 750 free instance hours per workspace per month, shared by all free services, and 24/7 uptime would use almost all of them.
+To change it, sign in to cron-job.org (login is in the vault as "cron-job.org (agent)") and edit the job "vp-downloader keep-alive". Cron expression: `*/10 0-18 * * *` (UTC).
