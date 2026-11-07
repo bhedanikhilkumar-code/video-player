@@ -167,6 +167,13 @@
   .dl-spin { display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px; border: 2px solid var(--hairline); border-top-color: var(--teal); border-radius: 50%; animation: dlspin .8s linear infinite; }
   @keyframes dlspin { to { transform: rotate(360deg); } }
   @media (max-width: 520px) { .dl-trim input, .dl-sel { font-size: 16px; } .dl-meta img { width: 80px; height: 45px; } #dlSubs a { padding: 8px 0; } }
+  .dl-chk { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: var(--ink2); min-height: 32px; }
+  .dl-chk input { width: 18px; height: 18px; }
+  .dl-q-item { display: flex; gap: 8px; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--hairline); font-size: 14px; }
+  .dl-q-item .l { min-width: 0; overflow-wrap: anywhere; }
+  .dl-q-item .st { color: var(--ink2); font-size: 13px; }
+  .dl-q-item .st.err { color: var(--red); }
+  .dl-q-item a { color: var(--teal); font-weight: 600; }
   footer { text-align: center; color: var(--ink2); font-size: 13px; margin-top: 24px; }
 
   /* Phone */
@@ -322,9 +329,10 @@
     <section id="dl" aria-labelledby="dlHeading">
       <h2 id="dlHeading">Downloader (non-YouTube sites)</h2>
       <div class="input-row">
-        <input id="dlUrl" type="url" inputmode="url" enterkeyhint="go" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="https://site.com/video-link" aria-label="Video link from another site">
+        <input id="dlUrl" type="text" inputmode="url" enterkeyhint="go" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="https://site.com/video-link" aria-label="Video link from another site">
       </div>
-      <div class="actions"><button class="btn" id="dlInfoBtn">Get formats</button><button class="chip" id="dlPasteBtn" type="button">Paste</button><button class="chip" id="dlRetryBtn" type="button" hidden>Retry</button><button class="chip" id="dlCopyErr" type="button" hidden>Copy error</button></div>
+      <div class="actions"><button class="btn" id="dlInfoBtn">Get formats</button><button class="chip" id="dlPasteBtn" type="button">Paste</button><button class="chip" id="dlQAllBtn" type="button">Queue links</button><button class="chip" id="dlRetryBtn" type="button" hidden>Retry</button><button class="chip" id="dlCopyErr" type="button" hidden>Copy error</button></div>
+      <label class="dl-chk"><input type="checkbox" id="dlBulkMp3"> Queue links as MP3 only</label>
       <p class="hint" id="dlStatus" role="status">YouTube links can't be downloaded - play them in the player above. For other sites (for example TikTok, TED, SoundCloud, Streamable) paste the link here.</p>
       <p class="error" id="dlError" role="alert" hidden></p>
       <div id="dlBox" hidden>
@@ -339,9 +347,18 @@
           <button class="btn" id="dlVideoBtn">Download video</button>
           <button class="chip" id="dlMp3Btn">Download MP3</button>
         </div>
+        <div class="actions">
+          <button class="chip" id="dlQVideoBtn" type="button">+ Queue video</button>
+          <button class="chip" id="dlQMp3Btn" type="button">+ Queue MP3</button>
+        </div>
         <div class="actions"><button class="chip" id="dlPlayBtn" hidden>Play last download here (with boost)</button></div>
         <div class="dl-bar" id="dlBar" hidden><div id="dlBarFill"></div></div>
         <div id="dlSubs"></div>
+      </div>
+      <div id="dlQWrap" hidden>
+        <div class="lib-head"><h3>Download queue</h3><button class="chip" id="dlQClear" type="button">Clear</button></div>
+        <ul class="lib-list" id="dlQ"></ul>
+        <p class="hint">Items download one after another. Your browser may ask once to allow multiple downloads. Each finished file also gets a Save link (kept for 15 minutes).</p>
       </div>
       <div id="dlHistWrap" hidden>
         <div class="lib-head"><h3>Recent downloads</h3><button class="chip" id="dlHistClear" type="button">Clear</button></div>
@@ -938,7 +955,7 @@
   retryBtn.addEventListener("click", function () { if (retryFn) { showErr(""); retryFn(); } });
   $("dlPasteBtn").addEventListener("click", function () {
     if (!navigator.clipboard || !navigator.clipboard.readText) return showErr("Paste is not available in this browser. Paste the link yourself.");
-    navigator.clipboard.readText().then(function (t) { urlIn.value = (t || "").trim(); showErr(""); warm(); }).catch(function () { showErr("Clipboard permission was denied. Paste the link yourself."); });
+    navigator.clipboard.readText().then(function (t) { urlIn.value = (t || "").replace(/\s+/g, " ").trim(); showErr(""); warm(); }).catch(function () { showErr("Clipboard permission was denied. Paste the link yourself."); });
   });
   urlIn.addEventListener("keydown", function (e) { if (e.key === "Enter") infoBtn.click(); });
 
@@ -978,6 +995,7 @@
   infoBtn.addEventListener("click", function () {
     showErr(""); var u = urlIn.value.trim();
     if (!u) return showErr("Paste a link first.");
+    if (links(u).length > 1) return showErr("Several links found. Tap Queue links to download them one after another.");
     if (!/^https?:\/\//i.test(u)) u = "https://" + u;
     if (isYT(u)) return showErr(ERR.youtube_blocked);
     try { localStorage.setItem("vp-dl-url", u); } catch (e) {}
@@ -1030,6 +1048,68 @@
       }).catch(fail);
   }
   $("dlPlayBtn").addEventListener("click", function () { if (lastFile && window.vpPlayUrl) window.vpPlayUrl(lastFile); });
+  // ---- Download queue ----
+  var Q = [], qRun = false, qSeq = 0, qEl = $("dlQ"), qWrap = $("dlQWrap");
+  function links(txt) { return ((txt || "").match(/https?:\/\/[^\s,]+/gi) || []).filter(function (v, i, a) { return a.indexOf(v) === i; }); }
+  urlIn.addEventListener("paste", function (e) {
+    var t = e.clipboardData && e.clipboardData.getData("text"); if (!t || !/\s/.test(t.trim())) return;
+    e.preventDefault(); t = t.replace(/\s+/g, " ").trim();
+    urlIn.setRangeText(t, urlIn.selectionStart, urlIn.selectionEnd, "end");
+  });
+  function hostOf(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return u; } }
+  function qRender() {
+    qWrap.hidden = !Q.length; qEl.innerHTML = "";
+    Q.forEach(function (it) {
+      var li = document.createElement("li"); li.className = "dl-q-item";
+      var l = document.createElement("span"); l.className = "l"; l.textContent = (it.body.kind === "mp3" ? "MP3 - " : "Video - ") + (it.title || hostOf(it.body.url));
+      var st = document.createElement("span"); st.className = "st";
+      if (it.status === "waiting") st.textContent = "Waiting";
+      else if (it.status === "running") st.textContent = "Downloading " + (it.progress || 0) + "%";
+      else if (it.status === "done") { var a = document.createElement("a"); a.href = it.file; a.download = it.name || ""; a.textContent = "Save"; st.appendChild(a); }
+      else { st.className = "st err"; st.textContent = it.err || "Failed"; }
+      var right = document.createElement("span"); right.className = "row"; right.style.gap = "8px"; right.appendChild(st);
+      if (it.status === "error") { var rb = document.createElement("button"); rb.className = "chip"; rb.type = "button"; rb.textContent = "Retry"; rb.addEventListener("click", function () { it.status = "waiting"; it.err = ""; qRender(); qNext(); }); right.appendChild(rb); }
+      if (it.status !== "running") { var xb = document.createElement("button"); xb.className = "chip"; xb.type = "button"; xb.textContent = "x"; xb.setAttribute("aria-label", "Remove from queue"); xb.addEventListener("click", function () { Q = Q.filter(function (q) { return q !== it; }); qRender(); }); right.appendChild(xb); }
+      li.appendChild(l); li.appendChild(right); qEl.appendChild(li);
+    });
+  }
+  function qAdd(body, title) {
+    if (Q.length >= 20) { showErr("The queue is full (20 items). Clear finished items first."); return false; }
+    Q.push({ id: ++qSeq, body: body, title: title, status: "waiting", progress: 0 }); qRender(); qNext(); return true;
+  }
+  function qNext() {
+    if (qRun) return;
+    var it = null; for (var i = 0; i < Q.length; i++) if (Q[i].status === "waiting") { it = Q[i]; break; }
+    if (!it) return;
+    qRun = true; it.status = "running"; it.progress = 0; qRender();
+    runTask(it.body, function (p) { it.progress = p; qRender(); }).then(function (s) {
+      it.status = "done"; it.file = API + s.file; it.name = s.name;
+      histAdd({ url: it.body.url, title: it.title || hostOf(it.body.url), kind: it.body.kind, t: Date.now() });
+      var a = document.createElement("a"); a.href = it.file; a.download = it.name || ""; document.body.appendChild(a); a.click(); a.remove();
+    }).catch(function (e) {
+      it.status = "error"; var c = e && e.code;
+      it.err = ERR[c] || (c === "net" || e instanceof TypeError ? "Could not reach the server." : "Failed");
+    }).then(function () { qRun = false; qRender(); qNext(); });
+  }
+  $("dlQClear").addEventListener("click", function () { Q = Q.filter(function (q) { return q.status === "running"; }); qRender(); });
+  $("dlQAllBtn").addEventListener("click", function () {
+    showErr(""); var ls = links(urlIn.value), kind = $("dlBulkMp3").checked ? "mp3" : "video", added = 0, skipped = 0;
+    if (!ls.length) return showErr("Paste one or more links first (separated by spaces).");
+    ls.forEach(function (u) { if (isYT(u)) { skipped++; return; } if (qAdd({ type: "download", url: u, kind: kind }, null)) added++; });
+    statusEl.textContent = "Added " + added + " to the queue." + (skipped ? " Skipped " + skipped + " YouTube link(s) (not downloadable)." : "");
+    if (added) warm();
+  });
+  function qFromInfo(kind) {
+    if (!info) return; showErr("");
+    var from = parseT($("dlFrom").value), to = parseT($("dlTo").value);
+    if (isNaN(from) || isNaN(to) || (from !== null && to !== null && to <= from)) return showErr(ERR.bad_range);
+    var opt = fmtSel.options[fmtSel.selectedIndex], body = { type: "download", url: info.url, kind: kind };
+    if (kind === "video" && opt.value !== "best") { body.format = opt.value; if (opt.dataset.mux === "1") body.mux = true; }
+    if (from !== null) body.from = from; if (to !== null) body.to = to;
+    if (qAdd(body, info.title)) statusEl.textContent = "Added to the queue.";
+  }
+  $("dlQVideoBtn").addEventListener("click", function () { qFromInfo("video"); });
+  $("dlQMp3Btn").addEventListener("click", function () { qFromInfo("mp3"); });
   vBtn.addEventListener("click", function () { download("video"); });
   mBtn.addEventListener("click", function () { download("mp3"); });
 })();
