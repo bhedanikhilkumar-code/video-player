@@ -159,6 +159,14 @@
   #dlSubs a { display: inline-block; margin: 8px 8px 0 0; color: var(--teal); font-weight: 600; }
   .lp-video { width: 100%; max-height: 60vh; margin-top: 12px; border-radius: 12px; background: #000; }
   #lpSpeeds { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+  /* Mobile polish */
+  .site-head { flex-wrap: wrap; }
+  input[type=file] { width: 100%; padding: 10px; border: 1px dashed var(--hairline); border-radius: 12px; background: var(--chipbg); color: var(--ink); font: inherit; }
+  input[type=file]::file-selector-button { margin-right: 12px; min-height: 40px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--teal); color: var(--teal-ink); font: inherit; font-weight: 600; cursor: pointer; }
+  .dl-more summary { cursor: pointer; color: var(--ink2); font-size: 13px; margin-top: 10px; min-height: 32px; display: flex; align-items: center; }
+  .dl-spin { display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px; border: 2px solid var(--hairline); border-top-color: var(--teal); border-radius: 50%; animation: dlspin .8s linear infinite; }
+  @keyframes dlspin { to { transform: rotate(360deg); } }
+  @media (max-width: 520px) { .dl-trim input, .dl-sel { font-size: 16px; } .dl-meta img { width: 80px; height: 45px; } #dlSubs a { padding: 8px 0; } }
   footer { text-align: center; color: var(--ink2); font-size: 13px; margin-top: 24px; }
 
   /* Phone */
@@ -206,7 +214,7 @@
     <section aria-labelledby="linkHeading">
       <h2 id="linkHeading">YouTube link</h2>
       <div class="input-row">
-        <input id="linkInput" type="url" inputmode="url" placeholder="https://youtube.com/watch?v=..." aria-label="YouTube link">
+        <input id="linkInput" type="url" inputmode="url" enterkeyhint="go" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="https://youtube.com/watch?v=..." aria-label="YouTube link">
       </div>
       <div class="actions">
         <button class="btn" id="loadBtn">Load video</button>
@@ -314,7 +322,7 @@
     <section id="dl" aria-labelledby="dlHeading">
       <h2 id="dlHeading">Downloader (non-YouTube sites)</h2>
       <div class="input-row">
-        <input id="dlUrl" type="url" inputmode="url" placeholder="https://site.com/video-link" aria-label="Video link from another site">
+        <input id="dlUrl" type="url" inputmode="url" enterkeyhint="go" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="https://site.com/video-link" aria-label="Video link from another site">
       </div>
       <div class="actions"><button class="btn" id="dlInfoBtn">Get formats</button><button class="chip" id="dlPasteBtn" type="button">Paste</button><button class="chip" id="dlRetryBtn" type="button" hidden>Retry</button><button class="chip" id="dlCopyErr" type="button" hidden>Copy error</button></div>
       <p class="hint" id="dlStatus" role="status">YouTube links can't be downloaded - play them in the player above. For other sites (for example TikTok, TED, SoundCloud, Streamable) paste the link here.</p>
@@ -324,8 +332,8 @@
         <label class="dl-lab" for="dlFmt">Quality / format</label>
         <select id="dlFmt" class="dl-sel"></select>
         <div class="dl-trim">
-          <label>From <input id="dlFrom" inputmode="text" placeholder="0:00" aria-label="Trim from"></label>
-          <label>To <input id="dlTo" inputmode="text" placeholder="end" aria-label="Trim to"></label>
+          <label>From <input id="dlFrom" inputmode="text" enterkeyhint="done" autocomplete="off" placeholder="0:00" aria-label="Trim from"></label>
+          <label>To <input id="dlTo" inputmode="text" enterkeyhint="done" autocomplete="off" placeholder="end" aria-label="Trim to"></label>
         </div>
         <div class="actions">
           <button class="btn" id="dlVideoBtn">Download video</button>
@@ -339,7 +347,7 @@
         <div class="lib-head"><h3>Recent downloads</h3><button class="chip" id="dlHistClear" type="button">Clear</button></div>
         <ul class="lib-list" id="dlHist"></ul>
       </div>
-      <p class="hint">The server is on a free plan, so the first request can take up to a minute. Some sites (such as Vimeo and Facebook) block free servers. Only download content you have the right to download.</p>
+      <details class="dl-more"><summary>About downloads</summary><p class="hint">The server is on a free plan, so the first request can take up to a minute. Some sites (such as Vimeo and Facebook) block free servers. Only download content you have the right to download.</p></details>
     </section>
 
     <section id="lp" aria-labelledby="lpHeading">
@@ -925,6 +933,7 @@
 
   function warm() { if (warmed) return; warmed = true; try { fetch(API + "/health", { mode: "no-cors" }); } catch (e) {} }
   urlIn.addEventListener("focus", warm);
+  document.getElementById("dl").addEventListener("pointerdown", warm, { once: true });
   try { var lu = localStorage.getItem("vp-dl-url"); if (lu) urlIn.value = lu; } catch (e) {}
   retryBtn.addEventListener("click", function () { if (retryFn) { showErr(""); retryFn(); } });
   $("dlPasteBtn").addEventListener("click", function () {
@@ -974,10 +983,12 @@
     try { localStorage.setItem("vp-dl-url", u); } catch (e) {}
     retryFn = function () { infoBtn.click(); };
     box.hidden = true; subsEl.innerHTML = "";
-    setBusy(true, "Looking up formats... (the first time can take up to a minute)");
+    setBusy(true, "Looking up formats...");
+    var wake = setTimeout(function () { if (busy) statusEl.innerHTML = '<span class="dl-spin"></span>Waking up the free server. This can take up to a minute, please wait.'; }, 6000);
+    var clearWake = function () { clearTimeout(wake); };
     runTask({ type: "info", url: u }).then(function (s) {
-      info = s.result; info.url = u; render(); setBusy(false, "Ready. Pick a format and download.");
-    }).catch(fail);
+      clearWake(); info = s.result; info.url = u; render(); setBusy(false, "Ready. Pick a format and download.");
+    }).catch(function (e) { clearWake(); fail(e); });
   });
 
   function render() {
