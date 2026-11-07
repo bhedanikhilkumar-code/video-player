@@ -174,6 +174,8 @@
   .dl-q-item .st { color: var(--ink2); font-size: 13px; }
   .dl-q-item .st.err { color: var(--red); }
   .dl-q-item a { color: var(--teal); font-weight: 600; }
+  .resume { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-top: 12px; padding: 10px 12px; border-radius: 12px; background: var(--soft); font-size: 14px; }
+  .resume span:first-child { min-width: 0; overflow-wrap: anywhere; }
   footer { text-align: center; color: var(--ink2); font-size: 13px; margin-top: 24px; }
 
   /* Phone */
@@ -229,6 +231,10 @@
       </div>
       <p class="error" id="linkError" role="alert" hidden></p>
       <p class="hint">Watch, share, Shorts, and live links are all supported.</p>
+      <div class="resume" id="resumeBox" hidden>
+        <span id="resumeText"></span>
+        <span class="row" style="gap:8px;flex:none"><button class="chip" id="resumeGo" type="button">Continue</button><button class="chip" id="resumeX" type="button" aria-label="Dismiss">x</button></span>
+      </div>
       <details class="tips">
         <summary>Tips: queue and time links</summary>
         <p>To queue several videos, paste their links separated by spaces and tap Add to queue. They play one after another.</p>
@@ -671,8 +677,26 @@
       }
       var t = (seeking ? Number(seek.value) : i.currentTime) || 0;
       timeLabel.textContent = fmt(t) + " / " + fmt(duration);
+      saveResume();
     }
   });
+  var RK = "vp-resume.v1", lastResumeSave = 0;
+  function saveResume() {
+    var now = Date.now(); if (!curId || now - lastResumeSave < 5000) return; lastResumeSave = now;
+    try {
+      if (duration > 0 && curTime >= duration - 10) { localStorage.removeItem(RK); return; }
+      if (curTime >= 5) localStorage.setItem(RK, JSON.stringify({ id: curId, t: Math.floor(curTime), title: infoTitle.textContent || "", ts: now }));
+    } catch (e) {}
+  }
+  (function showResume() {
+    var r; try { r = JSON.parse(localStorage.getItem(RK) || "null"); } catch (e) {}
+    if (!r || !r.id || !(r.t >= 10) || curId) return;
+    var box = $("resumeBox");
+    $("resumeText").textContent = "Continue where you left off: " + (r.title || "your last video") + " at " + fmt(r.t);
+    box.hidden = false;
+    $("resumeGo").addEventListener("click", function () { box.hidden = true; linkInput.value = "https://youtu.be/" + r.id; loadVideo(r.t, null); });
+    $("resumeX").addEventListener("click", function () { box.hidden = true; try { localStorage.removeItem(RK); } catch (e) {} });
+  })();
 
   function markActive(container, value) {
     Array.prototype.forEach.call(container.children, function (chip) {
@@ -707,6 +731,7 @@
     }
     linkError.hidden = true; playerError.hidden = true;
     curId = id; curTime = startSec || 0; clearAB();
+    var rb = document.getElementById("resumeBox"); if (rb) rb.hidden = true;
     addHistory(id);
     showInfo(id);
     ready = false; playing = false; duration = 0; playBtn.disabled = true; playBtn.textContent = "▶ Play";
@@ -1048,6 +1073,8 @@
       }).catch(fail);
   }
   $("dlPlayBtn").addEventListener("click", function () { if (lastFile && window.vpPlayUrl) window.vpPlayUrl(lastFile); });
+  try { $("dlBulkMp3").checked = localStorage.getItem("vp-dl-mp3") === "1"; } catch (e) {}
+  $("dlBulkMp3").addEventListener("change", function () { try { localStorage.setItem("vp-dl-mp3", this.checked ? "1" : "0"); } catch (e) {} });
   // ---- Download queue ----
   var Q = [], qRun = false, qSeq = 0, qEl = $("dlQ"), qWrap = $("dlQWrap");
   function links(txt) { return ((txt || "").match(/https?:\/\/[^\s,]+/gi) || []).filter(function (v, i, a) { return a.indexOf(v) === i; }); }
@@ -1127,21 +1154,43 @@
     node = ctx.createGain(); node.gain.value = gain.value / 100;
     src.connect(node); node.connect(ctx.destination); window.__lpNode = node; window.__lpCtx = ctx;
   }
-  function setGain() { var v = Number(gain.value); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
+  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1 };
+  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; } } catch (e) {}
+  gain.value = lp.gain;
+  function saveLp() { try { localStorage.setItem(LK, JSON.stringify(lp)); } catch (e) {} }
+  function setGain() { var v = Number(gain.value); lp.gain = v; saveLp(); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
+  gv.textContent = lp.gain + "%"; warn.hidden = lp.gain <= 200;
   gain.addEventListener("input", function () { ensureAudio(); setGain(); });
   vid.addEventListener("play", ensureAudio);
   [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3].forEach(function (r) {
-    var b = document.createElement("button"); b.className = "chip" + (r === 1 ? " active" : ""); b.type = "button"; b.textContent = r + "x";
-    b.addEventListener("click", function () { vid.playbackRate = r; [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c === b); }); });
+    var b = document.createElement("button"); b.className = "chip" + (r === lp.rate ? " active" : ""); b.type = "button"; b.textContent = r + "x";
+    b.addEventListener("click", function () { vid.playbackRate = r; lp.rate = r; saveLp(); [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c === b); }); });
     sp.appendChild(b);
   });
   function show(url, local) {
     if (curUrl && curUrl.indexOf("blob:") === 0) URL.revokeObjectURL(curUrl);
-    curUrl = url; vid.src = url; vid.hidden = false; ctl.hidden = false; vid.playbackRate = 1;
-    [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c.textContent === "1x"); });
+    curUrl = url; vid.src = url; vid.hidden = false; ctl.hidden = false; vid.playbackRate = lp.rate;
+    [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c.textContent === lp.rate + "x"); });
   }
-  file.addEventListener("change", function () { var f = file.files[0]; if (f) show(URL.createObjectURL(f), true); });
-  window.vpPlayUrl = function (url) { show(url, false); $("lp").scrollIntoView({ behavior: "smooth" }); };
+  var posKey = null, lastPos = 0;
+  file.addEventListener("change", function () {
+    var f = file.files[0]; if (!f) return;
+    posKey = f.name + "|" + f.size; show(URL.createObjectURL(f), true);
+  });
+  vid.addEventListener("loadedmetadata", function () {
+    if (!posKey) return;
+    try { var m = JSON.parse(localStorage.getItem(PK) || "{}"), t = m[posKey]; if (t > 5 && t < vid.duration - 10) vid.currentTime = t; } catch (e) {}
+  });
+  vid.addEventListener("timeupdate", function () {
+    if (!posKey || Date.now() - lastPos < 5000) return; lastPos = Date.now();
+    try {
+      var m = JSON.parse(localStorage.getItem(PK) || "{}"), keys = Object.keys(m);
+      if (vid.duration && vid.currentTime >= vid.duration - 10) delete m[posKey]; else m[posKey] = Math.floor(vid.currentTime);
+      if (keys.length > 30 && !(posKey in m)) delete m[keys[0]];
+      localStorage.setItem(PK, JSON.stringify(m));
+    } catch (e) {}
+  });
+  window.vpPlayUrl = function (url) { posKey = null; show(url, false); $("lp").scrollIntoView({ behavior: "smooth" }); };
 })();
 </script>
 <script>
