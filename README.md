@@ -60,7 +60,7 @@
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TD
     U([You]) -->|paste link| A[index.html<br/>Vanilla JS app]
     A -->|YouTube link| Y[Official YouTube<br/>embed player]
     A -->|other sites| B[Downloader backend<br/>Flask + yt-dlp + ffmpeg]
