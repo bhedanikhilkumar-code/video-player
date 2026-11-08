@@ -1357,6 +1357,8 @@
   nav.addEventListener("click", function (e) {
     var a = e.target && e.target.closest ? e.target.closest("a.feat") : null; if (!a) return;
     var el = targetOf(a); if (!el) return;
+    links.forEach(function (x) { x.classList.toggle("active", x === a); });
+    spyHold = Date.now() + 1800;
     var controls = document.getElementById("controls");
     if (controls && controls.hidden && controls.contains(el)) {
       e.preventDefault();
@@ -1369,7 +1371,7 @@
     var nav2 = a.parentNode;
     nav2.scrollTo({ left: a.offsetLeft - nav2.clientWidth / 2 + a.clientWidth / 2, behavior: "smooth" });
   });
-  var ticking = false;
+  var ticking = false, spyHold = 0;
   function spyEligible(el) {
     if (!el || el.offsetParent === null) return false;
     var c = document.getElementById("controls");
@@ -1380,13 +1382,13 @@
   }
   function spy() {
     ticking = false;
-    var line = window.scrollY + window.innerHeight * 0.35, cur = null, curD = 1e9;
+    if (Date.now() < spyHold) return;
+    var line = window.scrollY + 160, cur = null;
     links.forEach(function (a) {
       var el = targetOf(a);
       if (!spyEligible(el)) return;
       var top = el.getBoundingClientRect().top + window.scrollY;
-      var d = top <= line ? (line - top) / 3 : (top - line);
-      if (d < curD) { curD = d; cur = a; }
+      if (top <= line) cur = a;
     });
     links.forEach(function (a) { a.classList.toggle("active", a === cur); });
   }
