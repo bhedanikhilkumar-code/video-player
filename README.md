@@ -62,10 +62,10 @@
 ```mermaid
 flowchart LR
     U([You]) -->|paste link| A[index.html<br/>Vanilla JS app]
-    A -->|YouTube link| Y[Official YouTube embed player]
+    A -->|YouTube link| Y[Official YouTube<br/>embed player]
     A -->|other sites| B[Downloader backend<br/>Flask + yt-dlp + ffmpeg]
-    A -->|local file| L[Browser audio and video engine<br/>volume boost + speed]
-    B -->|temporary file, deleted after 15 min| A
+    A -->|local file| L[Browser engine<br/>boost + speed]
+    B -->|file, deleted<br/>after 15 min| A
     classDef app fill:#0f3d33,stroke:#5eead4,color:#fff
     classDef ext fill:#7c2d12,stroke:#fb923c,color:#fff
     classDef be fill:#1e3a8a,stroke:#60a5fa,color:#fff
