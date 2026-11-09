@@ -577,6 +577,30 @@ html.high-contrast .chip, html.high-contrast .btn, html.high-contrast input, htm
 html.high-contrast .fx-nav-pill, html.high-contrast .fx-progress, html.high-contrast .fx-bars { display:none!important; }
 html.high-contrast :focus-visible { outline:4px solid var(--teal); }
 </style>
+<style id="vp-v5">
+/* Phone speed + touch (2026-11-09) */
+button,.chip,.btn,a,summary,input[type=range],select,label{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+@media (hover:none) and (pointer:coarse),(max-width:700px){
+  section{-webkit-backdrop-filter:blur(8px) saturate(150%)!important;backdrop-filter:blur(8px) saturate(150%)!important}
+  .lib-item[draggable="true"]{cursor:auto}
+}
+body{overflow-x:clip}
+.faq summary{min-height:44px;display:flex;align-items:center}
+.info-meta a,.info-yt{min-height:40px;display:inline-flex;align-items:center}
+.dl-chk{min-height:44px;display:flex;align-items:center;gap:8px}
+@media (hover:none) and (pointer:coarse){.q-mv{min-height:40px!important;min-width:44px!important}.q-move{gap:2px}}
+#plMsg{margin:6px 0 12px}
+.pl-save{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;margin:0 0 6px}
+.pl-save input{flex:1 1 180px;min-width:0;min-height:46px;padding:8px 12px;font-size:16px;border-radius:12px;border:1px solid var(--hairline);background:var(--card);color:var(--ink)}
+.pl-item{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid var(--hairline);border-radius:14px;background:var(--soft)}
+.pl-top{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.pl-name{font-weight:700;font-size:15px;overflow-wrap:anywhere}
+.pl-count{color:var(--ink2);font-size:13px}
+.pl-acts{display:flex;gap:6px;flex-wrap:wrap}
+.pl-acts .chip{min-height:44px;padding:6px 12px;font-size:14px}
+.pl-acts .pl-del{color:var(--red)}
+#themeBtn .theme-ico{margin-right:4px}
+</style>
 </head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
@@ -830,6 +854,13 @@ html.high-contrast :focus-visible { outline:4px solid var(--teal); }
         <input id="libImportFile" type="file" accept="application/json,.json" hidden>
         <span class="hint lib-tools-msg" id="libBackupMsg" role="status"></span>
       </div>
+      <div class="lib-head"><h3>Saved playlists</h3></div>
+      <div class="pl-save">
+        <input id="plName" type="text" maxlength="40" autocomplete="off" placeholder="Playlist name, e.g. Study" aria-label="Playlist name">
+        <button class="chip" id="plSaveBtn" type="button">Save queue as playlist</button>
+      </div>
+      <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
+      <ul class="lib-list" id="plList"></ul>
       <div class="lib-head"><h3>Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <ul class="lib-list" id="queueList"></ul>
       <div class="lib-head"><h3>Favourites</h3></div>
@@ -1039,7 +1070,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var dark = prefs.theme === "dark" || (prefs.theme === "auto" && darkQuery && darkQuery.matches);
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
     var themeLabel = prefs.theme === "auto" ? "Auto" : prefs.theme === "dark" ? "Dark" : "Light";
-    themeBtn.innerHTML = '<span class="theme-prefix">Theme: </span><span>' + themeLabel + '</span>';
+    var ico = prefs.theme === "auto" ? "\u25D0" : prefs.theme === "dark" ? "\u263E" : "\u2600";
+    themeBtn.innerHTML = '<span class="theme-ico" aria-hidden="true">' + ico + '</span><span class="theme-prefix">Theme: </span><span>' + themeLabel + '</span>';
+    var metas = document.querySelectorAll('meta[name="theme-color"]');
+    for (var mi = 0; mi < metas.length; mi++) {
+      if (!metas[mi].hasAttribute("data-orig")) metas[mi].setAttribute("data-orig", metas[mi].getAttribute("content"));
+      metas[mi].setAttribute("content", prefs.theme === "auto" ? metas[mi].getAttribute("data-orig") : (dark ? "#131012" : "#3f8f7d"));
+    }
     themeBtn.setAttribute("aria-label", "Theme: " + themeLabel + ". Activate to change theme.");
   }
   themeBtn.addEventListener("click", function () {
@@ -1507,19 +1544,90 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   renderLib = function () { baseRenderLib(); decorateQueue(); };
   decorateQueue();
 
+  // ---- Named playlists (saved on this device) ----
+  var PL_KEY = "vp-playlists.v1", PL_MAX = 30;
+  var plList = $("plList"), plName = $("plName"), plMsg = $("plMsg");
+  var playlists = [];
+  try {
+    var savedPl = JSON.parse(localStorage.getItem(PL_KEY) || "null");
+    if (Array.isArray(savedPl)) savedPl.forEach(function (p) {
+      if (p && typeof p.name === "string" && Array.isArray(p.items)) playlists.push({ name: p.name.slice(0, 40), items: p.items.filter(validItem).slice(0, 50).map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "" }; }) });
+    });
+  } catch (e) {}
+  function savePlaylists() { try { localStorage.setItem(PL_KEY, JSON.stringify(playlists)); } catch (e) { plMsg.textContent = "Could not save: browser storage is full or blocked."; } }
+  function plSay(m) { plMsg.textContent = m; }
+  function plFind(name) { var n = name.toLowerCase(); for (var i = 0; i < playlists.length; i++) if (playlists[i].name.toLowerCase() === n) return i; return -1; }
+  function cleanName(v) { return String(v || "").replace(/\s+/g, " ").trim().slice(0, 40); }
+  function renderPlaylists() {
+    plList.textContent = "";
+    if (!playlists.length) { var e = document.createElement("li"); var p = document.createElement("p"); p.className = "lib-empty"; p.textContent = "No saved playlists yet. Fill the queue, type a name above and tap Save."; e.appendChild(p); plList.appendChild(e); return; }
+    playlists.forEach(function (pl, idx) {
+      var li = document.createElement("li"); li.className = "pl-item";
+      var top = document.createElement("div"); top.className = "pl-top";
+      var nm = document.createElement("span"); nm.className = "pl-name"; nm.textContent = pl.name;
+      var ct = document.createElement("span"); ct.className = "pl-count"; ct.textContent = pl.items.length + (pl.items.length === 1 ? " video" : " videos");
+      top.appendChild(nm); top.appendChild(ct);
+      var acts = document.createElement("div"); acts.className = "pl-acts";
+      function btn(label, cls, fn) { var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (cls ? " " + cls : ""); b.textContent = label; b.setAttribute("aria-label", label + ": " + pl.name); b.addEventListener("click", fn); acts.appendChild(b); }
+      btn("Play", "", function () {
+        if (!pl.items.length) return;
+        lib.queue = pl.items.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1;
+        saveLib(); renderLib(); showLibErr(""); plSay("Playing \"" + pl.name + "\". The queue now holds its " + pl.items.length + " videos.");
+        playQueueAt(0);
+        if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+      });
+      btn("Add to queue", "", function () {
+        var n = 0; pl.items.forEach(function (x) { if (findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: x.title }); n++; } });
+        saveLib(); renderLib(); plSay(n ? "Added " + n + " video" + (n === 1 ? "" : "s") + " to the queue." : "Those videos are already in the queue (or the queue is full at 50).");
+      });
+      btn("Update", "", function () {
+        if (!lib.queue.length) { plSay("The queue is empty, so there is nothing to save."); return; }
+        if (!window.confirm("Replace the videos in \"" + pl.name + "\" with the current queue?")) return;
+        pl.items = lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }); savePlaylists(); renderPlaylists(); plSay("Updated \"" + pl.name + "\".");
+      });
+      btn("Rename", "", function () {
+        var nv = cleanName(window.prompt("New name for this playlist", pl.name)); if (!nv || nv === pl.name) return;
+        var f = plFind(nv); if (f >= 0 && f !== idx) { plSay("You already have a playlist named \"" + nv + "\"."); return; }
+        pl.name = nv; savePlaylists(); renderPlaylists(); plSay("Renamed.");
+      });
+      btn("Delete", "pl-del", function () {
+        if (!window.confirm("Delete the playlist \"" + pl.name + "\"? Your queue stays as it is.")) return;
+        playlists.splice(idx, 1); savePlaylists(); renderPlaylists(); plSay("Deleted.");
+      });
+      li.appendChild(top); li.appendChild(acts); plList.appendChild(li);
+    });
+  }
+  $("plSaveBtn").addEventListener("click", function () {
+    var name = cleanName(plName.value);
+    if (!name) { plSay("Type a name first, for example Study."); plName.focus(); return; }
+    if (!lib.queue.length) { plSay("The queue is empty. Add some videos to the queue first."); return; }
+    var f = plFind(name);
+    if (f >= 0) {
+      if (!window.confirm("A playlist named \"" + playlists[f].name + "\" already exists. Replace it with the current queue?")) return;
+      playlists[f].items = lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; });
+    } else {
+      if (playlists.length >= PL_MAX) { plSay("You can keep up to " + PL_MAX + " playlists. Delete one first."); return; }
+      playlists.push({ name: name, items: lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }) });
+    }
+    savePlaylists(); renderPlaylists(); plName.value = ""; plSay("Saved \"" + name + "\" with " + lib.queue.length + " video" + (lib.queue.length === 1 ? "" : "s") + ".");
+  });
+  plName.addEventListener("keydown", function (e) { if (e.key === "Enter") $("plSaveBtn").click(); });
+  renderPlaylists();
+
   // ---- Library backup: export and import queue + favourites as a file ----
   var libBackupMsg = $("libBackupMsg");
   $("libExport").addEventListener("click", function () {
     var data = { app: "hd-video-player", version: 1, exportedAt: new Date().toISOString(),
       queue: lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }),
-      favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "" }; }) };
+      favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "" }; }),
+      playlists: playlists.map(function (p) { return { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; }) };
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "video-player-backup-" + new Date().toISOString().slice(0, 10) + ".json";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
-    libBackupMsg.textContent = "Backup saved (" + data.queue.length + " queued, " + data.favourites.length + " favourites).";
+    libBackupMsg.textContent = "Backup saved (" + data.queue.length + " queued, " + data.favourites.length + " favourites, " + data.playlists.length + " playlists).";
   });
   $("libImport").addEventListener("click", function () { $("libImportFile").click(); });
   $("libImportFile").addEventListener("change", function () {
@@ -1534,9 +1642,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var qn = 0, fn = 0;
         q.forEach(function (x) { if (validItem(x) && findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: typeof x.title === "string" ? x.title : "" }); qn++; } });
         fv.forEach(function (x) { if (validItem(x) && findIn(lib.favs, x.id) < 0) { lib.favs.push({ id: x.id, title: typeof x.title === "string" ? x.title : "" }); fn++; } });
-        if (!qn && !fn) { libBackupMsg.textContent = "Nothing new to import - use a backup file made by this app."; return; }
-        saveLib(); renderLib();
-        libBackupMsg.textContent = "Imported " + qn + " queued and " + fn + " favourite" + (fn === 1 ? "" : "s") + ".";
+        var pn = 0;
+        (Array.isArray(d.playlists) ? d.playlists : []).forEach(function (p) {
+          if (!p || typeof p.name !== "string" || !Array.isArray(p.items) || playlists.length >= PL_MAX) return;
+          var nm = cleanName(p.name); if (!nm) return;
+          var items = p.items.filter(validItem).slice(0, 50).map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "" }; });
+          var base = nm, k = 2; while (plFind(nm) >= 0) { nm = (base.slice(0, 34) + " (" + k + ")"); k++; }
+          playlists.push({ name: nm, items: items }); pn++;
+        });
+        if (!qn && !fn && !pn) { libBackupMsg.textContent = "Nothing new to import - use a backup file made by this app."; return; }
+        saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
+        libBackupMsg.textContent = "Imported " + qn + " queued, " + fn + " favourite" + (fn === 1 ? "" : "s") + " and " + pn + " playlist" + (pn === 1 ? "" : "s") + ".";
       } catch (e) { libBackupMsg.textContent = "That file could not be read. Use a backup file made by this app."; }
     };
     rd.readAsText(f);
@@ -2037,4 +2153,4 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
 </script>
 </body>
-</html>
+  </html>
