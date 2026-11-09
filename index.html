@@ -842,13 +842,14 @@ button .fx-ripple { position:absolute; border-radius:50%; background:currentColo
   favBtn.addEventListener("click", function () { if (curId) toggleFav(curId); });
   clearHistBtn.addEventListener("click", function () { lib.hist = []; saveLib(); renderLib(); });
   queueBtn.addEventListener("click", function () {
-    var n = queueAdd(linkInput.value);
+    var firstNew = lib.queue.length, n = queueAdd(linkInput.value);
     if (!n) {
       linkError.textContent = "No valid YouTube link found to add. Paste one or more full YouTube links.";
       linkError.hidden = false;
     } else {
       linkError.hidden = true; showLibErr(""); linkInput.value = "";
-      if (!iframe) playQueueAt(0);
+      if (!iframe) playQueueAt(firstNew);
+      if (lib.queue.length >= 50) showLibErr("The queue holds up to 50 videos. Extra links were skipped.");
     }
   });
   nextBtn.addEventListener("click", function () {
@@ -935,6 +936,13 @@ button .fx-ripple { position:absolute; border-radius:50%; background:currentColo
       if (iframe) { iframe.remove(); iframe = null; }
       placeholder.style.display = "";
       controls.hidden = true;
+      if (qPos >= 0 && qPos + 1 < lib.queue.length) {
+        var skipFrom = qPos;
+        setTimeout(function () {
+          if (qPos !== skipFrom || iframe) return;
+          if (playNext()) showLibErr("A video in the queue could not be played here and was skipped.");
+        }, 1500);
+      }
     }
     if ((data.event === "infoDelivery" || data.event === "initialDelivery") && data.info && typeof data.info === "object") {
       var i = data.info;
@@ -1000,8 +1008,8 @@ button .fx-ripple { position:absolute; border-radius:50%; background:currentColo
   if (prefs.loop) { loopBtn.classList.add("active"); loopBtn.textContent = "🔁 Loop on"; }
 
   function loadVideo(startSec, endSec, queueIndex, autoplay) {
-    qPos = typeof queueIndex === "number" ? queueIndex : -1;
     var id = parseVideoId(linkInput.value);
+    if (id) qPos = typeof queueIndex === "number" ? queueIndex : -1;
     if (!id) {
       linkError.textContent = "That link does not look valid. Paste a full YouTube link, such as https://youtube.com/watch?v=...";
       linkError.hidden = false;
@@ -1247,6 +1255,7 @@ button .fx-ripple { position:absolute; border-radius:50%; background:currentColo
   function setBusy(b, msg) { busy = b; infoBtn.disabled = vBtn.disabled = mBtn.disabled = b; if (msg) statusEl.textContent = msg; }
   function parseT(v) {
     v = (v || "").trim(); if (!v) return null;
+    if (!/^\d+(:\d{1,2}){0,2}(\.\d+)?$/.test(v)) return NaN;
     var p = v.split(":").map(Number); if (p.some(isNaN)) return NaN;
     return p.reduce(function (a, x) { return a * 60 + x; }, 0);
   }
@@ -1273,6 +1282,11 @@ button .fx-ripple { position:absolute; border-radius:50%; background:currentColo
     navigator.clipboard.readText().then(function (t) { urlIn.value = (t || "").replace(/\s+/g, " ").trim(); showErr(""); warm(); }).catch(function () { showErr("Clipboard permission was denied. Paste the link yourself."); });
   });
   urlIn.addEventListener("keydown", function (e) { if (e.key === "Enter") infoBtn.click(); });
+  urlIn.addEventListener("input", function () {
+    if (!info || busy) return;
+    var cur = urlIn.value.trim(), shown = info.url || "";
+    if (cur !== shown && "https://" + cur !== shown) { info = null; box.hidden = true; statusEl.textContent = "Link changed. Tap Get formats to look it up again."; }
+  });
 
   function api(path, opts) {
     var c = new AbortController(), t = setTimeout(function () { c.abort(); }, 90000);
@@ -1284,8 +1298,9 @@ button .fx-ripple { position:absolute; border-radius:50%; background:currentColo
       .then(function (r) {
         if (r.error) throw r.error;
         return new Promise(function (res, rej) {
-          var misses = 0;
+          var misses = 0, polls = 0;
           (function poll() {
+            if (++polls > 900) return rej({ code: "net" });
             api("/tasks/" + r.id).then(function (s) {
               if (s.status === "done") return res(s);
               if (s.status === "error") return rej(s.error || { code: "extract_failed" });
