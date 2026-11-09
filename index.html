@@ -899,7 +899,7 @@ body{overflow-x:clip}
     <section id="lp" aria-labelledby="lpHeading">
       <h2 id="lpHeading">Play a file with volume boost</h2>
       <input id="lpFile" type="file" multiple accept="video/*,audio/*" aria-label="Choose a video or audio file from your device">
-      <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button></div>
+      <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button><button class="chip" id="lpPip" type="button" hidden>PiP</button></div>
       <p class="hint" id="lpSessionMsg" role="status">Select one or more local files. Notification and lock-screen controls are local-file only, where supported by your browser. They do not enable screen-off YouTube playback.</p>
       <video id="lpVideo" controls playsinline preload="metadata" crossorigin="anonymous" class="lp-video" hidden></video>
       <div id="lpCtl" hidden>
@@ -909,7 +909,7 @@ body{overflow-x:clip}
         <div class="lib-head"><h3>Speed</h3></div>
         <div class="row" id="lpSpeeds"></div>
       </div>
-      <p class="hint">This plays a file from your device, or the file you just downloaded. The YouTube player's volume cannot go above 100% (a YouTube limit).</p>
+      <p class="hint">This plays a file from your device, or the file you just downloaded. The YouTube player's volume cannot go above 100% (a YouTube limit). The PiP button appears where your browser allows it, and works for local files - for YouTube videos use the player's own controls (a site cannot detach YouTube's player).</p>
     </section>
 
     <section id="help" aria-labelledby="helpHeading">
@@ -2488,6 +2488,27 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     } catch (e) {}
   });
   window.vpPlayUrl = function (url) { localFiles = []; localIndex = -1; updateLocalButtons(); posKey = null; show(url, false); $("lp").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); };
+})();
+</script>
+<script>
+/* Picture-in-Picture for local files, where the browser allows it. The YouTube iframe cannot be
+   detached into PiP by another site (browser security), so YouTube videos keep using YouTube's own
+   player controls, and the in-app mini player above covers "keep watching while you scroll". */
+(function () {
+  "use strict";
+  var vid = document.getElementById("lpVideo"), btn = document.getElementById("lpPip");
+  if (!vid || !btn) return;
+  if (!document.pictureInPictureEnabled || vid.disablePictureInPicture) return;
+  btn.hidden = false;
+  btn.addEventListener("click", function () {
+    if (document.pictureInPictureElement) { document.exitPictureInPicture().catch(function () {}); return; }
+    if (!vid.currentSrc || vid.readyState === 0) { btn.textContent = "Play a file first"; setTimeout(function () { btn.textContent = "PiP"; }, 2000); return; }
+    vid.requestPictureInPicture().catch(function () {
+      btn.textContent = "PiP not available"; setTimeout(function () { btn.textContent = "PiP"; }, 2000);
+    });
+  });
+  vid.addEventListener("enterpictureinpicture", function () { btn.textContent = "Exit PiP"; });
+  vid.addEventListener("leavepictureinpicture", function () { btn.textContent = "PiP"; });
 })();
 </script>
 <script>
