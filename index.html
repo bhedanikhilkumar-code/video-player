@@ -819,6 +819,7 @@ body{overflow-x:clip}
           <h3>Sleep timer</h3>
           <div class="chips" id="sleepChips"></div>
           <span class="label" id="sleepLabel" role="status">Off</span>
+          <div class="row" style="margin-top:10px"><button class="chip" id="sleepEndBtn" type="button" aria-pressed="false">Stop at end of video</button></div>
           <div class="row" style="margin-top:10px"><label for="sleepMinutes">Custom minutes</label><input id="sleepMinutes" type="number" min="1" max="720" value="20" style="width:90px"><button class="chip" id="sleepStart" type="button">Start timer</button></div>
           <p class="hint">Pauses playback and auto-next. Background tabs may delay timers; the pause is checked again when you return.</p>
         </div>
@@ -1290,6 +1291,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (!playing && statsDirty) { statsDirty = false; saveStats(); renderStats(); }
       playBtn.textContent = playing ? "⏸ Pause" : "▶ Play";
       if (data.info === 0 && sleepPaused) return;
+      if (data.info === 0 && sleepAtEnd) {
+        sleepAtEnd = false; sleepEndRender();
+        sleepPaused = true; saveResume(true);
+        sleepLabel.textContent = "Stopped at the end of the video (sleep timer).";
+        return;
+      }
       if (data.info === 0 && abEnabled && abA != null && abB != null) { send("seekTo", [abA, true]); send("playVideo"); }
       else if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); }
       else if (data.info === 0 && lib.queue.length && queueModes.auto) {
@@ -2314,6 +2321,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   }
   renderContinue();
+
+  // Sleep timer: also offer "stop when this video ends" (pauses instead of auto-next).
+  var sleepAtEnd = false;
+  var sleepEndBtn = $("sleepEndBtn");
+  function sleepEndRender() {
+    if (!sleepEndBtn) return;
+    sleepEndBtn.setAttribute("aria-pressed", sleepAtEnd ? "true" : "false");
+    sleepEndBtn.textContent = sleepAtEnd ? "Will stop at end of video" : "Stop at end of video";
+    if (sleepAtEnd && !sleepEnd) sleepLabel.textContent = "Stops at the end of this video.";
+    if (!sleepAtEnd && !sleepEnd) sleepRender();
+  }
+  if (sleepEndBtn) sleepEndBtn.addEventListener("click", function () {
+    sleepAtEnd = !sleepAtEnd;
+    var needVideo = sleepAtEnd && !curId;
+    if (needVideo) sleepAtEnd = false;
+    sleepEndRender();
+    if (needVideo) sleepLabel.textContent = "Load a video first, then set this.";
+  });
 })();
 </script>
 <script>
