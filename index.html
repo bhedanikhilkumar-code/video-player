@@ -634,6 +634,19 @@ body{overflow-x:clip}
 .pl-acts .chip{min-height:44px;padding:6px 12px;font-size:14px}
 .pl-acts .pl-del{color:var(--red)}
 #themeBtn .theme-ico{margin-right:4px}
+/* Music mode keeps the complete official video visible, with no audio-only player. */
+.music-bar {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:14px;border:1px solid var(--hairline);border-radius:16px;background:var(--soft)}
+.music-bar p {margin:6px 0 0;max-width:48ch}
+.music-bar button,.music-controls button {min-height:48px}
+.music-mode #player {max-width:760px;margin-left:auto;margin-right:auto}
+.music-mode #frameBox {max-width:520px;min-height:200px;margin-inline:auto}
+.music-mode #controls > :not(#ctl-transport) {display:none}
+.music-mode #ctl-transport {grid-column:1 / -1}
+.music-mode #musicQueue {margin-top:16px;padding:14px;border:1px solid var(--hairline);border-radius:16px}
+.music-mode #queueList {max-height:380px;overflow:auto;overscroll-behavior:contain}
+.music-mode #queueList .lib-open {min-height:52px}
+.music-mode #musicQueue:focus {outline:2px solid var(--teal)}
+@media(max-width:480px) {.music-bar {padding:12px}.music-bar .btn {width:100%}.music-mode #musicQueue {padding:10px}}
 </style>
 </head>
 <body>
@@ -654,6 +667,7 @@ body{overflow-x:clip}
   <nav class="feat-nav" aria-label="All features">
     <a class="feat" href="#link">Link</a>
     <a class="feat" href="#player">Player</a>
+    <a class="feat" href="#musicBar">Music mode</a>
     <a class="feat" href="#ctl-sound">Sound</a>
     <a class="feat" href="#ctl-speed">Speed</a>
     <a class="feat" href="#ctl-quality">Quality</a>
@@ -702,6 +716,10 @@ body{overflow-x:clip}
 
     <section id="player" aria-labelledby="playerHeading">
       <h2 id="playerHeading">Player</h2>
+      <div id="musicBar" class="music-bar">
+        <div><strong>Make room for your music</strong><p class="hint">A compact video, big controls and your queue together. Keep YouTube visible and your screen on.</p></div>
+        <button class="btn" id="musicModeBtn" type="button" aria-pressed="false">Music mode: off</button>
+      </div>
       <div class="frame" id="frameBox">
         <div class="placeholder" id="placeholder">
           <svg class="ph-logo" aria-hidden="true" viewBox="0 0 512 512" role="img" aria-label="HD Video Player logo"><defs><linearGradient id="vpC2bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdfcf9"/><stop offset="1" stop-color="#e6e2da"/></linearGradient></defs><rect width="512" height="512" rx="115" fill="url(#vpC2bg)"/><path d="M140 110 L370 256 L226 256Z" fill="#ff8a3d"/><path d="M140 402 L370 256 L226 256Z" fill="#e8336d"/><path d="M140 110 L226 256 L140 402Z" fill="#6a2fd6"/><path d="M140 110 L226 256 L140 256Z" fill="#8f5cf0"/></svg>
@@ -911,8 +929,10 @@ body{overflow-x:clip}
       </div>
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
+      <div id="musicQueue">
       <div class="lib-head"><h3>Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <ul class="lib-list" id="queueList"></ul>
+      </div>
       <div class="lib-head"><h3>Favourites</h3></div>
       <ul class="lib-list" id="favList"></ul>
       <div class="lib-head"><h3>Recently watched</h3><button class="chip" id="clearHistBtn">Clear</button></div>
@@ -1657,6 +1677,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var baseRenderLib = renderLib;
   renderLib = function () { baseRenderLib(); decorateQueue(); };
   decorateQueue();
+
+  // Music mode uses the same official iframe and queue, never a hidden audio track.
+  var musicQueue = $("musicQueue"), musicHome = document.createComment("queue home"), musicMode = false;
+  musicQueue.parentNode.insertBefore(musicHome, musicQueue);
+  function setMusicMode(on) {
+    musicMode = !!on; document.body.classList.toggle("music-mode", musicMode);
+    $("musicModeBtn").textContent = "Music mode: " + (musicMode ? "on" : "off");
+    $("musicModeBtn").setAttribute("aria-pressed", String(musicMode));
+    if (musicMode) { setMini(false); $("player").appendChild(musicQueue); }
+    else musicHome.parentNode.insertBefore(musicQueue, musicHome.nextSibling);
+    requestAnimationFrame(updateMini);
+  }
+  $("musicModeBtn").addEventListener("click", function () { setMusicMode(!musicMode); });
+  document.querySelector(".feat-nav").addEventListener("click", function (e) {
+    var a = e.target.closest("a");
+    if (musicMode && a && /^#ctl-/.test(a.getAttribute("href") || "")) setMusicMode(false);
+  });
 
   // ---- Named playlists (saved on this device) ----
   var PL_KEY = "vp-playlists.v1", PL_MAX = 30;
