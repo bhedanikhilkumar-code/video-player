@@ -1267,7 +1267,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (data.event === "onPlaybackQualityChange" && typeof data.info === "string") markActive(qualityChips, data.info);
     if (data.event === "onPlaybackRateChange" && typeof data.info === "number") { prefs.speed = data.info; savePrefs(); markActive(speedChips, String(data.info)); }
     if (data.event === "onError") {
-      playerError.textContent = "This video cannot be embedded here because its owner has disabled playback on other sites. Try another link.";
+      var ec = data.info;
+      var emsg = ec === 100
+        ? "This video is private, deleted, or the link is incomplete. It cannot be played."
+        : (ec === 101 || ec === 150)
+        ? "This video's owner has disabled playback on other sites, so it cannot be embedded here."
+        : ec === 5
+        ? "Your browser could not decode this video (HTML5 playback error). Reloading the page usually fixes it."
+        : ec === 2
+        ? "The video link looks broken, so the video cannot be played."
+        : "This video cannot be played here.";
+      var willSkip = qPos >= 0 && queueModes.auto && !sleepPaused && (failedQueueCount + 1) < lib.queue.length;
+      playerError.textContent = emsg + (willSkip ? " Skipping to the next video in the queue..." : " Try another link.");
       playerError.hidden = false;
       if (iframe) { iframe.remove(); iframe = null; }
       placeholder.style.display = "";
@@ -2508,4 +2519,4 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
 </script>
 </body>
-                                     </html>
+      </html>
