@@ -972,6 +972,9 @@ body{overflow-x:clip}
       <div class="lib-head"><h3>Recently watched</h3><button class="chip" id="clearHistBtn">Clear</button></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
+      <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="statsClear" type="button">Clear</button></div>
+      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><ul class="lib-list" id="statsList"></ul>
+      <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
     </section>
 
     <section id="about">
@@ -1256,6 +1259,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (data.event === "onStateChange" && typeof data.info === "number") {
       if (sleepPaused && data.info === 1) { send("pauseVideo"); return; }
       playing = data.info === 1; if (playing) failedQueueCount = 0;
+      if (playing && curId && lastPlayId !== curId) { lastPlayId = curId; stats.plays += 1; statsRec(curId).plays += 1; saveStats(); renderStats(); }
+      if (!playing && statsDirty) { statsDirty = false; saveStats(); renderStats(); }
       playBtn.textContent = playing ? "⏸ Pause" : "▶ Play";
       if (data.info === 0 && sleepPaused) return;
       if (data.info === 0 && abEnabled && abA != null && abB != null) { send("seekTo", [abA, true]); send("playVideo"); }
@@ -1307,6 +1312,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       }
       var t = (seeking ? Number(seek.value) : i.currentTime) || 0;
       timeLabel.textContent = fmt(t) + " / " + fmt(duration);
+      statsTick();
       saveResume();
     }
   });
@@ -2062,6 +2068,66 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     window.location.href = "mailto:bhedanikhilkumar@gmail.com?subject=" + encodeURIComponent("HD Video Player - problem report") + "&body=" + encodeURIComponent(rpText.value);
     rpMsg.textContent = "Opening your email app... If nothing opens, use Copy report instead.";
   });
+
+  // Watch stats: watch time and play counts per video, stored on this device only.
+  var STATS_KEY = "vp-stats.v1";
+  var stats = { total: 0, plays: 0, videos: {} };
+  try { var sIn = JSON.parse(localStorage.getItem(STATS_KEY) || "null"); if (sIn && typeof sIn.total === "number" && sIn.videos) stats = sIn; } catch (e) {}
+  var lastStatId = null, lastStatT = -1, lastPlayId = null, lastStatSave = 0, statsDirty = false;
+  function saveStats() { try { localStorage.setItem(STATS_KEY, JSON.stringify(stats)); } catch (e) {} }
+  function statsRec(id) {
+    var v = stats.videos[id];
+    if (!v) v = stats.videos[id] = { secs: 0, plays: 0, title: titleFor(id) || "" };
+    return v;
+  }
+  function fmtWatch(s) {
+    s = Math.floor(s);
+    if (s < 60) return s + " sec";
+    var h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+    if (m === 60) { h += 1; m = 0; }
+    return h > 0 ? h + " hr " + m + " min" : m + " min";
+  }
+  function renderStats() {
+    var total = $("statsTotal"); if (!total) return;
+    var ids = Object.keys(stats.videos);
+    total.textContent = (stats.plays === 0 && !ids.length)
+      ? "Nothing counted yet. Watch a video and your stats appear here."
+      : fmtWatch(stats.total) + " watched \u00b7 " + stats.plays + (stats.plays === 1 ? " play \u00b7 " : " plays \u00b7 ") + ids.length + (ids.length === 1 ? " video" : " videos");
+    var ul = $("statsList"); ul.innerHTML = "";
+    ids.map(function (id) { var v = stats.videos[id]; return { id: id, secs: v.secs || 0, plays: v.plays || 0, title: v.title || titleFor(id) || ("Video " + id) }; })
+      .sort(function (a, b) { return b.secs - a.secs; }).slice(0, 5)
+      .forEach(function (v) {
+        var li = document.createElement("li"); li.className = "lib-item";
+        var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
+        var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
+        img.src = "https://i.ytimg.com/vi/" + v.id + "/default.jpg";
+        var span = document.createElement("span"); span.textContent = v.title + " \u00b7 " + fmtWatch(v.secs) + (v.plays ? " \u00b7 " + v.plays + "x" : "");
+        open.appendChild(img); open.appendChild(span);
+        open.addEventListener("click", function () { linkInput.value = "https://youtu.be/" + v.id; loadVideo(null, null, undefined, true); });
+        li.appendChild(open); ul.appendChild(li);
+      });
+  }
+  function statsTick() {
+    if (!curId || !playing) { lastStatT = -1; return; }
+    if (lastStatId !== curId) { lastStatId = curId; lastStatT = -1; }
+    if (lastStatT >= 0) {
+      var d = curTime - lastStatT;
+      if (d > 0 && d <= 3) {
+        stats.total += d;
+        var rec = statsRec(curId); rec.secs += d;
+        var ti = titleFor(curId) || infoTitle.textContent; if (ti && ti !== rec.title) rec.title = ti;
+        statsDirty = true;
+        var now = Date.now();
+        if (now - lastStatSave > 10000) { lastStatSave = now; statsDirty = false; saveStats(); renderStats(); }
+      }
+    }
+    lastStatT = curTime;
+  }
+  if ($("statsClear")) $("statsClear").addEventListener("click", function () {
+    stats = { total: 0, plays: 0, videos: {} }; saveStats(); renderStats();
+  });
+  window.addEventListener("pagehide", saveStats);
+  renderStats();
 })();
 </script>
 <script>
