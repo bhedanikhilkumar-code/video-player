@@ -1,5 +1,5 @@
 // Network first for the page so updates show up at once; cached copy is used when offline.
-var CACHE = "vp-shell-v3";
+var CACHE = "vp-shell-v4";
 self.addEventListener("install", function (e) { self.skipWaiting(); });
 self.addEventListener("activate", function (e) {
   e.waitUntil(caches.keys().then(function (keys) {
