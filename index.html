@@ -919,7 +919,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function showLibErr(m) { libError.textContent = m || ""; libError.hidden = !m; }
   var qPos = -1;
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
-  var curTime = 0, curId = null, abA = null, abB = null;
+  var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
   var prefs = { volume: 80, speed: 1, loop: false, theme: "auto" };
   try {
@@ -1141,7 +1141,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       playing = data.info === 1;
       playBtn.textContent = playing ? "⏸ Pause" : "▶ Play";
       if (data.info === 0 && sleepPaused) return;
-      if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); }
+      if (data.info === 0 && abEnabled && abA != null && abB != null) { send("seekTo", [abA, true]); send("playVideo"); }
+      else if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); }
       else if (data.info === 0 && lib.queue.length) {
         if (qPos < 0) playQueueAt(0); else playNext();
       }
@@ -1173,7 +1174,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (typeof i.muted === "boolean") { muted = i.muted; muteBtn.textContent = muted ? "🔇 Unmute" : "🔊 Mute"; }
       if (typeof i.currentTime === "number") {
         curTime = i.currentTime;
-        if (abA != null && abB != null && !seeking && curTime >= abB) { send("seekTo", [abA, true]); curTime = abA; }
+        if (abEnabled && abA != null && abB != null && !seeking && curTime >= abB) { send("seekTo", [abA, true]); curTime = abA; }
       }
       var t = (seeking ? Number(seek.value) : i.currentTime) || 0;
       timeLabel.textContent = fmt(t) + " / " + fmt(duration);
@@ -1323,19 +1324,36 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   seek.addEventListener("change", commitSeek);
   seek.addEventListener("pointerup", commitSeek);
   loopBtn.addEventListener("click", function () {
-    prefs.loop = !prefs.loop; savePrefs();
+    prefs.loop = !prefs.loop; savePrefs(); loopBtn.setAttribute("aria-pressed", String(prefs.loop));
     loopBtn.classList.toggle("active", prefs.loop);
     loopBtn.textContent = prefs.loop ? "🔁 Loop on" : "🔁 Loop off";
   });
+  var abToggle = document.createElement("button"); abToggle.type = "button"; abToggle.className = "chip";
+  abToggle.id = "abToggle"; abToggle.textContent = "Repeat A-B: on"; abToggle.setAttribute("aria-pressed", "true");
+  abLabel.parentNode.appendChild(abToggle);
+  var abFields = document.createElement("div"); abFields.className = "row"; abFields.style.marginTop = "10px";
+  abFields.innerHTML = '<label for="abFrom">A (seconds)</label><input id="abFrom" type="number" min="0" step="1" value="0" style="width:85px"><label for="abTo">B (seconds)</label><input id="abTo" type="number" min="1" step="1" value="10" style="width:85px"><button id="abApply" class="chip" type="button">Apply A-B</button>';
+  abLabel.parentNode.appendChild(abFields);
+  abToggle.addEventListener("click", function() { abEnabled = !abEnabled; updateAB(); });
+  $("abApply").addEventListener("click", function() {
+    var a = Number($("abFrom").value), b = Number($("abTo").value);
+    if (!curId) { abLabel.textContent = "Load a video first."; return; }
+    if (!isFinite(a) || !isFinite(b) || a < 0 || b <= a || (duration > 0 && b > duration)) { abLabel.textContent = "Use 0 ≤ A < B, within the video length."; return; }
+    abA = a; abB = b; abEnabled = true; updateAB(); send("seekTo", [a, true]);
+  });
+  loopBtn.setAttribute("aria-pressed", String(prefs.loop));
   function updateAB() {
+    if (abToggle) { abToggle.textContent = "Repeat A-B: " + (abEnabled ? "on" : "off"); abToggle.setAttribute("aria-pressed", String(abEnabled)); }
+    if (abA != null && $("abFrom")) $("abFrom").value = abA;
+    if (abB != null && $("abTo")) $("abTo").value = abB;
     aBtn.classList.toggle("active", abA != null);
     bBtn.classList.toggle("active", abB != null);
     if (abA == null && abB == null) abLabel.textContent = "Off";
     else if (abB == null) abLabel.textContent = "A " + fmt(abA) + " - set B to start repeating";
     else if (abA == null) abLabel.textContent = "B " + fmt(abB) + " - set A to start repeating";
-    else abLabel.textContent = "Repeating " + fmt(abA) + " to " + fmt(abB);
+    else abLabel.textContent = (abEnabled ? "Repeating " : "Paused repeat: ") + fmt(abA) + " to " + fmt(abB);
   }
-  function clearAB() { abA = null; abB = null; updateAB(); }
+  function clearAB() { abA = null; abB = null; abEnabled = true; updateAB(); }
   aBtn.addEventListener("click", function () {
     abA = Math.floor(curTime);
     if (abB != null && abB <= abA) abB = null;
@@ -2172,4 +2190,4 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
 </script>
 </body>
-  </html>
+    </html>
