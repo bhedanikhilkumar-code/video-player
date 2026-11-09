@@ -870,7 +870,9 @@ body{overflow-x:clip}
 
     <section id="lp" aria-labelledby="lpHeading">
       <h2 id="lpHeading">Play a file with volume boost</h2>
-      <input id="lpFile" type="file" accept="video/*,audio/*" aria-label="Choose a video or audio file from your device">
+      <input id="lpFile" type="file" multiple accept="video/*,audio/*" aria-label="Choose a video or audio file from your device">
+      <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button></div>
+      <p class="hint" id="lpSessionMsg" role="status">Select one or more local files. Notification and lock-screen controls are local-file only, where supported by your browser. They do not enable screen-off YouTube playback.</p>
       <video id="lpVideo" controls playsinline preload="metadata" crossorigin="anonymous" class="lp-video" hidden></video>
       <div id="lpCtl" hidden>
         <label class="dl-lab" for="lpGain">Volume boost: <b id="lpGainVal">100%</b></label>
@@ -1335,6 +1337,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     saveResume(true);
     var previous = findIn(lib.hist, id);
     if (startSec == null && previous >= 0 && lib.hist[previous].t >= 5) startSec = lib.hist[previous].t;
+    document.dispatchEvent(new Event("vp-youtube-selected"));
     curId = id; curTime = startSec || 0; lastResumeSave = 0; clearAB();
     miniDismissed = false; if (typeof updateMini === "function") requestAnimationFrame(updateMini);
     var rb = document.getElementById("resumeBox"); if (rb) rb.hidden = true;
@@ -1363,6 +1366,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     placeholder.style.display = "none";
     controls.hidden = false;
   }
+  document.addEventListener("vp-local-playing", function(){ send("pauseVideo"); });
   loadBtn.addEventListener("click", function () { loadVideo(null, null, undefined, true); });
 
   // Link shortcuts: ?url= (or ?v=) loads a video, ?text= picks the last link out of shared text,
@@ -2178,10 +2182,42 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c.textContent === lp.rate + "x"); });
   }
   var posKey = null, lastPos = 0;
+  var localFiles = [], localIndex = -1, session = "mediaSession" in navigator ? navigator.mediaSession : null;
+  var sessionMsg = $("lpSessionMsg");
+  function updateLocalButtons() { $("lpPrev").disabled = localIndex <= 0; $("lpNext").disabled = localIndex < 0 || localIndex >= localFiles.length - 1; }
+  function localPlay() { var p = vid.play(); if (p && p.catch) p.catch(function(){ sessionMsg.textContent = "Tap Play on the local player to continue. Your browser blocked automatic playback."; }); }
+  function playLocalAt(i, auto) {
+    if (i < 0 || i >= localFiles.length) return;
+    localIndex = i; var f = localFiles[i]; posKey = f.name + "|" + f.size;
+    show(URL.createObjectURL(f), true); updateLocalButtons();
+    sessionMsg.textContent = "File " + (i+1) + " of " + localFiles.length + ": " + f.name + (session ? ". Media controls available where your browser allows them." : ". This browser does not support Media Session controls.");
+    if (auto) localPlay();
+  }
+  function localStep(n) { if (localIndex+n >= 0 && localIndex+n < localFiles.length) playLocalAt(localIndex+n, true); }
+  $("lpPrev").addEventListener("click",function(){localStep(-1);});
+  $("lpNext").addEventListener("click",function(){localStep(1);});
   file.addEventListener("change", function () {
-    var f = file.files[0]; if (!f) return;
-    posKey = f.name + "|" + f.size; show(URL.createObjectURL(f), true);
+    localFiles = Array.prototype.slice.call(file.files || []); if (!localFiles.length) return;
+    playLocalAt(0, false);
   });
+  function mediaAction(name, fn) { if (session) try { session.setActionHandler(name, fn); } catch(e) {} }
+  function claimLocalSession() {
+    if (!session) return;
+    if (window.MediaMetadata) session.metadata = new MediaMetadata({title: localIndex >= 0 && localFiles[localIndex] ? localFiles[localIndex].name : "Local media", artist:"HD Video Player"});
+    mediaAction("play",localPlay); mediaAction("pause",function(){vid.pause();});
+    mediaAction("previoustrack",localIndex > 0 ? function(){localStep(-1);} : null);
+    mediaAction("nexttrack",localIndex >= 0 && localIndex < localFiles.length-1 ? function(){localStep(1);} : null);
+    mediaAction("seekbackward",function(d){vid.currentTime=Math.max(0,vid.currentTime-(d.seekOffset||10));});
+    mediaAction("seekforward",function(d){if(isFinite(vid.duration))vid.currentTime=Math.min(vid.duration,vid.currentTime+(d.seekOffset||10));});
+    mediaAction("seekto",function(d){if(isFinite(d.seekTime) && isFinite(vid.duration))vid.currentTime=Math.max(0,Math.min(vid.duration,d.seekTime));});
+    session.playbackState = "playing";
+    document.dispatchEvent(new Event("vp-local-playing"));
+  }
+  vid.addEventListener("play",claimLocalSession);
+  vid.addEventListener("pause",function(){if(session)session.playbackState="paused";});
+  vid.addEventListener("ended",function(){if(localIndex>=0 && localIndex<localFiles.length-1)localStep(1);else if(session)session.playbackState="none";});
+  vid.addEventListener("error",function(){sessionMsg.textContent="This file could not be played. Try a format your browser supports or choose Next file.";});
+  document.addEventListener("vp-youtube-selected",function(){vid.pause(); if(session) {session.metadata=null;session.playbackState="none";["play","pause","previoustrack","nexttrack","seekbackward","seekforward","seekto"].forEach(function(n){mediaAction(n,null);});}});
   vid.addEventListener("loadedmetadata", function () {
     if (!posKey) return;
     try { var m = JSON.parse(localStorage.getItem(PK) || "{}"), t = m[posKey]; if (t > 5 && t < vid.duration - 10) vid.currentTime = t; } catch (e) {}
@@ -2195,7 +2231,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       localStorage.setItem(PK, JSON.stringify(m));
     } catch (e) {}
   });
-  window.vpPlayUrl = function (url) { posKey = null; show(url, false); $("lp").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); };
+  window.vpPlayUrl = function (url) { localFiles = []; localIndex = -1; updateLocalButtons(); posKey = null; show(url, false); $("lp").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); };
 })();
 </script>
 <script>
