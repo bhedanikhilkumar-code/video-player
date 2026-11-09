@@ -651,6 +651,8 @@ body{overflow-x:clip}
 .gesture-pad .gp-vol { font-size: .8rem; }
 .gp-flash { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 700; color: var(--teal); background: rgba(58,138,119,.14); opacity: 0; pointer-events: none; transition: opacity .18s; }
 .gp-flash.show { opacity: 1; }
+.lib-search { margin: 4px 0 12px; }
+.lib-search input { width: 100%; }
 @media(max-width:480px) {.music-bar {padding:12px}.music-bar .btn {width:100%}.music-mode #musicQueue {padding:10px}}
 </style>
 </head>
@@ -940,6 +942,10 @@ body{overflow-x:clip}
         <button class="chip" id="libImport" type="button">Import backup</button>
         <input id="libImportFile" type="file" accept="application/json,.json" hidden>
         <span class="hint lib-tools-msg" id="libBackupMsg" role="status"></span>
+      </div>
+      <div class="lib-search">
+        <input id="libSearch" type="search" autocomplete="off" placeholder="Search your videos" aria-label="Search queue, playlists, favourites and recently watched">
+        <span class="hint" id="libSearchMsg" role="status"></span>
       </div>
       <div class="lib-head"><h3>Saved playlists</h3></div>
       <div class="row music-controls"><button class="btn" id="playMusicBtn" type="button">Play Music</button><button class="chip" id="saveMusicBtn" type="button">Save queue as Music</button></div>
@@ -1769,6 +1775,51 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var baseRenderLib = renderLib;
   renderLib = function () { baseRenderLib(); decorateQueue(); };
   decorateQueue();
+
+  // ---- Library search: filters queue, playlists, favourites and recently watched as you type ----
+  var libSearch = $("libSearch"), libSearchMsg = $("libSearchMsg");
+  function applyLibSearch() {
+    if (!libSearch) return;
+    var q = libSearch.value.trim().toLowerCase(), shown = 0, total = 0;
+    function filt(ul, items) {
+      if (!ul) return;
+      var vi = 0;
+      Array.prototype.forEach.call(ul.children, function (li) {
+        if (li.querySelector && li.querySelector(".lib-empty")) return;
+        var it = items[vi]; vi++;
+        if (!it) return;
+        total++;
+        var ok = !q || ((it.title || "") + " " + it.id).toLowerCase().indexOf(q) >= 0;
+        li.style.display = ok ? "" : "none";
+        if (ok) shown++;
+      });
+    }
+    filt(queueList, lib.queue); filt(favList, lib.favs); filt(histList, lib.hist);
+    if (plList && typeof playlists !== "undefined" && playlists) {
+      var pi = 0;
+      Array.prototype.forEach.call(plList.children, function (li) {
+        if (li.querySelector && li.querySelector(".lib-empty")) return;
+        var pl = playlists[pi]; pi++;
+        if (!pl) return;
+        total++;
+        var hay = pl.name.toLowerCase();
+        pl.items.forEach(function (x) { hay += " " + (x.title || "").toLowerCase() + " " + x.id; });
+        var ok = !q || hay.indexOf(q) >= 0;
+        li.style.display = ok ? "" : "none";
+        if (ok) shown++;
+      });
+    }
+    libSearchMsg.textContent = q ? (shown ? "Showing " + shown + " of " + total + " saved items." : "Nothing matches. Try another word.") : "";
+  }
+  if (libSearch) {
+    libSearch.addEventListener("input", applyLibSearch);
+    libSearch.addEventListener("keydown", function (e) { if (e.key === "Escape") { libSearch.value = ""; applyLibSearch(); } });
+  }
+  var baseRenderLibS = renderLib;
+  renderLib = function () { baseRenderLibS(); applyLibSearch(); };
+  var baseRenderPlaylistsS = renderPlaylists;
+  renderPlaylists = function () { baseRenderPlaylistsS(); applyLibSearch(); };
+  applyLibSearch();
 
   function renderQueueModes() {
     [["shuffleQueueBtn","shuffle","Shuffle"],["repeatQueueBtn","repeat","Repeat queue"],["autoNextBtn","auto","Auto-next"]].forEach(function(x) {
