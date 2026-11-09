@@ -200,6 +200,125 @@ def playlist():
     return jsonify(error={"code": code, "message": err or "Could not read that playlist."}), 400
 
 
+WATCH_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+                 "Accept-Language": "en-US,en;q=0.9", "Cookie": "SOCS=CAI"}
+CH_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
+CH_CACHE = {}
+
+def _ts_sec(s):
+    try:
+        sec = 0
+        for x in s.strip().split(":"):
+            sec = sec * 60 + int(x)
+        return sec
+    except (ValueError, AttributeError):
+        return None
+
+def _walk_markers(o, out):
+    if isinstance(o, dict):
+        r = o.get("macroMarkersListItemRenderer")
+        if isinstance(r, dict):
+            t = ((r.get("title") or {}).get("simpleText") or "").strip()
+            tm = ((r.get("timeDescription") or {}).get("simpleText") or "").strip()
+            sec = _ts_sec(tm) if tm else None
+            if t and sec is not None:
+                out.append({"t": sec, "label": t[:120]})
+        for v in o.values():
+            _walk_markers(v, out)
+    elif isinstance(o, list):
+        for v in o:
+            _walk_markers(v, out)
+
+def _extract_initial_data(html):
+    i = html.find("ytInitialData")
+    if i < 0:
+        return None
+    j = html.find("{", i)
+    if j < 0:
+        return None
+    depth = 0
+    instr = False
+    esc = False
+    for k in range(j, min(j + 8000000, len(html))):
+        c = html[k]
+        if instr:
+            if esc:
+                esc = False
+            elif c == "\\":
+                esc = True
+            elif c == '"':
+                instr = False
+        else:
+            if c == '"':
+                instr = True
+            elif c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+                if depth == 0:
+                    import json as _json
+                    try:
+                        return _json.loads(html[j:k + 1])
+                    except Exception:
+                        return None
+    return None
+
+def fetch_chapters(vid):
+    import urllib.request
+    req = urllib.request.Request("https://www.youtube.com/watch?v=" + vid + "&hl=en&gl=US", headers=WATCH_HEADERS)
+    with urllib.request.urlopen(req, timeout=15) as r:
+        html = r.read(4000000).decode("utf-8", "replace")
+    chs = []
+    data = _extract_initial_data(html)
+    if data:
+        _walk_markers(data, chs)
+    if not chs:
+        # Fallback: timestamp lines inside the description preview text.
+        m = re.search(r'"attributedDescription":\{"content":"((?:[^"\\]|\\.)*)"', html)
+        if m:
+            try:
+                import json as _json
+                desc = _json.loads('"' + m.group(1) + '"')
+            except Exception:
+                desc = ""
+            for line in desc.split("\n"):
+                mm = re.match(r"^\s*(\d{1,2}(?::\d{1,2}){1,2})\s+(.{2,120}?)\s*$", line)
+                if mm:
+                    sec = _ts_sec(mm.group(1))
+                    if sec is not None:
+                        chs.append({"t": sec, "label": mm.group(2).strip()[:120]})
+    seen = set()
+    out = []
+    for c in sorted(chs, key=lambda x: x["t"]):
+        if c["t"] in seen:
+            continue
+        seen.add(c["t"])
+        out.append(c)
+    return out[:100]
+
+@app.get("/chapters")
+def chapters():
+    vid = request.args.get("id", "")
+    if not CH_ID.fullmatch(vid or ""):
+        return jsonify(error={"code": "bad_id", "message": "That video id doesn't look right."}), 400
+    now = time.time()
+    with LOCK:
+        hit = CH_CACHE.get(vid)
+        if hit and now - hit[0] < 600:
+            return hit[1]
+    try:
+        data = {"chapters": fetch_chapters(vid)}
+    except Exception as e:
+        err = re.sub(r"\x1b\[[0-9;]*m", "", str(e))[:200]
+        code = "site_blocked" if re.search(r"429|403|sign in|bot|Forbidden", err, re.I) else "extract_failed"
+        return jsonify(error={"code": code, "message": err or "Could not read chapters."}), 400
+    with LOCK:
+        if len(CH_CACHE) > 200:
+            CH_CACHE.clear()
+        CH_CACHE[vid] = (now, data)
+    return data
+
+
 @app.get("/health")
 def health(): return {"ok": True, "yt_dlp": yt_dlp.version.__version__, "ffmpeg": bool(shutil.which("ffmpeg"))}
 
