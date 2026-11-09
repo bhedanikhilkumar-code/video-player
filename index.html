@@ -786,6 +786,14 @@ body{overflow-x:clip}
           <div class="chips" id="qualityChips"></div>
         </div>
 
+        <div class="ctl-card" id="ctl-subs">
+          <h3>Subtitles</h3>
+          <div class="row"><button class="chip" id="ccBtn" type="button" aria-pressed="false">CC off</button></div>
+          <span class="label">Language shortcut</span>
+          <div class="chips" id="ccLangChips"></div>
+          <p class="hint">Subtitles show only when the video has them. If the language is missing, YouTube uses the video's default.</p>
+        </div>
+
         <div class="ctl-card" id="ctl-repeat">
           <h3>Repeat</h3>
           <div class="row"><button class="chip" id="loopBtn">🔁 Loop off</button></div>
@@ -829,6 +837,7 @@ body{overflow-x:clip}
             <li><b>Up / Down</b>: volume up / down</li>
             <li><b>M</b>: mute, <b>F</b>: full screen, <b>R</b>: loop on / off, <b>N</b>: next in queue</li>
             <li><b>0 - 9</b>: jump to 0% - 90% of the video</li>
+            <li><b>C</b>: subtitles on / off</li>
           </ul>
           <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
         </details>
@@ -1025,10 +1034,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
-  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto" };
+  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto" };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; ["cc", "ccLang"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
 
@@ -1254,6 +1263,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (data.event === "onReady") {
       ready = true; playBtn.disabled = false;
       send("setVolume", [prefs.volume]);
+      ccApply();
       if (prefs.speed !== 1) send("setPlaybackRate", [prefs.speed]);
     }
     if (data.event === "onStateChange" && typeof data.info === "number") {
@@ -1620,6 +1630,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (k === "f" || k === "F") fsBtn.click();
     else if (k === "r" || k === "R") loopBtn.click();
     else if (k === "n" || k === "N") nextBtn.click();
+    else if (k === "c" || k === "C") $("ccBtn").click();
     else if (/^[0-9]$/.test(k) && duration > 0) { var t = duration * Number(k) / 10; send("seekTo", [t, true]); curTime = t; seek.value = t; }
     else handled = false;
     if (handled) e.preventDefault();
@@ -2128,6 +2139,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   window.addEventListener("pagehide", saveStats);
   renderStats();
+
+  // Subtitles: the official captions module of the YouTube iframe player, plus a language shortcut.
+  var ccBtn = $("ccBtn"), ccLangChips = $("ccLangChips");
+  var CC_LANGS = [["auto", "Auto"], ["en", "English"], ["hi", "Hindi"], ["gu", "Gujarati"]];
+  function ccApply() {
+    if (!ready || !iframe) return;
+    if (prefs.cc) {
+      send("loadModule", ["captions"]);
+      if (prefs.ccLang === "auto") send("setOption", ["captions", "track", {}]);
+      else send("setOption", ["captions", "track", { languageCode: prefs.ccLang }]);
+    } else send("unloadModule", ["captions"]);
+  }
+  function ccRender() {
+    if (!ccBtn) return;
+    ccBtn.textContent = prefs.cc ? "CC on" : "CC off";
+    ccBtn.setAttribute("aria-pressed", prefs.cc ? "true" : "false");
+    markActive(ccLangChips, prefs.ccLang);
+  }
+  if (ccBtn) {
+    ccBtn.addEventListener("click", function () { prefs.cc = !prefs.cc; savePrefs(); ccRender(); ccApply(); });
+    CC_LANGS.forEach(function (o) {
+      var b = document.createElement("button"); b.className = "chip"; b.type = "button";
+      b.textContent = o[1]; b.dataset.value = o[0]; b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () { prefs.ccLang = o[0]; prefs.cc = true; savePrefs(); ccRender(); ccApply(); });
+      ccLangChips.appendChild(b);
+    });
+    ccRender();
+  }
 })();
 </script>
 <script>
