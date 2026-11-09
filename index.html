@@ -931,6 +931,13 @@ body{overflow-x:clip}
       <ul class="lib-list" id="plList"></ul>
       <div id="musicQueue">
       <div class="lib-head"><h3>Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
+      <div class="row music-controls" aria-label="Queue playback options">
+        <button class="chip" id="prevQueueBtn" type="button">Previous</button>
+        <button class="chip" id="shuffleQueueBtn" type="button" aria-pressed="false">Shuffle: off</button>
+        <button class="chip" id="repeatQueueBtn" type="button" aria-pressed="false">Repeat queue: off</button>
+        <button class="chip" id="autoNextBtn" type="button" aria-pressed="true">Auto-next: on</button>
+      </div>
+      <p class="hint" id="queueModeMsg" role="status">Auto-next is on. Video repeat and A-B repeat take priority.</p>
       <ul class="lib-list" id="queueList"></ul>
       </div>
       <div class="lib-head"><h3>Favourites</h3></div>
@@ -1088,14 +1095,30 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     saveLib(); renderLib();
     return added;
   }
+  var queueModes = { shuffle: false, repeat: false, auto: true }, shuffleBag = [], queueSignature = "", shuffleFinished = false, failedQueueCount = 0;
+  try { var qm = JSON.parse(localStorage.getItem("vp-queue-modes.v1") || "null"); if (qm) ["shuffle","repeat","auto"].forEach(function(k) { if (typeof qm[k] === "boolean") queueModes[k] = qm[k]; }); } catch(e) {}
+  function resetShuffle() { shuffleBag = []; queueSignature = ""; shuffleFinished = false; }
   function playNext() {
+    if (!lib.queue.length) return false;
     var next = qPos + 1;
-    if (next >= lib.queue.length) return false;
-    playQueueAt(next);
+    if (queueModes.shuffle) {
+      var signature = lib.queue.map(function(x){return x.id;}).join(",");
+      if (signature !== queueSignature) { resetShuffle(); queueSignature = signature; }
+      if (!shuffleBag.length) {
+        if (shuffleFinished && !queueModes.repeat) return false;
+        shuffleBag = lib.queue.map(function(_,i){return i;}).filter(function(i){return i !== qPos;});
+        for (var j=shuffleBag.length-1;j>0;j--) {var r=Math.floor(Math.random()*(j+1)), t=shuffleBag[j];shuffleBag[j]=shuffleBag[r];shuffleBag[r]=t;}
+        if (!shuffleBag.length && queueModes.repeat) shuffleBag.push(qPos < 0 ? 0 : qPos);
+      }
+      if (!shuffleBag.length) return false;
+      next = shuffleBag.pop(); if (!shuffleBag.length) shuffleFinished = true;
+    } else if (next >= lib.queue.length) { if (!queueModes.repeat) return false; next = 0; }
+    playQueueAt(next, true);
     return true;
   }
-  function playQueueAt(i) {
+  function playQueueAt(i, advancing) {
     if (i < 0 || i >= lib.queue.length) return;
+    if (!advancing) { resetShuffle(); failedQueueCount = 0; }
     linkInput.value = lib.queue[i].id;
     loadVideo(null, null, i, true);
   }
@@ -1206,13 +1229,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     if (data.event === "onStateChange" && typeof data.info === "number") {
       if (sleepPaused && data.info === 1) { send("pauseVideo"); return; }
-      playing = data.info === 1;
+      playing = data.info === 1; if (playing) failedQueueCount = 0;
       playBtn.textContent = playing ? "⏸ Pause" : "▶ Play";
       if (data.info === 0 && sleepPaused) return;
       if (data.info === 0 && abEnabled && abA != null && abB != null) { send("seekTo", [abA, true]); send("playVideo"); }
       else if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); }
-      else if (data.info === 0 && lib.queue.length) {
-        if (qPos < 0) playQueueAt(0); else playNext();
+      else if (data.info === 0 && lib.queue.length && queueModes.auto) {
+        if (qPos < 0) playQueueAt(0); else if (!playNext()) $("queueModeMsg").textContent = "Queue finished. Tap a video to play again.";
       }
     }
     if (data.event === "onPlaybackQualityChange" && typeof data.info === "string") markActive(qualityChips, data.info);
@@ -1223,10 +1246,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (iframe) { iframe.remove(); iframe = null; }
       placeholder.style.display = "";
       controls.hidden = true;
-      if (qPos >= 0 && qPos + 1 < lib.queue.length) {
+      failedQueueCount++;
+      if (qPos >= 0 && queueModes.auto && !sleepPaused && failedQueueCount < lib.queue.length) {
         var skipFrom = qPos;
         setTimeout(function () {
-          if (qPos !== skipFrom || iframe) return;
+          if (qPos !== skipFrom || iframe || sleepPaused || !queueModes.auto) return;
           if (playNext()) showLibErr("A video in the queue could not be played here and was skipped.");
         }, 1500);
       }
@@ -1677,6 +1701,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var baseRenderLib = renderLib;
   renderLib = function () { baseRenderLib(); decorateQueue(); };
   decorateQueue();
+
+  function renderQueueModes() {
+    [["shuffleQueueBtn","shuffle","Shuffle"],["repeatQueueBtn","repeat","Repeat queue"],["autoNextBtn","auto","Auto-next"]].forEach(function(x) {
+      $(x[0]).textContent = x[2] + ": " + (queueModes[x[1]] ? "on" : "off"); $(x[0]).setAttribute("aria-pressed", String(queueModes[x[1]])); $(x[0]).classList.toggle("active",queueModes[x[1]]);
+    });
+  }
+  [["shuffleQueueBtn","shuffle"],["repeatQueueBtn","repeat"],["autoNextBtn","auto"]].forEach(function(x) {
+    $(x[0]).addEventListener("click", function() { queueModes[x[1]] = !queueModes[x[1]]; resetShuffle(); renderQueueModes();
+      try { localStorage.setItem("vp-queue-modes.v1",JSON.stringify(queueModes)); } catch(e) {}
+      $("queueModeMsg").textContent = "Shuffle " + (queueModes.shuffle ? "on" : "off") + ". Repeat queue " + (queueModes.repeat ? "on" : "off") + ". Auto-next " + (queueModes.auto ? "on" : "off") + ". A-B and video repeat take priority.";
+    });
+  });
+  $("prevQueueBtn").addEventListener("click",function(){ if(qPos > 0) playQueueAt(qPos-1); else if(queueModes.repeat && lib.queue.length) playQueueAt(lib.queue.length-1); else $("queueModeMsg").textContent="No previous video in queue order."; });
+  renderQueueModes();
 
   // Music mode uses the same official iframe and queue, never a hidden audio track.
   var musicQueue = $("musicQueue"), musicHome = document.createComment("queue home"), musicMode = false;
@@ -2304,4 +2342,4 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
 </script>
 </body>
-  </html>
+        </html>
