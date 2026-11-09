@@ -661,6 +661,8 @@ body{overflow-x:clip}
 :root[data-accent="purple"] { --teal: #7a4fd0; }
 :root[data-accent="orange"] { --teal: #c96a1f; }
 :root[data-accent="pink"] { --teal: #d02f7a; }
+.cont-prog { display: block; height: 4px; border-radius: 2px; background: var(--hairline); margin-top: 6px; overflow: hidden; }
+.cont-prog > i { display: block; height: 100%; background: var(--teal); }
 </style>
 </head>
 <body>
@@ -966,6 +968,10 @@ body{overflow-x:clip}
         <input id="libSearch" type="search" autocomplete="off" placeholder="Search your videos" aria-label="Search queue, playlists, favourites and recently watched">
         <span class="hint" id="libSearchMsg" role="status"></span>
       </div>
+      <div id="continueWrap" hidden>
+        <div class="lib-head"><h3 id="lhContinue">Continue watching</h3></div>
+        <ul class="lib-list" id="continueList"></ul>
+      </div>
       <div class="lib-head"><h3 id="lhPlaylists">Saved playlists</h3></div>
       <div class="row music-controls"><button class="btn" id="playMusicBtn" type="button">Play Music</button><button class="chip" id="saveMusicBtn" type="button">Save queue as Music</button></div>
       <p class="hint">Save your current queue as Music once. Play Music starts that saved list in Music mode. Saved on this device only.</p>
@@ -1171,6 +1177,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     loadVideo(null, null, i, true);
   }
   function renderLib() {
+    renderContinue();
     fillList(queueList, lib.queue, "Queue is empty. Add links with Add to queue.", "Remove", function (item, idx) {
       lib.queue.splice(idx, 1);
       if (idx < qPos) qPos--; else if (idx === qPos) qPos = -1;
@@ -2281,6 +2288,32 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   if ($("langBtn")) $("langBtn").addEventListener("click", function () { prefs.lang = prefs.lang === "hi" ? "en" : "hi"; savePrefs(); applyLang(); });
   applyLang();
+
+  // Continue watching: every video with a saved position, with progress, not just the last one.
+  function renderContinue() {
+    var wrap = $("continueWrap"); if (!wrap) return;
+    var ul = $("continueList"); ul.innerHTML = "";
+    var items = lib.hist.filter(function (x) { return x.t >= 10 && x.dur > 0 && x.t < x.dur - 5; }).slice(0, 6);
+    wrap.hidden = !items.length;
+    items.forEach(function (item) {
+      var li = document.createElement("li"); li.className = "lib-item";
+      var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
+      var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
+      img.src = "https://i.ytimg.com/vi/" + item.id + "/default.jpg";
+      var box = document.createElement("span");
+      var span = document.createElement("span");
+      span.textContent = (item.title || ("Video " + item.id)) + " \u00b7 " + fmt(item.t) + " / " + fmt(item.dur);
+      var prog = document.createElement("span"); prog.className = "cont-prog";
+      var fill = document.createElement("i"); fill.style.width = Math.min(100, Math.round(item.t / item.dur * 100)) + "%";
+      prog.appendChild(fill); box.appendChild(span); box.appendChild(prog);
+      open.appendChild(img); open.appendChild(box);
+      open.addEventListener("click", function () { linkInput.value = "https://youtu.be/" + item.id; loadVideo(item.t, null, undefined, true); });
+      var act = document.createElement("button"); act.className = "chip"; act.type = "button"; act.textContent = "Remove";
+      act.addEventListener("click", function () { item.t = 0; saveLib(); renderLib(); });
+      li.appendChild(open); li.appendChild(act); ul.appendChild(li);
+    });
+  }
+  renderContinue();
 })();
 </script>
 <script>
