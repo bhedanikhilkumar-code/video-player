@@ -810,7 +810,7 @@ body{overflow-x:clip}
           <h3>Share and save</h3>
           <div class="row">
             <button class="chip" id="favBtn">☆ Add to favourites</button>
-            <button class="chip" id="shareBtn">🔗 Copy link at this time</button>
+            <button class="chip" id="shareBtn">🔗 Share at this time</button>
             <button class="chip" id="qrBtn" type="button">QR code</button>
           </div>
           <span class="label" id="shareMsg" role="status"></span>
@@ -1499,11 +1499,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   abClearBtn.addEventListener("click", clearAB);
   shareBtn.addEventListener("click", function () {
-    if (!curId) return;
-    var link = shareLink();
-    function done(ok) { shareMsg.textContent = ok ? "Link copied" : "Copy this link: " + link; }
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(function () { done(true); }, function () { done(false); });
-    else done(false);
+    if (!curId) { shareMsg.textContent = "Load a video first, then share it at the current time."; return; }
+    var link = shareLink(), at = fmt(Math.floor(curTime));
+    function copyFallback() {
+      function done(ok) { shareMsg.textContent = ok ? "Copied. The link opens this video at " + at + "." : "Copy this link (opens at " + at + "): " + link; }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(function () { done(true); }, function () { done(false); });
+      else done(false);
+    }
+    if (navigator.share) {
+      navigator.share({ title: infoTitle.textContent || "Video", text: "Watch from " + at + ": " + link, url: link }).then(function () {
+        shareMsg.textContent = "Shared. The link opens this video at " + at + ".";
+      }, function (err) {
+        if (err && err.name === "AbortError") { shareMsg.textContent = "Share cancelled - nothing was sent."; return; }
+        copyFallback();
+      });
+    } else copyFallback();
   });
 
   // Sleep timer: pauses the video (and stops the queue) when time is up.
@@ -2519,4 +2529,4 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
 </script>
 </body>
-      </html>
+  </html>
