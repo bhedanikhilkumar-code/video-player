@@ -646,6 +646,11 @@ body{overflow-x:clip}
 .music-mode #queueList {max-height:380px;overflow:auto;overscroll-behavior:contain}
 .music-mode #queueList .lib-open {min-height:52px}
 .music-mode #musicQueue:focus {outline:2px solid var(--teal)}
+.gesture-pad { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 96px; border: 1.5px dashed var(--hairline); border-radius: 16px; padding: 14px 18px; text-align: center; color: var(--ink2); user-select: none; -webkit-user-select: none; touch-action: none; cursor: pointer; overflow: hidden; }
+.gesture-pad .gp-half { font-weight: 600; font-size: .95rem; line-height: 1.35; color: var(--ink); }
+.gesture-pad .gp-vol { font-size: .8rem; }
+.gp-flash { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 700; color: var(--teal); background: rgba(58,138,119,.14); opacity: 0; pointer-events: none; transition: opacity .18s; }
+.gp-flash.show { opacity: 1; }
 @media(max-width:480px) {.music-bar {padding:12px}.music-bar .btn {width:100%}.music-mode #musicQueue {padding:10px}}
 </style>
 </head>
@@ -668,6 +673,7 @@ body{overflow-x:clip}
     <a class="feat" href="#link">Link</a>
     <a class="feat" href="#player">Player</a>
     <a class="feat" href="#musicBar">Music mode</a>
+    <a class="feat" href="#ctl-gestures">Gestures</a>
     <a class="feat" href="#ctl-sound">Sound</a>
     <a class="feat" href="#ctl-speed">Speed</a>
     <a class="feat" href="#ctl-quality">Quality</a>
@@ -745,6 +751,18 @@ body{overflow-x:clip}
           </div>
           <label class="label" for="seek">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
+        </div>
+
+        <div class="ctl-card wide" id="ctl-gestures">
+          <h3>Gesture pad</h3>
+          <div class="gesture-pad" id="gesturePad" tabindex="0" role="group" aria-label="Gesture pad. Double-tap the left side to go back 10 seconds, the right side to go forward 10 seconds. Swipe up or down to change the volume.">
+            <span class="gp-half">Double-tap<br>-10s</span>
+            <span class="gp-vol">swipe up / down<br>for volume</span>
+            <span class="gp-half">Double-tap<br>+10s</span>
+            <span class="gp-flash" id="gpFlash" aria-hidden="true"></span>
+          </div>
+          <span class="label" id="gpMsg" role="status"></span>
+          <p class="hint">The video area is YouTube's own player, so quick gestures live on this pad instead of covering the video. On the video itself, use YouTube's own controls.</p>
         </div>
 
         <div class="ctl-card" id="ctl-sound">
@@ -1573,6 +1591,52 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else handled = false;
     if (handled) e.preventDefault();
   });
+
+  // ---- Gesture pad: double-tap to skip 10 seconds, swipe up/down for volume ----
+  // The video area is the official YouTube player (cross-origin), so gestures live
+  // on this pad instead of an overlay that would cover YouTube's own controls.
+  (function () {
+    var pad = $("gesturePad"), flash = $("gpFlash"), msg = $("gpMsg");
+    if (!pad) return;
+    var lastTap = 0, lastSide = "", sx = 0, sy = 0, tracking = false, flashTimer = 0;
+    function padReady() { return !!iframe && !controls.hidden; }
+    function say(t) { msg.textContent = t; }
+    function showFlash(text) {
+      flash.textContent = text; flash.classList.add("show");
+      if (flashTimer) clearTimeout(flashTimer);
+      flashTimer = setTimeout(function () { flash.classList.remove("show"); }, 450);
+    }
+    pad.addEventListener("pointerdown", function (e) { tracking = true; sx = e.clientX; sy = e.clientY; });
+    pad.addEventListener("pointercancel", function () { tracking = false; });
+    pad.addEventListener("pointerup", function (e) {
+      if (!tracking) return; tracking = false;
+      if (!padReady()) { say("Load a video first, then the pad skips and changes volume."); return; }
+      var dx = e.clientX - sx, dy = e.clientY - sy;
+      if (Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(dx) * 1.2) {
+        var steps = Math.min(10, Math.max(1, Math.round(Math.abs(dy) / 24)));
+        volBy((dy < 0 ? 5 : -5) * steps);
+        showFlash("\ud83d\udd0a " + prefs.volume + "%");
+        say("Volume " + prefs.volume + "%.");
+        return;
+      }
+      if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        seekBy(dx < 0 ? -30 : 30);
+        showFlash(dx < 0 ? "-30s" : "+30s");
+        say((dx < 0 ? "Back" : "Forward") + " 30 seconds, now at " + fmt(curTime) + ".");
+        return;
+      }
+      if (Math.abs(dx) > 12 || Math.abs(dy) > 12) return;
+      var r = pad.getBoundingClientRect();
+      var side = (e.clientX - r.left) < r.width / 2 ? "left" : "right";
+      var now = Date.now();
+      if (now - lastTap < 350 && side === lastSide) {
+        lastTap = 0; lastSide = "";
+        seekBy(side === "left" ? -10 : 10);
+        showFlash(side === "left" ? "-10s" : "+10s");
+        say((side === "left" ? "Back" : "Forward") + " 10 seconds, now at " + fmt(curTime) + ".");
+      } else { lastTap = now; lastSide = side; }
+    });
+  })();
 
   if (!document.documentElement.requestFullscreen && !document.documentElement.webkitRequestFullscreen) fsBtn.hidden = true;
   fsBtn.addEventListener("click", function () {
