@@ -925,6 +925,8 @@ body{overflow-x:clip}
         <span class="hint lib-tools-msg" id="libBackupMsg" role="status"></span>
       </div>
       <div class="lib-head"><h3>Saved playlists</h3></div>
+      <div class="row music-controls"><button class="btn" id="playMusicBtn" type="button">Play Music</button><button class="chip" id="saveMusicBtn" type="button">Save queue as Music</button></div>
+      <p class="hint">Save your current queue as Music once. Play Music starts that saved list in Music mode. Saved on this device only.</p>
       <div class="pl-save">
         <input id="plName" type="text" maxlength="40" autocomplete="off" placeholder="Playlist name, e.g. Study" aria-label="Playlist name">
         <button class="chip" id="plSaveBtn" type="button">Save queue as playlist</button>
@@ -1805,6 +1807,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     savePlaylists(); renderPlaylists(); plName.value = ""; plSay("Saved \"" + name + "\" with " + lib.queue.length + " video" + (lib.queue.length === 1 ? "" : "s") + ".");
   });
   plName.addEventListener("keydown", function (e) { if (e.key === "Enter") $("plSaveBtn").click(); });
+  function playMusicList(pl) {
+    if (!pl || !pl.items.length) { plSay("No Music playlist yet. Add videos to your queue, then tap Save queue as Music."); return; }
+    lib.queue = pl.items.map(function(x){return {id:x.id,title:x.title};}); qPos=-1; resetShuffle();
+    saveLib(); renderLib(); setMusicMode(true); playQueueAt(0);
+    plSay("Playing Music. Your saved list is now in the queue."); $("musicBar").scrollIntoView({block:"start",behavior:"smooth"});
+  }
+  $("playMusicBtn").addEventListener("click",function(){var i=plFind("Music");playMusicList(i>=0?playlists[i]:null);});
+  $("saveMusicBtn").addEventListener("click",function(){
+    if (!lib.queue.length) {plSay("Add some videos to your queue first, then save Music.");return;}
+    var i=plFind("Music");
+    if(i>=0 && !window.confirm("Replace your saved Music playlist with the current queue?"))return;
+    if(i<0 && playlists.length>=PL_MAX){plSay("Your saved playlists are full. Delete one first.");return;}
+    var p={name:"Music",items:lib.queue.map(function(x){return {id:x.id,title:x.title||""};})};
+    if(i>=0)playlists[i]=p;else playlists.push(p);savePlaylists();renderPlaylists();plSay("Music saved. Tap Play Music any time.");
+  });
   renderPlaylists();
 
   // ---- Library backup: export and import queue + favourites as a file ----
