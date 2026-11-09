@@ -654,6 +654,13 @@ body{overflow-x:clip}
 .lib-search { margin: 4px 0 12px; }
 .lib-search input { width: 100%; }
 @media(max-width:480px) {.music-bar {padding:12px}.music-bar .btn {width:100%}.music-mode #musicQueue {padding:10px}}
+.accent-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 6px 0 2px; }
+.accent-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--hairline); cursor: pointer; padding: 0; }
+.accent-dot.active { outline: 3px solid var(--teal); outline-offset: 2px; }
+:root[data-accent="blue"] { --teal: #2f6fd0; }
+:root[data-accent="purple"] { --teal: #7a4fd0; }
+:root[data-accent="orange"] { --teal: #c96a1f; }
+:root[data-accent="pink"] { --teal: #d02f7a; }
 </style>
 </head>
 <body>
@@ -927,6 +934,9 @@ body{overflow-x:clip}
         <h3>Accessibility</h3>
         <label class="dl-chk"><input type="checkbox" id="a11yBig"> Larger text</label>
         <label class="dl-chk"><input type="checkbox" id="a11yHc"> High contrast (solid colors, strong borders)</label>
+        <p class="label" style="margin:10px 0 2px">App color</p>
+        <div class="accent-row" id="accentRow" role="group" aria-label="App color"></div>
+        <p class="hint">Changes the main accent color of the app. Saved on this device.</p>
         <p class="hint">The app also follows your device settings for reduced motion and contrast. Keyboard shortcuts are listed under the player, and every control works with a keyboard and a screen reader.</p>
       </div>
       <div class="help-card">
@@ -1034,10 +1044,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
-  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto" };
+  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default" };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; ["cc", "ccLang"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; ["cc", "ccLang", "accent"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
 
@@ -1207,7 +1217,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var metas = document.querySelectorAll('meta[name="theme-color"]');
     for (var mi = 0; mi < metas.length; mi++) {
       if (!metas[mi].hasAttribute("data-orig")) metas[mi].setAttribute("data-orig", metas[mi].getAttribute("content"));
-      metas[mi].setAttribute("content", prefs.theme === "auto" ? metas[mi].getAttribute("data-orig") : (dark ? "#131012" : "#3f8f7d"));
+      metas[mi].setAttribute("content", prefs.theme === "auto" ? metas[mi].getAttribute("data-orig") : (dark ? "#131012" : accentHex()));
     }
     themeBtn.setAttribute("aria-label", "Theme: " + themeLabel + ". Activate to change theme.");
   }
@@ -2167,6 +2177,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
     ccRender();
   }
+
+  // App color: accent presets on top of the light/dark theme.
+  var ACCENTS = [["default", "#3a8a77"], ["blue", "#2f6fd0"], ["purple", "#7a4fd0"], ["orange", "#c96a1f"], ["pink", "#d02f7a"]];
+  function accentHex() {
+    if (typeof ACCENTS === "undefined") return "#3f8f7d";
+    for (var i = 0; i < ACCENTS.length; i++) if (ACCENTS[i][0] === prefs.accent) return ACCENTS[i][1];
+    return "#3f8f7d";
+  }
+  function applyAccent() {
+    if (prefs.accent === "default") document.documentElement.removeAttribute("data-accent");
+    else document.documentElement.setAttribute("data-accent", prefs.accent);
+    var row = $("accentRow");
+    if (row) Array.prototype.forEach.call(row.children, function (b) { b.classList.toggle("active", b.dataset.value === prefs.accent); });
+  }
+  var accentRow = $("accentRow");
+  if (accentRow) {
+    ACCENTS.forEach(function (o) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "accent-dot";
+      b.dataset.value = o[0]; b.style.background = o[1];
+      b.setAttribute("aria-label", "App color: " + o[0]);
+      b.addEventListener("click", function () { prefs.accent = o[0]; savePrefs(); applyAccent(); applyTheme(); });
+      accentRow.appendChild(b);
+    });
+  }
+  applyAccent(); applyTheme();
 })();
 </script>
 <script>
