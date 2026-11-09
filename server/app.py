@@ -145,6 +145,61 @@ def cleanup():
                 if d: shutil.rmtree(d, ignore_errors=True)
 threading.Thread(target=cleanup, daemon=True).start()
 
+
+PLAYLIST_ID = re.compile(r"^[A-Za-z0-9_-]{5,80}$")
+
+def playlist_flat(pid):
+    """Full playlist listing via yt-dlp flat extraction. Reads metadata only, downloads nothing."""
+    o = {"quiet": True, "no_warnings": True, "extract_flat": True, "socket_timeout": 20, "retries": 1}
+    with yt_dlp.YoutubeDL(o) as y:
+        i = y.extract_info("https://www.youtube.com/playlist?list=" + pid, download=False)
+    vids = []
+    for e in (i.get("entries") or []):
+        if e and e.get("id"):
+            vids.append({"id": e.get("id"), "title": e.get("title") or ""})
+        if len(vids) >= 200:
+            break
+    return i.get("title") or "", vids
+
+def playlist_feed(pid):
+    """Fallback: YouTube's public Atom feed for the playlist (15 newest videos)."""
+    import urllib.request, xml.etree.ElementTree as ET
+    req = urllib.request.Request(
+        "https://www.youtube.com/feeds/videos.xml?playlist_id=" + pid,
+        headers={"User-Agent": "Mozilla/5.0 (playlist reader)"})
+    with urllib.request.urlopen(req, timeout=15) as r:
+        root = ET.fromstring(r.read(2000000))
+    ns = {"a": "http://www.w3.org/2005/Atom", "yt": "http://www.youtube.com/xml/schemas/2015"}
+    vids = []
+    for e in root.findall("a:entry", ns):
+        vid = e.findtext("yt:videoId", default="", namespaces=ns)
+        if vid and re.fullmatch(r"[A-Za-z0-9_-]{11}", vid):
+            vids.append({"id": vid, "title": e.findtext("a:title", default="", namespaces=ns) or ""})
+    return root.findtext("a:title", default="", namespaces=ns) or "", vids
+
+@app.get("/playlist")
+def playlist():
+    pid = request.args.get("id", "")
+    if not PLAYLIST_ID.fullmatch(pid or ""):
+        return jsonify(error={"code": "bad_id", "message": "That playlist link doesn't look right."}), 400
+    err = None
+    try:
+        title, vids = playlist_flat(pid)
+        if vids:
+            return {"title": title, "videos": vids, "partial": False}
+    except Exception as e:
+        err = re.sub(r"\x1b\[[0-9;]*m", "", str(e))[:300]
+    try:
+        title, vids = playlist_feed(pid)
+        if vids:
+            return {"title": title, "videos": vids, "partial": True}
+        err = err or "No videos found in that playlist."
+    except Exception as e:
+        err = err or re.sub(r"\x1b\[[0-9;]*m", "", str(e))[:300]
+    code = "site_blocked" if err and re.search(r"429|403|sign in|bot|Forbidden", err, re.I) else "extract_failed"
+    return jsonify(error={"code": code, "message": err or "Could not read that playlist."}), 400
+
+
 @app.get("/health")
 def health(): return {"ok": True, "yt_dlp": yt_dlp.version.__version__, "ffmpeg": bool(shutil.which("ffmpeg"))}
 
