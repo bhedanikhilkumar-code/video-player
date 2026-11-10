@@ -1664,6 +1664,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Watch later": ["बाद में देखें", "પછી જુઓ"],
    "History": ["इतिहास", "ઇતિહાસ"],
    "Continue watching": ["देखना जारी रखें", "જોવાનું ચાલુ"],
+   "Change watch-later order": ["बाद में देखें का क्रम बदलें", "પછી જુઓ ક્રમ બદલો"],
+   "Change history order": ["इतिहास का क्रम बदलें", "ઇતિહાસ ક્રમ બદલો"],
    " of ": [" / ", " / "],
    " saved items.": [" सेव आइटम.", " સેવ આઇટમ."],
    "Nothing matches. Try another word.": ["कुछ नहीं मिला. दूसरा शब्द आज़माएं.", "કંઈ મળ્યું નહીં. બીજો શબ્દ અજમાવો."],
@@ -2032,9 +2034,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (idx < qPos) qPos--; else if (idx === qPos) qPos = -1;
       saveLib(); renderLib();
     }, function (item, idx) { playQueueAt(idx); });
-    fillList(laterList, lib.later, T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); });
+    fillList(laterList, laterView(), T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); });
     fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) { toggleFav(item.id); });
-    fillList(histList, lib.hist, T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); });
+    fillList(histList, histView(), T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); });
     updateFavBtn(); updateLaterBtn();
   }
   function updateLaterBtn() {
@@ -2107,7 +2109,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     saveLib(); renderLib();
     libSay(n ? T("Added to the queue:") + " " + n : T("Already in the queue, or the queue is full at 50."));
   }
-  var listTools = [["lhFavs", function () { return favView(); }], ["lhLater", function () { return lib.later; }], ["lhHist", function () { return lib.hist; }]];
+  var listTools = [["lhFavs", function () { return favView(); }], ["lhLater", function () { return laterView(); }], ["lhHist", function () { return histView(); }]];
   listTools.forEach(function (x) {
     var h = $(x[0]); if (!h || !h.parentNode) return;
     var row = document.createElement("div"); row.className = "row lib-listtools"; row.setAttribute("data-for", x[0]);
@@ -2128,6 +2130,35 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     renderLib();
   });
   (function () { var r = document.querySelector('.lib-listtools[data-for="lhFavs"]'); if (r) r.appendChild(favSortBtn); })();
+  /* Same title sort for Watch later and Recently watched. Newest first stays the default. */
+  function makeSortView(key) {
+    var az = false;
+    try { az = localStorage.getItem(key) === "az"; } catch (e) {}
+    return {
+      isAZ: function () { return az; },
+      toggle: function () { az = !az; try { localStorage.setItem(key, az ? "az" : "new"); } catch (e) {} },
+      view: function (items) {
+        if (!az) return items;
+        return items.slice().sort(function (a, b) { return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase()); });
+      }
+    };
+  }
+  var laterSort = makeSortView("vp-latersort.v1"), histSort = makeSortView("vp-histsort.v1");
+  function laterView() { return typeof laterSort !== "undefined" && laterSort ? laterSort.view(lib.later) : lib.later; }
+  function histView() { return typeof histSort !== "undefined" && histSort ? histSort.view(lib.hist) : lib.hist; }
+  function makeSortBtn(headingId, sort, items, labelKey) {
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip";
+    b.addEventListener("click", function () { sort.toggle(); renderLib(); });
+    (function () { var r = document.querySelector('.lib-listtools[data-for="' + headingId + '"]'); if (r) r.appendChild(b); })();
+    b.refresh = function () {
+      b.textContent = T(sort.isAZ() ? "Sort: A to Z" : "Sort: Newest");
+      b.setAttribute("aria-label", T(labelKey));
+      b.hidden = items().length < 2;
+    };
+    return b;
+  }
+  var laterSortBtn = makeSortBtn("lhLater", laterSort, function () { return lib.later; }, "Change watch-later order");
+  var histSortBtn = makeSortBtn("lhHist", histSort, function () { return lib.hist; }, "Change history order");
   function renderCounts() {
     [["lhFavs", lib.favs], ["lhLater", lib.later], ["lhHist", lib.hist], ["lhQueue", lib.queue]].forEach(function (x) {
       var h = $(x[0]); if (!h || !h.parentNode) return;
@@ -2138,6 +2169,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     favSortBtn.textContent = T(favSortAZ ? "Sort: A to Z" : "Sort: Newest");
     favSortBtn.setAttribute("aria-label", T("Change favourites order"));
     favSortBtn.hidden = lib.favs.length < 2;
+    laterSortBtn.refresh(); histSortBtn.refresh();
   }
   function renderListTools() {
     renderCounts();
@@ -3017,9 +3049,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (q && scoped && n) parts.push(T(label) + " " + n);
     }
     filt(queueList, lib.queue, "queue", "Queue");
-    filt(laterList, lib.later, "later", "Watch later");
+    filt(laterList, laterView(), "later", "Watch later");
     filt(favList, favView(), "favs", "Favourites");
-    filt(histList, lib.hist, "hist", "History");
+    filt(histList, histView(), "hist", "History");
     if (plList && typeof playlists !== "undefined" && playlists) {
       var scoped = inScope("playlists"), n = 0, pi = 0;
       Array.prototype.forEach.call(plList.children, function (li) {
