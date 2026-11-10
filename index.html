@@ -940,6 +940,11 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
   input[type="range"]::-webkit-slider-thumb, input[type="range"]::-moz-range-thumb { transition: none !important; }
 }
 </style>
+<style id="video-memory">
+/* Per-video memory note inside the info card. */
+.vmem-note { display: block; flex-basis: 100%; color: var(--teal); font-size: 12px; margin-top: 2px; font-weight: 600; }
+:root[data-theme="dark"] .vmem-note { color: #7fd2bf; }
+</style>
 </head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
@@ -1025,7 +1030,7 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
         <img id="infoThumb" alt="" width="112" height="63">
         <div class="info-text">
           <div class="info-title" id="infoTitle"></div>
-          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><span id="infoDur"></span></div>
+          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><span id="infoDur"></span><span class="vmem-note" id="vmemNote" hidden></span></div>
         </div>
       </div>
 
@@ -1583,7 +1588,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Flat": ["समान", "સપાટ"],
    "Bass boost": ["बेस बूस्ट", "બેસ બૂસ્ટ"],
    "Vocal": ["आवाज़", "અવાજ"],
-   "Treble boost": ["ट्रेबल बूस्ट", "ટ્રેબલ બૂસ્ટ"]
+   "Treble boost": ["ट्रेबल बूस्ट", "ટ્રેબલ બૂસ્ટ"],
+   "Remembered for this video: ": ["इस वीडियो के लिए याद रखा: ", "આ વીડિયો માટે યાદ રાખ્યું: "]
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
@@ -1813,6 +1819,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       send("setVolume", [prefs.volume]);
       ccApply();
       if (prefs.speed !== 1) send("setPlaybackRate", [prefs.speed]);
+      vmemApply();
     }
     if (data.event === "onStateChange" && typeof data.info === "number") {
       if (sleepPaused && data.info === 1) { send("pauseVideo"); return; }
@@ -1834,7 +1841,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       }
     }
     if (data.event === "onPlaybackQualityChange" && typeof data.info === "string") markActive(qualityChips, data.info);
-    if (data.event === "onPlaybackRateChange" && typeof data.info === "number") { prefs.speed = data.info; savePrefs(); markActive(speedChips, String(data.info)); }
+    if (data.event === "onPlaybackRateChange" && typeof data.info === "number") { prefs.speed = data.info; savePrefs(); markActive(speedChips, String(data.info)); if (curId) vmemRec({ speed: data.info }); }
     if (data.event === "onError") {
       var ec = data.info;
       var emsg = ec === 100
@@ -1893,6 +1900,40 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   window.addEventListener("pagehide", function() { saveResume(true); });
   document.addEventListener("visibilitychange", function() { if (document.hidden) saveResume(true); });
+
+  // Per-video memory: speed and subtitle choices are remembered for each video, on this device.
+  // (Position already resumes per video through Recently watched / Continue watching.)
+  var VM_KEY = "vp-vmem.v1", vmem = {};
+  try { var vmIn = JSON.parse(localStorage.getItem(VM_KEY) || "null"); if (vmIn && typeof vmIn === "object") vmem = vmIn; } catch (e) {}
+  function vmemSave() {
+    try {
+      var ks = Object.keys(vmem);
+      if (ks.length > 60) { ks.sort(function (a, b) { return (vmem[a].ts || 0) - (vmem[b].ts || 0); }); ks.slice(0, ks.length - 60).forEach(function (k) { delete vmem[k]; }); }
+      localStorage.setItem(VM_KEY, JSON.stringify(vmem));
+    } catch (e) {}
+  }
+  function vmemRec(patch) {
+    if (!curId) return;
+    var v = vmem[curId] = vmem[curId] || {};
+    for (var k in patch) v[k] = patch[k];
+    v.ts = Date.now(); vmemSave();
+  }
+  function vmemNote(m) { var n = $("vmemNote"); if (n) { n.textContent = m || ""; n.hidden = !m; } }
+  function vmemApply() {
+    var vm = curId && vmem[curId];
+    if (!vm) { vmemNote(""); return; }
+    if (typeof vm.speed === "number" && vm.speed !== prefs.speed) {
+      send("setPlaybackRate", [vm.speed]); prefs.speed = vm.speed; savePrefs(); markActive(speedChips, String(vm.speed));
+    }
+    if (typeof vm.cc === "boolean" && (vm.cc !== prefs.cc || (typeof vm.ccLang === "string" && vm.ccLang !== prefs.ccLang))) {
+      prefs.cc = vm.cc; if (typeof vm.ccLang === "string") prefs.ccLang = vm.ccLang;
+      savePrefs(); ccRender(); ccApply();
+    }
+    var bits = [];
+    if (typeof vm.speed === "number" && vm.speed !== 1) bits.push(vm.speed + "x");
+    if (vm.cc) bits.push(T("CC on"));
+    vmemNote(bits.length ? T("Remembered for this video: ") + bits.join(" \u00b7 ") : "");
+  }
   var resumeRec = null;
   function resumeRender() {
     if (!resumeRec) return;
@@ -1949,7 +1990,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var previous = findIn(lib.hist, id);
     if (startSec == null && previous >= 0 && lib.hist[previous].t >= 5) startSec = lib.hist[previous].t;
     document.dispatchEvent(new Event("vp-youtube-selected"));
-    curId = id; curTime = startSec || 0; lastResumeSave = 0; clearAB();
+    curId = id; curTime = startSec || 0; lastResumeSave = 0; clearAB(); if (typeof vmemNote === "function") vmemNote("");
     miniDismissed = false; if (typeof updateMini === "function") requestAnimationFrame(updateMini);
     var rb = document.getElementById("resumeBox"); if (rb) rb.hidden = true;
     addHistory(id);
@@ -2740,11 +2781,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     markActive(ccLangChips, prefs.ccLang);
   }
   if (ccBtn) {
-    ccBtn.addEventListener("click", function () { prefs.cc = !prefs.cc; savePrefs(); ccRender(); ccApply(); });
+    ccBtn.addEventListener("click", function () { prefs.cc = !prefs.cc; savePrefs(); ccRender(); ccApply(); vmemRec({ cc: prefs.cc, ccLang: prefs.ccLang }); });
     CC_LANGS.forEach(function (o) {
       var b = document.createElement("button"); b.className = "chip"; b.type = "button";
       b.textContent = o[1]; b.dataset.value = o[0]; b.setAttribute("aria-pressed", "false");
-      b.addEventListener("click", function () { prefs.ccLang = o[0]; prefs.cc = true; savePrefs(); ccRender(); ccApply(); });
+      b.addEventListener("click", function () { prefs.ccLang = o[0]; prefs.cc = true; savePrefs(); ccRender(); ccApply(); vmemRec({ cc: true, ccLang: prefs.ccLang }); });
       ccLangChips.appendChild(b);
     });
     ccRender();
@@ -3920,7 +3961,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var btn = document.getElementById("resetAllBtn");
   if (!btn) return;
   var T = window.T || function (s) { return s; };
-  var KEYS = ["vp-prefs.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1"];
+  var KEYS = ["vp-prefs.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1"];
   btn.addEventListener("click", function () {
     if (!window.confirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer and downloader choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
