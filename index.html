@@ -972,7 +972,13 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
 .vmem-note { display: block; flex-basis: 100%; color: var(--teal); font-size: 12px; margin-top: 2px; font-weight: 600; }
 :root[data-theme="dark"] .vmem-note { color: #7fd2bf; }
 </style>
-</head>
+<style id="local-workflow">
+.lp-filequeue{list-style:none;padding:0;max-height:240px;overflow:auto;overscroll-behavior:contain;display:grid;gap:8px}
+.lp-filequeue .chip{width:100%;display:flex;align-items:center;gap:10px;text-align:left;min-height:48px}
+.lp-filequeue .file-name{min-width:0;flex:1;overflow-wrap:anywhere}.lp-filequeue .file-number{font-variant-numeric:tabular-nums;opacity:.7}
+.lp-workbench{padding:12px;border:1px solid var(--hairline);border-radius:16px;margin:12px 0;background:var(--card)}
+.lp-workbench h3{margin:0 0 10px}.lp-workbench .row{flex-wrap:wrap}.lp-workbench input{width:120px;min-width:0;max-width:100%;min-height:44px;padding:8px 12px;font:inherit;font-size:16px;border:1px solid var(--hairline);border-radius:12px;background:var(--chipbg);color:var(--ink)}.lp-workbench button{min-height:44px}
+</style></head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
 <div class="wrap">
@@ -1223,6 +1229,7 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
       <h2 id="lpHeading">Play a file with volume boost</h2>
       <input id="lpFile" type="file" multiple accept="video/*,audio/*" aria-label="Choose a video or audio file from your device">
       <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button><button class="chip" id="lpPip" type="button" hidden>PiP</button></div>
+      <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
       <p class="hint" id="lpSessionMsg" role="status">Select one or more local files. Notification and lock-screen controls are local-file only, where supported by your browser. They do not enable screen-off YouTube playback.</p>
       <video id="lpVideo" controls playsinline preload="metadata" crossorigin="anonymous" class="lp-video" hidden></video>
       <div class="lp-seekwrap" id="lpSeekWrap" hidden>
@@ -1685,6 +1692,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Gesture pad. Double-tap the left side to go back ": ["जेस्चर पैड. बाईं ओर डबल-टैप से ", "જેસ્ચર પૅડ. ડાબી બાજુ ડબલ-ટૅપથી "],
    " seconds, the right side to go forward ": [" सेकंड पीछे, दाईं ओर से ", " સેકંડ પાછળ, જમણી બાજુથી "],
    " seconds. Swipe up or down to change the volume.": [" सेकंड आगे. आवाज़ के लिए ऊपर/नीचे स्वाइप करें.", " સેકંડ આગળ. અવાજ માટે ઉપર/નીચે સ્વાઇપ કરો."],
+   "Selected files": ["चुनी गई फ़ाइलें", "પસંદ કરેલી ફાઇલો"],
+   "Current file": ["अभी की फ़ाइल", "હાલની ફાઇલ"],
+   "Files stay on this device. Pick files again after a reload.": ["फ़ाइलें इसी डिवाइस पर रहती हैं. रीलोड के बाद फिर चुनें.", "ફાઇલો આ ઉપકરણ પર જ રહે છે. રીલોડ પછી ફરી પસંદ કરો."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
@@ -3737,7 +3747,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var sessionMsg = $("lpSessionMsg");
   var T = window.T || function (x) { return x; };
   var LP_DEF = sessionMsg.textContent;
-  function updateLocalButtons() { $("lpPrev").disabled = localIndex <= 0; $("lpNext").disabled = localIndex < 0 || localIndex >= localFiles.length - 1; }
+  function renderLocalQueue() {
+    var wrap = $("lpQueueWrap"), list = $("lpQueue"); wrap.hidden = !localFiles.length; list.textContent = "";
+    $("lpQueueH").textContent = T("Selected files") + " (" + localFiles.length + ")";
+    $("lpQueueHint").textContent = T("Files stay on this device. Pick files again after a reload.");
+    localFiles.forEach(function(f,i){
+      var li=document.createElement("li"), b=document.createElement("button"), number=document.createElement("span"), name=document.createElement("span");
+      b.type="button"; b.className="chip"+(i===localIndex?" active":""); b.dataset.fileIndex=i;
+      if(i===localIndex) b.setAttribute("aria-current","true");
+      number.className="file-number";number.textContent=String(i+1).padStart(2,"0");name.className="file-name";name.textContent=f.name;
+      b.appendChild(number);b.appendChild(name);b.addEventListener("click",function(){playLocalAt(i,true);});li.appendChild(b);list.appendChild(li);
+    });
+  }
+  function updateLocalButtons() { $("lpPrev").disabled = localIndex <= 0; $("lpNext").disabled = localIndex < 0 || localIndex >= localFiles.length - 1; renderLocalQueue(); }
   function localPlay() { var p = vid.play(); if (p && p.catch) p.catch(function(){ sessionMsg.textContent = T("Tap Play on the local player to continue. Your browser blocked automatic playback."); }); }
   function playLocalAt(i, auto) {
     if (i < 0 || i >= localFiles.length) return;
@@ -3989,7 +4011,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var baseShowCh = show;
   show = function (url, local) { baseShowCh(url, local); chRender(); };
   chRender();
-  var lpRelang = function () { if (!curUrl) sessionMsg.textContent = T(LP_DEF); subChipText(); eqPresetText(); chRender(); };
+  var lpRelang = function () { if (!curUrl) sessionMsg.textContent = T(LP_DEF); subChipText(); eqPresetText(); chRender(); renderLocalQueue(); };
   (window.__relang = window.__relang || []).push(lpRelang);
   lpRelang();
   window.vpPlayUrl = function (url, key) { localFiles = []; localIndex = -1; updateLocalButtons(); posKey = typeof key === "string" && key ? key : null; show(url, false); $("lp").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); };
@@ -4787,6 +4809,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
 </script>
 </body>
   </html>
+
 
 
 
