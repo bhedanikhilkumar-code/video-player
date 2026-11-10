@@ -1376,7 +1376,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
       <h2 id="lpHeading">Play a file with volume boost</h2>
       <input id="lpFile" type="file" multiple accept="video/*,audio/*" aria-label="Choose a video or audio file from your device">
       <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button><button class="chip" id="lpPip" type="button" hidden>PiP</button><button class="chip" id="lpClose" type="button" disabled>Close files</button></div>
-      <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
+      <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><div class="row lp-qmodes"><button class="chip" id="lpShuffleBtn" type="button" aria-pressed="false">Shuffle: off</button><button class="chip" id="lpRepeatBtn" type="button" aria-pressed="false">Repeat all: off</button></div><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
       <p class="hint" id="lpSessionMsg" role="status">Select one or more local files. Notification and lock-screen controls are local-file only, where supported by your browser. They do not enable screen-off YouTube playback.</p>
       <video id="lpVideo" controls playsinline preload="metadata" crossorigin="anonymous" class="lp-video" hidden></video>
       <div class="lp-seekwrap" id="lpSeekWrap" hidden>
@@ -1708,6 +1708,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    " YouTube's free listing shows only the 15 newest.": [" YouTube की फ्री लिस्ट सिर्फ 15 नए दिखाती है.", " YouTubeની ફ્રી યાદી ફક્ત 15 નવા બતાવે છે."],
    " The queue is now full (50).": [" कतार अब भर गई (50).", " કતાર હવે ભરાઈ ગઈ (50)."],
    "Shuffle": ["शफ़ल", "શફલ"],
+   "Repeat all": ["सभी दोहराएं", "બધું દોહરાવો"],
    "Repeat queue": ["कतार रिपीट", "કતાર રિપીટ"],
    "Auto-next": ["ऑटो-अगला", "ઓટો-આગળ"],
    " A-B and video repeat take priority.": [" A-B और वीडियो रिपीट पहले लागू होते हैं.", " A-B અને વીડિયો રિપીટ પહેલ લાગુ પડે છે."],
@@ -4579,8 +4580,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (typeof eqApply === "function") eqApply();
     window.__lpNode = node; window.__lpCtx = ctx;
   }
-  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, eq: { b: 0, m: 0, t: 0 } };
-  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); } } catch (e) {}
+  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: false, eq: { b: 0, m: 0, t: 0 } };
+  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (typeof sv.lrepeat === "boolean") lp.lrepeat = sv.lrepeat; if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); } } catch (e) {}
   gain.value = lp.gain;
   function saveLp() { try { localStorage.setItem(LK, JSON.stringify(lp)); } catch (e) {} }
   function setGain() { var v = Number(gain.value); lp.gain = v; saveLp(); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
@@ -4614,7 +4615,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       b.appendChild(number);b.appendChild(name);b.addEventListener("click",function(){playLocalAt(i,true);});li.appendChild(b);list.appendChild(li);
     });
   }
-  function updateLocalButtons() { $("lpPrev").disabled = localIndex <= 0; $("lpNext").disabled = localIndex < 0 || localIndex >= localFiles.length - 1; renderLocalQueue(); }
+  function updateLocalButtons() { $("lpPrev").disabled = !lp.lshuffle && !lp.lrepeat && localIndex <= 0; $("lpNext").disabled = !lp.lshuffle && !lp.lrepeat && (localIndex < 0 || localIndex >= localFiles.length - 1); renderLocalQueue(); }
+  function renderLpModes() {
+    [["lpShuffleBtn", "lshuffle", "Shuffle"], ["lpRepeatBtn", "lrepeat", "Repeat all"]].forEach(function (x) {
+      var b = $(x[0]); if (!b) return;
+      b.textContent = T(x[2]) + ": " + T(lp[x[1]] ? "on" : "off");
+      b.setAttribute("aria-pressed", String(lp[x[1]])); b.classList.toggle("active", lp[x[1]]);
+    });
+  }
+  [["lpShuffleBtn", "lshuffle"], ["lpRepeatBtn", "lrepeat"]].forEach(function (x) {
+    var b = $(x[0]); if (!b) return;
+    b.addEventListener("click", function () { lp[x[1]] = !lp[x[1]]; saveLp(); renderLpModes(); updateLocalButtons(); });
+  });
+  (window.__relang = window.__relang || []).push(renderLpModes);
+  renderLpModes();
   function localPlay() { var p = vid.play(); if (p && p.catch) p.catch(function(){ sessionMsg.textContent = T("Tap Play on the local player to continue. Your browser blocked automatic playback."); }); }
   function playLocalAt(i, auto) {
     if (i < 0 || i >= localFiles.length) return;
@@ -4623,7 +4637,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     sessionMsg.textContent = T("File ") + (i+1) + T(" of ") + localFiles.length + ": " + f.name + (session ? T(". Media controls available where your browser allows them.") : T(". This browser does not support Media Session controls."));
     if (auto) localPlay();
   }
-  function localStep(n) { if (localIndex+n >= 0 && localIndex+n < localFiles.length) playLocalAt(localIndex+n, true); }
+  function localStep(n) {
+    if (!localFiles.length) return;
+    if (lp.lshuffle && localFiles.length > 1) {
+      var ni = localIndex, guard = 0;
+      while (ni === localIndex && guard++ < 20) ni = Math.floor(Math.random() * localFiles.length);
+      if (ni !== localIndex) playLocalAt(ni, true);
+      return;
+    }
+    var t = localIndex + n;
+    if (lp.lrepeat) t = ((t % localFiles.length) + localFiles.length) % localFiles.length;
+    if (t >= 0 && t < localFiles.length) playLocalAt(t, true);
+  }
   $("lpPrev").addEventListener("click",function(){localStep(-1);});
   $("lpNext").addEventListener("click",function(){localStep(1);});
   file.addEventListener("change", function () {
@@ -4669,7 +4694,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   vid.addEventListener("timeupdate", function () { updatePosState(false); });
   ["seeked", "ratechange", "durationchange", "play", "pause"].forEach(function (ev) { vid.addEventListener(ev, function () { updatePosState(true); }); });
   vid.addEventListener("pause",function(){if(session)session.playbackState="paused";});
-  vid.addEventListener("ended",function(){if(typeof loopB!=="undefined" && loopB!==null)return;if(localIndex>=0 && localIndex<localFiles.length-1)localStep(1);else if(session)session.playbackState="none";});
+  vid.addEventListener("ended",function(){if(typeof loopB!=="undefined" && loopB!==null)return;if(lp.lshuffle&&localFiles.length>1)localStep(1);else if(localIndex>=0&&localIndex<localFiles.length-1)localStep(1);else if(lp.lrepeat&&localFiles.length)playLocalAt(0,true);else if(session)session.playbackState="none";});
   vid.addEventListener("error",function(){sessionMsg.textContent=T("This file could not be played. Try a format your browser supports or choose Next file.");});
   document.addEventListener("vp-youtube-selected",function(){vid.pause(); if(session) {session.metadata=null;session.playbackState="none";["play","pause","previoustrack","nexttrack","seekbackward","seekforward","seekto"].forEach(function(n){mediaAction(n,null);});}});
   vid.addEventListener("loadedmetadata", function () {
