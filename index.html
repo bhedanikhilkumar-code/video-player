@@ -880,6 +880,13 @@ html.high-contrast section::before, html.high-contrast .btn::before { content: n
 #vpToast.show{opacity:1;transform:translate(-50%,0);}
 @media (prefers-reduced-motion:reduce){#vpToast{transition:none;}}
 </style>
+<style id="ux-totop">
+/* Back to top: the page is very long on a phone, so after one screen of scrolling
+   a small round button offers a one-tap jump back to the link field. */
+#toTop{position:fixed;left:14px;bottom:calc(14px + env(safe-area-inset-bottom,0px));width:44px;height:44px;border-radius:50%;border:1px solid var(--hairline);background:var(--card);color:var(--ink);font-size:20px;line-height:1;box-shadow:0 8px 24px rgba(0,0,0,.18);opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .18s ease,transform .18s ease;z-index:70;cursor:pointer;padding:0;}
+#toTop.show{opacity:1;transform:none;pointer-events:auto;}
+@media (prefers-reduced-motion:reduce){#toTop{transition:none;}}
+</style>
 <style id="low-fx-mode">
 /* Low-end mode: a user switch in Help > Accessibility that lightens every heavy visual effect
    (glass blur, layered shadows, motion) so the app stays smooth on slow phones. */
@@ -1421,6 +1428,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
+   "Back to top": ["ऊपर जाएं", "ઉપર જાઓ"],
    "Added to favourites": ["पसंदीदा में जोड़ा गया", "મનપસંદમાં ઉમેરાયું"],
    "Removed from favourites": ["पसंदीदा से हटाया गया", "મનપસંદમાંથી હટાવ્યું"],
    "Added to queue": ["कतार में जोड़ा गया", "કતારમાં ઉમેરાયું"],
@@ -5048,6 +5056,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 <script>
 /* Re-apply the saved language now that every feature script has registered its dynamic-label renderer (the first pass runs before later scripts load). */
 if (window.__vpApplyLang) window.__vpApplyLang();
+</script>
+<script>
+/* Back to top button (UX round 7). */
+(function () {
+  var b = document.createElement("button");
+  b.id = "toTop"; b.type = "button"; b.textContent = "\u2191";
+  document.body.appendChild(b);
+  var on = false;
+  function relabel() { b.setAttribute("aria-label", T("Back to top")); }
+  function upd() { var s = window.scrollY > 900; if (s !== on) { on = s; b.classList.toggle("show", on); } }
+  window.addEventListener("scroll", upd, { passive: true });
+  b.addEventListener("click", function () {
+    var r = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, behavior: r ? "auto" : "smooth" });
+  });
+  (window.__relang = window.__relang || []).push(relabel);
+  relabel(); upd();
+})();
 </script>
 </body>
   </html>
