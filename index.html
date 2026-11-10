@@ -1002,6 +1002,33 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
 .lp-filequeue .file-name{min-width:0;flex:1;overflow-wrap:anywhere}.lp-filequeue .file-number{font-variant-numeric:tabular-nums;opacity:.7}
 .lp-workbench{padding:12px;border:1px solid var(--hairline);border-radius:16px;margin:12px 0;background:var(--card)}
 .lp-workbench h3{margin:0 0 10px}.lp-workbench .row{flex-wrap:wrap}.lp-workbench input{width:120px;min-width:0;max-width:100%;min-height:44px;padding:8px 12px;font:inherit;font-size:16px;border:1px solid var(--hairline);border-radius:12px;background:var(--chipbg);color:var(--ink)}.lp-workbench button{min-height:44px}
+</style><style id="section-folding">
+/* Foldable sections: the page is long, so sections after the player can be folded away
+   with their heading or the round arrow. The choice is remembered on this device. */
+section.collapsible { position: relative; }
+section.collapsible > h2, section.collapsible .listen-top, section.collapsible .note { padding-right: 58px; }
+section.collapsible > h2, section.collapsible .listen-top, section.collapsible #aboutNoteTitle { cursor: pointer; }
+.sec-toggle {
+  position: absolute; top: 14px; right: 14px; z-index: 2;
+  width: 40px; height: 40px; border-radius: 50%; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--hairline); background: var(--chipbg); color: var(--ink2);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: color .2s ease, border-color .2s ease, transform .18s cubic-bezier(.34,1.56,.5,1);
+}
+.sec-toggle:hover { color: var(--ink); border-color: var(--teal); }
+.sec-toggle:active { transform: scale(.92); }
+.sec-toggle svg { width: 18px; height: 18px; transition: transform .3s cubic-bezier(.2,.8,.2,1); }
+section.sec-collapsed .sec-toggle svg { transform: rotate(-90deg); }
+html.high-contrast .sec-toggle { border-color: var(--ink2); }
+.sec-body { display: grid; grid-template-rows: 1fr; transition: grid-template-rows .35s cubic-bezier(.2,.8,.2,1); }
+.sec-body > .sec-body-in { overflow: hidden; min-height: 0; }
+.sec-body[hidden] { display: none; }
+section.sec-collapsed > .sec-body { grid-template-rows: 0fr; }
+section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  .sec-body, .sec-toggle, .sec-toggle svg { transition: none !important; }
+}
 </style></head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
@@ -1425,7 +1452,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var infoCard = $("infoCard"), infoThumb = $("infoThumb"), infoTitle = $("infoTitle"), infoChannel = $("infoChannel"), infoDur = $("infoDur");
   var infoCache = {};
   var queueList = $("queueList"), queueBtn = $("queueBtn"), nextBtn = $("nextBtn"), clearQueueBtn = $("clearQueueBtn"), libError = $("libError"), laterList = $("laterList");
-  function showLibErr(m) { libError.textContent = m || ""; libError.hidden = !m; }
+  function showLibErr(m) { libError.textContent = m || ""; libError.hidden = !m; if (m && window.vpExpandSection) window.vpExpandSection("library"); }
   var qPos = -1;
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
@@ -1783,6 +1810,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "It stops once, then goes back to normal.": ["यह एक बार रुकता है, फिर सामान्य हो जाता है.", "આ એક વાર અટકે છે, પછી સામાન્ય થઈ જાય છે."],
    "Close files": ["फ़ाइलें बंद करें", "ફાઇલો બંધ કરો"],
    "Files closed. Your chapters and saved progress are kept.": ["फ़ाइलें बंद. आपके अध्याय और सेव की गई प्रगति सुरक्षित हैं.", "ફાઇલો બંધ. તમારા ચેપ્ટર અને સાચવેલી પ્રગતિ જાળવેલી છે."],
+   "Collapse": ["समेटें", "સમેટો"],
+   "Expand": ["फैलाएं", "ફેલાવો"],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
@@ -2377,7 +2406,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // Not a YouTube link: hand it to the downloader card instead of the player.
       try { localStorage.setItem("vp-dl-url", JSON.stringify({ u: link, ts: Date.now() })); } catch (e) {}
       var dl = document.getElementById("dlUrl"); if (dl) dl.value = link;
-      window.addEventListener("load", function () { var c = document.getElementById("dl"); if (c) c.scrollIntoView(); });
+      window.addEventListener("load", function () { var c = document.getElementById("dl"); if (c) { if (window.vpExpandSection) window.vpExpandSection("dl"); c.scrollIntoView(); } });
       return;
     }
     linkInput.value = link;
@@ -3695,7 +3724,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   var retryFn = null, retryBtn = $("dlRetryBtn");
   var copyBtn = $("dlCopyErr"), lastRaw = "";
-  function showErr(m) { errEl.textContent = T(m); errEl.hidden = !m; if (!m) { retryBtn.hidden = true; copyBtn.hidden = true; } }
+  function showErr(m) { errEl.textContent = T(m); errEl.hidden = !m; if (m && window.vpExpandSection) window.vpExpandSection("dl"); if (!m) { retryBtn.hidden = true; copyBtn.hidden = true; } }
   copyBtn.addEventListener("click", function () {
     var t = "Downloader error: " + errEl.textContent + (lastRaw ? " | " + lastRaw : "") + " | " + (info && info.url || urlIn.value);
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { toast(T("Copied")); copyBtn.textContent = T("Copied"); setTimeout(function () { copyBtn.textContent = T("Copy error"); }, 1500); }, function () {});
@@ -4288,7 +4317,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var lpRelang = function () { if (!curUrl) sessionMsg.textContent = T(LP_DEF); subChipText(); eqPresetText(); chRender(); renderLocalQueue(); };
   (window.__relang = window.__relang || []).push(lpRelang);
   lpRelang();
-  window.vpPlayUrl = function (url, key) { saveLocalPositionNow(); localFiles = []; localIndex = -1; updateLocalButtons(); posKey = typeof key === "string" && key ? key : null; show(url, false); $("lp").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); };
+  window.vpPlayUrl = function (url, key) { saveLocalPositionNow(); localFiles = []; localIndex = -1; updateLocalButtons(); posKey = typeof key === "string" && key ? key : null; show(url, false); if (window.vpExpandSection) window.vpExpandSection("lp"); $("lp").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); };
 })();
 </script>
 <script>
@@ -5116,13 +5145,108 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   var fv = document.getElementById("favBtn"); if (fv) fv.addEventListener("click", function () { buzz(8); });
 })();
 </script>
+<script>
+/* Foldable sections: fold away the parts of this long page you are not using. The choice is
+   remembered on this device. All content stays visible if scripting is unavailable. */
+(function () {
+  'use strict';
+  var SEC_KEY = "vp-sections.v1";
+  var DEFS = [
+    ["backgroundHelp", ".listen-top", true],
+    ["dl", "h2", false],
+    ["lp", "h2", false],
+    ["library", "h2", false],
+    ["help", "h2", true],
+    ["about", "#aboutNoteTitle", true]
+  ];
+  var T = window.T || function (s) { return s; };
+  var keeps = {};
+  function isCollapsed(id) { var s = document.getElementById(id); return !!(s && s.classList.contains("sec-collapsed")); }
+  function save() {
+    try {
+      var a = [];
+      DEFS.forEach(function (d) { if (isCollapsed(d[0])) a.push(d[0]); });
+      localStorage.setItem(SEC_KEY, JSON.stringify(a));
+    } catch (e) {}
+  }
+  function label(id) {
+    var sec = document.getElementById(id); if (!sec) return;
+    var btn = sec.querySelector(".sec-toggle"); if (!btn) return;
+    var t = (keeps[id] && keeps[id].textContent || "").replace(/\s+/g, " ").trim();
+    btn.setAttribute("aria-label", (isCollapsed(id) ? T("Expand") : T("Collapse")) + (t ? ": " + t : ""));
+  }
+  function setState(id, collapseIt, animate) {
+    var sec = document.getElementById(id); if (!sec) return;
+    var body = document.getElementById(id + "-body"), btn = sec.querySelector(".sec-toggle");
+    if (!body || !btn) return;
+    if (!animate) sec.classList.add("sec-noanim");
+    if (collapseIt) {
+      sec.classList.add("sec-collapsed");
+      btn.setAttribute("aria-expanded", "false");
+      setTimeout(function () { if (isCollapsed(id)) body.hidden = true; }, animate ? 400 : 0);
+    } else {
+      body.hidden = false;
+      void body.offsetHeight;
+      sec.classList.remove("sec-collapsed");
+      btn.setAttribute("aria-expanded", "true");
+    }
+    label(id);
+    if (!animate) setTimeout(function () { sec.classList.remove("sec-noanim"); }, 40);
+  }
+  function toggle(id) { setState(id, !isCollapsed(id), true); save(); }
+  window.vpExpandSection = function (id) { if (isCollapsed(id)) setState(id, false, false); };
+  function setup(id, keepSel) {
+    var sec = document.getElementById(id); if (!sec) return;
+    var keep = sec.querySelector(keepSel); if (!keep) return;
+    keeps[id] = keep;
+    var body = document.createElement("div");
+    body.className = "sec-body"; body.id = id + "-body";
+    var inner = document.createElement("div");
+    inner.className = "sec-body-in";
+    body.appendChild(inner);
+    var n = keep.nextSibling;
+    while (n) { var nx = n.nextSibling; inner.appendChild(n); n = nx; }
+    keep.parentNode.insertBefore(body, keep.nextSibling);
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "sec-toggle";
+    btn.setAttribute("aria-controls", body.id);
+    btn.setAttribute("aria-expanded", "true");
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    sec.appendChild(btn);
+    sec.classList.add("collapsible");
+    btn.addEventListener("click", function (e) { e.stopPropagation(); toggle(id); });
+    keep.addEventListener("click", function (e) {
+      if (e.target && e.target.closest && e.target.closest("a,button,input,select,summary")) return;
+      toggle(id);
+    });
+  }
+  DEFS.forEach(function (d) { setup(d[0], d[1]); });
+  var initial = null;
+  try { initial = JSON.parse(localStorage.getItem(SEC_KEY) || "null"); } catch (e) {}
+  if (!Array.isArray(initial)) initial = DEFS.filter(function (d) { return d[2]; }).map(function (d) { return d[0]; });
+  initial.forEach(function (id) { setState(id, true, false); var b = document.getElementById(id + "-body"); if (b) b.hidden = true; });
+  DEFS.forEach(function (d) { label(d[0]); });
+  // Tapping a link to something inside a folded section opens it first.
+  document.addEventListener("click", function (e) {
+    var a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null; if (!a) return;
+    var href = a.getAttribute("href") || ""; if (href.length < 2) return;
+    var el = null;
+    try { el = document.getElementById(decodeURIComponent(href.slice(1))); } catch (err) {}
+    if (!el || !el.closest) return;
+    var sec = el.closest("section.sec-collapsed");
+    if (sec) setState(sec.id, false, false);
+  }, true);
+  // Opening the page on a link into a folded section opens it too.
+  if (location.hash.length > 1) {
+    var hel = null;
+    try { hel = document.getElementById(decodeURIComponent(location.hash.slice(1))); } catch (err) {}
+    if (hel && hel.closest) {
+      var hsec = hel.closest("section.sec-collapsed");
+      if (hsec) { setState(hsec.id, false, false); setTimeout(function () { hel.scrollIntoView(); }, 60); }
+    }
+  }
+  (window.__relang = window.__relang || []).push(function () { DEFS.forEach(function (d) { label(d[0]); }); });
+})();
+</script>
 </body>
   </html>
-
-
-
-
-
-
-
-
