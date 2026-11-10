@@ -1089,6 +1089,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
         <span class="hint pl-status" id="plStatus" role="status"></span>
       </div>
       <p class="error" id="linkError" role="alert" hidden></p>
+      <button class="chip" id="dlHandoffBtn" type="button" hidden>&#11015; Open in Downloader</button>
       <p class="hint" id="linkHint">Watch, share, Shorts, and live links are all supported.</p>
       <div class="resume" id="resumeBox" hidden>
         <span id="resumeText"></span>
@@ -1470,6 +1471,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
+   "Paste a YouTube link first.": ["पहले YouTube लिंक पेस्ट करें.", "પહેલા YouTube લિંક પેસ્ટ કરો."],
+   "That is not a YouTube link. The Downloader below can save videos from other sites.": ["यह YouTube लिंक नहीं है. नीचे का डाउनलोडर दूसरी साइटों के वीडियो संभाल सकता है.", "આ YouTube લિંક નથી. નીચેનો ડાઉનલોડર બીજી સાઇટના વીડિયો સંભાળી શકે છે."],
+   "Link moved to the Downloader.": ["लिंक डाउनलोडर में भेज दिया गया.", "લિંક ડાઉનલોડરમાં મોકલાઈ ગઈ."],
    "This video is taking too long to load. Check your internet, or tap Try again.": ["यह वीडियो लोड होने में काफी समय ले रहा है. इंटरनेट जांचें, या 'फिर कोशिश करें' दबाएं.", "આ વીડિયો લોડ થવામાં ઘણો સમય લઈ રહ્યો છે. ઇન્ટરનેટ તપાસો, અથવા 'ફરી પ્રયાસ કરો' દબાવો."],
    "Clipboard is empty.": ["क्लिपबोर्ड खाली है.", "ક્લિપબોર્ડ ખાલી છે."],
    "Clipboard has no YouTube link.": ["क्लिपबोर्ड में YouTube लिंक नहीं है.", "ક્લિપબોર્ડમાં YouTube લિંક નથી."],
@@ -2355,6 +2359,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   vol.value = prefs.volume; volLabel.textContent = prefs.volume + "%";
   if (prefs.loop) { loopBtn.classList.add("active"); loopBtn.textContent = T("🔁 Loop on"); }
 
+  /* Non-YouTube link in the player box: the Downloader handles other sites, so offer
+     a one-tap handoff instead of a dead-end error. */
+  var dlHandoffBtn = $("dlHandoffBtn"), dlHandoffUrl = "";
+  function showDlHandoff(show, url) {
+    dlHandoffUrl = url || "";
+    if (dlHandoffBtn) dlHandoffBtn.hidden = !show;
+  }
+  if (dlHandoffBtn) dlHandoffBtn.addEventListener("click", function () {
+    var dlInput = $("dlUrl");
+    if (dlInput && dlHandoffUrl) dlInput.value = dlHandoffUrl;
+    showDlHandoff(false); linkError.hidden = true;
+    if (window.vpExpandSection) vpExpandSection("dl");
+    var dlSec = $("dl");
+    if (dlSec) dlSec.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    toast(T("Link moved to the Downloader."));
+  });
+  linkInput.addEventListener("input", function () { showDlHandoff(false); linkError.hidden = true; });
+
   /* Stuck-loading watchdog: if the video frame never reports ready (slow or dead
      network, blocked embed), say so clearly after a wait and offer a retry, instead
      of leaving a silent black box. */
@@ -2381,11 +2403,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var id = parseVideoId(linkInput.value);
     if (id) qPos = typeof queueIndex === "number" ? queueIndex : -1;
     if (!id) {
-      linkError.textContent = T("That link does not look valid. Paste a full YouTube link, such as https://youtube.com/watch?v=...");
+      var rawLink = linkInput.value.trim();
+      var mHost = rawLink.match(/^https?:\/\/([^\s/]+)/i);
+      var isYtHost = mHost && /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)$/i.test(mHost[1]);
+      if (!rawLink) {
+        linkError.textContent = T("Paste a YouTube link first.");
+        showDlHandoff(false);
+      } else if (mHost && !isYtHost) {
+        linkError.textContent = T("That is not a YouTube link. The Downloader below can save videos from other sites.");
+        showDlHandoff(true, rawLink);
+      } else {
+        linkError.textContent = T("That link does not look valid. Paste a full YouTube link, such as https://youtube.com/watch?v=...");
+        showDlHandoff(false);
+      }
       linkError.hidden = false;
       return;
     }
     linkError.hidden = true; playerError.hidden = true;
+    showDlHandoff(false);
     saveResume(true);
     var previous = findIn(lib.hist, id);
     if (startSec == null && previous >= 0 && lib.hist[previous].t >= 5) startSec = lib.hist[previous].t;
@@ -3433,6 +3468,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#queueModeMsg", "Auto-next is on. Video repeat and A-B repeat take priority.", "Auto-next चालू है. वीडियो रिपीट और A-B रिपीट पहले लागू होते हैं."],
     ["#prevQueueBtn", "Previous", "पिछला"],
     ["#playerRetryBtn", "↻ Try again", "↻ फिर कोशिश करें"],
+    ["#dlHandoffBtn", "⬇ Open in Downloader", "⬇ डाउनलोडर में खोलें"],
     ["#offlineBanner", "You're offline. The app stays open and your queue, favourites and settings are safe here - playing videos and downloading need internet, and come back when you're online again.", "आप ऑफ़लाइन हैं. ऐप खुला रहता है और आपकी कतार, पसंदीदा और सेटिंग यहीं सुरक्षित हैं - वीडियो चलाने और डाउनलोड के लिए इंटरनेट चाहिए, ऑनलाइन आते ही सब फिर चलेगा."],
     ["#faq1s", "How do I play a video?", "वीडियो कैसे चलाऊं?"],
     ["#faq1a", "Paste any YouTube link in the first box and tap Load video. You can also add several links to the queue and they will play one after another.", "पहले बॉक्स में कोई भी YouTube लिंक पेस्ट करें और Load video दबाएं. आप कई लिंक कतार में भी डाल सकते हैं, वे एक के बाद एक चलेंगे."],
@@ -3604,6 +3640,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#queueModeMsg": "Auto-next ચાલુ છે. વીડિયો રિપીટ અને A-B રિપીટ પહેલ લાગુ પડે છે.",
  "#prevQueueBtn": "પાછળનો",
  "#playerRetryBtn": "↻ ફરી પ્રયાસ કરો",
+ "#dlHandoffBtn": "⬇ ડાઉનલોડરમાં ખોલો",
  "#offlineBanner": "તમે ઓફલાઇન છો. એપ ખુલ્લી રહે છે અને તમારી કતાર, મનપસંદ અને સેટિંગ અહીં સુરક્ષિત છે - વીડિયો ચલાવવા અને ડાઉનલોડ માટે ઇન્ટરનેટ જોઈએ, ઓનલાઇન આવતાં બધું ફરી ચાલશે.",
  "#faq1s": "વીડિયો કેવી રીતે ચલાવવો?",
  "#faq1a": "પહેલા બોક્સમાં કોઈપણ YouTube લિંક પેસ્ટ કરો અને Load video દબાવો. તમે ઘણી લિંક કતારમાં પણ નાખી શકો, તેઓ એક પછી એક ચાલશે.",
