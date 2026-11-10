@@ -682,6 +682,9 @@ body{overflow-x:clip}
 .gp-flash.show { opacity: 1; }
 .lib-search { margin: 4px 0 12px; }
 .lib-search input { width: 100%; min-height: 44px; font-size: 16px; box-sizing: border-box; }
+.lib-scope { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -4px 0 12px; }
+.lib-scope .hint { font-size: 13px; }
+.lib-scope .chip { min-height: 36px; padding: 4px 10px; font-size: 13px; }
 @media(max-width:480px) {.music-bar {padding:12px}.music-bar .btn {width:100%}.music-mode #musicQueue {padding:10px}}
 .accent-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin: 6px 0 2px; }
 .accent-dot { width: 30px; height: 30px; border-radius: 50%; border: 2px solid var(--hairline); cursor: pointer; padding: 0; position: relative; }
@@ -1391,6 +1394,15 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
         <input id="libSearch" type="search" autocomplete="off" placeholder="Search your videos" aria-label="Search queue, playlists, favourites and recently watched">
         <span class="hint" id="libSearchMsg" role="status"></span>
       </div>
+      <div class="lib-scope" id="libScope" role="group" aria-label="Search in">
+        <span class="hint" id="libScopeLab">Search in:</span>
+        <button class="chip" type="button" data-scope="all" aria-pressed="true">All</button>
+        <button class="chip" type="button" data-scope="queue" aria-pressed="false">Queue</button>
+        <button class="chip" type="button" data-scope="playlists" aria-pressed="false">Playlists</button>
+        <button class="chip" type="button" data-scope="favs" aria-pressed="false">Favourites</button>
+        <button class="chip" type="button" data-scope="later" aria-pressed="false">Watch later</button>
+        <button class="chip" type="button" data-scope="hist" aria-pressed="false">History</button>
+      </div>
       <div id="continueWrap" hidden>
         <div class="lib-head"><h3 id="lhContinue">Continue watching</h3></div>
         <ul class="lib-list" id="continueList"></ul>
@@ -1645,6 +1657,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Settings restored. Reloading to apply\u2026": ["सेटिंग वापस आ गईं. लागू करने के लिए रीलोड हो रहा है\u2026", "સેટિંગ પાછી આવી. લાગુ કરવા રીલોડ થાય છે\u2026"],
    "That file could not be read. Use a backup file made by this app.": ["वह फ़ाइल नहीं पढ़ी जा सकी. इसी ऐप की बनाई बैकअप फ़ाइल इस्तेमाल करें.", "તે ફાઇલ વાંચી ન શકાઈ. આ જ એપની બનાવેલી બેકઅપ ફાઇલ વાપરો."],
    "Showing ": ["दिख रहे ", "દેખાય છે "],
+   "All": ["सब", "બધું"],
+   "Queue": ["कतार", "કતાર"],
+   "Playlists": ["प्लेलिस्ट", "પ્લેલિસ્ટ"],
+   "Favourites": ["पसंदीदा", "મનપસંદ"],
+   "Watch later": ["बाद में देखें", "પછી જુઓ"],
+   "History": ["इतिहास", "ઇતિહાસ"],
+   "Continue watching": ["देखना जारी रखें", "જોવાનું ચાલુ"],
    " of ": [" / ", " / "],
    " saved items.": [" सेव आइटम.", " સેવ આઇટમ."],
    "Nothing matches. Try another word.": ["कुछ नहीं मिला. दूसरा शब्द आज़माएं.", "કંઈ મળ્યું નહીં. બીજો શબ્દ અજમાવો."],
@@ -2977,43 +2996,87 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
   // ---- Library search: filters queue, playlists, favourites and recently watched as you type ----
   var libSearch = $("libSearch"), libSearchMsg = $("libSearchMsg");
+  var libScope = "all", libScopeBtns = [];
+  var LIB_SCOPE_LABELS = { all: "All", queue: "Queue", playlists: "Playlists", favs: "Favourites", later: "Watch later", hist: "History" };
   function applyLibSearch() {
     if (!libSearch) return;
-    var q = libSearch.value.trim().toLowerCase(), shown = 0, total = 0;
-    function filt(ul, items) {
+    var q = libSearch.value.trim().toLowerCase(), shown = 0, total = 0, parts = [];
+    function inScope(s) { return libScope === "all" || libScope === s; }
+    function filt(ul, items, scope, label) {
       if (!ul) return;
-      var vi = 0;
+      var scoped = inScope(scope), n = 0, vi = 0;
       Array.prototype.forEach.call(ul.children, function (li) {
         if (li.querySelector && li.querySelector(".lib-empty")) return;
         var it = items[vi]; vi++;
         if (!it) return;
-        total++;
-        var ok = !q || ((it.title || "") + " " + it.id).toLowerCase().indexOf(q) >= 0;
+        if (scoped) total++;
+        var ok = scoped && (!q || ((it.title || "") + " " + it.id).toLowerCase().indexOf(q) >= 0);
         li.style.display = ok ? "" : "none";
-        if (ok) shown++;
+        if (ok) { shown++; n++; }
       });
+      if (q && scoped && n) parts.push(T(label) + " " + n);
     }
-    filt(queueList, lib.queue); filt(laterList, lib.later); filt(favList, favView()); filt(histList, lib.hist);
+    filt(queueList, lib.queue, "queue", "Queue");
+    filt(laterList, lib.later, "later", "Watch later");
+    filt(favList, favView(), "favs", "Favourites");
+    filt(histList, lib.hist, "hist", "History");
     if (plList && typeof playlists !== "undefined" && playlists) {
-      var pi = 0;
+      var scoped = inScope("playlists"), n = 0, pi = 0;
       Array.prototype.forEach.call(plList.children, function (li) {
         if (li.querySelector && li.querySelector(".lib-empty")) return;
         var pl = playlists[pi]; pi++;
         if (!pl) return;
-        total++;
+        if (scoped) total++;
         var hay = pl.name.toLowerCase();
         pl.items.forEach(function (x) { hay += " " + (x.title || "").toLowerCase() + " " + x.id; });
-        var ok = !q || hay.indexOf(q) >= 0;
+        var ok = scoped && (!q || hay.indexOf(q) >= 0);
         li.style.display = ok ? "" : "none";
-        if (ok) shown++;
+        if (ok) { shown++; n++; }
       });
+      if (q && scoped && n) parts.push(T("Playlists") + " " + n);
     }
-    libSearchMsg.textContent = q ? (shown ? T("Showing ") + shown + T(" of ") + total + T(" saved items.") : T("Nothing matches. Try another word.")) : "";
+    var contUl = $("continueList");
+    if (contUl && typeof continueItems !== "undefined" && continueItems) {
+      var scopedC = inScope("hist"), nc = 0, ci = 0;
+      Array.prototype.forEach.call(contUl.children, function (li) {
+        var it = continueItems[ci]; ci++;
+        if (!it) return;
+        if (scopedC) total++;
+        var ok = scopedC && (!q || ((it.title || "") + " " + it.id).toLowerCase().indexOf(q) >= 0);
+        li.style.display = ok ? "" : "none";
+        if (ok) { shown++; nc++; }
+      });
+      if (q && scopedC && nc) parts.push(T("Continue watching") + " " + nc);
+    }
+    // Scope picker also narrows the visible sections, so each list heading matches what is searched.
+    [["queue", "lhQueue", queueList], ["playlists", "lhPlaylists", plList], ["later", "lhLater", laterList], ["favs", "lhFavs", favList], ["hist", "lhHist", histList]].forEach(function (s) {
+      var on = inScope(s[0]);
+      var head = $(s[1]);
+      var wrap = head && head.parentNode && head.parentNode.classList && head.parentNode.classList.contains("lib-head") ? head.parentNode : null;
+      if (wrap) wrap.style.display = on ? "" : "none";
+      if (s[2]) s[2].style.display = on ? "" : "none";
+      var tools = document.querySelector('.lib-listtools[data-for="' + s[1] + '"]');
+      if (tools) tools.style.display = on ? "" : "none";
+    });
+    var cw = $("continueWrap");
+    if (cw) cw.style.display = inScope("hist") ? "" : "none";
+    libSearchMsg.textContent = q ? (shown ? T("Showing ") + shown + T(" of ") + total + T(" saved items.") + (parts.length ? " · " + parts.join(" · ") : "") : T("Nothing matches. Try another word.")) : "";
   }
   if (libSearch) {
     libSearch.addEventListener("input", applyLibSearch);
     libSearch.addEventListener("keydown", function (e) { if (e.key === "Escape") { libSearch.value = ""; applyLibSearch(); } });
   }
+  (function () {
+    var wrap = $("libScope"); if (!wrap) return;
+    Array.prototype.forEach.call(wrap.querySelectorAll("button[data-scope]"), function (b) {
+      libScopeBtns.push(b);
+      b.addEventListener("click", function () {
+        libScope = b.getAttribute("data-scope");
+        libScopeBtns.forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+        applyLibSearch();
+      });
+    });
+  })();
   var baseRenderLibS = renderLib;
   renderLib = function () { baseRenderLibS(); applyLibSearch(); };
   var baseRenderPlaylistsS = renderPlaylists;
@@ -3502,6 +3565,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#volLabT", "Volume: ", "आवाज़: "],
     ["#listenIntro", "Keep listening here with the video visible on your phone.", "फोन पर वीडियो दिखता रखते हुए यहीं सुनते रहें."],
     ["#lhContinue", "Continue watching", "देखना जारी रखें"],
+    ["#libScopeLab", "Search in:", "खोजें:"],
+    ["#libScope button[data-scope=\"all\"]", "All", "सब"],
+    ["#libScope button[data-scope=\"queue\"]", "Queue", "कतार"],
+    ["#libScope button[data-scope=\"playlists\"]", "Playlists", "प्लेलिस्ट"],
+    ["#libScope button[data-scope=\"favs\"]", "Favourites", "पसंदीदा"],
+    ["#libScope button[data-scope=\"later\"]", "Watch later", "बाद में देखें"],
+    ["#libScope button[data-scope=\"hist\"]", "History", "इतिहास"],
     ["#resetAllBtn", "Reset to default", "डिफ़ॉल्ट पर रीसेट करें"],
     ["#queueModeMsg", "Auto-next is on. Video repeat and A-B repeat take priority.", "Auto-next चालू है. वीडियो रिपीट और A-B रिपीट पहले लागू होते हैं."],
     ["#prevQueueBtn", "Previous", "पिछला"],
@@ -3678,6 +3748,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#volLabT": "અવાજ: ",
  "#listenIntro": "ફોન પર વીડિયો દેખાતો રાખીને અહીં સાંભળતા રહો.",
  "#lhContinue": "જોવાનું ચાલુ રાખો",
+ "#libScopeLab": "શોધો:",
+ "#libScope button[data-scope=\"all\"]": "બધું",
+ "#libScope button[data-scope=\"queue\"]": "કતાર",
+ "#libScope button[data-scope=\"playlists\"]": "પ્લેલિસ્ટ",
+ "#libScope button[data-scope=\"favs\"]": "મનપસંદ",
+ "#libScope button[data-scope=\"later\"]": "પછી જુઓ",
+ "#libScope button[data-scope=\"hist\"]": "ઇતિહાસ",
  "#resetAllBtn": "ડિફોલ્ટ પર રીસેટ કરો",
  "#queueModeMsg": "Auto-next ચાલુ છે. વીડિયો રિપીટ અને A-B રિપીટ પહેલ લાગુ પડે છે.",
  "#prevQueueBtn": "પાછળનો",
@@ -3774,10 +3851,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   window.__vpApplyLang = applyLang;
 
   // Continue watching: every video with a saved position, with progress, not just the last one.
+  var continueItems;
   function renderContinue() {
     var wrap = $("continueWrap"); if (!wrap) return;
     var ul = $("continueList"); ul.innerHTML = "";
     var items = lib.hist.filter(function (x) { return x.t >= 10 && x.dur > 0 && x.t < x.dur - 5; }).slice(0, 6);
+    continueItems = items;
     wrap.hidden = !items.length;
     items.forEach(function (item) {
       var li = document.createElement("li"); li.className = "lib-item";
