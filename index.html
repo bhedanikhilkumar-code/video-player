@@ -1029,6 +1029,8 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 @media (prefers-reduced-motion: reduce) {
   .sec-body, .sec-toggle, .sec-toggle svg { transition: none !important; }
 }
+</style><style id="section-folding-all">
+.sec-all-btn { margin-left: auto; font-size: 11px; font-weight: 600; letter-spacing: 0; min-height: 30px; padding: 4px 12px; }
 </style></head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
@@ -1044,7 +1046,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
     <div class="row head-actions"><button class="chip" id="installBtn" type="button" aria-label="Install app" hidden><span class="install-label">Install app</span></button><button class="chip" id="langBtn" type="button" aria-label="Switch language">हिंदी</button><button class="chip" id="themeBtn" type="button" aria-label="Change theme">Theme: Auto</button></div>
   </header>
 
-  <div class="nav-caption"><span>YOUR WORKSPACE</span><span>Swipe to explore &rarr;</span></div>
+  <div class="nav-caption"><span>YOUR WORKSPACE</span><button class="chip sec-all-btn" id="secAllBtn" type="button">Collapse all</button><span>Swipe to explore &rarr;</span></div>
   <nav class="feat-nav" aria-label="All features">
     <a class="feat" href="#link">Link</a>
     <a class="feat" href="#player">Player</a>
@@ -1812,6 +1814,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Files closed. Your chapters and saved progress are kept.": ["फ़ाइलें बंद. आपके अध्याय और सेव की गई प्रगति सुरक्षित हैं.", "ફાઇલો બંધ. તમારા ચેપ્ટર અને સાચવેલી પ્રગતિ જાળવેલી છે."],
    "Collapse": ["समेटें", "સમેટો"],
    "Expand": ["फैलाएं", "ફેલાવો"],
+   "Collapse all": ["सब समेटें", "બધું સમેટો"],
+   "Expand all": ["सब फैलाएं", "બધું ફેલાવો"],
+   "All sections folded": ["सभी सेक्शन समेटे गए", "બધા સેક્શન સમેટાયા"],
+   "All sections open": ["सभी सेक्शन खुले", "બધા સેક્શન ખુલ્યા"],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
@@ -5197,7 +5203,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     label(id);
     if (!animate) setTimeout(function () { sec.classList.remove("sec-noanim"); }, 40);
   }
-  function toggle(id) { setState(id, !isCollapsed(id), true); save(); }
+  function toggle(id) { setState(id, !isCollapsed(id), true); save(); if (window.__vpSecRefresh) window.__vpSecRefresh(); }
   window.vpExpandSection = function (id) { if (isCollapsed(id)) setState(id, false, false); };
   function setup(id, keepSel) {
     var sec = document.getElementById(id); if (!sec) return;
@@ -5230,6 +5236,19 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   if (!Array.isArray(initial)) initial = DEFS.filter(function (d) { return d[2]; }).map(function (d) { return d[0]; });
   initial.forEach(function (id) { setState(id, true, false); var b = document.getElementById(id + "-body"); if (b) b.hidden = true; });
   DEFS.forEach(function (d) { label(d[0]); });
+  var allBtn = document.getElementById("secAllBtn");
+  function anyOpen() { for (var i = 0; i < DEFS.length; i++) if (!isCollapsed(DEFS[i][0])) return true; return false; }
+  function refreshAllBtn() { if (allBtn) allBtn.textContent = T(anyOpen() ? "Collapse all" : "Expand all"); }
+  window.__vpSecRefresh = refreshAllBtn;
+  if (allBtn) {
+    refreshAllBtn();
+    allBtn.addEventListener("click", function () {
+      var collapseIt = anyOpen();
+      DEFS.forEach(function (d) { setState(d[0], collapseIt, true); });
+      save(); refreshAllBtn();
+      if (window.toast) window.toast(T(collapseIt ? "All sections folded" : "All sections open"));
+    });
+  }
   // Tapping a link to something inside a folded section opens it first.
   document.addEventListener("click", function (e) {
     var a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null; if (!a) return;
@@ -5249,7 +5268,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       if (hsec) { setState(hsec.id, false, false); setTimeout(function () { hel.scrollIntoView(); }, 60); }
     }
   }
-  (window.__relang = window.__relang || []).push(function () { DEFS.forEach(function (d) { label(d[0]); }); });
+  (window.__relang = window.__relang || []).push(function () { DEFS.forEach(function (d) { label(d[0]); }); if (window.__vpSecRefresh) window.__vpSecRefresh(); });
 })();
 </script>
 </body>
