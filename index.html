@@ -1605,6 +1605,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Open and play a local file first.": ["पहले कोई लोकल फ़ाइल खोलकर चलाएं.", "પહેલા કોઈ લોકલ ફાઇલ ખોલીને ચલાવો."],
    "This frame could not be saved (the browser blocked it).": ["यह फ़्रेम सेव नहीं हो सका (ब्राउज़र ने रोका).", "આ ફ્રેમ સેવ ન થઈ શક્યો (બ્રાઉઝરે રોક્યો)."],
    "Frame saved.": ["फ़्रेम सेव हो गया.", "ફ્રેમ સેવ થયું."],
+   "Share": ["शेयर", "શેર"],
+   "Share link copied for": ["के लिए शेयर लिंक कॉपी हुआ", "માટે શેર લિંક કોપી થઈ"],
+   "Anyone who opens it can add this playlist.": ["जो भी इसे खोलेगा, यह प्लेलिस्ट जोड़ सकेगा.", "જે કોઈ તેને ખોલશે તે આ પ્લેલિસ્ટ ઉમેરી શકશે."],
+   "Could not copy. The link is shown - copy it yourself.": ["कॉपी नहीं हो सका. लिंक दिख रहा है - खुद कॉपी करें.", "કોપી ન થઈ શક્યું. લિંક દેખાય છે - જાતે કોપી કરો."],
+   "Copy this link": ["यह लिंक कॉपी करें", "આ લિંક કોપી કરો"],
+   "Dismiss": ["हटाएं", "દૂર કરો"],
+   "Shared playlist": ["शेयर की गई प्लेलिस्ट", "શેર કરેલી પ્લેલિસ્ટ"],
+   "Add it to your saved playlists?": ["इसे अपनी सेव प्लेलिस्ट में जोड़ें?", "તેને તમારી સેવ પ્લેલિસ્ટમાં ઉમેરવી છે?"],
+   "Add to my playlists": ["मेरी प्लेलिस्ट में जोड़ें", "મારી પ્લેલિસ્ટમાં ઉમેરો"],
+   "Added the shared playlist": ["शेयर की गई प्लेलिस्ट जुड़ गई", "શેર કરેલી પ્લેલિસ્ટ ઉમેરાઈ"],
+   "That playlist share link could not be read.": ["वह प्लेलिस्ट शेयर लिंक पढ़ा नहीं जा सका.", "તે પ્લેલિસ્ટ શેર લિંક વાંચી ન શકાઈ."],
+   "Could not save: browser storage is full or blocked.": ["सेव नहीं हो सका: ब्राउज़र स्टोरेज भरा है या बंद है.", "સેવ ન થઈ શક્યું: બ્રાઉઝર સ્ટોરેજ ભરાઈ છે કે બંધ છે."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
@@ -4208,6 +4220,126 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       msg.textContent = T("This frame could not be saved (the browser blocked it).");
     }
   });
+})();
+</script>
+<style id="playlist-share">
+.plshare-banner{margin:10px 0 14px}
+.plshare-banner p{margin:0 0 8px}
+.plshare-banner .row{display:flex;gap:8px;flex-wrap:wrap}
+</style>
+<script>
+/* Playlist share links: a saved playlist becomes one link you can send to a friend.
+   Opening the link lets them add a copy of the playlist to their own library.
+   The link only carries the playlist name, video titles and YouTube IDs - the videos
+   themselves stay on YouTube and play through YouTube's own player as usual. */
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var T = window.T || function (x) { return x; };
+  var PL_KEY = "vp-playlists.v1", PL_MAX = 30;
+  var plList = $("plList"), plMsg = $("plMsg"), lib = $("library");
+  function readPls() {
+    try {
+      var a = JSON.parse(localStorage.getItem(PL_KEY) || "[]");
+      if (!Array.isArray(a)) return [];
+      return a.filter(function (p) { return p && typeof p.name === "string" && Array.isArray(p.items); });
+    } catch (e) { return []; }
+  }
+  function encodePl(pl) {
+    var payload = { n: pl.name, v: pl.items.slice(0, 50).map(function (x) { return [x.id, String(x.title || "").slice(0, 120)]; }) };
+    var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    return location.origin + location.pathname + "?pl=" + b64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+  function decodePl(s) {
+    try {
+      var j = decodeURIComponent(escape(atob(String(s).replace(/-/g, "+").replace(/_/g, "/"))));
+      var p = JSON.parse(j);
+      if (!p || typeof p.n !== "string" || !Array.isArray(p.v)) return null;
+      var items = p.v.map(function (x) {
+        return Array.isArray(x) && /^[a-zA-Z0-9_-]{11}$/.test(x[0] || "") ? { id: x[0], title: String(x[1] || "").slice(0, 120) } : null;
+      }).filter(Boolean).slice(0, 50);
+      var name = p.n.replace(/[<>]/g, "").trim().slice(0, 40);
+      return name && items.length ? { name: name, items: items } : null;
+    } catch (e) { return null; }
+  }
+  function copyText(text, cb) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { cb(true); }, function () { cb(false); });
+    } else {
+      try {
+        var ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select();
+        var ok = document.execCommand("copy"); ta.remove(); cb(!!ok);
+      } catch (e) { cb(false); }
+    }
+  }
+
+  function addShareButtons() {
+    if (!plList) return;
+    var lis = plList.querySelectorAll("li.pl-item");
+    lis.forEach(function (li, i) {
+      if (li.querySelector(".pl-share")) return;
+      var acts = li.querySelector(".pl-acts"); if (!acts) return;
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip pl-share"; b.textContent = T("Share");
+      b.addEventListener("click", function () {
+        var pls = readPls(), pl = pls[i]; if (!pl) return;
+        var url = encodePl(pl);
+        copyText(url, function (ok) {
+          if (plMsg) plMsg.textContent = ok
+            ? T("Share link copied for") + " \"" + pl.name + "\". " + T("Anyone who opens it can add this playlist.")
+            : T("Could not copy. The link is shown - copy it yourself.");
+          if (!ok) window.prompt(T("Copy this link"), url);
+        });
+      });
+      acts.appendChild(b);
+    });
+  }
+  if (plList) {
+    new MutationObserver(addShareButtons).observe(plList, { childList: true });
+    addShareButtons();
+  }
+
+  function cleanUrl() { try { history.replaceState(null, "", location.pathname); } catch (e) {} }
+  try {
+    var added = sessionStorage.getItem("vp-plshare-added");
+    if (added) { sessionStorage.removeItem("vp-plshare-added"); if (plMsg) plMsg.textContent = T("Added the shared playlist") + " \"" + added + "\"."; }
+  } catch (e) {}
+
+  var raw = null;
+  try { raw = new URLSearchParams(location.search).get("pl"); } catch (e) {}
+  if (raw && lib) {
+    var pl = decodePl(raw);
+    var banner = document.createElement("div"); banner.className = "resume plshare-banner"; banner.id = "plShareBanner";
+    var p = document.createElement("p");
+    var rowB = document.createElement("div"); rowB.className = "row";
+    var yes = document.createElement("button"); yes.type = "button"; yes.className = "btn";
+    var no = document.createElement("button"); no.type = "button"; no.className = "chip"; no.textContent = T("Dismiss");
+    rowB.appendChild(yes); rowB.appendChild(no);
+    banner.appendChild(p); banner.appendChild(rowB);
+    lib.insertBefore(banner, lib.children[1] || null);
+    if (!pl) {
+      p.textContent = T("That playlist share link could not be read.");
+      yes.hidden = true;
+    } else {
+      p.textContent = T("Shared playlist") + ": \"" + pl.name + "\" (" + pl.items.length + " " + (pl.items.length === 1 ? T("video") : T("videos")) + "). " + T("Add it to your saved playlists?");
+      yes.textContent = T("Add to my playlists");
+      yes.addEventListener("click", function () {
+        var pls = readPls();
+        if (pls.length >= PL_MAX) { p.textContent = T("Your saved playlists are full. Delete one first."); return; }
+        var name = pl.name, n = 2;
+        while (pls.some(function (x) { return x.name.toLowerCase() === name.toLowerCase(); })) { name = pl.name + " (" + n + ")"; n++; }
+        pls.push({ name: name, items: pl.items });
+        try {
+          localStorage.setItem(PL_KEY, JSON.stringify(pls));
+          sessionStorage.setItem("vp-plshare-added", name);
+          location.replace(location.pathname);
+        } catch (e) {
+          p.textContent = T("Could not save: browser storage is full or blocked.");
+        }
+      });
+    }
+    no.addEventListener("click", function () { cleanUrl(); banner.remove(); });
+  }
 })();
 </script>
 </body>
