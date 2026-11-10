@@ -1414,6 +1414,10 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
         <input id="plName" type="text" maxlength="40" autocomplete="off" placeholder="Playlist name, e.g. Study" aria-label="Playlist name">
         <button class="chip" id="plSaveBtn" type="button">Save queue as playlist</button>
       </div>
+      <div class="row pl-import-row">
+        <button class="chip" id="plImportBtn" type="button">Import playlist</button>
+        <input id="plImportFile" type="file" accept="application/json,.json" hidden>
+      </div>
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
       <div id="musicQueue">
@@ -1666,6 +1670,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Continue watching": ["देखना जारी रखें", "જોવાનું ચાલુ"],
    "Change watch-later order": ["बाद में देखें का क्रम बदलें", "પછી જુઓ ક્રમ બદલો"],
    "Change history order": ["इतिहास का क्रम बदलें", "ઇતિહાસ ક્રમ બદલો"],
+   "Export": ["एक्सपोर्ट", "એક્સપોર્ટ"],
+   "Playlist saved as a file.": ["प्लेलिस्ट फ़ाइल में सेव हुई.", "પ્લેલિસ્ટ ફાઇલમાં સેવ થઈ."],
+   "Share it or keep it as a backup.": ["उसे शेयर करें या बैकअप के रूप में रखें.", "તે શેર કરો કે બેકઅપ તરીકે રાખો."],
+   "That file is a full backup. Use Import backup above to restore it.": ["वह फ़ाइल पूरी बैकअप है. उसे वापस लाने के लिए ऊपर Import backup इस्तेमाल करें.", "તે ફાઇલ આખી બેકઅપ છે. તે પાછી લાવવા ઉપર Import backup વાપરો."],
+   "That file did not have a playlist.": ["उस फ़ाइल में प्लेलिस्ट नहीं थी.", "તે ફાઇલમાં પ્લેલિસ્ટ નહોતી."],
+   "Imported playlist": ["प्लेलिस्ट इम्पोर्ट हुई", "પ્લેલિસ્ટ ઇમ્પોર્ટ થઈ"],
    " of ": [" / ", " / "],
    " saved items.": [" सेव आइटम.", " સેવ આઇટમ."],
    "Nothing matches. Try another word.": ["कुछ नहीं मिला. दूसरा शब्द आज़माएं.", "કંઈ મળ્યું નહીં. બીજો શબ્દ અજમાવો."],
@@ -3204,6 +3214,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var f = plFind(nv); if (f >= 0 && f !== idx) { plSay(T("You already have a playlist named") + " \"" + nv + "\"."); return; }
         pl.name = nv; savePlaylists(); renderPlaylists(); plSay(T("Renamed."));
       });
+      btn(T("Export"), "", function () {
+        var data = { app: "hd-video-player", type: "playlist", version: 1, exportedAt: new Date().toISOString(),
+          name: pl.name, items: pl.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) };
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+        var safe = pl.name.replace(/[^\w -]+/g, "").trim().replace(/\s+/g, "-").slice(0, 40);
+        a.download = "playlist-" + (safe || "list") + ".json";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+        plSay(T("Playlist saved as a file.") + " " + T("Share it or keep it as a backup."));
+      });
       btn(T("Delete"), "pl-del", function () {
         if (!window.confirm(T("Delete the playlist") + " \"" + pl.name + "\"? " + T("Your queue stays as it is."))) return;
         playlists.splice(idx, 1); savePlaylists(); renderPlaylists(); plSay(T("Deleted."));
@@ -3226,6 +3247,32 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     savePlaylists(); renderPlaylists(); plName.value = ""; toast(T("Playlist saved")); plSay(T("Saved") + " \"" + name + "\"" + T(" with ") + lib.queue.length + " " + (lib.queue.length === 1 ? T("video") : T("videos")) + ".");
   });
   plName.addEventListener("keydown", function (e) { if (e.key === "Enter") $("plSaveBtn").click(); });
+  /* Import one playlist from a file made by the Export button (per-playlist, lighter than a full backup). */
+  var plImportFile = $("plImportFile");
+  if ($("plImportBtn") && plImportFile) {
+    $("plImportBtn").addEventListener("click", function () { plImportFile.click(); });
+    plImportFile.addEventListener("change", function () {
+      var f = this.files[0]; this.value = "";
+      if (!f) return;
+      var rd = new FileReader();
+      rd.onload = function () {
+        try {
+          var d = JSON.parse(rd.result);
+          if (d && Array.isArray(d.playlists)) { plSay(T("That file is a full backup. Use Import backup above to restore it.")); return; }
+          if (!d || typeof d.name !== "string" || !Array.isArray(d.items)) { plSay(T("That file did not have a playlist.")); return; }
+          var nm = cleanName(d.name);
+          var items = d.items.filter(validItem).slice(0, 50).map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "" }; });
+          if (!nm || !items.length) { plSay(T("That file did not have a playlist.")); return; }
+          if (playlists.length >= PL_MAX) { plSay(T("You can keep up to ") + PL_MAX + T(" playlists. Delete one first.")); return; }
+          var base = nm, k = 2; while (plFind(nm) >= 0) { nm = (base.slice(0, 34) + " (" + k + ")"); k++; }
+          playlists.push({ name: nm, items: items }); savePlaylists(); renderPlaylists();
+          plSay(T("Imported playlist") + " \"" + nm + "\"" + T(" with ") + items.length + " " + (items.length === 1 ? T("video") : T("videos")) + ".");
+          toast(T("Playlist saved"));
+        } catch (e) { plSay(T("That file could not be read. Use a backup file made by this app.")); }
+      };
+      rd.readAsText(f);
+    });
+  }
   function playMusicList(pl) {
     if (!pl || !pl.items.length) { plSay(T("No Music playlist yet. Add videos to your queue, then tap Save queue as Music.")); return; }
     lib.queue = pl.items.map(function(x){return {id:x.id,title:x.title};}); qPos=-1; resetShuffle();
@@ -3537,6 +3584,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#libExport", "Export backup", "बैकअप निकालें"],
     ["#libImport", "Import backup", "बैकअप लाएं"],
     ["#plSaveBtn", "Save queue as playlist", "कतार को प्लेलिस्ट बनाएं"],
+    ["#plImportBtn", "Import playlist", "प्लेलिस्ट इम्पोर्ट करें"],
     ["#playMusicBtn", "Play Music", "म्यूज़िक चलाएं"],
     ["#saveMusicBtn", "Save queue as Music", "कतार को Music में सेव करें"],
     ["#dlInfoBtn", "Get formats", "फ़ॉर्मेट देखें"],
@@ -3720,6 +3768,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#libExport": "બેકઅપ કાઢો",
  "#libImport": "બેકઅપ લાવો",
  "#plSaveBtn": "કતારને પ્લેલિસ્ટ બનાવો",
+ "#plImportBtn": "પ્લેલિસ્ટ ઇમ્પોર્ટ કરો",
  "#playMusicBtn": "મ્યુઝિક ચલાવો",
  "#saveMusicBtn": "કતારને Music માં સેવ કરો",
  "#dlInfoBtn": "ફોર્મેટ જુઓ",
