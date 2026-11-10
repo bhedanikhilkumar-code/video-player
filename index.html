@@ -873,6 +873,13 @@ html.high-contrast .report-text {
 html.high-contrast .btn { background: var(--teal) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 html.high-contrast section::before, html.high-contrast .btn::before { content: none !important; }
 </style>
+<style id="ux-toast">
+/* Toast feedback: a small glass note at the bottom that confirms saved, copied and added actions.
+   It replaces nothing - the inline status lines stay - it just makes silent state changes visible. */
+#vpToast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);max-width:min(92vw,420px);padding:10px 16px;border-radius:14px;border:1px solid var(--hairline);background:var(--card);color:var(--ink);box-shadow:0 10px 30px rgba(0,0,0,.18);font-size:14px;line-height:1.35;text-align:center;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;z-index:9500;}
+#vpToast.show{opacity:1;transform:translate(-50%,0);}
+@media (prefers-reduced-motion:reduce){#vpToast{transition:none;}}
+</style>
 <style id="low-fx-mode">
 /* Low-end mode: a user switch in Help > Accessibility that lightens every heavy visual effect
    (glass blur, layered shadows, motion) so the app stays smooth on slow phones. */
@@ -1414,6 +1421,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
+   "Added to favourites": ["पसंदीदा में जोड़ा गया", "મનપસંદમાં ઉમેરાયું"],
+   "Removed from favourites": ["पसंदीदा से हटाया गया", "મનપસંદમાંથી હટાવ્યું"],
+   "Added to queue": ["कतार में जोड़ा गया", "કતારમાં ઉમેરાયું"],
+   "videos added to queue": ["वीडियो कतार में जोड़े गए", "વિડિયો કતારમાં ઉમેરાયા"],
+   "Queue cleared": ["कतार साफ़ हुई", "કતાર સાફ થઈ"],
+   "Link copied": ["लिंक कॉपी हुआ", "લિંક કોપી થઈ"],
+   "Theme: Auto": ["थीम: ऑटो", "થીમ: ઓટો"],
+   "Theme: Day/Night": ["थीम: दिन/रात", "થીમ: દિવસ/રાત"],
+   "Theme: Dark": ["थीम: डार्क", "થીમ: ડાર્ક"],
+   "Theme: Light": ["थीम: लाइट", "થીમ: લાઇટ"],
+   "Colour updated": ["रंग बदल गया", "રંગ બદલાયો"],
+   "Playlist saved": ["प्लेलिस्ट सेव हुई", "પ્લેલિસ્ટ સેવ થઈ"],
+   "Subtitles loaded": ["सबटाइटल लोड हुए", "સબટાઇટલ લોડ થયા"],
+   "Sleep timer: ": ["स्लीप टाइमर: ", "સ્લીપ ટાઈમર: "],
+   "Sleep timer off": ["स्लीप टाइमर बंद", "સ્લીપ ટાઈમર બંધ"],
    "▶ Play": ["▶ चलाएं", "▶ ચલાવો"],
    "⏸ Pause": ["⏸ रोकें", "⏸ રોકો"],
    "🔊 Mute": ["🔊 म्यूट", "🔊 મ્યૂટ"],
@@ -1743,6 +1765,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Files closed. Your chapters and saved progress are kept.": ["फ़ाइलें बंद. आपके अध्याय और सेव की गई प्रगति सुरक्षित हैं.", "ફાઇલો બંધ. તમારા ચેપ્ટર અને સાચવેલી પ્રગતિ જાળવેલી છે."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
+
+  /* Toast feedback: one short note at the bottom for actions that used to be silent or
+     only changed a far-away status line. role=status so screen readers announce it. */
+  var toastEl = null, toastTimer = 0;
+  function toast(msg) {
+    if (!msg) return;
+    if (!toastEl) {
+      toastEl = document.createElement("div");
+      toastEl.id = "vpToast";
+      toastEl.setAttribute("role", "status");
+      toastEl.setAttribute("aria-live", "polite");
+      document.body.appendChild(toastEl);
+    }
+    toastEl.textContent = msg;
+    toastEl.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2200);
+  }
+  window.toast = toast;
   window.T = T;
 
   // Recent videos and favourites, saved in this browser only.
@@ -1806,11 +1847,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var i = findIn(lib.favs, id);
     if (i >= 0) lib.favs.splice(i, 1); else lib.favs.unshift({ id: id, title: titleFor(id) });
     saveLib(); renderLib(); if (i < 0) fetchTitle(id);
+    toast(i >= 0 ? T("Removed from favourites") : T("Added to favourites"));
   }
   function toggleLater(id) {
     var i = findIn(lib.later, id);
     if (i >= 0) lib.later.splice(i, 1); else lib.later.unshift({ id: id, title: titleFor(id) });
     saveLib(); renderLib(); if (i < 0) fetchTitle(id);
+    toast(i >= 0 ? T("Removed from Watch later.") : T("Saved to Watch later."));
   }
   function buildItem(item, actionLabel, onAction, onOpen, isCurrent) {
     var li = document.createElement("li"); li.className = "lib-item";
@@ -1916,6 +1959,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       linkError.hidden = false;
     } else {
       linkError.hidden = true; showLibErr(""); linkInput.value = "";
+      toast(n === 1 ? T("Added to queue") : n + " " + T("videos added to queue"));
       if (!iframe) playQueueAt(firstNew);
       if (lib.queue.length >= 50) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
     }
@@ -1925,7 +1969,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (!playNext()) showLibErr(T("That was the last video in the queue."));
     else showLibErr("");
   });
-  clearQueueBtn.addEventListener("click", function () { lib.queue = []; qPos = -1; showLibErr(""); saveLib(); renderLib(); });
+  clearQueueBtn.addEventListener("click", function () { var had = lib.queue.length; lib.queue = []; qPos = -1; showLibErr(""); saveLib(); renderLib(); if (had) toast(T("Queue cleared")); });
   renderLib();
 
   /* Library: play or queue a whole list at once. */
@@ -2018,6 +2062,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   themeBtn.addEventListener("click", function () {
     prefs.theme = prefs.theme === "auto" ? "daynight" : prefs.theme === "daynight" ? "light" : prefs.theme === "light" ? "dark" : "auto";
     savePrefs(); applyTheme();
+    toast(prefs.theme === "auto" ? T("Theme: Auto") : prefs.theme === "daynight" ? T("Theme: Day/Night") : prefs.theme === "dark" ? T("Theme: Dark") : T("Theme: Light"));
   });
   if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", function () { if (prefs.theme === "auto") applyTheme(); });
   setInterval(function () { if (prefs.theme === "daynight") applyTheme(); }, 60000);
@@ -2390,7 +2435,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!curId) { shareMsg.textContent = T("Load a video first, then share it at the current time."); return; }
     var link = shareLink(), at = fmt(Math.floor(curTime));
     function copyFallback() {
-      function done(ok) { shareMsg.textContent = ok ? T("Copied. The link opens this video at ") + at + "." : T("Copy this link (opens at ") + at + "): " + link; }
+      function done(ok) { if (ok) toast(T("Link copied")); shareMsg.textContent = ok ? T("Copied. The link opens this video at ") + at + "." : T("Copy this link (opens at ") + at + "): " + link; }
       if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(function () { done(true); }, function () { done(false); });
       else done(false);
     }
@@ -2424,6 +2469,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     sleepEnd = mins ? Date.now() + mins * 60000 : 0; sleepPaused = false;
     try { if (sleepEnd) localStorage.setItem("vp-sleep-end.v1", String(sleepEnd)); else localStorage.removeItem("vp-sleep-end.v1"); } catch(e) {}
     markActive(sleepChips, String(mins)); sleepRender();
+    toast(mins ? T("Sleep timer: ") + mins + " " + T("min") : T("Sleep timer off"));
     sleepTick = mins ? setInterval(checkSleep, 1000) : null;
   }
   [[0, "Off"], [10, "10 min"], [15, "15 min"], [30, "30 min"], [45, "45 min"], [60, "60 min"]].forEach(function(o) {
@@ -2905,7 +2951,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (playlists.length >= PL_MAX) { plSay(T("You can keep up to ") + PL_MAX + T(" playlists. Delete one first.")); return; }
       playlists.push({ name: name, items: lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }) });
     }
-    savePlaylists(); renderPlaylists(); plName.value = ""; plSay(T("Saved") + " \"" + name + "\"" + T(" with ") + lib.queue.length + " " + (lib.queue.length === 1 ? T("video") : T("videos")) + ".");
+    savePlaylists(); renderPlaylists(); plName.value = ""; toast(T("Playlist saved")); plSay(T("Saved") + " \"" + name + "\"" + T(" with ") + lib.queue.length + " " + (lib.queue.length === 1 ? T("video") : T("videos")) + ".");
   });
   plName.addEventListener("keydown", function (e) { if (e.key === "Enter") $("plSaveBtn").click(); });
   function playMusicList(pl) {
@@ -3156,7 +3202,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var b = document.createElement("button"); b.type = "button"; b.className = "accent-dot";
       b.dataset.value = o[0]; b.style.background = o[1];
       b.setAttribute("aria-label", "App color: " + o[0]);
-      b.addEventListener("click", function () { prefs.accent = o[0]; savePrefs(); applyAccent(); applyTheme(); });
+      b.addEventListener("click", function () { prefs.accent = o[0]; savePrefs(); applyAccent(); applyTheme(); toast(T("Colour updated")); });
       accentRow.appendChild(b);
     });
   }
@@ -3618,7 +3664,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function showErr(m) { errEl.textContent = T(m); errEl.hidden = !m; if (!m) { retryBtn.hidden = true; copyBtn.hidden = true; } }
   copyBtn.addEventListener("click", function () {
     var t = "Downloader error: " + errEl.textContent + (lastRaw ? " | " + lastRaw : "") + " | " + (info && info.url || urlIn.value);
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { copyBtn.textContent = T("Copied"); setTimeout(function () { copyBtn.textContent = T("Copy error"); }, 1500); }, function () {});
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function () { toast(T("Copied")); copyBtn.textContent = T("Copied"); setTimeout(function () { copyBtn.textContent = T("Copy error"); }, 1500); }, function () {});
   });
   var HK = "vp-dl-hist", histEl = $("dlHist"), histWrap = $("dlHistWrap");
   function histGet() { try { return JSON.parse(localStorage.getItem(HK)) || []; } catch (e) { return []; } }
@@ -3834,7 +3880,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var opt = fmtSel.options[fmtSel.selectedIndex], body = { type: "download", url: info.url, kind: kind };
     if (kind === "video" && opt.value !== "best") { body.format = opt.value; if (opt.dataset.mux === "1") body.mux = true; }
     if (from !== null) body.from = from; if (to !== null) body.to = to;
-    if (qAdd(body, info.title)) statusEl.textContent = T("Added to the queue.");
+    if (qAdd(body, info.title)) { statusEl.textContent = T("Added to the queue."); toast(T("Added to the queue.")); }
   }
   $("dlQVideoBtn").addEventListener("click", function () { qFromInfo("video"); });
   $("dlQMp3Btn").addEventListener("click", function () { qFromInfo("mp3"); });
@@ -4083,6 +4129,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       try { for (var i = 0; i < vid.textTracks.length; i++) vid.textTracks[i].mode = (vid.textTracks[i] === subTrack.track) ? "showing" : "disabled"; } catch (e) {}
       if (subTrack.track && subTrack.track.mode !== "showing") subTrack.track.mode = "showing";
       subOff.hidden = false;
+      toast(T("Subtitles loaded"));
       subMsg.textContent = T("Subtitles loaded: ") + f.name;
     };
     rd.onerror = function () { subMsg.textContent = T("That subtitle file could not be read."); };
@@ -4717,6 +4764,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var a = document.createElement("a"); a.href = url; a.download = name;
         document.body.appendChild(a); a.click(); a.remove();
         msg.textContent = T("Frame saved.");
+        toast(T("Frame saved."));
       }
       if (c.toBlob) {
         c.toBlob(function (b) {
@@ -4796,6 +4844,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var pls = readPls(), pl = pls[i]; if (!pl) return;
         var url = encodePl(pl);
         copyText(url, function (ok) {
+          if (ok) toast(T("Link copied"));
           if (plMsg) plMsg.textContent = ok
             ? T("Share link copied for") + " \"" + pl.name + "\". " + T("Anyone who opens it can add this playlist.")
             : T("Could not copy. The link is shown - copy it yourself.");
