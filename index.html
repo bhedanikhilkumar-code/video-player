@@ -25,7 +25,8 @@
 (function () {
   try {
     var p = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null"), t = p && p.theme;
-    var dark = t === "dark" || ((t !== "light") && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    var hr = new Date().getHours(), night = hr >= 19 || hr < 7;
+    var dark = t === "dark" || (t === "daynight" ? night : ((t !== "light") && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches));
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
   } catch (e) {}
 })();
@@ -1788,10 +1789,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var themeBtn = $("themeBtn");
   var darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   function applyTheme() {
-    var dark = prefs.theme === "dark" || (prefs.theme === "auto" && darkQuery && darkQuery.matches);
+    var hr2 = new Date().getHours(), night2 = hr2 >= 19 || hr2 < 7;
+    var dark = prefs.theme === "dark" || (prefs.theme === "auto" && darkQuery && darkQuery.matches) || (prefs.theme === "daynight" && night2);
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
-    var themeLabel = prefs.theme === "auto" ? "Auto" : prefs.theme === "dark" ? "Dark" : "Light";
-    var ico = prefs.theme === "auto" ? "\u25D0" : prefs.theme === "dark" ? "\u263E" : "\u2600";
+    var themeLabel = prefs.theme === "auto" ? "Auto" : prefs.theme === "daynight" ? "Day/Night" : prefs.theme === "dark" ? "Dark" : "Light";
+    var ico = prefs.theme === "auto" ? "\u25D0" : prefs.theme === "daynight" ? "\u263C" : prefs.theme === "dark" ? "\u263E" : "\u2600";
     themeBtn.innerHTML = '<span class="theme-ico" aria-hidden="true">' + ico + '</span><span class="theme-prefix">Theme: </span><span>' + themeLabel + '</span>';
     var metas = document.querySelectorAll('meta[name="theme-color"]');
     for (var mi = 0; mi < metas.length; mi++) {
@@ -1801,10 +1803,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     themeBtn.setAttribute("aria-label", "Theme: " + themeLabel + ". Activate to change theme.");
   }
   themeBtn.addEventListener("click", function () {
-    prefs.theme = prefs.theme === "auto" ? "light" : prefs.theme === "light" ? "dark" : "auto";
+    prefs.theme = prefs.theme === "auto" ? "daynight" : prefs.theme === "daynight" ? "light" : prefs.theme === "light" ? "dark" : "auto";
     savePrefs(); applyTheme();
   });
   if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", function () { if (prefs.theme === "auto") applyTheme(); });
+  setInterval(function () { if (prefs.theme === "daynight") applyTheme(); }, 60000);
   applyTheme();
 
   function parseVideoId(input) {
