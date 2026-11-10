@@ -1152,7 +1152,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 
         <div class="ctl-card wide" id="ctl-gestures">
           <h3>Gesture pad</h3>
-          <div class="gesture-pad" id="gesturePad" tabindex="0" role="group" aria-label="Gesture pad. Double-tap the left side to go back 10 seconds, the right side to go forward 10 seconds. Swipe up or down to change the volume.">
+          <div class="gesture-pad" id="gesturePad" tabindex="0" role="group" aria-label="Gesture pad. Double-tap the left side to go back 10 seconds, the right side to go forward 10 seconds. Swipe up or down to change the volume. Arrow keys work here too.">
             <span class="gp-half" id="gpLeft">Double-tap<br>-10s</span>
             <span class="gp-vol">swipe up / down<br>for volume</span>
             <span class="gp-half" id="gpRight">Double-tap<br>+10s</span>
@@ -1842,6 +1842,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "All sections folded": ["सभी सेक्शन समेटे गए", "બધા સેક્શન સમેટાયા"],
    "All sections open": ["सभी सेक्शन खुले", "બધા સેક્શન ખુલ્યા"],
    "App updated to the latest version.": ["ऐप नए वर्शन में अपडेट हो गया.", "એપ નવા વર્ઝનમાં અપડેટ થઈ ગઈ."],
+   "Arrow keys work here too.": ["तीर कुंजियाँ यहाँ भी काम करती हैं.", "એરો કીઝ અહીં પણ કામ કરે છે."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
@@ -2722,7 +2723,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (gl) gl.innerHTML = T("Double-tap") + "<br>-" + st + "s";
     if (gr) gr.innerHTML = T("Double-tap") + "<br>+" + st + "s";
     var pad2 = $("gesturePad");
-    if (pad2) pad2.setAttribute("aria-label", T("Gesture pad. Double-tap the left side to go back ") + st + T(" seconds, the right side to go forward ") + st + T(" seconds. Swipe up or down to change the volume."));
+    if (pad2) pad2.setAttribute("aria-label", T("Gesture pad. Double-tap the left side to go back ") + st + T(" seconds, the right side to go forward ") + st + T(" seconds. Swipe up or down to change the volume.") + " " + T("Arrow keys work here too."));
     var dc = $("dtSeekChips");
     if (dc) [].forEach.call(dc.children, function (c) { var on = Number(c.dataset.v) === st; c.classList.toggle("active", on); c.setAttribute("aria-pressed", on ? "true" : "false"); });
   }
@@ -4675,9 +4676,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   ];
   var i = 0;
   var ov = document.createElement("div");
+  var prevFocus = null;
   ov.id = "tourOverlay";
   ov.setAttribute("role", "dialog");
   ov.setAttribute("aria-modal", "true");
+  ov.setAttribute("aria-labelledby", "tourTitle");
   ov.innerHTML = '<div class="tour-card"><div class="tour-icon" id="tourIcon"></div><h2 id="tourTitle"></h2><p id="tourBody"></p><div class="tour-dots" id="tourDots"></div><div class="tour-btns"><button type="button" id="tourSkip" class="tour-skip"></button><button type="button" id="tourNext" class="tour-next"></button></div></div>';
   function render() {
     var stp = steps[i];
@@ -4694,12 +4697,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ov.querySelector("#tourSkip").textContent = T("Skip");
     ov.querySelector("#tourNext").textContent = i === steps.length - 1 ? T("Got it") : T("Next");
   }
-  function onKey(e) { if (e.key === "Escape") { e.preventDefault(); close(); } }
+  // Keep Tab inside the dialog while it is open, and put focus back where it was.
+  function trapTab(e) {
+    var f = ov.querySelectorAll("button, a[href], input, select, textarea, [tabindex]");
+    if (!f.length) return;
+    var first = f[0], last = f[f.length - 1], act = document.activeElement;
+    if (e.shiftKey && (act === first || !ov.contains(act))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (act === last || !ov.contains(act))) { e.preventDefault(); first.focus(); }
+  }
+  function onKey(e) {
+    if (e.key === "Escape") { e.preventDefault(); close(); return; }
+    if (e.key === "Tab") trapTab(e);
+  }
   function close() {
     try { localStorage.setItem(KEY, "1"); } catch (e) {}
     ov.classList.add("tour-out");
     setTimeout(function () { if (ov.parentNode) ov.parentNode.removeChild(ov); }, 220);
     document.removeEventListener("keydown", onKey, true);
+    if (prevFocus && prevFocus.focus) { try { prevFocus.focus(); } catch (e) {} }
   }
   ov.querySelector("#tourSkip").addEventListener("click", close);
   ov.querySelector("#tourNext").addEventListener("click", function () {
@@ -4708,6 +4723,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
   document.addEventListener("keydown", onKey, true);
   function open() {
+    prevFocus = document.activeElement;
     document.body.appendChild(ov);
     render();
     ov.querySelector("#tourNext").focus();
@@ -4728,7 +4744,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var st = document.createElement("style");
   st.textContent = css;
   document.head.appendChild(st);
-  var ov = null;
+  var ov = null, prevFocus = null;
   function isTyping(el) {
     return el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
   }
@@ -4740,12 +4756,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ov.id = "scHelpOverlay";
     ov.setAttribute("role", "dialog");
     ov.setAttribute("aria-modal", "true");
+    ov.setAttribute("aria-labelledby", "scHelpTitle");
     ov.innerHTML = '<div class="sc-help-card"><h2 id="scHelpTitle"></h2><ul class="sc-help-list">' + (ul ? ul.innerHTML : "") + '</ul><button type="button" id="scHelpClose" class="sc-help-close"></button></div>';
     ov.querySelector("#scHelpTitle").textContent = T("Keyboard shortcuts");
     var btn = ov.querySelector("#scHelpClose");
     btn.textContent = T("Close");
     btn.addEventListener("click", close);
     ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
+    prevFocus = document.activeElement;
     document.body.appendChild(ov);
     btn.focus();
   }
@@ -4753,9 +4771,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!ov) return;
     if (ov.parentNode) ov.parentNode.removeChild(ov);
     ov = null;
+    if (prevFocus && prevFocus.focus) { try { prevFocus.focus(); } catch (e) {} }
+    prevFocus = null;
   }
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && ov) { e.preventDefault(); close(); return; }
+    // Keep Tab inside the dialog while it is open.
+    if (ov && e.key === "Tab") {
+      var f = ov.querySelectorAll("button, a[href], input, select, textarea, [tabindex]");
+      if (f.length) {
+        var first = f[0], last = f[f.length - 1], act = document.activeElement;
+        if (e.shiftKey && (act === first || !ov.contains(act))) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && (act === last || !ov.contains(act))) { e.preventDefault(); first.focus(); }
+      }
+      return;
+    }
     if (e.key !== "?") return;
     if (isTyping(e.target)) return;
     e.preventDefault();
