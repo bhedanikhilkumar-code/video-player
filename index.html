@@ -646,6 +646,7 @@ body{overflow-x:clip}
 .pl-acts .pl-del{color:var(--red)}
 #themeBtn .theme-ico{margin-right:4px}
 /* Music mode keeps the complete official video visible, with no audio-only player. */
+.lib-head .lib-count{margin:0 auto 0 6px;align-self:center}.lib-head{align-items:center}
 .lib-listtools{gap:8px;margin:0 0 10px}.lib-listtools .chip{min-height:44px}
 .music-bar {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:14px;border:1px solid var(--hairline);border-radius:16px;background:var(--soft)}
 .music-bar p {margin:6px 0 0;max-width:48ch}
@@ -1723,6 +1724,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Only the first 50 were used.": ["सिर्फ़ पहले 50 लिए गए.", "ફક્ત પહેલા 50 લીધા."],
    "Play all, replacing the queue": ["कतार बदलकर सब चलाएँ", "કતાર બદલીને બધું ચલાવો"],
    "Add all to the queue": ["सब कतार में जोड़ें", "બધું કતારમાં ઉમેરો"],
+   "Sort: Newest": ["क्रम: नया पहले", "ક્રમ: નવું પહેલા"],
+   "Sort: A to Z": ["क्रम: A से Z", "ક્રમ: A થી Z"],
+   "Change favourites order": ["पसंदीदा का क्रम बदलें", "મનપસંદનો ક્રમ બદલો"],
    "Close files": ["फ़ाइलें बंद करें", "ફાઇલો બંધ કરો"],
    "Files closed. Your chapters and saved progress are kept.": ["फ़ाइलें बंद. आपके अध्याय और सेव की गई प्रगति सुरक्षित हैं.", "ફાઇલો બંધ. તમારા ચેપ્ટર અને સાચવેલી પ્રગતિ જાળવેલી છે."],
   };
@@ -1862,7 +1866,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       saveLib(); renderLib();
     }, function (item, idx) { playQueueAt(idx); });
     fillList(laterList, lib.later, T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); });
-    fillList(favList, lib.favs, T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) { toggleFav(item.id); });
+    fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) { toggleFav(item.id); });
     fillList(histList, lib.hist, T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); });
     updateFavBtn(); updateLaterBtn();
   }
@@ -1932,8 +1936,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     row.appendChild(a); row.appendChild(b); x.push(a, b);
     h.parentNode.parentNode.insertBefore(row, h.parentNode.nextSibling);
   });
-  function favView() { return lib.favs; }
+  var favSortAZ = false;
+  try { favSortAZ = localStorage.getItem("vp-favsort.v1") === "az"; } catch (e) {}
+  function favView() {
+    if (!favSortAZ) return lib.favs;
+    return lib.favs.slice().sort(function (a, b) { return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase()); });
+  }
+  var favSortBtn = document.createElement("button"); favSortBtn.type = "button"; favSortBtn.className = "chip"; favSortBtn.id = "favSortBtn";
+  favSortBtn.addEventListener("click", function () {
+    favSortAZ = !favSortAZ; try { localStorage.setItem("vp-favsort.v1", favSortAZ ? "az" : "new"); } catch (e) {}
+    renderLib();
+  });
+  (function () { var r = document.querySelector('.lib-listtools[data-for="lhFavs"]'); if (r) r.appendChild(favSortBtn); })();
+  function renderCounts() {
+    [["lhFavs", lib.favs], ["lhLater", lib.later], ["lhHist", lib.hist]].forEach(function (x) {
+      var h = $(x[0]); if (!h || !h.parentNode) return;
+      var c = h.parentNode.querySelector(".lib-count");
+      if (!c) { c = document.createElement("span"); c.className = "lib-count hint"; h.parentNode.insertBefore(c, h.nextSibling); }
+      c.textContent = x[1].length ? "(" + x[1].length + ")" : "";
+    });
+    favSortBtn.textContent = T(favSortAZ ? "Sort: A to Z" : "Sort: Newest");
+    favSortBtn.setAttribute("aria-label", T("Change favourites order"));
+    favSortBtn.hidden = lib.favs.length < 2;
+  }
   function renderListTools() {
+    renderCounts();
     listTools.forEach(function (x) {
       var n = x[1]().length;
       if (!x[2]) return;
@@ -2717,7 +2744,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (ok) shown++;
       });
     }
-    filt(queueList, lib.queue); filt(laterList, lib.later); filt(favList, lib.favs); filt(histList, lib.hist);
+    filt(queueList, lib.queue); filt(laterList, lib.later); filt(favList, favView()); filt(histList, lib.hist);
     if (plList && typeof playlists !== "undefined" && playlists) {
       var pi = 0;
       Array.prototype.forEach.call(plList.children, function (li) {
