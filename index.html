@@ -1617,6 +1617,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Added the shared playlist": ["शेयर की गई प्लेलिस्ट जुड़ गई", "શેર કરેલી પ્લેલિસ્ટ ઉમેરાઈ"],
    "That playlist share link could not be read.": ["वह प्लेलिस्ट शेयर लिंक पढ़ा नहीं जा सका.", "તે પ્લેલિસ્ટ શેર લિંક વાંચી ન શકાઈ."],
    "Could not save: browser storage is full or blocked.": ["सेव नहीं हो सका: ब्राउज़र स्टोरेज भरा है या बंद है.", "સેવ ન થઈ શક્યું: બ્રાઉઝર સ્ટોરેજ ભરાઈ છે કે બંધ છે."],
+   "This browser cannot remember files between visits. Files you pick above still play normally.": ["यह ब्राउज़र विज़िट के बीच फ़ाइलें याद नहीं रख सकता. ऊपर चुनी फ़ाइलें फिर भी सामान्य रूप से चलती हैं.", "આ બ્રાઉઝર મુલાકાતો વચ્ચે ફાઇલો યાદ રાખી શકતું નથી. ઉપર પસંદ કરેલી ફાઇલો છતાં સામાન્ય રીતે ચાલે છે."],
+   "Pick and remember files": ["फ़ाइलें चुनें और याद रखें", "ફાઇલો પસંદ કરો અને યાદ રાખો"],
+   "Remembered files stay on your device. After a reload, tap Play and allow access once. Works in Chrome and Edge, not in Safari yet.": ["याद रखी गई फ़ाइलें आपके डिवाइस पर ही रहती हैं. रीलोड के बाद Play दबाएं और एक बार ऐक्सेस दें. Chrome और Edge में काम करता है, Safari में अभी नहीं.", "યાદ રાખેલી ફાઇલો તમારા ડિવાઇસ પર જ રહે છે. રીલોડ પછી Play દબાવો અને એક વાર ઍક્સેસ આપો. Chrome અને Edge માં કામ કરે છે, Safari માં હજી નહીં."],
+   "Remembered files": ["याद रखी गई फ़ाइलें", "યાદ રાખેલી ફાઇલો"],
+   "Permission was not given, so the file cannot be re-opened.": ["अनुमति नहीं मिली, इसलिए फ़ाइल फिर नहीं खोली जा सकती.", "પરવાનગી ન મળી, એટલે ફાઇલ ફરી ખોલી શકાતી નથી."],
+   "The file is gone or was moved. Pick it again.": ["फ़ाइल मिल नहीं रही या हिला दी गई है. फिर से चुनें.", "ફાઇલ મળી નથી કે ખસેડાઈ ગઈ છે. ફરી પસંદ કરો."],
+   "Remembered files could not be read in this browser.": ["इस ब्राउज़र में याद रखी गई फ़ाइलें नहीं पढ़ी जा सकीं.", "આ બ્રાઉઝરમાં યાદ રાખેલી ફાઇલો વાંચી ન શકાઈ."],
+   "Remembered: ": ["याद रखा: ", "યાદ રાખ્યું: "],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
@@ -4340,6 +4348,149 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     no.addEventListener("click", function () { cleanUrl(); banner.remove(); });
   }
+})();
+</script>
+<style id="remember-files">
+#lpRemember{margin:8px 0 4px}
+#lpRemList{list-style:none;margin:8px 0;padding:0;display:flex;flex-direction:column;gap:8px}
+</style>
+<script>
+/* Remember local files: Chrome and Edge can keep a permission handle for files you pick,
+   so the same files can be re-opened from your library after a reload. Nothing is
+   uploaded - files stay on your device, and only the handle is stored in this browser.
+   iPhone and Safari do not support this yet; picking files the normal way still works. */
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var T = window.T || function (x) { return x; };
+  var file = $("lpFile");
+  if (!file) return;
+  var ok = ("showOpenFilePicker" in window) && !!window.indexedDB;
+  var box = document.createElement("div"); box.id = "lpRemember";
+  file.parentNode.insertBefore(box, file.nextSibling);
+  if (!ok) {
+    var nh = document.createElement("p"); nh.className = "hint"; nh.id = "lpRemNoSup";
+    box.appendChild(nh);
+    (window.__relang = window.__relang || []).push(function () { nh.textContent = T("This browser cannot remember files between visits. Files you pick above still play normally."); });
+    nh.textContent = T("This browser cannot remember files between visits. Files you pick above still play normally.");
+    return;
+  }
+  var btn = document.createElement("button"); btn.className = "chip"; btn.type = "button"; btn.id = "lpRemBtn";
+  var hint = document.createElement("p"); hint.className = "hint"; hint.id = "lpRemHint";
+  var head = document.createElement("div"); head.className = "lib-head"; head.id = "lpRemHead"; head.style.display = "none";
+  var hh = document.createElement("h3"); hh.id = "lpRemH"; head.appendChild(hh);
+  var list = document.createElement("ul"); list.className = "lib-list"; list.id = "lpRemList";
+  var msg = document.createElement("p"); msg.className = "hint"; msg.id = "lpRemMsg"; msg.setAttribute("role", "status");
+  box.appendChild(btn); box.appendChild(hint); box.appendChild(head); box.appendChild(list); box.appendChild(msg);
+
+  function relang() {
+    btn.textContent = T("Pick and remember files");
+    hint.textContent = T("Remembered files stay on your device. After a reload, tap Play and allow access once. Works in Chrome and Edge, not in Safari yet.");
+    hh.textContent = T("Remembered files");
+  }
+  (window.__relang = window.__relang || []).push(relang);
+  relang();
+
+  var dbp = null;
+  function db() {
+    if (dbp) return dbp;
+    dbp = new Promise(function (res, rej) {
+      var r = indexedDB.open("vp-remember.v1", 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore("files"); };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+    });
+    return dbp;
+  }
+  function idbPut(key, val) {
+    return db().then(function (d) {
+      return new Promise(function (res, rej) {
+        var t = d.transaction("files", "readwrite");
+        t.objectStore("files").put(val, key);
+        t.oncomplete = function () { res(); }; t.onerror = function () { rej(t.error); };
+      });
+    });
+  }
+  function idbDel(key) {
+    return db().then(function (d) {
+      return new Promise(function (res, rej) {
+        var t = d.transaction("files", "readwrite");
+        t.objectStore("files").delete(key);
+        t.oncomplete = function () { res(); }; t.onerror = function () { rej(t.error); };
+      });
+    });
+  }
+  function idbAll() {
+    return db().then(function (d) {
+      return new Promise(function (res, rej) {
+        var t = d.transaction("files", "readonly"), s = t.objectStore("files");
+        var vals = [], keys = [];
+        var rq = s.openCursor();
+        rq.onsuccess = function () {
+          var c = rq.result;
+          if (c) { keys.push(c.key); vals.push(c.value); c.continue(); }
+        };
+        t.oncomplete = function () { res(keys.map(function (k, i) { return { key: k, handle: vals[i] }; })); };
+        t.onerror = function () { rej(t.error); };
+      });
+    });
+  }
+  function say(m) { msg.textContent = m; }
+
+  function render() {
+    idbAll().then(function (rows) {
+      list.textContent = "";
+      head.style.display = rows.length === 0 ? "none" : "";
+      rows.forEach(function (r) {
+        var li = document.createElement("li"); li.className = "pl-item";
+        var top = document.createElement("div"); top.className = "pl-top";
+        var nm = document.createElement("span"); nm.className = "pl-name"; nm.textContent = (r.handle && r.handle.name) || String(r.key);
+        top.appendChild(nm);
+        var acts = document.createElement("div"); acts.className = "pl-acts";
+        var play = document.createElement("button"); play.type = "button"; play.className = "chip"; play.textContent = T("Play");
+        var del = document.createElement("button"); del.type = "button"; del.className = "chip pl-del"; del.textContent = T("Remove");
+        play.addEventListener("click", function () {
+          play.disabled = true;
+          var step = r.handle.requestPermission ? r.handle.requestPermission({ mode: "read" }) : Promise.resolve("granted");
+          Promise.resolve(step).then(function (perm) {
+            if (perm !== "granted") { play.disabled = false; say(T("Permission was not given, so the file cannot be re-opened.")); return; }
+            r.handle.getFile().then(function (f) {
+              play.disabled = false;
+              if (window.vpPlayUrl) { window.vpPlayUrl(URL.createObjectURL(f)); say(T("Playing") + " \"" + f.name + "\"."); }
+            }, function () { play.disabled = false; say(T("The file is gone or was moved. Pick it again.")); });
+          }, function () { play.disabled = false; say(T("The file is gone or was moved. Pick it again.")); });
+        });
+        del.addEventListener("click", function () { idbDel(r.key).then(render); });
+        acts.appendChild(play); acts.appendChild(del);
+        li.appendChild(top); li.appendChild(acts); list.appendChild(li);
+      });
+    }, function () { say(T("Remembered files could not be read in this browser.")); });
+  }
+
+  btn.addEventListener("click", function () {
+    window.showOpenFilePicker({
+      multiple: true,
+      types: [{
+        description: "Videos and audio",
+        accept: { "video/*": [".mp4", ".webm", ".mkv", ".mov", ".m4v"], "audio/*": [".mp3", ".m4a", ".aac", ".ogg", ".wav", ".flac"] }
+      }]
+    }).then(function (handles) {
+      if (!handles || !handles.length) return;
+      var seq = Promise.resolve();
+      handles.slice(0, 20).forEach(function (h) { seq = seq.then(function () { return idbPut(h.name, h); }); });
+      seq.then(function () {
+        return idbAll().then(function (rows) {
+          var extra = rows.length - 20, chain = Promise.resolve();
+          for (var i = 0; i < extra; i++) (function (k) { chain = chain.then(function () { return idbDel(k); }); })(rows[i].key);
+          return chain;
+        });
+      }).then(function () {
+        say(T("Remembered: ") + handles.length + ".");
+        render();
+      });
+    }, function () { /* user cancelled the picker: nothing to do */ });
+  });
+  render();
 })();
 </script>
 </body>
