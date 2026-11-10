@@ -1237,6 +1237,7 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
         <div class="lp-thumb" id="lpThumb" hidden><canvas id="lpThumbCv" width="160" height="90"></canvas><span id="lpThumbT">0:00</span></div>
       </div>
       <div id="lpCtl" hidden>
+        <div class="lp-workbench" id="lpPrecise"><h3 id="lpPreciseH">Precision controls</h3><form id="lpJumpForm" class="row"><label for="lpJump" id="lpJumpLab">Jump to time</label><input id="lpJump" placeholder="1:23" inputmode="text" autocomplete="off" maxlength="16"><button class="chip" type="submit" id="lpJumpGo">Go</button></form><div class="row"><button class="chip" type="button" id="lpFrameBack">Step back</button><button class="chip" type="button" id="lpFrameNext">Step forward</button><label for="lpFps" id="lpFpsLab">Step size</label><select id="lpFps" class="chip"><option value="24">24 fps</option><option value="25">25 fps</option><option value="30" selected>30 fps</option><option value="60">60 fps</option></select></div><p class="hint" id="lpFrameHint"></p><p class="hint" role="status" id="lpJumpMsg"></p></div>
         <div class="lp-workbench" id="lpLoopBox"><h3 id="lpLoopH">Local practice loop</h3><div class="row"><button class="chip" type="button" id="lpSetA">Set A</button><button class="chip" type="button" id="lpSetB">Set B</button><button class="chip" type="button" id="lpLoopClear">Clear loop</button></div><p class="hint" id="lpLoopMsg" role="status"></p></div>
         <label class="dl-lab" for="lpGain"><span id="lpGainLab">Volume boost: </span><b id="lpGainVal">100%</b></label>
         <input id="lpGain" type="range" min="100" max="300" step="10" value="100" style="width:100%">
@@ -1703,6 +1704,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Set A, then set B at least 0.5 seconds later.": ["A चुनें, फिर कम से कम 0.5 सेकंड बाद B चुनें.", "A પસંદ કરો, પછી ઓછામાં ઓછા 0.5 સેકન્ડ બાદ B પસંદ કરો."],
    "Loop active": ["लूप चालू", "લૂપ ચાલુ"],
    "Choose B after A.": ["B को A के बाद चुनें.", "B ને A પછી પસંદ કરો."],
+   "Precision controls": ["सटीक नियंत्रण", "ચોક્કસ નિયંત્રણ"],
+   "Jump to time": ["समय पर जाएं", "સમય પર જાઓ"],
+   "Go": ["जाएं", "જાઓ"],
+   "Step back": ["एक कदम पीछे", "એક પગલું પાછળ"],
+   "Step forward": ["एक कदम आगे", "એક પગલું આગળ"],
+   "Step size": ["कदम का आकार", "પગલાનું માપ"],
+   "Pauses the video. Frame steps are approximate; choose the video frame rate.": ["वीडियो रुकता है. फ्रेम कदम अनुमानित हैं; वीडियो की फ्रेम दर चुनें.", "વિડિયો થોભે છે. ફ્રેમ પગલાં અંદાજિત છે; વિડિયોનો ફ્રેમ દર પસંદ કરો."],
+   "Use m:ss or h:mm:ss within this file.": ["इस फ़ाइल के अंदर का समय m:ss या h:mm:ss में दें.", "આ ફાઇલની અંદરનો સમય m:ss અથવા h:mm:ss માં આપો."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
@@ -4035,6 +4044,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // A practice range belongs to this open file, never the next file.
   var showBeforeLoop=show;show=function(url,local){resetLocalLoop();showBeforeLoop(url,local);};
   (window.__relang=window.__relang||[]).push(loopText);loopText();
+
+
+  var showBeforePrecise=show;show=function(url,local){$("lpJump").value="";$("lpJumpMsg").textContent="";showBeforePrecise(url,local);};
+  function preciseText(){
+    [["lpPreciseH","Precision controls"],["lpJumpLab","Jump to time"],["lpJumpGo","Go"],["lpFrameBack","Step back"],["lpFrameNext","Step forward"],["lpFpsLab","Step size"],["lpFrameHint","Pauses the video. Frame steps are approximate; choose the video frame rate."]].forEach(function(p){$(p[0]).textContent=T(p[1]);});
+  }
+  $("lpJumpForm").addEventListener("submit",function(e){
+    e.preventDefault();var raw=$("lpJump").value.trim(), parts=raw.split(":"), t=0;
+    if(!/^(?:\d+:)?\d{1,2}:[0-5]\d(?:\.\d{1,3})?$/.test(raw)||(parts.length===3&&Number(parts[1])>59)){ $("lpJumpMsg").textContent=T("Use m:ss or h:mm:ss within this file.");return; }
+    parts.forEach(function(p){t=t*60+Number(p);});
+    if(!isFinite(vid.duration)||t>=vid.duration){$("lpJumpMsg").textContent=T("Use m:ss or h:mm:ss within this file.");return;}
+    resetLocalLoop();vid.currentTime=t;$("lpJumpMsg").textContent=lfmt(t);$("lpJump").setAttribute("aria-invalid","false");
+  });
+  function frameStep(d){if(!isFinite(vid.duration)||!vid.duration||!vid.videoWidth)return;vid.pause();resetLocalLoop();vid.currentTime=Math.max(0,Math.min(vid.duration,vid.currentTime+d/Number($("lpFps").value)));$("lpJumpMsg").textContent=vid.currentTime.toFixed(3)+" s";}
+  $("lpFrameBack").addEventListener("click",function(){frameStep(-1);});$("lpFrameNext").addEventListener("click",function(){frameStep(1);});
+  function frameEnabled(){ $("lpFrameBack").disabled=$("lpFrameNext").disabled=!vid.videoWidth; }
+  vid.addEventListener("loadedmetadata",frameEnabled);vid.addEventListener("emptied",frameEnabled);
+  (window.__relang=window.__relang||[]).push(preciseText);preciseText();frameEnabled();
 
   var lpRelang = function () { if (!curUrl) sessionMsg.textContent = T(LP_DEF); subChipText(); eqPresetText(); chRender(); renderLocalQueue(); };
   (window.__relang = window.__relang || []).push(lpRelang);
