@@ -1040,7 +1040,37 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 }
 </style><style id="section-folding-all">
 .sec-all-btn { margin-left: auto; font-size: 11px; font-weight: 600; letter-spacing: 0; min-height: 30px; padding: 4px 12px; }
-</style><style id="rel-r9">#playerRetryBtn,#dlHandoffBtn{margin-top:8px}</style></head>
+</style><style id="rel-r9">#playerRetryBtn,#dlHandoffBtn{margin-top:8px}</style><style id="loading-skeletons">
+/* Loading skeletons: a shimmer stage over the video frame while the YouTube player warms up,
+   and a shimmer on the info-card thumbnail until the real image arrives.
+   Reduced-motion and Low-end mode switch the motion off through the global rules. */
+.frame-skel {
+  position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px; overflow: hidden;
+  background: radial-gradient(ellipse at 30% 18%, #1e2a28 0%, #141114 65%); color: #cfc6c4;
+}
+.frame-skel[hidden] { display: none; }
+.frame-skel::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 30%, rgba(255,255,255,.08) 46%, rgba(255,255,255,.16) 50%, rgba(255,255,255,.08) 54%, transparent 70%);
+  transform: translateX(-100%); animation: skel-sweep 1.4s ease-in-out infinite;
+}
+@keyframes skel-sweep { to { transform: translateX(100%); } }
+.skel-logo {
+  width: 54px; height: 54px; border-radius: 15px;
+  background: linear-gradient(135deg, #3f8f7d, #6a2fd6);
+  box-shadow: 0 6px 24px rgba(106,47,214,.35), inset 0 1px 0 rgba(255,255,255,.35);
+  animation: skel-pulse 1.2s ease-in-out infinite;
+}
+@keyframes skel-pulse { 50% { transform: scale(1.08); opacity: .85; } }
+.skel-text { margin: 0; font-size: 13.5px; color: #bdb2b0; }
+.frame-skel.skel-out { opacity: 0; transition: opacity .35s ease; pointer-events: none; }
+.info-card img.skel-img {
+  background: linear-gradient(100deg, #141114 30%, #2a2333 50%, #141114 70%);
+  background-size: 200% 100%; animation: skel-imgmove 1.3s linear infinite;
+}
+@keyframes skel-imgmove { to { background-position: -200% 0; } }
+</style></head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
 <div class="wrap">
@@ -1128,6 +1158,10 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
         <div class="placeholder" id="placeholder">
           <svg class="ph-logo" aria-hidden="true" viewBox="0 0 512 512" role="img" aria-label="HD Video Player logo"><defs><linearGradient id="vpC2bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdfcf9"/><stop offset="1" stop-color="#e6e2da"/></linearGradient></defs><rect width="512" height="512" rx="115" fill="url(#vpC2bg)"/><path d="M140 110 L370 256 L226 256Z" fill="#ff8a3d"/><path d="M140 402 L370 256 L226 256Z" fill="#e8336d"/><path d="M140 110 L226 256 L140 402Z" fill="#6a2fd6"/><path d="M140 110 L226 256 L140 256Z" fill="#8f5cf0"/></svg>
           <div id="phText">Enter a link above to play a video here</div>
+        </div>
+        <div class="frame-skel" id="frameSkel" hidden aria-hidden="true">
+          <div class="skel-logo"></div>
+          <p class="skel-text" id="frameSkelText">Loading video...</p>
         </div>
       </div>
       <p class="error" id="playerError" role="alert" hidden></p>
@@ -1480,6 +1514,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var $ = function (id) { return document.getElementById(id); };
   var linkInput = $("linkInput"), loadBtn = $("loadBtn"), linkError = $("linkError");
   var frameBox = $("frameBox"), placeholder = $("placeholder"), controls = $("controls");
+  var frameSkel = $("frameSkel"), frameSkelText = $("frameSkelText");
+  function skelShow(on) {
+    if (!frameSkel) return;
+    if (on) {
+      frameSkel.classList.remove("skel-out"); frameSkel.hidden = false;
+      if (frameSkelText) frameSkelText.textContent = T("Loading video...");
+    } else if (!frameSkel.hidden) {
+      frameSkel.classList.add("skel-out");
+      setTimeout(function () { if (frameSkel.classList.contains("skel-out")) frameSkel.hidden = true; }, 380);
+    }
+  }
   var playerError = $("playerError"), playBtn = $("playBtn"), timeLabel = $("timeLabel");
   var seek = $("seek"), vol = $("vol"), volLabel = $("volLabel"), muteBtn = $("muteBtn");
   var speedChips = $("speedChips"), qualityChips = $("qualityChips"), loopBtn = $("loopBtn"), fsBtn = $("fsBtn");
@@ -1509,6 +1554,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Clipboard has no YouTube link.": ["क्लिपबोर्ड में YouTube लिंक नहीं है.", "ક્લિપબોર્ડમાં YouTube લિંક નથી."],
    "Allow clipboard access, or long-press the field to paste.": ["क्लिपबोर्ड की अनुमति दें, या फ़ील्ड को लॉन्ग-प्रेस करके पेस्ट करें.", "ક્લિપબોર્ડની પરવાનગી આપો, અથવા ફીલ્ડને લૉંગ-પ્રેસ કરીને પેસ્ટ કરો."],
    "Back to top": ["ऊपर जाएं", "ઉપર જાઓ"],
+   "Loading video...": ["वीडियो लोड हो रहा है...", "વીડિયો લોડ થઈ રહ્યું છે..."],
    "Added to favourites": ["पसंदीदा में जोड़ा गया", "મનપસંદમાં ઉમેરાયું"],
    "Removed from favourites": ["पसंदीदा से हटाया गया", "મનપસંદમાંથી હટાવ્યું"],
    "Added to queue": ["कतार में जोड़ा गया", "કતારમાં ઉમેરાયું"],
@@ -1946,6 +1992,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function showInfo(id) {
     var c = infoCache[id] || {};
     infoCard.hidden = false;
+    infoThumb.classList.add("skel-img");
+    infoThumb.onload = function () { infoThumb.classList.remove("skel-img"); };
+    infoThumb.onerror = function () { infoThumb.classList.remove("skel-img"); };
     infoThumb.src = "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg";
     infoTitle.textContent = c.title || titleFor(id) || "Video " + id;
     $("backgroundVideo").textContent = c.title || titleFor(id) || "Video " + id;
@@ -2281,6 +2330,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!data || typeof data !== "object") return;
     if (data.event === "onReady") {
       ready = true; playBtn.disabled = false;
+      skelShow(false);
       clearTimeout(loadWatchdog); showPlayerRetry(false); playerError.hidden = true;
       send("setVolume", [prefs.volume]);
       ccApply();
@@ -2326,6 +2376,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       playerError.hidden = false;
       showPlayerRetry(!willSkip);
       if (iframe) { iframe.remove(); iframe = null; }
+      skelShow(false);
       placeholder.style.display = "";
       controls.hidden = true;
       failedQueueCount++;
@@ -2476,6 +2527,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       playerError.textContent = T("This video is taking too long to load. Check your internet, or tap Try again.");
       playerError.hidden = false;
       showPlayerRetry(true);
+      skelShow(false);
     }, window.__vpWatchMs || 12000);
   }
   if (playerRetryBtn) playerRetryBtn.addEventListener("click", function () {
@@ -2536,6 +2588,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       send("addEventListener", ["onPlaybackRateChange"]);
       send("addEventListener", ["onError"]);
     });
+    skelShow(true);
     frameBox.appendChild(iframe);
     placeholder.style.display = "none";
     controls.hidden = false;
