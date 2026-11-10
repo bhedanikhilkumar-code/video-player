@@ -1070,6 +1070,19 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
   background-size: 200% 100%; animation: skel-imgmove 1.3s linear infinite;
 }
 @keyframes skel-imgmove { to { background-position: -200% 0; } }
+<style id="empty-state-icons">
+/* Empty states: each empty library list gets a small tinted icon tile next to its hint,
+   so an empty section still looks finished instead of broken. */
+.lib-empty { display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin: 0; }
+.lib-empty-ic {
+  flex: none; width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(150deg, rgba(63,143,125,.16), rgba(106,47,214,.14));
+  border: 1px solid var(--hairline); color: var(--teal);
+}
+.lib-empty-ic svg { width: 22px; height: 22px; display: block; }
+:root[data-theme="dark"] .lib-empty-ic { color: #7fd2bf; }
+.lib-empty span:last-child { flex: 1; min-width: 0; }
 </style></head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
@@ -2045,9 +2058,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     return li;
   }
-  function fillList(ul, items, emptyText, actionLabel, onAction, onOpen, extraAction) {
+  var LIB_ICONS = {
+    queue: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 11h9"/><path d="M4 16h7"/><path d="M16.5 13.5v7l5-3.5z" fill="currentColor" stroke="none"/></svg>',
+    fav: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8z"/></svg>',
+    later: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M12 7.4V12l3.2 2"/></svg>',
+    hist: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 5.5v4.2h4.2"/><path d="M4.9 15.5a8.4 8.4 0 1 0 .7-7.4l-2 1.6"/><path d="M12 8v4.2l3 1.9"/></svg>',
+    playlist: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h11"/><path d="M4 11h11"/><path d="M4 15.5h6"/><circle cx="17.5" cy="16.5" r="2.6"/><path d="M20.1 16.5V8.8l-3.6-.9"/></svg>'
+  };
+  function emptyLi(text, iconKey) {
+    var li = document.createElement("li");
+    var box = document.createElement("p"); box.className = "lib-empty";
+    if (iconKey && LIB_ICONS[iconKey]) {
+      var ic = document.createElement("span"); ic.className = "lib-empty-ic"; ic.setAttribute("aria-hidden", "true");
+      ic.innerHTML = LIB_ICONS[iconKey]; box.appendChild(ic);
+    }
+    var tx = document.createElement("span"); tx.textContent = text; box.appendChild(tx);
+    li.appendChild(box); return li;
+  }
+  function fillList(ul, items, emptyText, actionLabel, onAction, onOpen, extraAction, emptyIcon) {
     ul.textContent = "";
-    if (!items.length) { var li = document.createElement("li"); var p = document.createElement("p"); p.className = "lib-empty"; p.textContent = emptyText; li.appendChild(p); ul.appendChild(li); return; }
+    if (!items.length) { ul.appendChild(emptyLi(emptyText, emptyIcon)); return; }
     items.forEach(function (item, idx) { ul.appendChild(buildItem(item, actionLabel, function () { onAction(item, idx); }, onOpen ? function () { onOpen(item, idx); } : null, ul === queueList && idx === qPos, extraAction)); });
   }
   function queueAdd(text) {
@@ -2099,13 +2129,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       lib.queue.splice(idx, 1);
       if (idx < qPos) qPos--; else if (idx === qPos) qPos = -1;
       saveLib(); renderLib();
-    }, function (item, idx) { playQueueAt(idx); });
-    fillList(laterList, laterView(), T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); });
-    fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) { toggleFav(item.id); });
+    }, function (item, idx) { playQueueAt(idx); }, null, "queue");
+    fillList(laterList, laterView(), T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); }, null, null, "later");
+    fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) { toggleFav(item.id); }, null, null, "fav");
     fillList(histList, histView(), T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, { label: T("Remove"), fn: function (item) {
       var i = findIn(lib.hist, item.id);
       if (i >= 0) { lib.hist.splice(i, 1); saveLib(); renderLib(); if (typeof libSay === "function") libSay(T("Removed from history.")); }
-    } });
+    } }, "hist");
     updateFavBtn(); updateLaterBtn();
   }
   function updateLaterBtn() {
@@ -3235,7 +3265,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function cleanName(v) { return String(v || "").replace(/\s+/g, " ").trim().slice(0, 40); }
   function renderPlaylists() {
     plList.textContent = "";
-    if (!playlists.length) { var e = document.createElement("li"); var p = document.createElement("p"); p.className = "lib-empty"; p.textContent = T("No saved playlists yet. Fill the queue, type a name above and tap Save."); e.appendChild(p); plList.appendChild(e); return; }
+    if (!playlists.length) { plList.appendChild(emptyLi(T("No saved playlists yet. Fill the queue, type a name above and tap Save."), "playlist")); return; }
     playlists.forEach(function (pl, idx) {
       var li = document.createElement("li"); li.className = "pl-item";
       var top = document.createElement("div"); top.className = "pl-top";
