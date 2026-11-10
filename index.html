@@ -1589,7 +1589,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Bass boost": ["बेस बूस्ट", "બેસ બૂસ્ટ"],
    "Vocal": ["आवाज़", "અવાજ"],
    "Treble boost": ["ट्रेबल बूस्ट", "ટ્રેબલ બૂસ્ટ"],
-   "Remembered for this video: ": ["इस वीडियो के लिए याद रखा: ", "આ વીડિયો માટે યાદ રાખ્યું: "]
+   "Remembered for this video: ": ["इस वीडियो के लिए याद रखा: ", "આ વીડિયો માટે યાદ રાખ્યું: "],
+   "Subtitle sync (timing)": ["सबटाइटल सिंक (समय)", "સબટાઇટલ સિંક (સમય)"],
+   "Reset": ["रीसेट", "રીસેટ"],
+   "Load a subtitle file first, then adjust.": ["पहले सबटाइटल फ़ाइल लोड करें, फिर समय बदलें.", "પહેલા સબટાઇટલ ફાઇલ લોડ કરો, પછી સમય બદલો."],
+   "Subtitles shifted by ": ["सबटाइटल इतना आगे-पीछे: ", "સબટાઇટલ આટલું આગળ-પાછળ: "],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
@@ -3969,8 +3973,89 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
 })();
 </script>
+<style id="subtitle-sync">
+#lpSubSync{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0}
+#lpSubSyncVal{min-width:70px;text-align:center;font-variant-numeric:tabular-nums}
+</style>
+<script>
+/* Subtitle sync: if an uploaded subtitle runs early or late, shift it in 0.5 second steps.
+   The shifted file is rebuilt on this device; nothing is uploaded anywhere. */
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var T = window.T || function (x) { return x; };
+  var vid = $("lpVideo"), subFile = $("lpSubFile"), sizes = $("lpSubSizes");
+  if (!vid || !subFile || !sizes) return;
+  var subText = null, offset = 0, myUrl = null;
+  function srtToVtt(text) {
+    text = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+    if (/^\s*WEBVTT/.test(text)) return text;
+    return "WEBVTT\n\n" + text.replace(/(\d{1,2}:\d{2}:\d{2}),(\d{1,3})/g, "$1.$2");
+  }
+  function tsToSec(s) { var p = s.split(":"), n = p.length; return (+p[n - 3] || 0) * 3600 + (+p[n - 2] || 0) * 60 + parseFloat(p[n - 1]); }
+  function secToTs(s) { if (s < 0) s = 0; var h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = (s % 60).toFixed(3); return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(ss).padStart(6, "0"); }
+  function shiftVtt(text, off) {
+    return text.replace(/(\d{2}:)?\d{2}:\d{2}\.\d{3}/g, function (m) { return secToTs(tsToSec(m) + off); });
+  }
+  function track() { return vid.querySelector("track"); }
+  function fmtOff() { return (offset > 0 ? "+" : "") + offset.toFixed(1) + " s"; }
+
+  var lab = document.createElement("span"); lab.className = "label"; lab.id = "lpSubSyncLab";
+  var row = document.createElement("div"); row.id = "lpSubSync";
+  var minus = document.createElement("button"); minus.className = "chip"; minus.type = "button"; minus.textContent = "-0.5 s"; minus.setAttribute("aria-label", "Subtitles 0.5 seconds earlier");
+  var val = document.createElement("b"); val.id = "lpSubSyncVal"; val.textContent = "+0.0 s";
+  var plus = document.createElement("button"); plus.className = "chip"; plus.type = "button"; plus.textContent = "+0.5 s"; plus.setAttribute("aria-label", "Subtitles 0.5 seconds later");
+  var reset = document.createElement("button"); reset.className = "chip"; reset.type = "button"; reset.id = "lpSubSyncReset";
+  row.appendChild(minus); row.appendChild(val); row.appendChild(plus); row.appendChild(reset);
+  var msg = document.createElement("p"); msg.className = "hint"; msg.id = "lpSubSyncMsg"; msg.setAttribute("role", "status");
+  var parent = sizes.parentNode;
+  parent.insertBefore(msg, sizes.nextSibling);
+  parent.insertBefore(row, msg);
+  parent.insertBefore(lab, row);
+
+  function relang() {
+    lab.textContent = T("Subtitle sync (timing)");
+    reset.textContent = T("Reset");
+  }
+  (window.__relang = window.__relang || []).push(relang);
+  relang();
+
+  function apply() {
+    val.textContent = fmtOff();
+    var tr = track();
+    if (!subText || !tr) { msg.textContent = T("Load a subtitle file first, then adjust."); return; }
+    if (myUrl) { URL.revokeObjectURL(myUrl); myUrl = null; }
+    myUrl = URL.createObjectURL(new Blob([shiftVtt(subText, offset)], { type: "text/vtt" }));
+    var t2 = null;
+    try { t2 = tr.track; if (t2) t2.mode = "hidden"; } catch (e) {}
+    tr.src = myUrl;
+    try { if (t2) t2.mode = "showing"; } catch (e) {}
+    msg.textContent = T("Subtitles shifted by ") + fmtOff() + ".";
+  }
+  minus.addEventListener("click", function () { offset = Math.max(-60, Math.round((offset - 0.5) * 2) / 2); apply(); });
+  plus.addEventListener("click", function () { offset = Math.min(60, Math.round((offset + 0.5) * 2) / 2); apply(); });
+  reset.addEventListener("click", function () { offset = 0; apply(); });
+
+  // The app's own subtitle loader builds the converted WebVTT and sets it as the
+  // track's blob URL. Read that blob back, so both loaders stay in sync regardless
+  // of listener order (the file input is cleared after each pick).
+  function grab() {
+    var tr = track();
+    if (!tr || !tr.src || tr.src === myUrl || tr.src.indexOf("blob:") !== 0) return;
+    fetch(tr.src).then(function (r) { return r.text(); }).then(function (t) {
+      if (track() !== tr) return;
+      subText = t; offset = 0; val.textContent = fmtOff(); msg.textContent = "";
+    }).catch(function () {});
+  }
+  new MutationObserver(grab).observe(vid, { childList: true, attributes: true, attributeFilter: ["src"], subtree: true });
+  vid.addEventListener("loadstart", function () {
+    if (!track()) { subText = null; offset = 0; val.textContent = fmtOff(); msg.textContent = ""; }
+  });
+})();
+</script>
 </body>
   </html>
+
 
 
 
