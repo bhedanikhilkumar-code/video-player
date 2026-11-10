@@ -1121,6 +1121,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
     <a class="feat" href="#ctl-sound">Sound</a>
     <a class="feat" href="#ctl-speed">Speed</a>
     <a class="feat" href="#ctl-quality">Quality</a>
+    <a class="feat" href="#ctl-saver">Saver</a>
     <a class="feat" href="#ctl-repeat">Loop A-B</a>
     <a class="feat" href="#ctl-sleep">Sleep timer</a>
     <a class="feat" href="#backgroundHelp">Listening help</a>
@@ -1245,6 +1246,14 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
         <div class="ctl-card wide" id="ctl-quality">
           <h3>Quality</h3>
           <div class="chips" id="qualityChips"></div>
+        </div>
+
+        <div class="ctl-card wide" id="ctl-saver">
+          <h3 id="saverH">Data and battery saver</h3>
+          <label class="dl-chk"><input type="checkbox" id="saverData"> <span id="saverDataT">Data saver (480p cap, no list thumbnails)</span></label>
+          <label class="dl-chk"><input type="checkbox" id="saverBatt"> <span id="saverBattT">Battery saver (lighter effects)</span></label>
+          <p class="hint" id="saverHint">Data saver asks YouTube for 480p on each video you load and stops thumbnail images in your lists. Battery saver uses the same lighter effects as Low-end mode. On OLED screens, the Dark theme saves battery too.</p>
+          <p class="hint" id="battStatus" role="status" hidden></p>
         </div>
 
         <div class="ctl-card" id="ctl-subs">
@@ -1577,10 +1586,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
-  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", lang: "en", seekStep: 10 };
+  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", lang: "en", seekStep: 10, dataSaver: false, battSaver: false };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; ["cc", "ccLang", "accent", "lang"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; ["cc", "ccLang", "accent", "lang"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
@@ -1770,6 +1779,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Nothing counted yet. Watch a video and your stats appear here.": ["अभी कुछ नहीं गिना गया. वीडियो देखें और आपके आंकड़े यहां आएंगे.", "હજી કંઈ ગણાયું નથી. વીડિયો જુઓ અને તમારા આંકડા અહીં આવશે."],
    "Today": ["आज", "આજ"],
    "Watch time, last 7 days: ": ["देखने का समय, पिछले 7 दिन: ", "જોવાનો સમય, છેલ્લા 7 દિવસ: "],
+   "Battery": ["बैटरी", "બેટરી"],
+   "charging": ["चार्ज हो रहा", "ચાર્જ થઈ રહ્યું છે"],
+   "Battery saver is off.": ["बैटरी सेवर बंद है.", "બેટરી સેવર બંધ છે."],
+   "Data saver on": ["डेटा सेवर चालू", "ડેટા સેવર ચાલુ"],
+   "Data saver off": ["डेटा सेवर बंद", "ડેટા સેવર બંધ"],
+   "Battery saver on": ["बैटरी सेवर चालू", "બેટરી સેવર ચાલુ"],
+   "Battery saver off": ["बैटरी सेवर बंद", "બેટરી સેવર બંધ"],
    " watched": [" देखा", " જોયું"],
    "play": ["बार", "વાર"],
    "plays": ["बार", "વાર"],
@@ -2073,7 +2089,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var li = document.createElement("li"); li.className = "lib-item";
     var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
     var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
-    img.src = "https://i.ytimg.com/vi/" + item.id + "/mqdefault.jpg";
+    thumbSet(img, item.id, "mqdefault.jpg");
     var span = document.createElement("span"); span.textContent = (isCurrent ? "▶ " : "") + (item.title || ("Video " + item.id)) + (item.t >= 5 ? " · Resume " + fmt(item.t) : "");
     open.appendChild(img); open.appendChild(span);
     open.addEventListener("click", function () {
@@ -2404,6 +2420,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (data.event === "onStateChange" && typeof data.info === "number") {
       if (sleepPaused && data.info === 1) { send("pauseVideo"); return; }
       playing = data.info === 1; if (playing) failedQueueCount = 0;
+      if (playing && prefs.dataSaver && curId && dsAppliedFor !== curId) { dsAppliedFor = curId; send("setPlaybackQuality", ["large"]); markActive(qualityChips, "large"); }
       if (playing && curId && lastPlayId !== curId) { lastPlayId = curId; stats.plays += 1; statsRec(curId).plays += 1; saveStats(); renderStats(); }
       if (!playing && statsDirty) { statsDirty = false; saveStats(); renderStats(); }
       playBtn.textContent = playing ? T("⏸ Pause") : T("▶ Play");
@@ -2629,6 +2646,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (startSec == null && previous >= 0 && lib.hist[previous].t >= 5) startSec = lib.hist[previous].t;
     document.dispatchEvent(new Event("vp-youtube-selected"));
     curId = id; curTime = startSec || 0; lastResumeSave = 0; clearAB(); if (typeof vmemNote === "function") vmemNote("");
+    dsAppliedFor = null;
     miniDismissed = false; if (typeof updateMini === "function") requestAnimationFrame(updateMini);
     var rb = document.getElementById("resumeBox"); if (rb) rb.hidden = true;
     addHistory(id);
@@ -3534,12 +3552,53 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function applyA11y() {
     document.documentElement.classList.toggle("big-text", prefs.bigText === true);
     document.documentElement.classList.toggle("high-contrast", prefs.highContrast === true);
-    document.documentElement.classList.toggle("low-fx", prefs.lowFx === true);
+    document.documentElement.classList.toggle("low-fx", prefs.lowFx === true || prefs.battSaver === true);
   }
   if (a11yBig) { a11yBig.checked = prefs.bigText === true; a11yBig.addEventListener("change", function () { prefs.bigText = a11yBig.checked; savePrefs(); applyA11y(); }); }
   if (a11yHc) { a11yHc.checked = prefs.highContrast === true; a11yHc.addEventListener("change", function () { prefs.highContrast = a11yHc.checked; savePrefs(); applyA11y(); }); }
   if (a11yLow) { a11yLow.checked = prefs.lowFx === true; a11yLow.addEventListener("change", function () { prefs.lowFx = a11yLow.checked; savePrefs(); applyA11y(); }); }
   applyA11y();
+
+  // Data and battery saver: 480p quality cap, thumbnail-free lists, lighter effects, battery readout.
+  var saverData = $("saverData"), saverBatt = $("saverBatt"), battStatus = $("battStatus");
+  var dsAppliedFor = null;
+  function thumbSet(img, id, size) {
+    if (!img) return;
+    if (prefs.dataSaver) { img.hidden = true; img.removeAttribute("src"); }
+    else { img.hidden = false; img.src = "https://i.ytimg.com/vi/" + id + "/" + size; }
+  }
+  function saverRerender() {
+    renderLib(); renderPlaylists(); renderStats(); renderContinue(); applyLibSearch();
+  }
+  if (saverData) {
+    saverData.checked = prefs.dataSaver === true;
+    saverData.addEventListener("change", function () {
+      prefs.dataSaver = saverData.checked; savePrefs();
+      if (prefs.dataSaver && iframe && ready) { dsAppliedFor = curId; send("setPlaybackQuality", ["large"]); markActive(qualityChips, "large"); }
+      saverRerender();
+      toast(prefs.dataSaver ? T("Data saver on") : T("Data saver off"));
+    });
+  }
+  if (saverBatt) {
+    saverBatt.checked = prefs.battSaver === true;
+    saverBatt.addEventListener("change", function () {
+      prefs.battSaver = saverBatt.checked; savePrefs(); applyA11y();
+      toast(prefs.battSaver ? T("Battery saver on") : T("Battery saver off"));
+    });
+  }
+  if (battStatus && navigator.getBattery) {
+    navigator.getBattery().then(function (batt) {
+      function battRender() {
+        var pct = Math.round(batt.level * 100);
+        var s = T("Battery") + ": " + pct + "%" + (batt.charging ? " (" + T("charging") + ")" : "");
+        if (!batt.charging && pct <= 20 && prefs.battSaver !== true) s += " - " + T("Battery saver is off.");
+        battStatus.textContent = s; battStatus.hidden = false;
+      }
+      batt.addEventListener("levelchange", battRender);
+      batt.addEventListener("chargingchange", battRender);
+      battRender();
+    }).catch(function () {});
+  }
 
   // ---- Report a problem: built on-device, sent through the user's own email app ----
   var rpText = $("reportText"), rpMsg = $("reportMsg"), rpMail = $("reportMail"), rpCopy = $("reportCopy");
@@ -3646,7 +3705,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var li = document.createElement("li"); li.className = "lib-item";
         var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
         var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
-        img.src = "https://i.ytimg.com/vi/" + v.id + "/default.jpg";
+        thumbSet(img, v.id, "default.jpg");
         var span = document.createElement("span"); span.textContent = v.title + " \u00b7 " + fmtWatch(v.secs) + (v.plays ? " \u00b7 " + v.plays + "x" : "");
         open.appendChild(img); open.appendChild(span);
         open.addEventListener("click", function () { linkInput.value = "https://youtu.be/" + v.id; loadVideo(null, null, undefined, true); });
@@ -3758,6 +3817,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#ctl-sound h3", "Sound", "आवाज़"],
     ["#ctl-speed h3", "Speed", "स्पीड"],
     ["#ctl-quality h3", "Quality", "क्वालिटी"],
+    [".feat-nav a[href=\"#ctl-saver\"]", "Saver", "सेवर"],
+    ["#saverH", "Data and battery saver", "डेटा और बैटरी सेवर"],
+    ["#saverDataT", "Data saver (480p cap, no list thumbnails)", "डेटा सेवर (480p सीमा, लिस्ट में थंबनेल नहीं)"],
+    ["#saverBattT", "Battery saver (lighter effects)", "बैटरी सेवर (हल्के इफ़ेक्ट)"],
+    ["#saverHint", "Data saver asks YouTube for 480p on each video you load and stops thumbnail images in your lists. Battery saver uses the same lighter effects as Low-end mode. On OLED screens, the Dark theme saves battery too.", "डेटा सेवर हर वीडियो के लिए YouTube से 480p मांगता है और आपकी लिस्ट की थंबनेल इमेज बंद कर देता है. बैटरी सेवर Low-end mode जैसे हल्के इफ़ेक्ट इस्तेमाल करता है. OLED स्क्रीन पर Dark theme भी बैटरी बचाती है."],
     ["#ctl-repeat h3", "Repeat", "रिपीट"],
     ["#ctl-sleep h3", "Sleep timer", "स्लीप टाइमर"],
     ["#ctl-share h3", "Share and save", "शेयर और सेव"],
@@ -3944,6 +4008,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#ctl-sound h3": "અવાજ",
  "#ctl-speed h3": "સ્પીડ",
  "#ctl-quality h3": "ક્વોલિટી",
+ ".feat-nav a[href=\"#ctl-saver\"]": "સેવર",
+ "#saverH": "ડેટા અને બેટરી સેવર",
+ "#saverDataT": "ડેટા સેવર (480p મર્યાદા, યાદીમાં થંબનેલ નહીં)",
+ "#saverBattT": "બેટરી સેવર (હળવા ઇફેક્ટ)",
+ "#saverHint": "ડેટા સેવર દરેક વીડિયો માટે YouTube પાસેથી 480p માંગે છે અને તમારી યાદીની થંબનેલ ઇમેજ બંધ કરે છે. બેટરી સેવર Low-end મોડ જેવા હળવા ઇફેક્ટ વાપરે છે. OLED સ્ક્રીન પર Dark થીમ પણ બેટરી બચાવે છે.",
  "#ctl-repeat h3": "રિપીટ",
  "#ctl-sleep h3": "સ્લીપ ટાઈમર",
  "#ctl-share h3": "શેર અને સેવ",
@@ -4149,7 +4218,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var li = document.createElement("li"); li.className = "lib-item";
       var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
       var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
-      img.src = "https://i.ytimg.com/vi/" + item.id + "/default.jpg";
+      thumbSet(img, item.id, "default.jpg");
       var box = document.createElement("span");
       var span = document.createElement("span");
       span.textContent = (item.title || (T("Video ") + item.id)) + " \u00b7 " + fmt(item.t) + " / " + fmt(item.dur);
