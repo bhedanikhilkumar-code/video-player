@@ -1256,7 +1256,7 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
       <details class="faq"><summary id="faq3s">Why does the downloader say "waking up the free server"?</summary><p id="faq3a">The download helper runs on a free server that sleeps when nobody uses it. The first request wakes it, which can take up to a minute. After that it is fast.</p></details>
       <details class="faq"><summary id="faq4s">How do I add a whole YouTube playlist?</summary><p id="faq4a">Paste the playlist link in the first box and tap "Add playlist to queue". Every video in the list is added to your queue (up to the 50-video queue limit).</p></details>
       <details class="faq"><summary id="faq5s">Why is YouTube volume limited to 100%?</summary><p id="faq5a">YouTube's own player does not allow more than 100%. For louder sound, open a file from your device in the "Play a file" card - it can boost volume up to 300%.</p></details>
-      <details class="faq"><summary id="faq6s">Where are my queue and favourites saved?</summary><p id="faq6a">In this browser, on this device only. Use "Export backup" in Your videos to save them to a file, and "Import backup" to load them on another device or browser.</p></details>
+      <details class="faq"><summary id="faq6s">Where are my queue and favourites saved?</summary><p id="faq6a">In this browser, on this device only. Use "Export backup" in Your videos to save them, with your settings, to a file, and "Import backup" to load everything on another device or browser.</p></details>
       <details class="faq"><summary id="faq7s">Can I listen with the phone screen off?</summary><p id="faq7a">See the <a href="#backgroundHelp">Listening help card</a> below the player for simple steps and the screen-off limits.</p></details>
       <details class="faq"><summary id="faq8s">Does the app work offline?</summary><p id="faq8a">Once installed, the app opens without internet and your queue, favourites and settings are still there. Playing videos and downloading need internet.</p></details>
       <details class="faq"><summary id="faq9s">What is sent anywhere?</summary><p id="faq9a">Your queue, favourites and settings never leave your device. The download server only receives the link you ask it to fetch, and its files are deleted after 15 minutes. This app shows no ads of its own and has no trackers.</p></details>
@@ -1523,6 +1523,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "favourites": ["पसंदीदा", "મનપસંદ"],
    " and ": [" और ", " અને "],
    "playlist": ["प्लेलिस्ट", "પ્લેલિસ્ટ"],
+   "Settings restored. Reloading to apply\u2026": ["सेटिंग वापस आ गईं. लागू करने के लिए रीलोड हो रहा है\u2026", "સેટિંગ પાછી આવી. લાગુ કરવા રીલોડ થાય છે\u2026"],
    "That file could not be read. Use a backup file made by this app.": ["वह फ़ाइल नहीं पढ़ी जा सकी. इसी ऐप की बनाई बैकअप फ़ाइल इस्तेमाल करें.", "તે ફાઇલ વાંચી ન શકાઈ. આ જ એપની બનાવેલી બેકઅપ ફાઇલ વાપરો."],
    "Showing ": ["दिख रहे ", "દેખાય છે "],
    " of ": [" / ", " / "],
@@ -2768,10 +2769,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // ---- Library backup: export and import queue + favourites as a file ----
   var libBackupMsg = $("libBackupMsg");
   $("libExport").addEventListener("click", function () {
-    var data = { app: "hd-video-player", version: 1, exportedAt: new Date().toISOString(),
+    var data = { app: "hd-video-player", version: 2, exportedAt: new Date().toISOString(),
       queue: lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }),
       favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "" }; }),
-      playlists: playlists.map(function (p) { return { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; }) };
+      later: lib.later.map(function (x) { return { id: x.id, title: x.title || "" }; }),
+      playlists: playlists.map(function (p) { return { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; }),
+      settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
+    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1"].forEach(function (k) {
+      try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
+    });
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -2801,9 +2807,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           var base = nm, k = 2; while (plFind(nm) >= 0) { nm = (base.slice(0, 34) + " (" + k + ")"); k++; }
           playlists.push({ name: nm, items: items }); pn++;
         });
-        if (!qn && !fn && !pn) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
+        var ln = 0;
+        (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { lib.later.push({ id: x.id, title: typeof x.title === "string" ? x.title : "" }); ln++; } });
+        var s = d.settings && typeof d.settings === "object" ? d.settings : null, gotSettings = false;
+        if (s) {
+          if (s.prefs && typeof s.prefs === "object") { Object.keys(s.prefs).forEach(function (k) { if (k in prefs && typeof s.prefs[k] === typeof prefs[k]) prefs[k] = s.prefs[k]; }); if ([5, 10, 15, 30].indexOf(prefs.seekStep) < 0) prefs.seekStep = 10; savePrefs(); gotSettings = true; }
+          if (s.queueModes && typeof s.queueModes === "object") { ["shuffle", "repeat", "auto"].forEach(function (k) { if (typeof s.queueModes[k] === "boolean") queueModes[k] = s.queueModes[k]; }); try { localStorage.setItem("vp-queue-modes.v1", JSON.stringify(queueModes)); } catch (e) {} gotSettings = true; }
+          if (s.vmem && typeof s.vmem === "object") { Object.keys(s.vmem).forEach(function (k) { vmem[k] = s.vmem[k]; }); vmemSave(); gotSettings = true; }
+          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1"].forEach(function (k) {
+            if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
+          });
+        }
+        if (!qn && !fn && !pn && !ln && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
         saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
         libBackupMsg.textContent = T("Imported ") + qn + T(" queued, ") + fn + " " + (fn === 1 ? T("favourite") : T("favourites")) + T(" and ") + pn + " " + (pn === 1 ? T("playlist") : T("playlists")) + ".";
+        if (gotSettings) { libBackupMsg.textContent += " " + T("Settings restored. Reloading to apply\u2026"); setTimeout(function () { location.reload(); }, 1200); }
       } catch (e) { libBackupMsg.textContent = T("That file could not be read. Use a backup file made by this app."); }
     };
     rd.readAsText(f);
@@ -3116,7 +3134,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#faq5s", "Why is YouTube volume limited to 100%?", "YouTube वॉल्यूम 100% तक ही क्यों?"],
     ["#faq5a", "YouTube's own player does not allow more than 100%. For louder sound, open a file from your device in the \"Play a file\" card - it can boost volume up to 300%.", "YouTube का अपना प्लेयर 100% से ज़्यादा नहीं देता. ज़ोर की आवाज़ के लिए 'Play a file' कार्ड में अपने डिवाइस की फ़ाइल खोलें - वह 300% तक बूस्ट कर सकती है."],
     ["#faq6s", "Where are my queue and favourites saved?", "मेरी कतार और पसंदीदा कहां सेव होते हैं?"],
-    ["#faq6a", "In this browser, on this device only. Use \"Export backup\" in Your videos to save them to a file, and \"Import backup\" to load them on another device or browser.", "इसी ब्राउज़र में, सिर्फ इसी डिवाइस पर. उन्हें फ़ाइल में सेव करने के लिए Your videos में 'Export backup' और दूसरे डिवाइस या ब्राउज़र पर लाने के लिए 'Import backup' इस्तेमाल करें."],
+    ["#faq6a", "In this browser, on this device only. Use \"Export backup\" in Your videos to save them, with your settings, to a file, and \"Import backup\" to load everything on another device or browser.", "इसी ब्राउज़र में, सिर्फ इसी डिवाइस पर. उन्हें अपनी सेटिंग के साथ फ़ाइल में सेव करने के लिए Your videos में 'Export backup' और दूसरे डिवाइस या ब्राउज़र पर सब कुछ लाने के लिए 'Import backup' इस्तेमाल करें."],
     ["#faq7s", "Can I listen with the phone screen off?", "क्या फोन की स्क्रीन बंद करके सुन सकते हैं?"],
     ["#faq8s", "Does the app work offline?", "क्या ऐप ऑफ़लाइन चलता है?"],
     ["#faq8a", "Once installed, the app opens without internet and your queue, favourites and settings are still there. Playing videos and downloading need internet.", "इंस्टॉल करने के बाद ऐप बिना इंटरनेट के खुलता है और आपकी कतार, पसंदीदा और सेटिंग मौजूद रहती हैं. वीडियो चलाने और डाउनलोड के लिए इंटरनेट चाहिए."],
@@ -3283,7 +3301,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#faq5s": "YouTube વોલ્યુમ 100% સુધી જ કેમ?",
  "#faq5a": "YouTubeનો પોતાનો પ્લેયર 100% થી વધુ નથી આપતો. મોટા અવાજ માટે 'Play a file' કાર્ડમાં તમારા ડિવાઇસની ફાઇલ ખોલો - તે 300% સુધી બૂસ્ટ કરી શકે છે.",
  "#faq6s": "મારી કતાર અને મનપસંદ ક્યાં સેવ થાય છે?",
- "#faq6a": "આ જ બ્રાઉઝરમાં, ફક્ત આ જ ડિવાઇસ પર. તેને ફાઇલમાં સેવ કરવા Your videos માં 'Export backup' અને બીજા ડિવાઇસ કે બ્રાઉઝર પર લાવવા 'Import backup' વાપરો.",
+ "#faq6a": "આ જ બ્રાઉઝરમાં, ફક્ત આ જ ડિવાઇસ પર. તેને તમારી સેટિંગ સાથે ફાઇલમાં સેવ કરવા Your videos માં 'Export backup' અને બીજા ડિવાઇસ કે બ્રાઉઝર પર બધું લાવવા 'Import backup' વાપરો.",
  "#faq7s": "શું ફોનની સ્ક્રીન બંધ કરીને સાંભળી શકાય?",
  "#faq8s": "શું એપ ઓફલાઇન ચાલે છે?",
  "#faq8a": "ઇન્સ્ટોલ કર્યા પછી એપ વગર ઇન્ટરનેટે ખુલે છે અને તમારી कतार, મનપસંદ અને સેટિંગ રહે છે. વીડિયો ચલાવવા અને ડાઉનલોડ માટે ઇન્ટરનેટ જોઈએ છે.",
@@ -3681,7 +3699,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     window.__lpNode = node; window.__lpCtx = ctx;
   }
   var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, eq: { b: 0, m: 0, t: 0 } };
-  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); } } catch (e) {}
+  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); } } catch (e) {}
   gain.value = lp.gain;
   function saveLp() { try { localStorage.setItem(LK, JSON.stringify(lp)); } catch (e) {} }
   function setGain() { var v = Number(gain.value); lp.gain = v; saveLp(); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
@@ -3848,7 +3866,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
   // Subtitle upload: .srt/.vtt files are converted to WebVTT on this device, never uploaded.
   var subBtn = $("lpSubBtn"), subFile = $("lpSubFile"), subOff = $("lpSubOff"), subMsg = $("lpSubMsg"), subSizes = $("lpSubSizes");
-  var subUrl = null, subTrack = null, ccSize = "m";
+  var subUrl = null, subTrack = null, ccSize = (lp.ccSize === "s" || lp.ccSize === "l") ? lp.ccSize : "m";
   function srtToVtt(text) {
     text = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
     if (/^\s*WEBVTT/.test(text)) return text;
@@ -3868,7 +3886,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function subChipText() { if (subSizes) [].forEach.call(subSizes.children, function (c, i) { c.textContent = T(SUB_SIZES[i][1]); }); }
   if (subSizes) SUB_SIZES.forEach(function (o) {
     var b = document.createElement("button"); b.className = "chip"; b.type = "button"; b.textContent = T(o[1]); b.dataset.value = o[0]; b.setAttribute("aria-pressed", "false");
-    b.addEventListener("click", function () { ccSize = o[0]; ccSizeApply(); });
+    b.addEventListener("click", function () { ccSize = o[0]; lp.ccSize = ccSize; saveLp(); ccSizeApply(); });
     subSizes.appendChild(b);
   });
   ccSizeApply();
