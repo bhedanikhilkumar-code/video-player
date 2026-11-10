@@ -1273,6 +1273,8 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
           <span class="label" id="sleepLabel" role="status">Off</span>
           <div class="row" style="margin-top:10px"><button class="chip" id="sleepEndBtn" type="button" aria-pressed="false">Stop at end of video</button></div>
           <div class="row" style="margin-top:10px"><label for="sleepMinutes" id="sleepMinLab">Custom minutes</label><input id="sleepMinutes" type="number" min="1" max="720" value="20" style="width:90px"><button class="chip" id="sleepStart" type="button">Start timer</button></div>
+          <div class="row" style="margin-top:10px"><button class="chip" id="sleepExtend" type="button" hidden>+10 min</button></div>
+          <label class="dl-chk"><input type="checkbox" id="sleepFade"> <span id="sleepFadeT">Fade the sound out in the last minute</span></label>
           <p class="hint">Pauses playback and auto-next. Background tabs may delay timers; the pause is checked again when you return.</p>
         </div>
 
@@ -2632,6 +2634,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     addHistory(id);
     showInfo(id);
     ready = false; playing = false; duration = 0; playBtn.disabled = true; playBtn.textContent = T("▶ Play");
+    if (typeof sleepFadeRestore === "function") sleepFadeRestore();
     timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1;
     if (iframe) { iframe.remove(); iframe = null; }
     iframe = document.createElement("iframe");
@@ -2793,20 +2796,41 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Sleep timer: pauses the video (and stops the queue) when time is up.
   var sleepChips = $("sleepChips"), sleepLabel = $("sleepLabel");
   var sleepEnd = 0, sleepTick = null, sleepPaused = false;
+  var sleepExtend = $("sleepExtend"), sleepFadeBox = $("sleepFade");
+  var fadeBase = null, fadeOn = false;
+  try { fadeOn = localStorage.getItem("vp-sleep-fade.v1") === "1"; } catch (e) {}
+  function sleepFadeRestore() {
+    if (fadeBase == null) return;
+    var fv0 = fadeBase; fadeBase = null;
+    if (iframe && ready) send("setVolume", [fv0]);
+    vol.value = fv0; prefs.volume = fv0; volLabel.textContent = fv0 + "%";
+  }
   function sleepRender() {
     var left = Math.max(0, Math.ceil((sleepEnd - Date.now()) / 1000));
     sleepLabel.textContent = sleepEnd ? T("Pauses in ") + fmt(left) : T("Off");
+    if (sleepExtend) sleepExtend.hidden = !sleepEnd;
   }
   function checkSleep() {
     if (!sleepEnd) return;
-    if (Date.now() < sleepEnd) { sleepRender(); return; }
+    var leftMs = sleepEnd - Date.now();
+    if (leftMs > 0) {
+      sleepRender();
+      if (fadeOn && iframe && ready && playing && leftMs <= 60000) {
+        if (fadeBase == null) fadeBase = prefs.volume;
+        var fvol = Math.max(5, Math.round(fadeBase * leftMs / 60000));
+        send("setVolume", [fvol]); vol.value = fvol; volLabel.textContent = fvol + "%";
+      }
+      return;
+    }
     clearInterval(sleepTick); sleepTick = null; sleepEnd = 0; sleepPaused = true;
     try { localStorage.removeItem("vp-sleep-end.v1"); } catch(e) {}
     send("pauseVideo"); playing = false; playBtn.textContent = T("▶ Play");
+    sleepFadeRestore();
     markActive(sleepChips, "0"); sleepLabel.textContent = T("Sleep timer finished - paused. Press Play to continue.");
   }
   function sleepSet(mins) {
     if (sleepTick) clearInterval(sleepTick);
+    sleepFadeRestore();
     sleepEnd = mins ? Date.now() + mins * 60000 : 0; sleepPaused = false;
     try { if (sleepEnd) localStorage.setItem("vp-sleep-end.v1", String(sleepEnd)); else localStorage.removeItem("vp-sleep-end.v1"); } catch(e) {}
     markActive(sleepChips, String(mins)); sleepRender();
@@ -2817,6 +2841,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var b = document.createElement("button"); b.className = "chip"; b.type = "button";
     b.textContent = o[1]; b.dataset.value = String(o[0]); b.setAttribute("aria-pressed", "false");
     b.addEventListener("click", function() { sleepSet(o[0]); }); sleepChips.appendChild(b);
+  });
+  if (sleepFadeBox) { sleepFadeBox.checked = fadeOn; sleepFadeBox.addEventListener("change", function () {
+    fadeOn = sleepFadeBox.checked;
+    try { localStorage.setItem("vp-sleep-fade.v1", fadeOn ? "1" : "0"); } catch (e) {}
+    if (!fadeOn) sleepFadeRestore();
+  }); }
+  if (sleepExtend) sleepExtend.addEventListener("click", function () {
+    if (!sleepEnd) return;
+    sleepEnd += 600000;
+    try { localStorage.setItem("vp-sleep-end.v1", String(sleepEnd)); } catch (e) {}
+    sleepRender();
+    toast("+10 " + T("min") + " - " + T("Pauses in ") + fmt(Math.max(0, Math.ceil((sleepEnd - Date.now()) / 1000))));
   });
   $("sleepStart").addEventListener("click", function() {
     var n = Number($("sleepMinutes").value);
@@ -3805,6 +3841,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#lpChHint", "Your own markers for this file, saved on this device. Tap a chapter to jump to it.", "इस फ़ाइल के लिए आपके अपने मार्कर, इसी डिवाइस पर सेव. किसी अध्याय पर टैप करके वहां जाएं."],
     ["#lpSpeedH", "Speed", "स्पीड"],
     ["#sleepMinLab", "Custom minutes", "अपने मिनट"],
+    ["#sleepExtend", "+10 min", "+10 मिनट"],
+    ["#sleepFadeT", "Fade the sound out in the last minute", "आखिरी मिनट में आवाज़ धीरे-धीरे कम करें"],
     ["#ccLangLab", "Language shortcut", "भाषा शॉर्टकट"],
     ["#abSecLab", "Repeat a section (A-B loop)", "कोई हिस्सा दोहराएं (A-B लूप)"],
     ["#seekLab", "Seek through video", "वीडियो में आगे-पीछे जाएं"],
@@ -4003,6 +4041,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#libScope button[data-scope=\"later\"]": "પછી જુઓ",
  "#libScope button[data-scope=\"hist\"]": "ઇતિહાસ",
  "#resetAllBtn": "ડિફોલ્ટ પર રીસેટ કરો",
+ "#sleepExtend": "+10 મિનિટ",
+ "#sleepFadeT": "છેલ્લા મિનિટમાં અવાજ ધીમે ધીમે ઓછો કરો",
  "#queueModeMsg": "Auto-next ચાલુ છે. વીડિયો રિપીટ અને A-B રિપીટ પહેલ લાગુ પડે છે.",
  "#prevQueueBtn": "પાછળનો",
  "#playerRetryBtn": "↻ ફરી પ્રયાસ કરો",
