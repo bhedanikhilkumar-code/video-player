@@ -1676,6 +1676,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "That file is a full backup. Use Import backup above to restore it.": ["वह फ़ाइल पूरी बैकअप है. उसे वापस लाने के लिए ऊपर Import backup इस्तेमाल करें.", "તે ફાઇલ આખી બેકઅપ છે. તે પાછી લાવવા ઉપર Import backup વાપરો."],
    "That file did not have a playlist.": ["उस फ़ाइल में प्लेलिस्ट नहीं थी.", "તે ફાઇલમાં પ્લેલિસ્ટ નહોતી."],
    "Imported playlist": ["प्लेलिस्ट इम्पोर्ट हुई", "પ્લેલિસ્ટ ઇમ્પોર્ટ થઈ"],
+   "Removed from history.": ["इतिहास से हटाया गया.", "ઇતિહાસમાંથી કાઢ્યું."],
    " of ": [" / ", " / "],
    " saved items.": [" सेव आइटम.", " સેવ આઇટમ."],
    "Nothing matches. Try another word.": ["कुछ नहीं मिला. दूसरा शब्द आज़माएं.", "કંઈ મળ્યું નહીં. બીજો શબ્દ અજમાવો."],
@@ -1972,7 +1973,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     saveLib(); renderLib(); if (i < 0) fetchTitle(id);
     toast(i >= 0 ? T("Removed from Watch later.") : T("Saved to Watch later."));
   }
-  function buildItem(item, actionLabel, onAction, onOpen, isCurrent) {
+  function buildItem(item, actionLabel, onAction, onOpen, isCurrent, extraAction) {
     var li = document.createElement("li"); li.className = "lib-item";
     var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
     var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
@@ -1987,12 +1988,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     act.textContent = actionLabel; act.setAttribute("aria-label", actionLabel + ": " + (item.title || item.id));
     act.addEventListener("click", onAction);
     li.appendChild(open); li.appendChild(act);
+    if (extraAction) {
+      var act2 = document.createElement("button"); act2.className = "chip"; act2.type = "button";
+      act2.textContent = extraAction.label; act2.setAttribute("aria-label", extraAction.label + ": " + (item.title || item.id));
+      act2.addEventListener("click", function () { extraAction.fn(item); });
+      li.appendChild(act2);
+    }
     return li;
   }
-  function fillList(ul, items, emptyText, actionLabel, onAction, onOpen) {
+  function fillList(ul, items, emptyText, actionLabel, onAction, onOpen, extraAction) {
     ul.textContent = "";
     if (!items.length) { var li = document.createElement("li"); var p = document.createElement("p"); p.className = "lib-empty"; p.textContent = emptyText; li.appendChild(p); ul.appendChild(li); return; }
-    items.forEach(function (item, idx) { ul.appendChild(buildItem(item, actionLabel, function () { onAction(item, idx); }, onOpen ? function () { onOpen(item, idx); } : null, ul === queueList && idx === qPos)); });
+    items.forEach(function (item, idx) { ul.appendChild(buildItem(item, actionLabel, function () { onAction(item, idx); }, onOpen ? function () { onOpen(item, idx); } : null, ul === queueList && idx === qPos, extraAction)); });
   }
   function queueAdd(text) {
     var tokens = text.split(/[\s,]+/).filter(Boolean), added = 0;
@@ -2046,7 +2053,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }, function (item, idx) { playQueueAt(idx); });
     fillList(laterList, laterView(), T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); });
     fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) { toggleFav(item.id); });
-    fillList(histList, histView(), T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); });
+    fillList(histList, histView(), T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, { label: T("Remove"), fn: function (item) {
+      var i = findIn(lib.hist, item.id);
+      if (i >= 0) { lib.hist.splice(i, 1); saveLib(); renderLib(); if (typeof libSay === "function") libSay(T("Removed from history.")); }
+    } });
     updateFavBtn(); updateLaterBtn();
   }
   function updateLaterBtn() {
