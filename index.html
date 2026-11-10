@@ -876,6 +876,13 @@ html.low-fx input[type=file], html.low-fx .report-text {
 html.low-fx .chip.active { background: var(--chipbg) !important; border-color: var(--teal) !important; box-shadow: inset 0 0 0 1px var(--teal) !important; }
 html.low-fx .fx-bars, html.low-fx .fx-sheen, html.low-fx .fx-progress { display: none !important; }
 </style>
+<style id="subtitle-upload">
+/* Subtitle upload for local files: cue styling and size switch. */
+video::cue { background: rgba(0,0,0,.55); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
+:root.lp-cc-s video::cue { font-size: .75rem; }
+:root.lp-cc-m video::cue { font-size: 1.05rem; }
+:root.lp-cc-l video::cue { font-size: 1.4rem; }
+</style>
 </head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
@@ -1131,6 +1138,15 @@ html.low-fx .fx-bars, html.low-fx .fx-sheen, html.low-fx .fx-progress { display:
         <p class="hint" id="lpWarn" hidden>Above 200% the sound can distort. Protect your ears and speakers.</p>
         <div class="lib-head"><h3 id="lpSpeedH">Speed</h3></div>
         <div class="row" id="lpSpeeds"></div>
+        <div class="lib-head"><h3 id="lpSubH">Subtitles file</h3></div>
+        <div class="row">
+          <button class="chip" id="lpSubBtn" type="button">Load .srt / .vtt file</button>
+          <button class="chip" id="lpSubOff" type="button" hidden>Subtitles off</button>
+        </div>
+        <input id="lpSubFile" type="file" accept=".srt,.vtt,text/vtt" hidden>
+        <p class="hint" id="lpSubMsg" role="status"></p>
+        <span class="label" id="lpSubSizeLab">Subtitle size</span>
+        <div class="row" id="lpSubSizes"></div>
       </div>
       <p class="hint">This plays a file from your device, or the file you just downloaded. The YouTube player's volume cannot go above 100% (a YouTube limit). The PiP button appears where your browser allows it, and works for local files - for YouTube videos use the player's own controls (a site cannot detach YouTube's player).</p>
     </section>
@@ -1485,7 +1501,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Got it": ["समझ गया", "સમજાયું"],
    "Keyboard shortcuts": ["कीबोर्ड शॉर्टकट", "કીબોર્ડ શોર્ટકટ"],
    "Close": ["बंद करें", "બંધ કરો"],
-   "Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer and downloader choices. Your queue, favourites, playlists, history and stats are kept.": ["सभी सेटिंग डिफ़ॉल्ट पर रीसेट करें? इसमें वॉल्यूम, स्पीड, लूप, थीम, भाषा, कतार मोड, स्लीप टाइमर और डाउनलोडर विकल्प शामिल हैं. आपकी कतार, पसंदीदा, प्लेलिस्ट, इतिहास और आंकड़े बने रहते हैं.", "બધી સેટિંગ ડિફોલ્ટ પર રીસેટ કરો? આમાં વોલ્યુમ, સ્પીડ, લૂપ, થીમ, ભાષા, કતાર મોડ, સ્લીપ ટાઇમર અને ડાઉનલોડર પસંદગી સામેલ છે. તમારી કતાર, પસંદગી, પ્લેલિસ્ટ, ઇતિહાસ અને આંકડા જળવાઈ રહે છે."]
+   "Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer and downloader choices. Your queue, favourites, playlists, history and stats are kept.": ["सभी सेटिंग डिफ़ॉल्ट पर रीसेट करें? इसमें वॉल्यूम, स्पीड, लूप, थीम, भाषा, कतार मोड, स्लीप टाइमर और डाउनलोडर विकल्प शामिल हैं. आपकी कतार, पसंदीदा, प्लेलिस्ट, इतिहास और आंकड़े बने रहते हैं.", "બધી સેટિંગ ડિફોલ્ટ પર રીસેટ કરો? આમાં વોલ્યુમ, સ્પીડ, લૂપ, થીમ, ભાષા, કતાર મોડ, સ્લીપ ટાઇમર અને ડાઉનલોડર પસંદગી સામેલ છે. તમારી કતાર, પસંદગી, પ્લેલિસ્ટ, ઇતિહાસ અને આંકડા જળવાઈ રહે છે."],
+   "Small": ["छोटा", "નાનું"],
+   "Medium": ["मध्यम", "મધ્યમ"],
+   "Large": ["बड़ा", "મોટું"],
+   "Subtitles turned off.": ["सबटाइटल बंद किए गए.", "સબટાઇટલ બંધ કર્યા."],
+   "Subtitles loaded: ": ["सबटाइटल जुड़ गए: ", "સબટાઇટલ જોડાયા: "],
+   "That subtitle file is too large (over 2 MB).": ["सबटाइटल फ़ाइल बहुत बड़ी है (2 MB से ऊपर).", "સબટાઇટલ ફાઇલ બહુ મોટી છે (2 MB થી વધુ)."],
+   "That subtitle file could not be read.": ["सबटाइटल फ़ाइल नहीं पढ़ी जा सकी.", "સબટાઇટલ ફાઇલ વાંચી શકાઈ નહીં."]
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
@@ -2751,6 +2774,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#lpNext", "Next file", "अगली फ़ाइल"],
     ["#lpGainLab", "Volume boost: ", "वॉल्यूम बूस्ट: "],
     ["#lpWarn", "Above 200% the sound can distort. Protect your ears and speakers.", "200% से ऊपर आवाज़ बिगड़ सकती है. अपने कान और स्पीकर बचाएं."],
+    ["#lpSubH", "Subtitles file", "सबटाइटल फ़ाइल"],
+    ["#lpSubBtn", "Load .srt / .vtt file", ".srt / .vtt फ़ाइल चुनें"],
+    ["#lpSubOff", "Subtitles off", "सबटाइटल बंद"],
+    ["#lpSubSizeLab", "Subtitle size", "सबटाइटल का आकार"],
     ["#lpSpeedH", "Speed", "स्पीड"],
     ["#sleepMinLab", "Custom minutes", "अपने मिनट"],
     ["#ccLangLab", "Language shortcut", "भाषा शॉर्टकट"],
@@ -2878,6 +2905,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#lpNext": "આગળની ફાઇલ",
  "#lpGainLab": "વોલ્યુમ બૂસ્ટ: ",
  "#lpWarn": "200% થી ઉપર અવાજ બગડી શકે. તમારા કાન અને સ્પીકર બચાવો.",
+ "#lpSubH": "સબટાઇટલ ફાઇલ",
+ "#lpSubBtn": ".srt / .vtt ફાઇલ પસંદ કરો",
+ "#lpSubOff": "સબટાઇટલ બંધ",
+ "#lpSubSizeLab": "સબટાઇટલની સાઇઝ",
  "#lpSpeedH": "સ્પીડ",
  "#sleepMinLab": "તમારા મિનિટ",
  "#ccLangLab": "ભાષા શોર્ટકટ",
@@ -3337,7 +3368,58 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       localStorage.setItem(PK, JSON.stringify(m));
     } catch (e) {}
   });
-  var lpRelang = function () { if (!curUrl) sessionMsg.textContent = T(LP_DEF); };
+  // Subtitle upload: .srt/.vtt files are converted to WebVTT on this device, never uploaded.
+  var subBtn = $("lpSubBtn"), subFile = $("lpSubFile"), subOff = $("lpSubOff"), subMsg = $("lpSubMsg"), subSizes = $("lpSubSizes");
+  var subUrl = null, subTrack = null, ccSize = "m";
+  function srtToVtt(text) {
+    text = String(text || "").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n");
+    if (/^\s*WEBVTT/.test(text)) return text;
+    return "WEBVTT\n\n" + text.replace(/(\d{1,2}:\d{2}:\d{2}),(\d{1,3})/g, "$1.$2");
+  }
+  function clearSub() {
+    if (subTrack) { try { subTrack.remove(); } catch (e) {} subTrack = null; }
+    if (subUrl) { URL.revokeObjectURL(subUrl); subUrl = null; }
+    if (subOff) subOff.hidden = true;
+  }
+  var SUB_SIZES = [["s", "Small"], ["m", "Medium"], ["l", "Large"]];
+  function ccSizeApply() {
+    ["lp-cc-s", "lp-cc-m", "lp-cc-l"].forEach(function (c) { document.documentElement.classList.remove(c); });
+    document.documentElement.classList.add("lp-cc-" + ccSize);
+    if (subSizes) [].forEach.call(subSizes.children, function (c, i) { c.classList.toggle("active", c.dataset.value === ccSize); });
+  }
+  function subChipText() { if (subSizes) [].forEach.call(subSizes.children, function (c, i) { c.textContent = T(SUB_SIZES[i][1]); }); }
+  if (subSizes) SUB_SIZES.forEach(function (o) {
+    var b = document.createElement("button"); b.className = "chip"; b.type = "button"; b.textContent = T(o[1]); b.dataset.value = o[0]; b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", function () { ccSize = o[0]; ccSizeApply(); });
+    subSizes.appendChild(b);
+  });
+  ccSizeApply();
+  if (subBtn) subBtn.addEventListener("click", function () { subFile.click(); });
+  if (subOff) subOff.addEventListener("click", function () { clearSub(); subMsg.textContent = T("Subtitles turned off."); });
+  if (subFile) subFile.addEventListener("change", function () {
+    var f = this.files && this.files[0]; this.value = "";
+    if (!f) return;
+    if (f.size > 2 * 1024 * 1024) { subMsg.textContent = T("That subtitle file is too large (over 2 MB)."); return; }
+    var rd = new FileReader();
+    rd.onload = function () {
+      clearSub();
+      var vtt = srtToVtt(rd.result);
+      subUrl = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" }));
+      subTrack = document.createElement("track");
+      subTrack.kind = "subtitles"; subTrack.label = f.name; subTrack.srclang = "en"; subTrack.src = subUrl; subTrack.default = true;
+      vid.appendChild(subTrack);
+      try { for (var i = 0; i < vid.textTracks.length; i++) vid.textTracks[i].mode = (vid.textTracks[i] === subTrack.track) ? "showing" : "disabled"; } catch (e) {}
+      if (subTrack.track && subTrack.track.mode !== "showing") subTrack.track.mode = "showing";
+      subOff.hidden = false;
+      subMsg.textContent = T("Subtitles loaded: ") + f.name;
+    };
+    rd.onerror = function () { subMsg.textContent = T("That subtitle file could not be read."); };
+    rd.readAsText(f);
+  });
+  var baseShowSub = show;
+  show = function (url, local) { clearSub(); if (subMsg) subMsg.textContent = ""; baseShowSub(url, local); };
+
+  var lpRelang = function () { if (!curUrl) sessionMsg.textContent = T(LP_DEF); subChipText(); };
   (window.__relang = window.__relang || []).push(lpRelang);
   lpRelang();
   window.vpPlayUrl = function (url) { localFiles = []; localIndex = -1; updateLocalButtons(); posKey = null; show(url, false); $("lp").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); };
