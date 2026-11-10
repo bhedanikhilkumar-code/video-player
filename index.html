@@ -1600,6 +1600,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Stretch": ["खिंचाएं", "ખેંચો"],
    "Rotate 90°": ["90° घुमाएं", "90° ફેરવો"],
    "Zoom: ": ["ज़ूम: ", "ઝૂમ: "],
+   "Save this frame as image": ["यह फ़्रेम इमेज के रूप में सेव करें", "આ ફ્રેમ ઇમેજ તરીકે સેવ કરો"],
+   "Saves the current frame as a PNG image. Zoom and rotate do not change the saved image. YouTube frames cannot be saved (a YouTube limit).": ["मौजूदा फ़्रेम PNG इमेज के रूप में सेव होता है. ज़ूम और घुमाव सेव की गई इमेज को नहीं बदलते. YouTube के फ़्रेम सेव नहीं किए जा सकते (YouTube की सीमा).", "હાલનો ફ્રેમ PNG ઇમેજ તરીકે સેવ થાય છે. ઝૂમ અને ફેરવવાથી સેવ થયેલી ઇમેજ બદલાતી નથી. YouTube ના ફ્રેમ સેવ કરી શકાતા નથી (YouTube ની મર્યાદા)."],
+   "Open and play a local file first.": ["पहले कोई लोकल फ़ाइल खोलकर चलाएं.", "પહેલા કોઈ લોકલ ફાઇલ ખોલીને ચલાવો."],
+   "This frame could not be saved (the browser blocked it).": ["यह फ़्रेम सेव नहीं हो सका (ब्राउज़र ने रोका).", "આ ફ્રેમ સેવ ન થઈ શક્યો (બ્રાઉઝરે રોક્યો)."],
+   "Frame saved.": ["फ़्रेम सेव हो गया.", "ફ્રેમ સેવ થયું."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
@@ -4148,6 +4153,61 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   (window.__relang = window.__relang || []).push(relang);
   relang(); zShow(); apply();
+})();
+</script>
+<script>
+/* Frame save: keeps the current frame of a local file as a PNG image, on this device.
+   YouTube frames cannot be saved (YouTube does not let other sites read its video). */
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var T = window.T || function (x) { return x; };
+  var vid = $("lpVideo"), ctl = $("lpCtl");
+  if (!vid || !ctl) return;
+  var btn = document.createElement("button"); btn.className = "chip"; btn.type = "button"; btn.id = "lpShotBtn";
+  var row = document.createElement("div"); row.className = "row"; row.id = "lpShotRow"; row.style.margin = "6px 0";
+  row.appendChild(btn);
+  var msg = document.createElement("p"); msg.className = "hint"; msg.id = "lpShotMsg"; msg.setAttribute("role", "status");
+  var hint = document.createElement("p"); hint.className = "hint"; hint.id = "lpShotHint";
+  var anchor = $("lpZoom");
+  var ref = anchor && anchor.nextSibling ? anchor.nextSibling : null;
+  ctl.insertBefore(hint, ref);
+  ctl.insertBefore(msg, hint);
+  ctl.insertBefore(row, msg);
+
+  function relang() {
+    btn.textContent = T("Save this frame as image");
+    hint.textContent = T("Saves the current frame as a PNG image. Zoom and rotate do not change the saved image. YouTube frames cannot be saved (a YouTube limit).");
+  }
+  (window.__relang = window.__relang || []).push(relang);
+  relang();
+
+  function stamp() { var s = Math.floor(vid.currentTime || 0), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = s % 60; return (h > 0 ? h + "-" : "") + m + "-" + String(ss).padStart(2, "0"); }
+  btn.addEventListener("click", function () {
+    if (vid.hidden || !vid.src || !vid.videoWidth) { msg.textContent = T("Open and play a local file first."); return; }
+    try {
+      var c = document.createElement("canvas");
+      c.width = vid.videoWidth; c.height = vid.videoHeight;
+      c.getContext("2d").drawImage(vid, 0, 0);
+      var name = "frame-" + stamp() + ".png";
+      function deliver(url) {
+        var a = document.createElement("a"); a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        msg.textContent = T("Frame saved.");
+      }
+      if (c.toBlob) {
+        c.toBlob(function (b) {
+          if (!b) { msg.textContent = T("This frame could not be saved (the browser blocked it)."); return; }
+          var u = URL.createObjectURL(b); deliver(u);
+          setTimeout(function () { URL.revokeObjectURL(u); }, 10000);
+        }, "image/png");
+      } else {
+        deliver(c.toDataURL("image/png"));
+      }
+    } catch (e) {
+      msg.textContent = T("This frame could not be saved (the browser blocked it).");
+    }
+  });
 })();
 </script>
 </body>
