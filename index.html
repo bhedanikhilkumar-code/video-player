@@ -849,6 +849,33 @@ html.high-contrast .report-text {
 html.high-contrast .btn { background: var(--teal) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
 html.high-contrast section::before, html.high-contrast .btn::before { content: none !important; }
 </style>
+<style id="low-fx-mode">
+/* Low-end mode: a user switch in Help > Accessibility that lightens every heavy visual effect
+   (glass blur, layered shadows, motion) so the app stays smooth on slow phones. */
+html.low-fx *, html.low-fx *::before, html.low-fx *::after {
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  animation-duration: .01s !important; animation-iteration-count: 1 !important;
+  transition-duration: .01s !important; text-shadow: none !important;
+}
+html.low-fx section::before, html.low-fx .btn::before { content: none !important; }
+html.low-fx section, html.low-fx .ctl-card, html.low-fx .music-bar, html.low-fx .resume,
+html.low-fx .tour-card, html.low-fx .sc-help-card, html.low-fx .info-card, html.low-fx .note,
+html.low-fx .help-card, html.low-fx .shortcuts, html.low-fx .faq, html.low-fx .pl-item,
+html.low-fx .music-mode #musicQueue, html.low-fx .gesture-pad {
+  background: var(--card) !important; border-color: var(--hairline) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12) !important;
+}
+html.low-fx .note { background: var(--notebg) !important; }
+html.low-fx .info-card { background: var(--soft) !important; }
+html.low-fx .btn { background: var(--teal) !important; box-shadow: none !important; }
+html.low-fx .chip, html.low-fx .lib-open, html.low-fx .input-row input, html.low-fx .dl-sel,
+html.low-fx .dl-trim input, html.low-fx .pl-save input, html.low-fx .lib-search input,
+html.low-fx input[type=file], html.low-fx .report-text {
+  background: var(--chipbg) !important; border-color: var(--hairline) !important; box-shadow: none !important;
+}
+html.low-fx .chip.active { background: var(--chipbg) !important; border-color: var(--teal) !important; box-shadow: inset 0 0 0 1px var(--teal) !important; }
+html.low-fx .fx-bars, html.low-fx .fx-sheen, html.low-fx .fx-progress { display: none !important; }
+</style>
 </head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
@@ -1123,6 +1150,7 @@ html.high-contrast section::before, html.high-contrast .btn::before { content: n
         <h3 id="a11yH">Accessibility</h3>
         <label class="dl-chk"><input type="checkbox" id="a11yBig"> <span id="a11yBigT">Larger text</span></label>
         <label class="dl-chk"><input type="checkbox" id="a11yHc"> <span id="a11yHcT">High contrast (solid colors, strong borders)</span></label>
+        <label class="dl-chk"><input type="checkbox" id="a11yLow"> <span id="a11yLowT">Low-end mode (lighter effects for slow phones)</span></label>
         <p class="label" style="margin:10px 0 2px" id="accentT">App color</p>
         <div class="accent-row" id="accentRow" role="group" aria-label="App color"></div>
         <p class="hint" id="accentHint">Changes the main accent color of the app. Saved on this device.</p>
@@ -1241,7 +1269,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", lang: "en" };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; ["cc", "ccLang", "accent", "lang"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; ["cc", "ccLang", "accent", "lang"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
@@ -2472,13 +2500,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   };
 
   // ---- Accessibility options (saved on this device) ----
-  var a11yBig = $("a11yBig"), a11yHc = $("a11yHc");
+  var a11yBig = $("a11yBig"), a11yHc = $("a11yHc"), a11yLow = $("a11yLow");
   function applyA11y() {
     document.documentElement.classList.toggle("big-text", prefs.bigText === true);
     document.documentElement.classList.toggle("high-contrast", prefs.highContrast === true);
+    document.documentElement.classList.toggle("low-fx", prefs.lowFx === true);
   }
   if (a11yBig) { a11yBig.checked = prefs.bigText === true; a11yBig.addEventListener("change", function () { prefs.bigText = a11yBig.checked; savePrefs(); applyA11y(); }); }
   if (a11yHc) { a11yHc.checked = prefs.highContrast === true; a11yHc.addEventListener("change", function () { prefs.highContrast = a11yHc.checked; savePrefs(); applyA11y(); }); }
+  if (a11yLow) { a11yLow.checked = prefs.lowFx === true; a11yLow.addEventListener("change", function () { prefs.lowFx = a11yLow.checked; savePrefs(); applyA11y(); }); }
   applyA11y();
 
   // ---- Report a problem: built on-device, sent through the user's own email app ----
@@ -2701,6 +2731,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#musicBarP", "A compact video, big controls and your queue together. Keep YouTube visible and your screen on.", "छोटा वीडियो, बड़े कंट्रोल और आपकी कतार एक साथ. YouTube दिखता रहे और स्क्रीन चालू रखें."],
     ["#a11yH", "Accessibility", "सुलभता"],
     ["#a11yBigT", "Larger text", "बड़ा अक्षर"],
+    ["#a11yLowT", "Low-end mode (lighter effects for slow phones)", "लो-एंड मोड (धीमे फ़ोन के लिए हल्के इफ़ेक्ट)"],
     ["#a11yHcT", "High contrast (solid colors, strong borders)", "हाई कंट्रास्ट (सादे रंग, मजबूत बॉर्डर)"],
     ["#accentT", "App color", "ऐप का रंग"],
     ["#accentHint", "Changes the main accent color of the app. Saved on this device.", "ऐप के मुख्य रंग को बदलता है. इसी डिवाइस पर सेव रहता है."],
@@ -2827,6 +2858,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#musicBarP": "નાનો વીડિયો, મોટા કંટ્રોલ અને તમારી કતાર સાથે. YouTube દેખાય એવું રાખો અને સ્ક્રીન ચાલુ રાખો.",
  "#a11yH": "સુલભતા",
  "#a11yBigT": "મોટું અક્ષર",
+ "#a11yLowT": "લો-એન્ડ મોડ (ધીમા ફોન માટે હળવા ઇફેક્ટ)",
  "#a11yHcT": "હાઈ કોન્ટ્રાસ્ટ (સાદા રંગો, મજબૂત બોર્ડર)",
  "#accentT": "એપનો રંગ",
  "#accentHint": "એપનો મુખ્ય રંગ બદલે છે. આ જ ડિવાઇસ પર સેવ રહે છે.",
@@ -3417,7 +3449,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var coarse = window.matchMedia('(pointer: coarse)');
   var active = new Set();
   function animate(el, frames, options) {
-    if (reduce.matches || !el.animate) return;
+    if (reduce.matches || !el.animate || document.documentElement.classList.contains('low-fx')) return;
     var a = el.animate(frames, options); active.add(a);
     a.onfinish = a.oncancel = function () { active.delete(a); };
     return a;
