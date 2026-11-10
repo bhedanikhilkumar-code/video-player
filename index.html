@@ -2753,6 +2753,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     pad.addEventListener("pointerdown", function (e) { tracking = true; sx = e.clientX; sy = e.clientY; });
     pad.addEventListener("pointercancel", function () { tracking = false; });
+    // Live preview while the finger is still moving: show the volume it would land on,
+    // or the 30 second jump direction, so the gesture feels direct instead of delayed.
+    pad.addEventListener("pointermove", function (e) {
+      if (!tracking || !padReady()) return;
+      var dx = e.clientX - sx, dy = e.clientY - sy;
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
+        var steps = Math.min(10, Math.max(1, Math.round(Math.abs(dy) / 24)));
+        var pv = Math.max(0, Math.min(100, prefs.volume + (dy < 0 ? 5 : -5) * steps));
+        showFlash("\uD83D\uDD0A " + pv + "%");
+      } else if (Math.abs(dx) > 24 && Math.abs(dx) > Math.abs(dy)) {
+        showFlash(dx < 0 ? "-30s" : "+30s");
+      }
+    });
     pad.addEventListener("pointerup", function (e) {
       if (!tracking) return; tracking = false;
       if (!padReady()) { say(T("Load a video first, then the pad skips and changes volume.")); return; }
@@ -2760,12 +2773,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(dx) * 1.2) {
         var steps = Math.min(10, Math.max(1, Math.round(Math.abs(dy) / 24)));
         volBy((dy < 0 ? 5 : -5) * steps);
+        if (window.__vpBuzz) window.__vpBuzz(6);
         showFlash("\ud83d\udd0a " + prefs.volume + "%");
         say(T("Volume ") + prefs.volume + "%.");
         return;
       }
       if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.2) {
         seekBy(dx < 0 ? -30 : 30);
+        if (window.__vpBuzz) window.__vpBuzz(10);
         showFlash(dx < 0 ? "-30s" : "+30s");
         say((dx < 0 ? T("Back") : T("Forward")) + T(" 30 seconds, now at ") + fmt(curTime) + ".");
         return;
@@ -2778,6 +2793,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         lastTap = 0; lastSide = "";
         var st = dtStep();
         seekBy(side === "left" ? -st : st);
+        if (window.__vpBuzz) window.__vpBuzz(10);
         showFlash(side === "left" ? "-" + st + "s" : "+" + st + "s");
         say((side === "left" ? T("Back") : T("Forward")) + " " + st + T(" seconds, now at ") + fmt(curTime) + ".");
       } else { lastTap = now; lastSide = side; }
@@ -5333,6 +5349,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   var ab = document.getElementById("aBtn"); if (ab) ab.addEventListener("click", function () { buzz(8); });
   var bb = document.getElementById("bBtn"); if (bb) bb.addEventListener("click", function () { buzz(8); });
   var fv = document.getElementById("favBtn"); if (fv) fv.addEventListener("click", function () { buzz(8); });
+  window.__vpBuzz = buzz;
 })();
 </script>
 <script>
