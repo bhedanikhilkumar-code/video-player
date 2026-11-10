@@ -1064,12 +1064,14 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
         <div class="ctl-card wide" id="ctl-gestures">
           <h3>Gesture pad</h3>
           <div class="gesture-pad" id="gesturePad" tabindex="0" role="group" aria-label="Gesture pad. Double-tap the left side to go back 10 seconds, the right side to go forward 10 seconds. Swipe up or down to change the volume.">
-            <span class="gp-half">Double-tap<br>-10s</span>
+            <span class="gp-half" id="gpLeft">Double-tap<br>-10s</span>
             <span class="gp-vol">swipe up / down<br>for volume</span>
-            <span class="gp-half">Double-tap<br>+10s</span>
+            <span class="gp-half" id="gpRight">Double-tap<br>+10s</span>
             <span class="gp-flash" id="gpFlash" aria-hidden="true"></span>
           </div>
           <span class="label" id="gpMsg" role="status"></span>
+          <span class="label" id="dtSeekLab">Double-tap skip</span>
+          <div class="row" id="dtSeekChips"></div>
           <p class="hint">The video area is YouTube's own player, so quick gestures live on this pad instead of covering the video. On the video itself, use YouTube's own controls.</p>
         </div>
 
@@ -1380,10 +1382,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
-  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", lang: "en" };
+  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", lang: "en", seekStep: 10 };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; ["cc", "ccLang", "accent", "lang"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; ["cc", "ccLang", "accent", "lang"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
@@ -1663,6 +1665,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Removed from Watch later.": ["बाद में देखें से हटाया.", "પછી જુઓમાંથી કાઢ્યું."],
    "Drag to reorder": ["खींचकर क्रम बदलें", "ખેંચીને ક્રમ બદલો"],
    "Queue order updated.": ["कतार का क्रम बदल गया.", "કતારનો ક્રમ બદલાઈ ગયો."],
+   "Double-tap": ["डबल-टैप", "ડબલ-ટૅપ"],
+   "Double-tap skip": ["डबल-टैप स्किप", "ડબલ-ટૅપ સ્કિપ"],
+   "seconds": ["सेकंड", "સેકંડ"],
+   " seconds, now at ": [" सेकंड, अब ", " સેકંડ, હવે "],
+   "Gesture pad. Double-tap the left side to go back ": ["जेस्चर पैड. बाईं ओर डबल-टैप से ", "જેસ્ચર પૅડ. ડાબી બાજુ ડબલ-ટૅપથી "],
+   " seconds, the right side to go forward ": [" सेकंड पीछे, दाईं ओर से ", " સેકંડ પાછળ, જમણી બાજુથી "],
+   " seconds. Swipe up or down to change the volume.": [" सेकंड आगे. आवाज़ के लिए ऊपर/नीचे स्वाइप करें.", " સેકંડ આગળ. અવાજ માટે ઉપર/નીચે સ્વાઇપ કરો."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
@@ -2351,7 +2360,29 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (handled) e.preventDefault();
   });
 
-  // ---- Gesture pad: double-tap to skip 10 seconds, swipe up/down for volume ----
+  // ---- Double-tap seek size: 5, 10, 15 or 30 seconds, saved on this device ----
+  function dtStep() { return [5, 10, 15, 30].indexOf(prefs.seekStep) >= 0 ? prefs.seekStep : 10; }
+  function dtRender() {
+    var st = dtStep();
+    var gl = $("gpLeft"), gr = $("gpRight");
+    if (gl) gl.innerHTML = T("Double-tap") + "<br>-" + st + "s";
+    if (gr) gr.innerHTML = T("Double-tap") + "<br>+" + st + "s";
+    var pad2 = $("gesturePad");
+    if (pad2) pad2.setAttribute("aria-label", T("Gesture pad. Double-tap the left side to go back ") + st + T(" seconds, the right side to go forward ") + st + T(" seconds. Swipe up or down to change the volume."));
+    var dc = $("dtSeekChips");
+    if (dc) [].forEach.call(dc.children, function (c) { var on = Number(c.dataset.v) === st; c.classList.toggle("active", on); c.setAttribute("aria-pressed", on ? "true" : "false"); });
+  }
+  var dtChips = $("dtSeekChips");
+  if (dtChips) [5, 10, 15, 30].forEach(function (v) {
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.v = v; b.textContent = v + "s"; b.setAttribute("aria-pressed", "false");
+    b.setAttribute("aria-label", T("Double-tap skip") + " " + v + " " + T("seconds"));
+    b.addEventListener("click", function () { prefs.seekStep = v; savePrefs(); dtRender(); var m = $("gpMsg"); if (m) m.textContent = T("Double-tap skip") + ": " + v + "s"; });
+    dtChips.appendChild(b);
+  });
+  dtRender();
+  (window.__relang = window.__relang || []).push(dtRender);
+
+  // ---- Gesture pad: double-tap to skip, swipe up/down for volume ----
   // The video area is the official YouTube player (cross-origin), so gestures live
   // on this pad instead of an overlay that would cover YouTube's own controls.
   (function () {
@@ -2390,9 +2421,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var now = Date.now();
       if (now - lastTap < 350 && side === lastSide) {
         lastTap = 0; lastSide = "";
-        seekBy(side === "left" ? -10 : 10);
-        showFlash(side === "left" ? "-10s" : "+10s");
-        say((side === "left" ? T("Back") : T("Forward")) + T(" 10 seconds, now at ") + fmt(curTime) + ".");
+        var st = dtStep();
+        seekBy(side === "left" ? -st : st);
+        showFlash(side === "left" ? "-" + st + "s" : "+" + st + "s");
+        say((side === "left" ? T("Back") : T("Forward")) + " " + st + T(" seconds, now at ") + fmt(curTime) + ".");
       } else { lastTap = now; lastSide = side; }
     });
   })();
@@ -3004,6 +3036,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#clearHistBtn", "Clear", "साफ़ करें"],
     ["#lhLater", "Watch later", "बाद में देखें"],
     ["#laterClearBtn", "Clear", "साफ़ करें"],
+    ["#dtSeekLab", "Double-tap skip", "डबल-टैप स्किप"],
     ["#statsClear", "Clear", "साफ़ करें"],
     ["#libExport", "Export backup", "बैकअप निकालें"],
     ["#libImport", "Import backup", "बैकअप लाएं"],
@@ -3170,6 +3203,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#clearHistBtn": "સાફ કરો",
  "#lhLater": "પછી જુઓ",
  "#laterClearBtn": "સાફ કરો",
+ "#dtSeekLab": "ડબલ-ટૅપ સ્કિપ",
  "#statsClear": "સાફ કરો",
  "#libExport": "બેકઅપ કાઢો",
  "#libImport": "બેકઅપ લાવો",
