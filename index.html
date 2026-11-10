@@ -646,6 +646,7 @@ body{overflow-x:clip}
 .pl-acts .pl-del{color:var(--red)}
 #themeBtn .theme-ico{margin-right:4px}
 /* Music mode keeps the complete official video visible, with no audio-only player. */
+.lib-listtools{gap:8px;margin:0 0 10px}.lib-listtools .chip{min-height:44px}
 .music-bar {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:14px;border:1px solid var(--hairline);border-radius:16px;background:var(--soft)}
 .music-bar p {margin:6px 0 0;max-width:48ch}
 .music-bar button,.music-controls button {min-height:48px}
@@ -1343,6 +1344,7 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
       <p class="hint" id="queueModeMsg" role="status">Auto-next is on. Video repeat and A-B repeat take priority.</p>
       <ul class="lib-list" id="queueList"></ul>
       </div>
+      <p class="hint" id="libListMsg" role="status"></p>
       <div class="lib-head"><h3 id="lhLater">Watch later</h3><button class="chip" id="laterClearBtn" type="button">Clear</button></div>
       <ul class="lib-list" id="laterList"></ul>
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3></div>
@@ -1712,6 +1714,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Step size": ["कदम का आकार", "પગલાનું માપ"],
    "Pauses the video. Frame steps are approximate; choose the video frame rate.": ["वीडियो रुकता है. फ्रेम कदम अनुमानित हैं; वीडियो की फ्रेम दर चुनें.", "વિડિયો થોભે છે. ફ્રેમ પગલાં અંદાજિત છે; વિડિયોનો ફ્રેમ દર પસંદ કરો."],
    "Use m:ss or h:mm:ss within this file.": ["इस फ़ाइल के अंदर का समय m:ss या h:mm:ss में दें.", "આ ફાઇલની અંદરનો સમય m:ss અથવા h:mm:ss માં આપો."],
+   "Play all": ["सब चलाएँ", "બધું ચલાવો"],
+   "Add all": ["सब जोड़ें", "બધું ઉમેરો"],
+   "Nothing here to play yet.": ["यहाँ अभी चलाने के लिए कुछ नहीं है.", "અહીં હજુ ચલાવવા માટે કંઈ નથી."],
+   "Queue replaced and playing. Items:": ["कतार बदल दी गई और चल रही है. वीडियो:", "કતાર બદલાઈ અને ચાલુ છે. વિડિઓ:"],
+   "Added to the queue:": ["कतार में जोड़े गए:", "કતારમાં ઉમેર્યા:"],
+   "Already in the queue, or the queue is full at 50.": ["पहले से कतार में हैं, या कतार 50 पर भरी है.", "પહેલેથી કતારમાં છે, અથવા કતાર 50 પર ભરેલી છે."],
+   "Only the first 50 were used.": ["सिर्फ़ पहले 50 लिए गए.", "ફક્ત પહેલા 50 લીધા."],
+   "Play all, replacing the queue": ["कतार बदलकर सब चलाएँ", "કતાર બદલીને બધું ચલાવો"],
+   "Add all to the queue": ["सब कतार में जोड़ें", "બધું કતારમાં ઉમેરો"],
    "Close files": ["फ़ाइलें बंद करें", "ફાઇલો બંધ કરો"],
    "Files closed. Your chapters and saved progress are kept.": ["फ़ाइलें बंद. आपके अध्याय और सेव की गई प्रगति सुरक्षित हैं.", "ફાઇલો બંધ. તમારા ચેપ્ટર અને સાચવેલી પ્રગતિ જાળવેલી છે."],
   };
@@ -1892,6 +1903,48 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else showLibErr("");
   });
   clearQueueBtn.addEventListener("click", function () { lib.queue = []; qPos = -1; showLibErr(""); saveLib(); renderLib(); });
+  renderLib();
+
+  /* Library: play or queue a whole list at once. */
+  var libListMsg = $("libListMsg");
+  function libSay(m) { if (libListMsg) libListMsg.textContent = m || ""; }
+  function listPlay(items) {
+    var src = items.filter(validItem);
+    if (!src.length) { libSay(T("Nothing here to play yet.")); return; }
+    lib.queue = src.slice(0, 50).map(function (x) { return { id: x.id, title: x.title || "" }; }); qPos = -1;
+    saveLib(); renderLib(); showLibErr("");
+    libSay(T("Queue replaced and playing. Items:") + " " + lib.queue.length + (src.length > 50 ? ". " + T("Only the first 50 were used.") : ""));
+    playQueueAt(0);
+    if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+  }
+  function listAdd(items) {
+    var n = 0;
+    items.filter(validItem).forEach(function (x) { if (findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: x.title || "" }); n++; } });
+    saveLib(); renderLib();
+    libSay(n ? T("Added to the queue:") + " " + n : T("Already in the queue, or the queue is full at 50."));
+  }
+  var listTools = [["lhFavs", function () { return favView(); }], ["lhLater", function () { return lib.later; }], ["lhHist", function () { return lib.hist; }]];
+  listTools.forEach(function (x) {
+    var h = $(x[0]); if (!h || !h.parentNode) return;
+    var row = document.createElement("div"); row.className = "row lib-listtools"; row.setAttribute("data-for", x[0]);
+    var a = document.createElement("button"); a.type = "button"; a.className = "chip"; a.addEventListener("click", function () { listPlay(x[1]()); });
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.addEventListener("click", function () { listAdd(x[1]()); });
+    row.appendChild(a); row.appendChild(b); x.push(a, b);
+    h.parentNode.parentNode.insertBefore(row, h.parentNode.nextSibling);
+  });
+  function favView() { return lib.favs; }
+  function renderListTools() {
+    listTools.forEach(function (x) {
+      var n = x[1]().length;
+      if (!x[2]) return;
+      x[2].textContent = T("Play all"); x[3].textContent = T("Add all");
+      x[2].setAttribute("aria-label", T("Play all, replacing the queue")); x[3].setAttribute("aria-label", T("Add all to the queue"));
+      x[2].disabled = x[3].disabled = !n;
+    });
+  }
+  var baseRenderLibT = renderLib;
+  renderLib = function () { baseRenderLibT(); renderListTools(); };
+  (window.__relang = window.__relang || []).push(renderListTools);
   renderLib();
 
   var themeBtn = $("themeBtn");
