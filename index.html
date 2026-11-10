@@ -1594,6 +1594,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Reset": ["रीसेट", "રીસેટ"],
    "Load a subtitle file first, then adjust.": ["पहले सबटाइटल फ़ाइल लोड करें, फिर समय बदलें.", "પહેલા સબટાઇટલ ફાઇલ લોડ કરો, પછી સમય બદલો."],
    "Subtitles shifted by ": ["सबटाइटल इतना आगे-पीछे: ", "સબટાઇટલ આટલું આગળ-પાછળ: "],
+   "View: zoom, fit, rotate": ["दृश्य: ज़ूम, फ़िट, घुमाएं", "વ્યૂ: ઝૂમ, ફિટ, ફેરવો"],
+   "Fit": ["फ़िट", "ફિટ"],
+   "Fill": ["भरें", "ભરો"],
+   "Stretch": ["खिंचाएं", "ખેંચો"],
+   "Rotate 90°": ["90° घुमाएं", "90° ફેરવો"],
+   "Zoom: ": ["ज़ूम: ", "ઝૂમ: "],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
@@ -4051,6 +4057,97 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   vid.addEventListener("loadstart", function () {
     if (!track()) { subText = null; offset = 0; val.textContent = fmtOff(); msg.textContent = ""; }
   });
+})();
+</script>
+<style id="view-tools">
+#lpViewWrap{position:relative;width:100%;margin-top:12px;border-radius:12px;background:#000;overflow:hidden}
+#lpVideo.lp-view{display:block;margin-top:0;border-radius:0}
+#lpViewWrap:not(.lp-frame) #lpVideo.lp-view{max-height:60vh}
+#lpViewModes{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+</style>
+<script>
+/* View tools for local files: fit / fill / stretch, rotate in 90 degree steps, and zoom.
+   These change only how the file looks on your screen; the file itself is never changed. */
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var T = window.T || function (x) { return x; };
+  var vid = $("lpVideo"), ctl = $("lpCtl"), subH = $("lpSubH");
+  if (!vid || !ctl) return;
+  var VK = "vp-lpview.v1", st = { mode: "fit", zoom: 100, rot: 0 };
+  try {
+    var s = JSON.parse(localStorage.getItem(VK) || "null");
+    if (s) {
+      if (["fit", "fill", "stretch"].indexOf(s.mode) >= 0) st.mode = s.mode;
+      if (s.zoom >= 100 && s.zoom <= 200) st.zoom = Math.round(s.zoom);
+      if ([0, 90, 180, 270].indexOf(s.rot) >= 0) st.rot = s.rot;
+    }
+  } catch (e) {}
+  function save() { try { localStorage.setItem(VK, JSON.stringify(st)); } catch (e) {} }
+
+  var wrap = document.createElement("div"); wrap.id = "lpViewWrap";
+  vid.parentNode.insertBefore(wrap, vid); wrap.appendChild(vid);
+  vid.classList.add("lp-view");
+  new MutationObserver(function () { wrap.hidden = vid.hidden; }).observe(vid, { attributes: true, attributeFilter: ["hidden"] });
+
+  var head = document.createElement("div"); head.className = "lib-head";
+  var h3 = document.createElement("h3"); h3.id = "lpViewH"; head.appendChild(h3);
+  var row = document.createElement("div"); row.id = "lpViewModes";
+  var MODES = [["fit", "Fit"], ["fill", "Fill"], ["stretch", "Stretch"]];
+  MODES.forEach(function (o) {
+    var b = document.createElement("button"); b.className = "chip"; b.type = "button"; b.dataset.value = o[0]; b.dataset.en = o[1]; b.textContent = T(o[1]);
+    b.addEventListener("click", function () {
+      st.mode = o[0]; save(); apply();
+      [].forEach.call(row.children, function (c) { c.classList.toggle("active", c === b); });
+    });
+    row.appendChild(b);
+  });
+  var rotBtn = document.createElement("button"); rotBtn.className = "chip"; rotBtn.type = "button"; rotBtn.id = "lpRotBtn";
+  row.appendChild(rotBtn);
+  var zl = document.createElement("label"); zl.className = "dl-lab"; zl.setAttribute("for", "lpZoom");
+  var zls = document.createElement("span"); zls.id = "lpZoomLab";
+  var zlv = document.createElement("b"); zlv.id = "lpZoomVal";
+  zl.appendChild(zls); zl.appendChild(zlv);
+  var zr = document.createElement("input"); zr.id = "lpZoom"; zr.type = "range"; zr.min = "100"; zr.max = "200"; zr.step = "5"; zr.style.width = "100%";
+  var anchor = subH && subH.parentNode ? subH.parentNode : null;
+  [head, row, zl, zr].forEach(function (n) { anchor ? ctl.insertBefore(n, anchor) : ctl.appendChild(n); });
+
+  function ratio() { return (vid.videoWidth && vid.videoHeight) ? vid.videoWidth / vid.videoHeight : 16 / 9; }
+  function apply() {
+    var rot = st.rot, z = st.zoom / 100, sideways = rot === 90 || rot === 270;
+    wrap.classList.toggle("lp-frame", st.mode !== "fit" || sideways);
+    vid.style.objectFit = st.mode === "fill" ? "cover" : st.mode === "stretch" ? "fill" : "contain";
+    if (sideways) {
+      var w = wrap.clientWidth || vid.clientWidth || 320;
+      var h = Math.round(w * ratio());
+      wrap.style.height = h + "px"; wrap.style.aspectRatio = "";
+      vid.style.position = "absolute"; vid.style.left = "50%"; vid.style.top = "50%";
+      vid.style.width = h + "px"; vid.style.height = w + "px";
+      vid.style.transform = "translate(-50%,-50%) rotate(" + rot + "deg) scale(" + z + ")";
+    } else {
+      wrap.style.height = ""; wrap.style.aspectRatio = st.mode === "fit" ? "" : "16 / 9";
+      vid.style.position = ""; vid.style.left = ""; vid.style.top = "";
+      vid.style.width = "100%"; vid.style.height = st.mode === "fit" ? "auto" : "100%";
+      vid.style.transform = "rotate(" + rot + "deg) scale(" + z + ")";
+    }
+    rotBtn.setAttribute("aria-label", "Rotate 90 degrees. Current angle: " + rot + " degrees.");
+    [].forEach.call(row.children, function (c) { if (c.dataset) c.classList.toggle("active", c.dataset.value === st.mode); });
+  }
+  zr.value = st.zoom;
+  function zShow() { zlv.textContent = zr.value + "%"; }
+  zr.addEventListener("input", function () { st.zoom = Number(zr.value); save(); zShow(); apply(); });
+  rotBtn.addEventListener("click", function () { st.rot = (st.rot + 90) % 360; save(); apply(); });
+  vid.addEventListener("loadedmetadata", apply);
+  window.addEventListener("resize", function () { if (st.rot === 90 || st.rot === 270) apply(); });
+
+  function relang() {
+    h3.textContent = T("View: zoom, fit, rotate");
+    [].forEach.call(row.children, function (c) { if (c.dataset && c.dataset.en) c.textContent = T(c.dataset.en); });
+    rotBtn.textContent = T("Rotate 90°");
+    zls.textContent = T("Zoom: ");
+  }
+  (window.__relang = window.__relang || []).push(relang);
+  relang(); zShow(); apply();
 })();
 </script>
 </body>
