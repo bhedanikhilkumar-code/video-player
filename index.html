@@ -1340,6 +1340,7 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
         <button class="chip" id="shuffleQueueBtn" type="button" aria-pressed="false">Shuffle: off</button>
         <button class="chip" id="repeatQueueBtn" type="button" aria-pressed="false">Repeat queue: off</button>
         <button class="chip" id="autoNextBtn" type="button" aria-pressed="true">Auto-next: on</button>
+        <button class="chip" id="stopAfterBtn" type="button" aria-pressed="false">Stop after this track: off</button>
         <button class="chip" id="resetAllBtn" type="button">Reset to default</button>
       </div>
       <p class="hint" id="queueModeMsg" role="status">Auto-next is on. Video repeat and A-B repeat take priority.</p>
@@ -1735,6 +1736,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Duplicated as": ["कॉपी बनी:", "નકલ બની:"],
    "Add current queue to": ["वर्तमान कतार जोड़ें:", "હાલની કતાર ઉમેરો:"],
    "Duplicate playlist": ["प्लेलिस्ट की कॉपी", "પ્લેલિસ્ટની નકલ"],
+   "Stop after this track": ["इस ट्रैक के बाद रुकें", "આ ટ્રૅક પછી અટકો"],
+   "Stopped after this track, as you asked.": ["आपके कहने पर इस ट्रैक के बाद रुक गया.", "તમારા કહેવા પ્રમાણે આ ટ્રૅક પછી અટક્યું."],
+   "It stops once, then goes back to normal.": ["यह एक बार रुकता है, फिर सामान्य हो जाता है.", "આ એક વાર અટકે છે, પછી સામાન્ય થઈ જાય છે."],
    "Close files": ["फ़ाइलें बंद करें", "ફાઇલો બંધ કરો"],
    "Files closed. Your chapters and saved progress are kept.": ["फ़ाइलें बंद. आपके अध्याय और सेव की गई प्रगति सुरक्षित हैं.", "ફાઇલો બંધ. તમારા ચેપ્ટર અને સાચવેલી પ્રગતિ જાળવેલી છે."],
   };
@@ -1860,8 +1864,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     playQueueAt(next, true);
     return true;
   }
+  var stopAfter = false;
+  function renderStopAfter() {
+    var b = $("stopAfterBtn"); if (!b) return;
+    b.textContent = T("Stop after this track") + ": " + T(stopAfter ? "on" : "off");
+    b.setAttribute("aria-pressed", String(stopAfter)); b.classList.toggle("active", stopAfter);
+  }
   function playQueueAt(i, advancing) {
     if (i < 0 || i >= lib.queue.length) return;
+    if (!advancing && stopAfter) { stopAfter = false; renderStopAfter(); }
     if (!advancing) { resetShuffle(); failedQueueCount = 0; }
     linkInput.value = lib.queue[i].id;
     loadVideo(null, null, i, true);
@@ -1981,6 +1992,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   renderLib = function () { baseRenderLibT(); renderListTools(); };
   (window.__relang = window.__relang || []).push(renderListTools);
   renderLib();
+  $("stopAfterBtn").addEventListener("click", function () {
+    stopAfter = !stopAfter; renderStopAfter();
+    $("queueModeMsg").textContent = stopAfter ? T("Stop after this track") + ": " + T("on") + ". " + T("It stops once, then goes back to normal.") : T("Stop after this track") + ": " + T("off") + ".";
+  });
+  (window.__relang = window.__relang || []).push(renderStopAfter);
+  renderStopAfter();
 
   var themeBtn = $("themeBtn");
   var darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
@@ -2070,6 +2087,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       }
       if (data.info === 0 && abEnabled && abA != null && abB != null) { send("seekTo", [abA, true]); send("playVideo"); }
       else if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); }
+      else if (data.info === 0 && stopAfter) { stopAfter = false; renderStopAfter(); $("queueModeMsg").textContent = T("Stopped after this track, as you asked."); }
       else if (data.info === 0 && lib.queue.length && queueModes.auto) {
         if (qPos < 0) playQueueAt(0); else if (!playNext()) $("queueModeMsg").textContent = T("Queue finished. Tap a video to play again.");
       }
