@@ -4934,12 +4934,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     + ".tour-dot.on{background:var(--teal,#0f9);}"
     + ".tour-btns{display:flex;gap:10px;justify-content:space-between;}"
     + ".tour-skip,.tour-next{font:inherit;font-size:14px;padding:9px 18px;border-radius:10px;cursor:pointer;border:1px solid var(--hairline,#ccc);background:transparent;color:var(--ink,#111);}"
-    + ".tour-next{background:var(--teal,#0a8);border-color:transparent;color:#fff;font-weight:600;}";
+    + ".tour-next{background:var(--teal,#0a8);border-color:transparent;color:#fff;font-weight:600;}"
+    + ".tour-card{animation:tourCardIn .34s cubic-bezier(.2,.8,.2,1);}"
+    + "@keyframes tourCardIn{from{opacity:0;transform:translateY(16px) scale(.95);}}"
+    + ".tour-swap{transition:opacity .17s ease,transform .17s ease;}"
+    + ".tour-swap.tour-fade{opacity:0;transform:translateY(6px);}"
+    + ".tour-dot{transition:background .25s,transform .25s;}"
+    + ".tour-dot.on{transform:scale(1.3);}"
+    + ".tour-icon.tour-logo svg{width:56px;height:56px;border-radius:15px;box-shadow:0 6px 20px rgba(232,51,109,.28);display:inline-block;}"
+    + "@media (prefers-reduced-motion:reduce){.tour-card{animation:none;}.tour-swap,.tour-dot{transition:none;}}";
   var st = document.createElement("style");
   st.textContent = css;
   document.head.appendChild(st);
   var steps = [
-    { icon: "\u25B6", t: "Welcome to Video Player!", b: "Paste a video link above and tap Load video. YouTube and many other sites work." },
+    { icon: "\u25B6", logo: true, t: "Welcome to Video Player!", b: "Paste a video link above and tap Load video. YouTube and many other sites work." },
     { icon: "\u2630", t: "Line up your videos", b: "Add videos to the queue and mark favourites to find them again quickly." },
     { icon: "\u2699", t: "Make it yours", b: "Use the language button to switch between English, \u0939\u093F\u0902\u0926\u0940 and \u0A97\u0AC1\u0A9C\u0AB0\u0ABE\u0AA4\u0AC0. Open Settings for themes, shortcuts and more." }
   ];
@@ -4950,10 +4958,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   ov.setAttribute("role", "dialog");
   ov.setAttribute("aria-modal", "true");
   ov.setAttribute("aria-labelledby", "tourTitle");
-  ov.innerHTML = '<div class="tour-card"><div class="tour-icon" id="tourIcon"></div><h2 id="tourTitle"></h2><p id="tourBody"></p><div class="tour-dots" id="tourDots"></div><div class="tour-btns"><button type="button" id="tourSkip" class="tour-skip"></button><button type="button" id="tourNext" class="tour-next"></button></div></div>';
+  var TOUR_LOGO = '<svg viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="vpTourBg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdfcf9"/><stop offset="1" stop-color="#e6e2da"/></linearGradient></defs><rect width="512" height="512" rx="115" fill="url(#vpTourBg)"/><path d="M140 110 L370 256 L226 256Z" fill="#ff8a3d"/><path d="M140 402 L370 256 L226 256Z" fill="#e8336d"/><path d="M140 110 L226 256 L140 402Z" fill="#6a2fd6"/><path d="M140 110 L226 256 L140 256Z" fill="#8f5cf0"/></svg>';
+  ov.innerHTML = '<div class="tour-card"><div class="tour-swap" id="tourSwap"><div class="tour-icon" id="tourIcon"></div><h2 id="tourTitle"></h2><p id="tourBody"></p></div><div class="tour-dots" id="tourDots"></div><div class="tour-btns"><button type="button" id="tourSkip" class="tour-skip"></button><button type="button" id="tourNext" class="tour-next"></button></div></div>';
   function render() {
     var stp = steps[i];
-    ov.querySelector("#tourIcon").textContent = stp.icon;
+    var icEl = ov.querySelector("#tourIcon");
+    if (stp.logo) { icEl.innerHTML = TOUR_LOGO; icEl.classList.add("tour-logo"); }
+    else { icEl.textContent = stp.icon; icEl.classList.remove("tour-logo"); }
     ov.querySelector("#tourTitle").textContent = T(stp.t);
     ov.querySelector("#tourBody").textContent = T(stp.b);
     var dots = ov.querySelector("#tourDots");
@@ -4986,8 +4997,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (prevFocus && prevFocus.focus) { try { prevFocus.focus(); } catch (e) {} }
   }
   ov.querySelector("#tourSkip").addEventListener("click", close);
+  function go(n) {
+    var swap = ov.querySelector("#tourSwap");
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || !swap) { i = n; render(); return; }
+    swap.classList.add("tour-fade");
+    setTimeout(function () { i = n; render(); swap.classList.remove("tour-fade"); }, 175);
+  }
   ov.querySelector("#tourNext").addEventListener("click", function () {
-    if (i < steps.length - 1) { i++; render(); } else close();
+    if (i < steps.length - 1) { go(i + 1); } else close();
   });
   ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
   document.addEventListener("keydown", onKey, true);
