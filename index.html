@@ -1123,6 +1123,7 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
           <h3>Share and save</h3>
           <div class="row">
             <button class="chip" id="favBtn">☆ Add to favourites</button>
+            <button class="chip" id="laterBtn" type="button">🕒 Watch later</button>
             <button class="chip" id="shareBtn">🔗 Share at this time</button>
             <button class="chip" id="qrBtn" type="button">QR code</button>
           </div>
@@ -1317,6 +1318,8 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
       <p class="hint" id="queueModeMsg" role="status">Auto-next is on. Video repeat and A-B repeat take priority.</p>
       <ul class="lib-list" id="queueList"></ul>
       </div>
+      <div class="lib-head"><h3 id="lhLater">Watch later</h3><button class="chip" id="laterClearBtn" type="button">Clear</button></div>
+      <ul class="lib-list" id="laterList"></ul>
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3></div>
       <ul class="lib-list" id="favList"></ul>
       <div class="lib-head"><h3 id="lhHist">Recently watched</h3><button class="chip" id="clearHistBtn">Clear</button></div>
@@ -1369,7 +1372,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var shareBtn = $("shareBtn"), shareMsg = $("shareMsg");
   var infoCard = $("infoCard"), infoThumb = $("infoThumb"), infoTitle = $("infoTitle"), infoChannel = $("infoChannel"), infoDur = $("infoDur");
   var infoCache = {};
-  var queueList = $("queueList"), queueBtn = $("queueBtn"), nextBtn = $("nextBtn"), clearQueueBtn = $("clearQueueBtn"), libError = $("libError");
+  var queueList = $("queueList"), queueBtn = $("queueBtn"), nextBtn = $("nextBtn"), clearQueueBtn = $("clearQueueBtn"), libError = $("libError"), laterList = $("laterList");
   function showLibErr(m) { libError.textContent = m || ""; libError.hidden = !m; }
   var qPos = -1;
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
@@ -1650,30 +1653,37 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Chapter added at ": ["अध्याय जुड़ा: ", "ચેપ્ટર ઉમેરાયું: "],
    "There is already a chapter at this time.": ["इस समय पहले से एक अध्याय है.", "આ સમયે પહેલેથી ચેપ્ટર છે."],
    "A file can hold up to 20 chapters. Delete one first.": ["एक फ़ाइल में 20 अध्याय तक हो सकते हैं. पहले एक हटाएं.", "એક ફાઇલમાં 20 ચેપ્ટર સુધી હોઈ શકે. પહેલા એક કાઢી નાખો."],
+   "🕒 Watch later": ["🕒 बाद में देखें", "🕒 પછી જુઓ"],
+   "🕒 In watch later": ["🕒 बाद में देखने में है", "🕒 પછી જોવામાં છે"],
+   "Nothing saved for later yet. Load a video and tap Watch later.": ["बाद के लिए कुछ सेव नहीं है. कोई वीडियो खोलें और बाद में देखें दबाएं.", "પછી માટે કંઈ સેવ નથી. વીડિયો ખોલો અને પછી જુઓ દબાવો."],
+   "Load a video first, then save it for later.": ["पहले कोई वीडियो खोलें, फिर उसे बाद के लिए सेव करें.", "પહેલા વીડિયો ખોલો, પછી તેને પછી માટે સેવ કરો."],
+   "Saved to Watch later.": ["बाद में देखें में सेव हुआ.", "પછી જુઓમાં સેવ થયું."],
+   "Removed from Watch later.": ["बाद में देखें से हटाया.", "પછી જુઓમાંથી કાઢ્યું."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
 
   // Recent videos and favourites, saved in this browser only.
   var LIB_KEY = "vp-library.v1", HIST_MAX = 20;
-  var lib = { hist: [], favs: [], queue: [] };
+  var lib = { hist: [], favs: [], queue: [], later: [] };
   try {
     var savedLib = JSON.parse(localStorage.getItem(LIB_KEY) || "null");
     if (savedLib) {
       if (Array.isArray(savedLib.hist)) lib.hist = savedLib.hist.filter(validItem).slice(0, HIST_MAX);
       if (Array.isArray(savedLib.favs)) lib.favs = savedLib.favs.filter(validItem);
       if (Array.isArray(savedLib.queue)) lib.queue = savedLib.queue.filter(validItem).slice(0, 50);
+      if (Array.isArray(savedLib.later)) lib.later = savedLib.later.filter(validItem).slice(0, 50);
     }
   } catch (e) {}
   function validItem(x) { return x && typeof x.id === "string" && /^[a-zA-Z0-9_-]{11}$/.test(x.id); }
   function saveLib() { try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); } catch (e) {} }
   function findIn(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return i; return -1; }
   function titleFor(id) {
-    var h = findIn(lib.hist, id), f = findIn(lib.favs, id), q = findIn(lib.queue, id);
-    return (h >= 0 && lib.hist[h].title) || (f >= 0 && lib.favs[f].title) || (q >= 0 && lib.queue[q].title) || "";
+    var h = findIn(lib.hist, id), f = findIn(lib.favs, id), q = findIn(lib.queue, id), w = findIn(lib.later, id);
+    return (h >= 0 && lib.hist[h].title) || (f >= 0 && lib.favs[f].title) || (q >= 0 && lib.queue[q].title) || (w >= 0 && lib.later[w].title) || "";
   }
   function setTitle(id, title) {
-    [lib.hist, lib.favs, lib.queue].forEach(function (list) { var i = findIn(list, id); if (i >= 0) list[i].title = title; });
+    [lib.hist, lib.favs, lib.queue, lib.later].forEach(function (list) { var i = findIn(list, id); if (i >= 0) list[i].title = title; });
     saveLib(); renderLib();
   }
   function fetchTitle(id) {
@@ -1713,6 +1723,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function toggleFav(id) {
     var i = findIn(lib.favs, id);
     if (i >= 0) lib.favs.splice(i, 1); else lib.favs.unshift({ id: id, title: titleFor(id) });
+    saveLib(); renderLib(); if (i < 0) fetchTitle(id);
+  }
+  function toggleLater(id) {
+    var i = findIn(lib.later, id);
+    if (i >= 0) lib.later.splice(i, 1); else lib.later.unshift({ id: id, title: titleFor(id) });
     saveLib(); renderLib(); if (i < 0) fetchTitle(id);
   }
   function buildItem(item, actionLabel, onAction, onOpen, isCurrent) {
@@ -1780,9 +1795,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (idx < qPos) qPos--; else if (idx === qPos) qPos = -1;
       saveLib(); renderLib();
     }, function (item, idx) { playQueueAt(idx); });
+    fillList(laterList, lib.later, T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); });
     fillList(favList, lib.favs, T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) { toggleFav(item.id); });
     fillList(histList, lib.hist, T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); });
-    updateFavBtn();
+    updateFavBtn(); updateLaterBtn();
+  }
+  function updateLaterBtn() {
+    var lb2 = $("laterBtn"); if (!lb2) return;
+    var on = curId && findIn(lib.later, curId) >= 0;
+    lb2.textContent = on ? T("🕒 In watch later") : T("🕒 Watch later");
+    lb2.classList.toggle("active", !!on);
   }
   function updateFavBtn() {
     var on = curId && findIn(lib.favs, curId) >= 0;
@@ -1790,6 +1812,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     favBtn.classList.toggle("active", !!on);
   }
   favBtn.addEventListener("click", function () { if (curId) toggleFav(curId); });
+  var laterBtn = $("laterBtn"), laterClearBtn = $("laterClearBtn");
+  if (laterBtn) laterBtn.addEventListener("click", function () {
+    if (!curId) { shareMsg.textContent = T("Load a video first, then save it for later."); return; }
+    toggleLater(curId);
+    shareMsg.textContent = findIn(lib.later, curId) >= 0 ? T("Saved to Watch later.") : T("Removed from Watch later.");
+  });
+  if (laterClearBtn) laterClearBtn.addEventListener("click", function () { lib.later = []; saveLib(); renderLib(); });
   clearHistBtn.addEventListener("click", function () { lib.hist = []; try { localStorage.removeItem("vp-resume.v1"); } catch(e) {} $("resumeBox").hidden = true; saveLib(); renderLib(); });
   queueBtn.addEventListener("click", function () {
     var firstNew = lib.queue.length, n = queueAdd(linkInput.value);
@@ -2515,7 +2544,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (ok) shown++;
       });
     }
-    filt(queueList, lib.queue); filt(favList, lib.favs); filt(histList, lib.hist);
+    filt(queueList, lib.queue); filt(laterList, lib.later); filt(favList, lib.favs); filt(histList, lib.hist);
     if (plList && typeof playlists !== "undefined" && playlists) {
       var pi = 0;
       Array.prototype.forEach.call(plList.children, function (li) {
@@ -2927,6 +2956,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#nextBtn", "Next ⏭", "अगला ⏭"],
     ["#clearQueueBtn", "Clear", "साफ़ करें"],
     ["#clearHistBtn", "Clear", "साफ़ करें"],
+    ["#lhLater", "Watch later", "बाद में देखें"],
+    ["#laterClearBtn", "Clear", "साफ़ करें"],
     ["#statsClear", "Clear", "साफ़ करें"],
     ["#libExport", "Export backup", "बैकअप निकालें"],
     ["#libImport", "Import backup", "बैकअप लाएं"],
@@ -3091,6 +3122,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#nextBtn": "આગળનો ⏭",
  "#clearQueueBtn": "સાફ કરો",
  "#clearHistBtn": "સાફ કરો",
+ "#lhLater": "પછી જુઓ",
+ "#laterClearBtn": "સાફ કરો",
  "#statsClear": "સાફ કરો",
  "#libExport": "બેકઅપ કાઢો",
  "#libImport": "બેકઅપ લાવો",
@@ -3287,7 +3320,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Re-render dynamic labels when the UI language changes.
   window.__relang = window.__relang || [];
   window.__relang.push(function () {
-    updateFavBtn(); renderQueueModes(); ccRender(); sleepEndRender(); updateAB();
+    updateFavBtn(); updateLaterBtn(); renderQueueModes(); ccRender(); sleepEndRender(); updateAB();
     playBtn.textContent = playing ? T("\u23f8 Pause") : T("\u25b6 Play");
     muteBtn.textContent = muted ? T("\ud83d\udd07 Unmute") : T("\ud83d\udd0a Mute");
     loopBtn.textContent = prefs.loop ? T("\ud83d\udd01 Loop on") : T("\ud83d\udd01 Loop off");
