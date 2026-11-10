@@ -1228,7 +1228,7 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
     <section id="lp" aria-labelledby="lpHeading">
       <h2 id="lpHeading">Play a file with volume boost</h2>
       <input id="lpFile" type="file" multiple accept="video/*,audio/*" aria-label="Choose a video or audio file from your device">
-      <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button><button class="chip" id="lpPip" type="button" hidden>PiP</button></div>
+      <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button><button class="chip" id="lpPip" type="button" hidden>PiP</button><button class="chip" id="lpClose" type="button" disabled>Close files</button></div>
       <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
       <p class="hint" id="lpSessionMsg" role="status">Select one or more local files. Notification and lock-screen controls are local-file only, where supported by your browser. They do not enable screen-off YouTube playback.</p>
       <video id="lpVideo" controls playsinline preload="metadata" crossorigin="anonymous" class="lp-video" hidden></video>
@@ -1712,6 +1712,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Step size": ["कदम का आकार", "પગલાનું માપ"],
    "Pauses the video. Frame steps are approximate; choose the video frame rate.": ["वीडियो रुकता है. फ्रेम कदम अनुमानित हैं; वीडियो की फ्रेम दर चुनें.", "વિડિયો થોભે છે. ફ્રેમ પગલાં અંદાજિત છે; વિડિયોનો ફ્રેમ દર પસંદ કરો."],
    "Use m:ss or h:mm:ss within this file.": ["इस फ़ाइल के अंदर का समय m:ss या h:mm:ss में दें.", "આ ફાઇલની અંદરનો સમય m:ss અથવા h:mm:ss માં આપો."],
+   "Close files": ["फ़ाइलें बंद करें", "ફાઇલો બંધ કરો"],
+   "Files closed. Your chapters and saved progress are kept.": ["फ़ाइलें बंद. आपके अध्याय और सेव की गई प्रगति सुरक्षित हैं.", "ફાઇલો બંધ. તમારા ચેપ્ટર અને સાચવેલી પ્રગતિ જાળવેલી છે."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
@@ -3756,7 +3758,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   function show(url, local) {
     if (curUrl && curUrl.indexOf("blob:") === 0) URL.revokeObjectURL(curUrl);
-    curUrl = url; vid.src = url; vid.hidden = false; ctl.hidden = false; vid.playbackRate = lp.rate;
+    $("lpClose").disabled=false; curUrl = url; vid.src = url; vid.hidden = false; ctl.hidden = false; vid.playbackRate = lp.rate;
     [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c.textContent === lp.rate + "x"); });
   }
   var posKey = null, lastPos = 0;
@@ -3780,7 +3782,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function localPlay() { var p = vid.play(); if (p && p.catch) p.catch(function(){ sessionMsg.textContent = T("Tap Play on the local player to continue. Your browser blocked automatic playback."); }); }
   function playLocalAt(i, auto) {
     if (i < 0 || i >= localFiles.length) return;
-    localIndex = i; var f = localFiles[i]; posKey = f.name + "|" + f.size;
+    saveLocalPositionNow(); localIndex = i; var f = localFiles[i]; posKey = f.name + "|" + f.size;
     show(URL.createObjectURL(f), true); updateLocalButtons();
     sessionMsg.textContent = T("File ") + (i+1) + T(" of ") + localFiles.length + ": " + f.name + (session ? T(". Media controls available where your browser allows them.") : T(". This browser does not support Media Session controls."));
     if (auto) localPlay();
@@ -3951,8 +3953,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var f = this.files && this.files[0]; this.value = "";
     if (!f) return;
     if (f.size > 2 * 1024 * 1024) { subMsg.textContent = T("That subtitle file is too large (over 2 MB)."); return; }
-    var rd = new FileReader();
+    var rd = new FileReader(), sourceAtRead = curUrl;
     rd.onload = function () {
+      if (!curUrl || curUrl !== sourceAtRead) return;
       clearSub();
       var vtt = srtToVtt(rd.result);
       subUrl = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" }));
@@ -4063,10 +4066,30 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   vid.addEventListener("loadedmetadata",frameEnabled);vid.addEventListener("emptied",frameEnabled);
   (window.__relang=window.__relang||[]).push(preciseText);preciseText();frameEnabled();
 
+
+  function saveLocalPositionNow(){
+    if(!posKey||!isFinite(vid.duration)||vid.duration<=0)return;
+    try{var m=JSON.parse(localStorage.getItem(PK)||"{}");if(vid.currentTime>=vid.duration-10)delete m[posKey];else m[posKey]=Math.floor(vid.currentTime);localStorage.setItem(PK,JSON.stringify(m));}catch(e){}
+  }
+  vid.addEventListener("pause",saveLocalPositionNow);window.addEventListener("pagehide",saveLocalPositionNow);
+  $("lpClose").addEventListener("click",function(){
+    saveLocalPositionNow();vid.pause();
+    if(document.pictureInPictureElement===vid&&document.exitPictureInPicture)document.exitPictureInPicture().catch(function(){});
+    clearSub();subMsg.textContent="";subFile.value="";
+    thumbVid.pause();thumbVid.removeAttribute("src");thumbVid.load();thumbOk=false;lpThumb.hidden=true;lpSeekWrap.hidden=true;
+    vid.removeAttribute("src");vid.load();if(curUrl&&curUrl.indexOf("blob:")===0)URL.revokeObjectURL(curUrl);curUrl=null;
+    localFiles=[];localIndex=-1;posKey=null;file.value="";vid.hidden=true;ctl.hidden=true;updateLocalButtons();chRender();resetLocalLoop();
+    $("lpJump").value="";$("lpJumpMsg").textContent="";$("lpClose").disabled=true;
+    if(ctx&&ctx.state==="running")ctx.suspend();
+    if(session){session.metadata=null;session.playbackState="none";["play","pause","previoustrack","nexttrack","seekbackward","seekforward","seekto"].forEach(function(n){mediaAction(n,null);});}
+    document.dispatchEvent(new Event("vp-local-closed"));sessionMsg.textContent=T("Files closed. Your chapters and saved progress are kept.");file.focus();
+  });
+  (window.__relang=window.__relang||[]).push(function(){$("lpClose").textContent=T("Close files");});$("lpClose").textContent=T("Close files");
+
   var lpRelang = function () { if (!curUrl) sessionMsg.textContent = T(LP_DEF); subChipText(); eqPresetText(); chRender(); renderLocalQueue(); };
   (window.__relang = window.__relang || []).push(lpRelang);
   lpRelang();
-  window.vpPlayUrl = function (url, key) { localFiles = []; localIndex = -1; updateLocalButtons(); posKey = typeof key === "string" && key ? key : null; show(url, false); $("lp").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); };
+  window.vpPlayUrl = function (url, key) { saveLocalPositionNow(); localFiles = []; localIndex = -1; updateLocalButtons(); posKey = typeof key === "string" && key ? key : null; show(url, false); $("lp").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); };
 })();
 </script>
 <script>
