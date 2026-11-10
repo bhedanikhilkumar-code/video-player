@@ -15,6 +15,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://www.youtube-nocookie.com">
 <link rel="preconnect" href="https://i.ytimg.com">
+<link rel="preconnect" href="https://www.youtube.com">
+<link rel="dns-prefetch" href="https://www.youtube.com">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABGdBTUEAALGPC/xhBQAAACBjSFJNAAB6JgAAgIQAAPoAAACA6AAAdTAAAOpgAAA6mAAAF3CculE8AAAABmJLR0QA/wD/AP+gvaeTAAAAB3RJTUUH6gsIFhkin6S8hAAAA7hJREFUWMPFl99rHFUUxz/nzuzOpjaSColtLaGNNmtCq7Wh0K1Q8EFCpaY/oNTX9sV/QulDEUEfRcGX+OCjLyYtKPhiSykUYalNGmgSN00hapquYuL+mp25x4eZjTG6kzTZxHO5zMBc7vnx/c75IQBBvYoqiNALXAaGgB7AozVSAwrAKDCsqpMigpvKIHW/AqgBeRu4ChwCpEWKV4sC48B7oNdBrNT9Mihngc+Bri1SvFoeA+8ifC1+tZRF+Ao4vE3KGzKGcsFV9BLKoW1WDhHUl6RWWboP9P8PBgBMSLW8WAEyzU7YIEQMiJMCta02oOqqalPlYoQnMzWcqZt05voIn9sPqtFujWSM0nyBpVTZwd0bbejoRzhj18EvoyJoi5ab5I0qCJaZpeMUZm/zcukzzGyeYOACtqu3cWpTIXA1wQCJP9WtR754nn3t99n50y3M/AOCw6cJ+gfRto6YGxszxKgqTTfR04hlvnyQ8d8GUeMgpSLunS9Jf/shZvYH1IYoQuJdTbZZJtV/bF0mnALCWHGQhUoPiCKqOHP38L77mPTtYWTxV1RMFIeEO1fvRBJGUWiIZaneRX7hLIH1omphHKRWwr03gvfNB7iT30PgPxVJEyH4+5cTRAQRy/TiCWb/HACJcRcQEZxiAe/GJ3g3P0WKD9HlQCRDkEhCVbDWUvcDbBgTUj3uzA2xWx6QMaV/kyp/i/TUNP7Rc4SvngTHSSSouxZ5K2WfuZkSYdAAQnCdkN+ne8hQQVdW7gaue3fh7M9g1pG01o5AaKn7IWEQQZGWOsdsnnQ9IFjZr1iLZNKYk32YiznkQFeUzDZlQOMldlJF6HcKvCiPUBVEiLkC5qXdOO/kcF7PQiaFWruu1OBq0qmYRNGr0CFLHJcfcQmwCIQWaW/DDL6Ce+4YsqcDrKLh+ovWmqm44YYIDJgJnucJagUxghzpxrmYwxw9AI55KsXrg6DxJyK8IPO8JhMQWuh8FjM0gHPqCOzagYYKdmOlem0DUFIE5OQu7U4FctmIZNk9UWyCzfUIiRA0SJxlhuy+P5DzbyJv9CPPeGB1s4UwjkDCLVZhp1fjxClL5sxptLszqhEbwLqZyONfHia3ZL7FGCDtRBa1VqquqhZIaEpNKkoCrfR6hRRcVK8BfTSZhlru8z+vHnUVHUZ5i+0fTMYRvjBqdRL0iqILy13QVq5IxwLoFbU66YKiKiNxY3c1npK2djhV3leRazRq6c+PpgALmIOgl4EzbM14PgIyLDClKHu7e/kLGV3bCu3lhjAAAAAldEVYdGRhdGU6Y3JlYXRlADIwMjYtMTEtMDhUMjI6MjU6MzIrMDA6MDCZnA2KAAAAJXRFWHRkYXRlOm1vZGlmeQAyMDI2LTExLTA4VDIyOjI1OjMyKzAwOjAw6MG1NgAAAABJRU5ErkJggg==">
@@ -1865,12 +1867,27 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     [lib.hist, lib.favs, lib.queue, lib.later].forEach(function (list) { var i = findIn(list, id); if (i >= 0) list[i].title = title; });
     saveLib(); renderLib();
   }
-  function fetchTitle(id) {
-    if (!window.fetch || titleFor(id)) return;
+  /* One shared title request per video: loadVideo used to fire two oembed calls for a
+     new video (one from addHistory, one from showInfo). Now everyone joins one request. */
+  var metaInflight = {};
+  function fetchMeta(id, onDone) {
+    if (!window.fetch) return;
+    if (metaInflight[id]) { if (onDone) metaInflight[id].push(onDone); return; }
+    metaInflight[id] = onDone ? [onDone] : [];
     fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id))
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) { if (d && typeof d.title === "string") setTitle(id, d.title); })
-      .catch(function () {});
+      .then(function (d) {
+        var cbs = metaInflight[id] || []; delete metaInflight[id];
+        if (!d) return;
+        infoCache[id] = Object.assign(infoCache[id] || {}, { title: String(d.title || ""), author: String(d.author_name || ""), authorUrl: String(d.author_url || "") });
+        if (infoCache[id].title) setTitle(id, infoCache[id].title);
+        cbs.forEach(function (cb) { try { cb(); } catch (e) {} });
+      })
+      .catch(function () { delete metaInflight[id]; });
+  }
+  function fetchTitle(id) {
+    if (titleFor(id)) return;
+    fetchMeta(id);
   }
   function showInfo(id) {
     var c = infoCache[id] || {};
@@ -1881,16 +1898,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     infoChannel.textContent = c.author || "";
     if (c.authorUrl && /^https:\/\/(www\.)?youtube\.com\//.test(c.authorUrl)) infoChannel.href = c.authorUrl; else infoChannel.removeAttribute("href");
     infoDur.textContent = c.dur ? "Length " + fmt(c.dur) : "";
-    if (!c.title && window.fetch) {
-      fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id))
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (d) {
-          if (!d) return;
-          infoCache[id] = Object.assign(infoCache[id] || {}, { title: String(d.title || ""), author: String(d.author_name || ""), authorUrl: String(d.author_url || "") });
-          if (infoCache[id].title) setTitle(id, infoCache[id].title);
-          if (curId === id) showInfo(id);
-        }).catch(function () {});
-    }
+    if (!c.title) fetchMeta(id, function () { if (curId === id) showInfo(id); });
   }
   function addHistory(id) {
     var i = findIn(lib.hist, id), item = i >= 0 ? lib.hist.splice(i, 1)[0] : { id: id, title: titleFor(id) };
