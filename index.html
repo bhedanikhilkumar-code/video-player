@@ -902,6 +902,11 @@ video::cue { background: rgba(0,0,0,.55); color: #fff; text-shadow: 0 1px 2px rg
 .lp-seekwrap { position: relative; margin-top: 10px; }
 .lp-seekbar { height: 8px; border-radius: 4px; background: var(--hairline); cursor: pointer; position: relative; touch-action: none; }
 .lp-seekfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 4px; background: var(--teal); pointer-events: none; }
+.ch-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.ch-item { display: flex; gap: 6px; align-items: stretch; }
+.ch-go { flex: 1; text-align: left; min-height: 44px; overflow-wrap: anywhere; }
+.ch-mini { min-width: 44px; min-height: 44px; padding: 4px 10px; flex: none; }
+.ch-tick { position: absolute; top: -3px; bottom: -3px; width: 3px; margin-left: -1px; background: var(--teal); border-radius: 2px; pointer-events: none; }
 .lp-thumb {
   position: absolute; bottom: 16px; transform: translateX(-50%); pointer-events: none;
   background: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 6px 20px rgba(0,0,0,.4); z-index: 6;
@@ -1222,6 +1227,10 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
         <p class="hint" id="lpSubMsg" role="status"></p>
         <span class="label" id="lpSubSizeLab">Subtitle size</span>
         <div class="row" id="lpSubSizes"></div>
+        <div class="lib-head"><h3 id="lpChH">Chapters</h3></div>
+        <div class="row"><button class="chip" id="lpChAdd" type="button" disabled>+ Add chapter here</button></div>
+        <ul class="ch-list" id="lpChList"></ul>
+        <p class="hint" id="lpChHint">Your own markers for this file, saved on this device. Tap a chapter to jump to it.</p>
         <div class="lib-head"><h3 id="lpEqH">Equalizer</h3></div>
         <div class="row" id="lpEqPresets"></div>
         <label class="dl-lab" for="lpEqB"><span id="lpEqBLab">Bass: </span><b id="lpEqBVal">0 dB</b></label>
@@ -1634,6 +1643,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "The file is gone or was moved. Pick it again.": ["फ़ाइल मिल नहीं रही या हिला दी गई है. फिर से चुनें.", "ફાઇલ મળી નથી કે ખસેડાઈ ગઈ છે. ફરી પસંદ કરો."],
    "Remembered files could not be read in this browser.": ["इस ब्राउज़र में याद रखी गई फ़ाइलें नहीं पढ़ी जा सकीं.", "આ બ્રાઉઝરમાં યાદ રાખેલી ફાઇલો વાંચી ન શકાઈ."],
    "Remembered: ": ["याद रखा: ", "યાદ રાખ્યું: "],
+   "Chapter": ["अध्याय", "ચેપ્ટર"],
+   "Rename chapter": ["अध्याय का नाम बदलें", "ચેપ્ટરનું નામ બદલો"],
+   "Delete chapter": ["अध्याय हटाएं", "ચેપ્ટર કાઢી નાખો"],
+   "Chapter name": ["अध्याय का नाम", "ચેપ્ટરનું નામ"],
+   "Chapter added at ": ["अध्याय जुड़ा: ", "ચેપ્ટર ઉમેરાયું: "],
+   "There is already a chapter at this time.": ["इस समय पहले से एक अध्याय है.", "આ સમયે પહેલેથી ચેપ્ટર છે."],
+   "A file can hold up to 20 chapters. Delete one first.": ["एक फ़ाइल में 20 अध्याय तक हो सकते हैं. पहले एक हटाएं.", "એક ફાઇલમાં 20 ચેપ્ટર સુધી હોઈ શકે. પહેલા એક કાઢી નાખો."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
   window.T = T;
@@ -2964,6 +2980,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#lpSubBtn", "Load .srt / .vtt file", ".srt / .vtt फ़ाइल चुनें"],
     ["#lpSubOff", "Subtitles off", "सबटाइटल बंद"],
     ["#lpSubSizeLab", "Subtitle size", "सबटाइटल का आकार"],
+    ["#lpChH", "Chapters", "अध्याय"],
+    ["#lpChAdd", "+ Add chapter here", "+ यहां अध्याय जोड़ें"],
+    ["#lpChHint", "Your own markers for this file, saved on this device. Tap a chapter to jump to it.", "इस फ़ाइल के लिए आपके अपने मार्कर, इसी डिवाइस पर सेव. किसी अध्याय पर टैप करके वहां जाएं."],
     ["#lpSpeedH", "Speed", "स्पीड"],
     ["#sleepMinLab", "Custom minutes", "अपने मिनट"],
     ["#ccLangLab", "Language shortcut", "भाषा शॉर्टकट"],
@@ -3125,6 +3144,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#lpSubBtn": ".srt / .vtt ફાઇલ પસંદ કરો",
  "#lpSubOff": "સબટાઇટલ બંધ",
  "#lpSubSizeLab": "સબટાઇટલની સાઇઝ",
+ "#lpChH": "ચેપ્ટર",
+ "#lpChAdd": "+ અહીં ચેપ્ટર ઉમેરો",
+ "#lpChHint": "આ ફાઇલ માટેના તમારા પોતાના માર્કર, આ જ ડિવાઇસ પર સેવ. જંપ કરવા ચેપ્ટર પર ટેપ કરો.",
  "#lpSpeedH": "સ્પીડ",
  "#sleepMinLab": "તમારા મિનિટ",
  "#ccLangLab": "ભાષા શોર્ટકટ",
@@ -3457,7 +3479,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         lastFile = API + s.file; $("dlPlayBtn").hidden = false; var a = document.createElement("a"); a.href = API + s.file; a.download = s.name || ""; document.body.appendChild(a); a.click(); a.remove();
       }).catch(fail);
   }
-  $("dlPlayBtn").addEventListener("click", function () { if (lastFile && window.vpPlayUrl) window.vpPlayUrl(lastFile); });
+  $("dlPlayBtn").addEventListener("click", function () { if (lastFile && window.vpPlayUrl) window.vpPlayUrl(lastFile, "dl|" + lastFile); });
   try { $("dlBulkMp3").checked = localStorage.getItem("vp-dl-mp3") === "1"; } catch (e) {}
   $("dlBulkMp3").addEventListener("change", function () { try { localStorage.setItem("vp-dl-mp3", this.checked ? "1" : "0"); } catch (e) {} });
   // ---- Download queue ----
@@ -3762,10 +3784,68 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var baseShowSub = show;
   show = function (url, local) { clearSub(); if (subMsg) subMsg.textContent = ""; baseShowSub(url, local); };
 
-  var lpRelang = function () { if (!curUrl) sessionMsg.textContent = T(LP_DEF); subChipText(); eqPresetText(); };
+  // Chapters for local files: your own jump markers, saved on this device per file.
+  var CH_KEY = "vp-chapters.v1", chList = $("lpChList"), chAdd = $("lpChAdd");
+  var chStore = {};
+  try { var chIn = JSON.parse(localStorage.getItem(CH_KEY) || "null"); if (chIn && typeof chIn === "object") chStore = chIn; } catch (e) {}
+  function chSave() {
+    try {
+      var ks = Object.keys(chStore);
+      while (ks.length > 50) { delete chStore[ks.shift()]; }
+      localStorage.setItem(CH_KEY, JSON.stringify(chStore));
+    } catch (e) {}
+  }
+  function chCur() { return posKey ? (chStore[posKey] = chStore[posKey] || []) : null; }
+  function chFmt(t) { t = Math.max(0, Math.floor(t)); var m = Math.floor(t / 60), s = t % 60; return m + ":" + (s < 10 ? "0" : "") + s; }
+  function chRender() {
+    if (!chList) return;
+    chList.textContent = "";
+    var list = chCur();
+    if (chAdd) chAdd.disabled = !list;
+    if (!list) { chTicks(); return; }
+    list.sort(function (a, b) { return a.t - b.t; });
+    list.forEach(function (ch, i) {
+      var li = document.createElement("li"); li.className = "ch-item";
+      var go = document.createElement("button"); go.type = "button"; go.className = "chip ch-go";
+      go.textContent = chFmt(ch.t) + " \u00b7 " + (ch.n || (T("Chapter") + " " + (i + 1)));
+      go.addEventListener("click", function () { vid.currentTime = ch.t; localPlay(); });
+      var rn = document.createElement("button"); rn.type = "button"; rn.className = "chip ch-mini"; rn.textContent = "\u270e";
+      rn.setAttribute("aria-label", T("Rename chapter") + " " + chFmt(ch.t));
+      rn.addEventListener("click", function () { var nv = window.prompt(T("Chapter name"), ch.n || ""); if (nv !== null) { ch.n = nv.trim().slice(0, 40); chSave(); chRender(); } });
+      var del = document.createElement("button"); del.type = "button"; del.className = "chip ch-mini"; del.textContent = "\u2715";
+      del.setAttribute("aria-label", T("Delete chapter") + " " + chFmt(ch.t));
+      del.addEventListener("click", function () { list.splice(list.indexOf(ch), 1); chSave(); chRender(); });
+      li.appendChild(go); li.appendChild(rn); li.appendChild(del); chList.appendChild(li);
+    });
+    chTicks();
+  }
+  function chTicks() {
+    var bar = $("lpSeekBar"); if (!bar) return;
+    [].forEach.call(bar.querySelectorAll(".ch-tick"), function (x) { x.remove(); });
+    var list = chCur();
+    if (!list || !isFinite(vid.duration) || !vid.duration) return;
+    list.forEach(function (ch) {
+      var tick = document.createElement("i"); tick.className = "ch-tick";
+      tick.style.left = Math.min(100, Math.max(0, ch.t / vid.duration * 100)) + "%";
+      bar.appendChild(tick);
+    });
+  }
+  if (chAdd) chAdd.addEventListener("click", function () {
+    var list = chCur(); if (!list) return;
+    if (list.length >= 20) { sessionMsg.textContent = T("A file can hold up to 20 chapters. Delete one first."); return; }
+    var t = Math.floor(vid.currentTime);
+    for (var ci = 0; ci < list.length; ci++) if (Math.abs(list[ci].t - t) < 2) { sessionMsg.textContent = T("There is already a chapter at this time."); return; }
+    list.push({ t: t, n: "" }); chSave(); chRender();
+    sessionMsg.textContent = T("Chapter added at ") + chFmt(t) + ".";
+  });
+  vid.addEventListener("loadedmetadata", chTicks);
+  var baseShowCh = show;
+  show = function (url, local) { baseShowCh(url, local); chRender(); };
+  chRender();
+  var lpRelang = function () { if (!curUrl) sessionMsg.textContent = T(LP_DEF); subChipText(); eqPresetText(); chRender(); };
   (window.__relang = window.__relang || []).push(lpRelang);
   lpRelang();
-  window.vpPlayUrl = function (url) { localFiles = []; localIndex = -1; updateLocalButtons(); posKey = null; show(url, false); $("lp").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); };
+  window.vpPlayUrl = function (url, key) { localFiles = []; localIndex = -1; updateLocalButtons(); posKey = typeof key === "string" && key ? key : null; show(url, false); $("lp").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); };
 })();
 </script>
 <script>
@@ -4517,7 +4597,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             if (perm !== "granted") { play.disabled = false; say(T("Permission was not given, so the file cannot be re-opened.")); return; }
             r.handle.getFile().then(function (f) {
               play.disabled = false;
-              if (window.vpPlayUrl) { window.vpPlayUrl(URL.createObjectURL(f)); say(T("Playing") + " \"" + f.name + "\"."); }
+              if (window.vpPlayUrl) { window.vpPlayUrl(URL.createObjectURL(f), f.name + "|" + f.size); say(T("Playing") + " \"" + f.name + "\"."); }
             }, function () { play.disabled = false; say(T("The file is gone or was moved. Pick it again.")); });
           }, function () { play.disabled = false; say(T("The file is gone or was moved. Pick it again.")); });
         });
