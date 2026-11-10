@@ -1083,6 +1083,20 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 .lib-empty-ic svg { width: 22px; height: 22px; display: block; }
 :root[data-theme="dark"] .lib-empty-ic { color: #7fd2bf; }
 .lib-empty span:last-child { flex: 1; min-width: 0; }
+<style id="delight-micro">
+/* Micro-interactions: a springy pop confirms Favourites / Watch later taps,
+   and the Continue watching card gets a single glass sheen sweep when it appears.
+   Reduced-motion and Low-end mode flatten both through the global rules. */
+@keyframes vp-pop { 0% { transform: scale(1); } 35% { transform: scale(1.14); } 70% { transform: scale(.96); } 100% { transform: scale(1); } }
+.vp-pop { animation: vp-pop .38s cubic-bezier(.2,.8,.2,1); }
+.resume { position: relative; overflow: hidden; }
+.resume::after {
+  content: ''; position: absolute; top: 0; bottom: 0; left: -60%; width: 45%; pointer-events: none;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,.5), transparent);
+  transform: skewX(-18deg); animation: resume-sheen 3s ease-in-out 1 .35s;
+}
+@keyframes resume-sheen { to { left: 130%; } }
+:root[data-theme="dark"] .resume::after { background: linear-gradient(105deg, transparent, rgba(255,255,255,.22), transparent); }
 </style></head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
@@ -2023,16 +2037,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (lib.hist.length > HIST_MAX) lib.hist.length = HIST_MAX;
     saveLib(); renderLib(); fetchTitle(id);
   }
+  function vpPop(el) {
+    if (!el || !el.classList) return;
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    el.classList.remove("vp-pop"); void el.offsetWidth; el.classList.add("vp-pop");
+  }
   function toggleFav(id) {
     var i = findIn(lib.favs, id);
     if (i >= 0) lib.favs.splice(i, 1); else lib.favs.unshift({ id: id, title: titleFor(id) });
     saveLib(); renderLib(); if (i < 0) fetchTitle(id);
+    vpPop(favBtn);
     toast(i >= 0 ? T("Removed from favourites") : T("Added to favourites"));
   }
   function toggleLater(id) {
     var i = findIn(lib.later, id);
     if (i >= 0) lib.later.splice(i, 1); else lib.later.unshift({ id: id, title: titleFor(id) });
     saveLib(); renderLib(); if (i < 0) fetchTitle(id);
+    vpPop(laterBtn);
     toast(i >= 0 ? T("Removed from Watch later.") : T("Saved to Watch later."));
   }
   function buildItem(item, actionLabel, onAction, onOpen, isCurrent, extraAction) {
