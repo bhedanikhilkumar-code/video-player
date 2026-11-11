@@ -1842,6 +1842,7 @@ setTimeout(done,3000);})();
           <div class="row">
             <button class="chip" id="favBtn">☆ Add to favourites</button>
             <button class="chip" id="laterBtn" type="button">🕒 Watch later</button>
+            <button class="chip" id="watchedBtn" type="button" aria-pressed="false">✔ Mark as watched</button>
             <button class="chip" id="shareBtn">🔗 Share at this time</button>
             <button class="chip" id="waBtn" type="button">📲 WhatsApp</button>
             <button class="chip" id="qrBtn" type="button">QR code</button>
@@ -2535,6 +2536,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    " to ": [" से ", " થી "],
    "B must be after A": ["B, A के बाद होना चाहिए", "B, A પછી હોવું જોઈએ"],
    "Load a video first.": ["पहले वीडियो चलाएं.", "પહેલા વીડિયો ચલાવો."],
+   "✔ Mark as watched": ["✔ देखा हुआ करें", "✔ જોયેલું કરો"],
+   "✔ Watched - tap to undo": ["✔ देखा हुआ - हटाने को दबाएं", "✔ જોયેલું - હટાવવા દબાવો"],
+   "Marked as watched": ["देखा हुआ कर दिया", "જોયેલું કરી દીધું"],
+   "Marked as not watched": ["देखा हुआ हटाया", "જોયેલું હટાવ્યું"],
    "Use 0 ≤ A < B, within the video length.": ["0 ≤ A < B रखें, वीडियो की लंबाई के अंदर.", "0 ≤ A < B રાખો, વીડિયોની લંબાઈની અંદર."],
    "Back to player": ["प्लेयर पर वापस", "પ્લેયર પર પાછા"],
    "Move mini player to the other side": ["मिनी प्लेयर को दूसरी तरफ ले जाएं", "મિની પ્લેયરને બીજી બાજુ લઈ જાઓ"],
@@ -3414,7 +3419,37 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var on = curId && findIn(lib.favs, curId) >= 0;
     favBtn.textContent = on ? T("★ In favourites") : T("☆ Add to favourites");
     favBtn.classList.toggle("active", !!on);
+    updateWatchedBtn();
   }
+  // Mark as watched (round 90): the green Watched pill used to appear only when a video
+  // played to its end. This chip sets or clears that state by hand - handy when a video was
+  // finished in another app. Marking watched clears the resume point, like a real finish.
+  function updateWatchedBtn() {
+    var wb = $("watchedBtn"); if (!wb) return;
+    var hi = curId ? findIn(lib.hist, curId) : -1;
+    var on = hi >= 0 && !!lib.hist[hi].done;
+    var label = on ? T("✔ Watched - tap to undo") : T("✔ Mark as watched");
+    if (wb.textContent !== label) wb.textContent = label;
+    wb.classList.toggle("active", !!on);
+    wb.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+  var watchedBtn = $("watchedBtn");
+  if (watchedBtn) watchedBtn.addEventListener("click", function () {
+    if (!curId) { toast(T("Load a video first.")); return; }
+    var hi = findIn(lib.hist, curId);
+    if (hi >= 0 && lib.hist[hi].done) {
+      lib.hist[hi].done = false; saveLib(); renderLib(); updateWatchedBtn();
+      toast(T("Marked as not watched"));
+      return;
+    }
+    if (hi < 0) { lib.hist.unshift({ id: curId, title: titleFor(curId), ts: Date.now(), t: 0, dur: duration || 0, done: true }); if (lib.hist.length > HIST_MAX) lib.hist.length = HIST_MAX; hi = 0; }
+    lib.hist[hi].done = true; lib.hist[hi].t = 0; if (duration > 0) lib.hist[hi].dur = duration;
+    saveLib(); renderLib(); updateWatchedBtn(); vpPop(watchedBtn);
+    try { var rk = JSON.parse(localStorage.getItem(RK) || "null"); if (rk && rk.id === curId) localStorage.removeItem(RK); } catch (e) {}
+    if (typeof resumeRender === "function") resumeRender();
+    toast(T("Marked as watched"));
+  });
+  updateWatchedBtn();
 
   favBtn.addEventListener("click", function () { if (curId) toggleFav(curId); });
   // Open the current video on YouTube itself, at the current time, in a new tab.
@@ -3905,6 +3940,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var hi = findIn(lib.hist, curId);
       var finished = duration > 0 && curTime >= duration - 5;
       if (hi >= 0) { lib.hist[hi].t = finished ? 0 : Math.floor(curTime); lib.hist[hi].dur = duration; if (finished) lib.hist[hi].done = true; saveLib(); }
+      if (finished && typeof updateWatchedBtn === "function") updateWatchedBtn();
       if (finished && typeof laterAuto !== "undefined" && laterAuto) {
         var laIdx = findIn(lib.later, curId);
         if (laIdx >= 0) { var laItem = lib.later.splice(laIdx, 1)[0]; saveLib(); renderLib(); toastUndo(T("Removed from Watch later - you finished it"), function () { lib.later.splice(Math.min(laIdx, lib.later.length), 0, laItem); saveLib(); renderLib(); }, T("Watch later restored")); }
@@ -10156,6 +10192,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Played count on Now playing", "played times count watched before how many repeat", "#infoCard"],
       ["Up-next countdown length", "up next countdown seconds length off 3 5 10 auto next wait", "#upnextSecsRow"],
       ["Shuffle, repeat and auto-next", "shuffle repeat auto-next mix", "#shuffleQueueBtn"],
+      ["Mark as watched", "watched mark done finished tick seen pill", "#watchedBtn"],
       ["Watch later", "later save", "#lhLater"],
       ["Watch later auto-remove", "later auto remove finished clean", "#laterAutoBtn"],
       ["Favourites and Surprise me", "favourite favorite surprise random", "#lhFavs"],
