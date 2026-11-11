@@ -1238,7 +1238,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 
         <div class="ctl-card wide" id="ctl-gestures">
           <h3>Gesture pad</h3>
-          <div class="gesture-pad" id="gesturePad" tabindex="0" role="group" aria-label="Gesture pad. Double-tap the left side to go back 10 seconds, the right side to go forward 10 seconds. Swipe up or down to change the volume. Arrow keys work here too.">
+          <div class="gesture-pad" id="gesturePad" tabindex="0" role="group" aria-label="Gesture pad. Double-tap the left side to go back 10 seconds, the right side to go forward 10 seconds. Swipe up or down to change the volume. Press and hold for 2x speed. Arrow keys work here too.">
             <span class="gp-half" id="gpLeft">Double-tap<br>-10s</span>
             <span class="gp-vol">swipe up / down<br>for volume</span>
             <span class="gp-half" id="gpRight">Double-tap<br>+10s</span>
@@ -1247,6 +1247,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
           <span class="label" id="gpMsg" role="status"></span>
           <span class="label" id="dtSeekLab">Double-tap skip</span>
           <div class="row" id="dtSeekChips"></div>
+          <p class="hint" id="gpHoldHint">Press and hold the pad for 2x speed; let go to get your speed back.</p>
           <p class="hint">The video area is YouTube's own player, so quick gestures live on this pad instead of covering the video. On the video itself, use YouTube's own controls.</p>
         </div>
 
@@ -1657,6 +1658,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Watch stats restored": ["देखने के आंकड़े वापस आए", "જોવાના આંકડા પાછા આવ્યા"],
    "Cinema mode on - tap the dark area or press T to exit.": ["सिनेमा मोड चालू - बाहर टैप करें या बंद करने के लिए T दबाएं.", "સિનેમા મોડ ચાલુ - બહાર ટેપ કરો અથવા બંધ કરવા T દબાવો."],
    "Link copied": ["लिंक कॉपी हुआ", "લિંક કોપી થઈ"],
+   "2x speed while held.": ["दबाए रखने पर 2x स्पीड.", "દબાવી રાખવાથી 2x સ્પીડ."],
+   "Speed back to ": ["स्पीड वापस ", "સ્પીડ પાછળ "],
    "Theme: Auto": ["थीम: ऑटो", "થીમ: ઓટો"],
    "Theme: Day/Night": ["थीम: दिन/रात", "થીમ: દિવસ/રાત"],
    "Theme: Dark": ["थीम: डार्क", "થીમ: ડાર્ક"],
@@ -3099,12 +3102,37 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (flashTimer) clearTimeout(flashTimer);
       flashTimer = setTimeout(function () { flash.classList.remove("show"); }, 450);
     }
-    pad.addEventListener("pointerdown", function (e) { tracking = true; sx = e.clientX; sy = e.clientY; });
-    pad.addEventListener("pointercancel", function () { tracking = false; });
+    var holdTimer = 0, holdBoost = false, holdPrev = 1;
+    function holdEnd(restore) {
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = 0; }
+      if (holdBoost) {
+        holdBoost = false;
+        flash.classList.remove("show");
+        if (restore !== false) { send("setPlaybackRate", [holdPrev]); showFlash(holdPrev + "\u00d7"); say(T("Speed back to ") + holdPrev + "x."); }
+      }
+    }
+    pad.addEventListener("pointerdown", function (e) {
+      tracking = true; sx = e.clientX; sy = e.clientY;
+      if (holdTimer) clearTimeout(holdTimer);
+      holdTimer = setTimeout(function () {
+        holdTimer = 0;
+        if (!tracking || holdBoost || !padReady() || !playing) return;
+        holdPrev = (typeof prefs.speed === "number" && prefs.speed > 0) ? prefs.speed : 1;
+        if (holdPrev >= 2) return;
+        holdBoost = true;
+        if (flashTimer) clearTimeout(flashTimer);
+        send("setPlaybackRate", [2]);
+        flash.textContent = "\u25b6\u25b6 2\u00d7"; flash.classList.add("show");
+        if (window.__vpBuzz) window.__vpBuzz(8);
+        say(T("2x speed while held."));
+      }, 350);
+    });
+    pad.addEventListener("pointercancel", function () { tracking = false; holdEnd(); });
     // Live preview while the finger is still moving: show the volume it would land on,
     // or the 30 second jump direction, so the gesture feels direct instead of delayed.
     pad.addEventListener("pointermove", function (e) {
-      if (!tracking || !padReady()) return;
+      if (!tracking || !padReady() || holdBoost) return;
+      if (holdTimer && (Math.abs(e.clientX - sx) > 12 || Math.abs(e.clientY - sy) > 12)) { clearTimeout(holdTimer); holdTimer = 0; }
       var dx = e.clientX - sx, dy = e.clientY - sy;
       if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
         var steps = Math.min(10, Math.max(1, Math.round(Math.abs(dy) / 24)));
@@ -3116,6 +3144,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
     pad.addEventListener("pointerup", function (e) {
       if (!tracking) return; tracking = false;
+      if (holdTimer) { clearTimeout(holdTimer); holdTimer = 0; }
+      if (holdBoost) { holdEnd(); return; }
       if (!padReady()) { say(T("Load a video first, then the pad skips and changes volume.")); return; }
       var dx = e.clientX - sx, dy = e.clientY - sy;
       if (Math.abs(dy) > 24 && Math.abs(dy) > Math.abs(dx) * 1.2) {
@@ -4018,6 +4048,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#lhLater", "Watch later", "बाद में देखें"],
     ["#laterClearBtn", "Clear", "साफ़ करें"],
     ["#dtSeekLab", "Double-tap skip", "डबल-टैप स्किप"],
+    ["#gpHoldHint", "Press and hold the pad for 2x speed; let go to get your speed back.", "2x स्पीड के लिए पैड दबाए रखें; छोड़ते ही अपनी स्पीड वापस."],
     ["#statsClear", "Clear", "साफ़ करें"],
     ["#libExport", "Export backup", "बैकअप निकालें"],
     ["#libImport", "Import backup", "बैकअप लाएं"],
@@ -4224,6 +4255,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#lhLater": "પછી જુઓ",
  "#laterClearBtn": "સાફ કરો",
  "#dtSeekLab": "ડબલ-ટૅપ સ્કિપ",
+ "#gpHoldHint": "2x સ્પીડ માટે પેડ દબાવી રાખો; છોડતા જ તમારી સ્પીડ પાછળ.",
  "#statsClear": "સાફ કરો",
  "#libExport": "બેકઅપ કાઢો",
  "#libImport": "બેકઅપ લાવો",
@@ -6333,4 +6365,4 @@ if (window.__vpApplyLang) window.__vpApplyLang();
 })();
 </script>
 </body>
-  </html>
+            </html>
