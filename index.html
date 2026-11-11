@@ -1855,6 +1855,7 @@ html .shortcuts, html .note, html .faq, html .help-card, html .pl-item, html .mu
         <button class="chip" id="plImportBtn" type="button">Import playlist</button>
         <input id="plImportFile" type="file" accept="application/json,.json" hidden>
         <button class="chip" id="plPasteBtn" type="button" aria-expanded="false">Paste a list of links</button>
+        <button class="chip" id="queueTxtBtn" type="button">Save queue as text file</button>
       </div>
       <div class="pl-paste" id="plPastePanel" hidden>
         <textarea class="note-box" id="plPasteBox" rows="5" maxlength="6000" aria-label="List of YouTube links" placeholder="One YouTube link per line"></textarea>
@@ -2038,6 +2039,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Will play next": ["अगले नंबर पर चलेगा", "આગળના નંબરે ચાલશે"],
    "Already playing": ["यह पहले से चल रहा है", "આ પહેલેથી ચાલે છે"],
    "Copy list": ["लिस्ट कॉपी करें", "યાદી કોપી કરો"],
+   "Queue saved as a text file": ["कतार टेक्स्ट फ़ाइल में सेव हुई", "કતાર ટેક્સ્ટ ફાઇલમાં સચવાઈ"],
    "Queue copied as a list": ["कतार लिस्ट कॉपी हुई", "કતાર યાદી કોપી થઈ"],
    "Open in YouTube": ["YouTube में खोलें", "YouTube માં ખોલો"],
    "Ambient light on": ["एम्बिएंट लाइट चालू", "એમ્બિયન્ટ લાઇટ ચાલુ"],
@@ -2859,6 +2861,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       try { var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var ok2 = document.execCommand("copy"); ta.remove(); done(!!ok2); } catch (e) { done(false); }
     }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback); else fallback();
+  });
+  // Save the whole queue as a plain .txt file (title line + link per video) made on this device.
+  var queueTxtBtn = $("queueTxtBtn");
+  if (queueTxtBtn) queueTxtBtn.addEventListener("click", function () {
+    if (!lib.queue.length) { showLibErr(T("Queue is empty. Add links with Add to queue.")); return; }
+    var text = lib.queue.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n\n") + "\n";
+    try {
+      var blob = new Blob([text], { type: "text/plain" }), a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = "video-player-queue.txt"; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      toast(T("Queue saved as a text file"));
+    } catch (e) { toast(T("Could not copy. Try again.")); }
   });
   (window.__relang = window.__relang || []).push(function () { if (copyQueueBtn) copyQueueBtn.textContent = T("Copy list"); });
   if (copyQueueBtn) copyQueueBtn.textContent = T("Copy list");
@@ -5015,6 +5029,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#aboutNoteText", "Quality is a request - YouTube chooses the closest option based on your network. Volume in the official player goes up to 100% (YouTube's limit); raise your phone volume if you need it louder. This app adds no ads, banners, or pop-ups of its own. YouTube may still show its own ads inside videos; those are controlled by YouTube and cannot be turned off here.", "क्वालिटी एक रिक्वेस्ट है - YouTube आपके नेटवर्क के हिसाब से सबसे करीबी विकल्प चुनता है. ऑफिशियल प्लेयर में वॉल्यूम 100% तक ही जाता है (YouTube की सीमा); और तेज़ चाहिए तो फोन का वॉल्यूम बढ़ाएं. यह ऐप अपनी तरफ से कोई विज्ञापन, बैनर या पॉप-अप नहीं दिखाता. वीडियो के अंदर YouTube अपने विज्ञापन दिखा सकता है; वे YouTube के नियंत्रण में हैं और यहां से बंद नहीं हो सकते."],
     ["#marksH", "Saved moments", "सेव किए पल"],
     ["#plPasteBtn", "Paste a list of links", "लिंक की सूची पेस्ट करें"],
+    ["#queueTxtBtn", "Save queue as text file", "कतार को टेक्स्ट फ़ाइल में सेव करें"],
     ["#plPasteAdd", "Add to queue", "कतार में जोड़ें"],
     ["#plPasteCancel", "Close", "बंद करें"],
     ["#notesH", "Notes for this video", "इस वीडियो के नोट्स"],
@@ -5136,6 +5151,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#a11yH": "સુલભતા",
  "#marksH": "સેવ કરેલી ક્ષણો",
  "#plPasteBtn": "લિંકની યાદી પેસ્ટ કરો",
+ "#queueTxtBtn": "કતારને ટેક્સ્ટ ફાઇલમાં સાચવો",
  "#plPasteAdd": "કતારમાં ઉમેરો",
  "#plPasteCancel": "બંધ કરો",
  "#notesH": "આ વીડિયોની નોંધો",
