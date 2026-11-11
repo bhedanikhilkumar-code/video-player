@@ -3499,7 +3499,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   window.addEventListener("pageshow", checkSleep);
 
   // Mini player: float only after the normal player has scrolled above the viewport.
-  var miniDismissed = false, miniActive = false;
+  var miniDismissed = false, miniActive = false; var miniBackLock = false;
   var playerSlot = document.createElement("div"), playerDock = document.createElement("div");
   playerSlot.id = "playerSlot"; playerDock.id = "playerDock";
   frameBox.parentNode.insertBefore(playerSlot, frameBox); playerSlot.appendChild(playerDock); playerDock.appendChild(frameBox);
@@ -3540,9 +3540,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   function updateMini() {
     var rect = playerSlot.getBoundingClientRect();
+    if (miniBackLock) { if (rect.bottom >= 90) miniBackLock = false; else return; }
     setMini(!!iframe && !miniDismissed && !document.fullscreenElement && rect.bottom < 90);
   }
-  $("miniBack").addEventListener("click", function() { setMini(false); playerSlot.scrollIntoView({block:"center", behavior:"smooth"}); });
+  $("miniBack").addEventListener("click", function() { miniBackLock = true; setTimeout(function () { miniBackLock = false; updateMini(); }, 2500); setMini(false); playerSlot.scrollIntoView({block:"center", behavior:"smooth"}); });
   $("miniClose").addEventListener("click", function() { miniDismissed = true; send("pauseVideo"); setMini(false); });
   var miniRaf = 0;
   window.addEventListener("scroll", function() { if (!miniRaf) miniRaf = requestAnimationFrame(function() { miniRaf = 0; updateMini(); }); }, {passive:true});
