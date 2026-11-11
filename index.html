@@ -889,6 +889,11 @@ html.high-contrast section::before, html.high-contrast .btn::before { content: n
 #vpToast.show{opacity:1;transform:translate(-50%,0);}
 @media (prefers-reduced-motion:reduce){#vpToast{transition:none;}}
 </style>
+<style id="ux-marks">
+/* Saved moments: the viewer's marked times for the current video, shown as tappable chips. */
+#ctl-marks .marks-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center;}
+.mark-x{padding:4px 10px;}
+</style>
 <style id="ux-totop">
 /* Back to top: the page is very long on a phone, so after one screen of scrolling
    a small round button offers a one-tap jump back to the link field. */
@@ -1126,6 +1131,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
     <a class="feat" href="#ctl-sleep">Sleep timer</a>
     <a class="feat" href="#backgroundHelp">Listening help</a>
     <a class="feat" href="#ctl-share">Share &amp; save</a>
+    <a class="feat" href="#ctl-marks">Moments</a>
     <a class="feat" href="#dl">Downloader</a>
     <a class="feat" href="#lp">Local file</a>
     <a class="feat" href="#library">Library</a>
@@ -1300,6 +1306,13 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
             <div class="qr-img" id="qrImg" role="img" aria-label="QR code that opens this video at the current time"></div>
             <p class="hint qr-hint">Point a phone camera at the code to open this video at this time.</p>
           </div>
+        </div>
+
+        <div class="ctl-card wide" id="ctl-marks">
+          <h3 id="marksH">Saved moments</h3>
+          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button></div>
+          <div class="marks-list" id="markList"></div>
+          <p class="hint" id="marksHint">Keep your favourite spots in this video. Tap one to jump to it. Saved on this device, for each video.</p>
         </div>
 
         <details class="shortcuts wide" id="scBox">
@@ -1984,6 +1997,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "All sections open": ["सभी सेक्शन खुले", "બધા સેક્શન ખુલ્યા"],
    "App updated to the latest version.": ["ऐप नए वर्शन में अपडेट हो गया.", "એપ નવા વર્ઝનમાં અપડેટ થઈ ગઈ."],
    "Arrow keys work here too.": ["तीर कुंजियाँ यहाँ भी काम करती हैं.", "એરો કીઝ અહીં પણ કામ કરે છે."],
+   "Moment saved": ["पल सेव हुआ", "ક્ષણ સેવ થઈ"],
+   "Moment removed": ["पल हटाया गया", "ક્ષણ હટાઈ"],
+   "Name this moment": ["इस पल को नाम दें", "આ ક્ષણને નામ આપો"],
+   "This video already has that moment.": ["यह पल इस वीडियो में पहले से है.", "આ ક્ષણ આ વીડિયોમાં પહેલેથી છે."],
+   "Moment list is full (30).": ["पलों की सूची भरी है (30).", "ક્ષણોની યાદી ભરાઈ છે (30)."],
+   "No moments saved for this video yet.": ["इस वीडियो के लिए अभी कोई पल सेव नहीं है.", "આ વીડિયો માટે હજુ કોઈ ક્ષણ સેવ નથી."],
+   "Load a video first, then save a moment.": ["पहले वीडियो चलाएं, फिर पल सेव करें.", "પહેલા વીડિયો ચલાવો, પછી ક્ષણ સેવ કરો."],
+   "Delete moment": ["पल हटाएं", "ક્ષણ હટાવો"],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
@@ -2657,6 +2678,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     document.dispatchEvent(new Event("vp-youtube-selected"));
     curId = id; curTime = startSec || 0; lastResumeSave = 0; clearAB(); if (typeof vmemNote === "function") vmemNote("");
     dsAppliedFor = null;
+    if (typeof renderMarks === "function") renderMarks();
     miniDismissed = false; if (typeof updateMini === "function") requestAnimationFrame(updateMini);
     var rb = document.getElementById("resumeBox"); if (rb) rb.hidden = true;
     addHistory(id);
@@ -4007,6 +4029,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     [".dl-more p", "The server is on a free plan, so the first request can take up to a minute. Some sites (such as Vimeo and Facebook) block free servers. Only download content you have the right to download.", "सर्वर फ्री प्लान पर है, इसलिए पहला रिक्वेस्ट एक मिनट तक ले सकता है. कुछ साइटें (जैसे Vimeo और Facebook) फ्री सर्वर को रोकती हैं. सिर्फ वही कंटेंट डाउनलोड करें जिसका हक आपके पास है."],
     ["#aboutNoteTitle", "Good to know", "जानना ज़रूरी"],
     ["#aboutNoteText", "Quality is a request - YouTube chooses the closest option based on your network. Volume in the official player goes up to 100% (YouTube's limit); raise your phone volume if you need it louder. This app adds no ads, banners, or pop-ups of its own. YouTube may still show its own ads inside videos; those are controlled by YouTube and cannot be turned off here.", "क्वालिटी एक रिक्वेस्ट है - YouTube आपके नेटवर्क के हिसाब से सबसे करीबी विकल्प चुनता है. ऑफिशियल प्लेयर में वॉल्यूम 100% तक ही जाता है (YouTube की सीमा); और तेज़ चाहिए तो फोन का वॉल्यूम बढ़ाएं. यह ऐप अपनी तरफ से कोई विज्ञापन, बैनर या पॉप-अप नहीं दिखाता. वीडियो के अंदर YouTube अपने विज्ञापन दिखा सकता है; वे YouTube के नियंत्रण में हैं और यहां से बंद नहीं हो सकते."],
+    ["#marksH", "Saved moments", "सेव किए पल"],
+    ["#markAddBtn", "🔖 Save this moment", "🔖 यह पल सेव करें"],
+    ["#marksHint", "Keep your favourite spots in this video. Tap one to jump to it. Saved on this device, for each video.", "इस वीडियो के अपने पसंदीदा हिस्से सेव करें. किसी पर टैप करके वहां पहुंचें. हर वीडियो के लिए इसी डिवाइस पर सेव रहता है."],
+    [".feat-nav a[href=\"#ctl-marks\"]", "Moments", "पल"],
   ];
   var I18N_PH = [
     ["#libSearch", "Search your videos", "अपने वीडियो खोजें"],
@@ -4094,6 +4120,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#musicBarT": "તમારા મ્યુઝિક માટે જગ્યા બનાવો",
  "#musicBarP": "નાનો વીડિયો, મોટા કંટ્રોલ અને તમારી કતાર સાથે. YouTube દેખાય એવું રાખો અને સ્ક્રીન ચાલુ રાખો.",
  "#a11yH": "સુલભતા",
+ "#marksH": "સેવ કરેલી ક્ષણો",
+ "#markAddBtn": "🔖 આ ક્ષણ સેવ કરો",
+ "#marksHint": "આ વીડિયોના તમારા પસંદીદા ભાગ સેવ કરો. કોઈ પર ટૅપ કરીને ત્યાં જાઓ. દરેક વીડિયો માટે આ ડિવાઇસ પર સેવ રહે છે.",
+ ".feat-nav a[href=\"#ctl-marks\"]": "ક્ષણો",
  "#settingsH": "સેટિંગ",
  "#settingsHint": "એપ જે યાદ રાખે છે તે ફક્ત આ ડિવાઇસ પર જ રહે છે: વોલ્યુમ, સ્પીડ, થીમ, ભાષા, કતાર મોડ, સ્લીપ ટાઇમર અને સેવર પસંદગી.",
  "#a11yBigT": "મોટું અક્ષર",
@@ -4302,6 +4332,51 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if ($("abFromLab")) { $("abFromLab").textContent = T("A (seconds)"); $("abToLab").textContent = T("B (seconds)"); $("abApply").textContent = T("Apply A-B"); }
     renderLib(); renderPlaylists(); renderStats(); renderContinue(); resumeRender(); applyLibSearch();
   });
+
+  // Saved moments: named, tappable timestamps for the current YouTube video, saved on this device.
+  var MARKS_KEY = "vp-marks.v1", marks = {};
+  try { var mkIn = JSON.parse(localStorage.getItem(MARKS_KEY) || "null"); if (mkIn && typeof mkIn === "object") marks = mkIn; } catch (e) {}
+  function marksSave() { try { localStorage.setItem(MARKS_KEY, JSON.stringify(marks)); } catch (e) {} }
+  function renderMarks() {
+    var list = $("markList"); if (!list) return;
+    list.innerHTML = "";
+    var items = (curId && marks[curId]) ? marks[curId].slice() : [];
+    items.sort(function (a, b) { return a.t - b.t; });
+    if (!items.length) {
+      var empty = document.createElement("span"); empty.className = "hint";
+      empty.textContent = curId ? T("No moments saved for this video yet.") : T("Load a video first, then save a moment.");
+      list.appendChild(empty); return;
+    }
+    items.forEach(function (m) {
+      var go = document.createElement("button"); go.type = "button"; go.className = "chip";
+      go.textContent = "\u25b6 " + fmt(m.t) + (m.name ? " \u00b7 " + m.name : "");
+      go.addEventListener("click", function () { send("seekTo", [m.t, true]); send("playVideo"); });
+      var del = document.createElement("button"); del.type = "button"; del.className = "chip mark-x"; del.textContent = "\u2715";
+      del.setAttribute("aria-label", T("Delete moment") + " " + fmt(m.t));
+      del.addEventListener("click", function () {
+        var arr = marks[curId] || [];
+        marks[curId] = arr.filter(function (x) { return x.t !== m.t; });
+        marksSave(); renderMarks(); toast(T("Moment removed"));
+      });
+      list.appendChild(go); list.appendChild(del);
+    });
+  }
+  (function () {
+    var addB = $("markAddBtn");
+    if (addB) addB.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first, then save a moment.")); return; }
+      var t = Math.floor(curTime || 0);
+      var arr = marks[curId] = marks[curId] || [];
+      if (arr.some(function (x) { return x.t === t; })) { toast(T("This video already has that moment.")); return; }
+      if (arr.length >= 30) { toast(T("Moment list is full (30).")); return; }
+      var name = window.prompt(T("Name this moment"), fmt(t));
+      if (name === null) return;
+      arr.push({ t: t, name: name.trim().slice(0, 40) });
+      marksSave(); renderMarks(); toast(T("Moment saved"));
+    });
+  })();
+  (window.__relang = window.__relang || []).push(renderMarks);
+  renderMarks();
 })();
 </script>
 <script>
