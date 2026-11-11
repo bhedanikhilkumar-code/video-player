@@ -703,6 +703,14 @@ body{overflow-x:clip}
 .gp-flash.show { opacity: 1; }
 .lib-search { margin: 4px 0 12px; }
 .lib-search input { width: 100%; min-height: 44px; font-size: 16px; box-sizing: border-box; }
+.lib-search .vs-row { display: flex; gap: 8px; align-items: center; }
+.lib-search .vs-row input { flex: 1; min-width: 0; }
+.vs-mic { flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 12px; box-sizing: border-box; }
+.vs-mic[hidden] { display: none; }
+.vs-mic svg { width: 17px; height: 17px; fill: currentColor; display: block; }
+.vs-mic.listening { background: var(--teal); color: var(--teal-ink); border-color: transparent; animation: vsPulse 1.1s ease-in-out infinite; }
+@keyframes vsPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(58,138,119,.45); } 50% { box-shadow: 0 0 0 9px rgba(58,138,119,0); } }
+@media (prefers-reduced-motion: reduce) { .vs-mic.listening { animation: none; } }
 .lib-scope { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -4px 0 12px; }
 .lib-scope .hint { font-size: 13px; }
 .lib-scope .chip { min-height: 36px; padding: 4px 10px; font-size: 13px; }
@@ -1960,7 +1968,10 @@ setTimeout(done,3000);})();
         <span class="hint lib-tools-msg" id="libBackupMsg" role="status"></span>
       </div>
       <div class="lib-search">
-        <input id="libSearch" type="search" autocomplete="off" placeholder="Search your videos" aria-label="Search queue, playlists, favourites and recently watched">
+        <div class="vs-row">
+          <input id="libSearch" type="search" autocomplete="off" placeholder="Search your videos" aria-label="Search queue, playlists, favourites and recently watched">
+          <button class="chip vs-mic" id="vsMic" type="button" aria-label="Voice search" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button>
+        </div>
         <span class="hint" id="libSearchMsg" role="status"></span>
       </div>
       <div class="lib-scope" id="libScope" role="group" aria-label="Search in">
@@ -2559,6 +2570,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "You mostly watch in the evening.": ["आप ज़्यादातर शाम को देखते हैं.", "તમે મોટાભાગે સાંજે જુઓ છો."],
    "You mostly watch at night.": ["आप ज़्यादातर रात को देखते हैं.", "તમે મોટાભાગે રાતે જુઓ છો."],
    "Hours count from today on - watch a little and your pattern shows up.": ["घंटे आज से गिने जाएंगे - थोड़ा देखें और आपका पैटर्न दिखने लगेगा.", "કલાકો આજથી ગણાશે - થોડું જુઓ અને તમારું વલણ દેખાવા લાગશે."],
+   "Voice search": ["वॉइस खोज", "વોઇસ શોધ"],
+   "Listening - speak now": ["सुन रहे हैं - अब बोलें", "સાંભળી રહ્યા છીએ - હવે બોલો"],
+   "Heard: ": ["सुना: ", "સાંભળ્યું: "],
+   "Didn't catch that - tap the mic and try again.": ["समझ नहीं आया - माइक दबाकर फिर बोलें.", "સમજાયું નહીં - માઇક દબાવીને ફરી બોલો."],
+   "Microphone permission is off - allow it to use voice search.": ["माइक्रोफ़ोन की अनुमति बंद है - वॉइस खोज के लिए इसे चालू करें.", "માઇક્રોફોન પરવાનગી બંધ છે - વોઇસ શોધ માટે તે ચાલુ કરો."],
+   "Voice search did not work - type instead.": ["वॉइस खोज काम नहीं कर सकी - टाइप करके खोजें.", "વોઇસ શોધ કામ કરી નહીં - ટાઇપ કરીને શોધો."],
    "full square = daily goal": ["पूरा चौकोर = दैनिक लक्ष्य", "ભરેલો ચોરસ = દૈનિક લક્ષ્ય"],
    "Previous video in queue": ["कतार में पिछला वीडियो", "કતારમાં પાછળનો વીડિયો"],
    "Next video in queue": ["कतार में अगला वीडियो", "કતારમાં આગળનો વીડિયો"],
@@ -5021,6 +5038,54 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     libSearch.addEventListener("input", applyLibSearch);
     libSearch.addEventListener("keydown", function (e) { if (e.key === "Escape") { libSearch.value = ""; applyLibSearch(); } });
   }
+  // Voice search: tap the mic, speak a video or feature name, and the words land in the
+  // search box as if typed. The button stays hidden where the browser has no speech
+  // recognition (some iPhones), so the feature never shows up broken.
+  (function () {
+    var vsBtn = $("vsMic"), vsMsg = $("libSearchMsg");
+    if (!vsBtn || !libSearch) return;
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    vsBtn.hidden = false;
+    var rec = null, busy = false;
+    function vsState(on, note) {
+      busy = on;
+      vsBtn.classList.toggle("listening", on);
+      vsBtn.setAttribute("aria-pressed", on ? "true" : "false");
+      if (note != null && vsMsg) vsMsg.textContent = note;
+    }
+    vsBtn.addEventListener("click", function () {
+      if (busy) { try { if (rec) rec.stop(); } catch (e) {} return; }
+      try { rec = new SR(); } catch (e) { if (vsMsg) vsMsg.textContent = T("Voice search did not work - type instead."); return; }
+      rec.lang = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-IN";
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      var heard = false;
+      rec.onresult = function (ev) {
+        heard = true;
+        var text = "";
+        try { text = ev.results[0][0].transcript || ""; } catch (e2) {}
+        text = text.trim();
+        if (text) {
+          libSearch.value = text;
+          libSearch.dispatchEvent(new Event("input", { bubbles: true }));
+          libSearch.focus();
+          if (vsMsg) vsMsg.textContent = T("Heard: ") + text;
+        } else if (vsMsg) vsMsg.textContent = T("Didn't catch that - tap the mic and try again.");
+      };
+      rec.onerror = function (ev) {
+        heard = true;
+        if (vsMsg) vsMsg.textContent = (ev && ev.error === "not-allowed") ? T("Microphone permission is off - allow it to use voice search.") : T("Voice search did not work - type instead.");
+      };
+      rec.onend = function () {
+        vsState(false, null);
+        if (!heard && vsMsg) vsMsg.textContent = "";
+      };
+      vsState(true, T("Listening - speak now"));
+      try { rec.start(); } catch (e) { vsState(false, null); }
+    });
+    (window.__relang = window.__relang || []).push(function () { vsBtn.setAttribute("aria-label", T("Voice search")); });
+  })();
   (function () {
     var wrap = $("libScope"); if (!wrap) return;
     Array.prototype.forEach.call(wrap.querySelectorAll("button[data-scope]"), function (b) {
@@ -8935,6 +9000,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch stats and daily goal", "stats statistics goal time watched today", "#lhStats"],
       ["When you watch (hour chart)", "hours pattern time of day when watch morning night", "#lhStats"],
       ["Search your videos", "find library videos", "#libSearch"],
+      ["Voice search", "voice speak mic microphone talk search", "#libSearch"],
       ["Export backup", "backup export json", "#libExport"],
       ["Import backup", "backup import restore json", "#libImport"],
       ["Accessibility: larger text, contrast, low-end mode", "accessibility big text contrast low end slow", "#a11yH"],
