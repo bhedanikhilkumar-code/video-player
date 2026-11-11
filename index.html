@@ -2078,6 +2078,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
+    "Replay recent section": ["हाल का हिस्सा दोहराएं", "તાજેતરનો ભાગ ફરી ચલાવો"],
+    "Replay last": ["पिछले हिस्से को दोहराएं", "છેલ્લો ભાગ ફરી ચલાવો"],
+    "Loops the last seconds you watched. Clear A-B to stop.": ["अभी देखे गए सेकंड दोहराता है. रोकने के लिए A-B साफ करें.", "હમણાં જોયેલી સેકન્ડ ફરી ચલાવે છે. બંધ કરવા A-B સાફ કરો."],
+    "Play a little first, then replay a section.": ["पहले थोड़ा वीडियो चलाएं, फिर हिस्सा दोहराएं.", "પહેલા થોડો વીડિયો ચલાવો, પછી ભાગ ફરી ચલાવો."],
+
    "Paste a YouTube link first.": ["पहले YouTube लिंक पेस्ट करें.", "પહેલા YouTube લિંક પેસ્ટ કરો."],
    "That is not a YouTube link. The Downloader below can save videos from other sites.": ["यह YouTube लिंक नहीं है. नीचे का डाउनलोडर दूसरी साइटों के वीडियो संभाल सकता है.", "આ YouTube લિંક નથી. નીચેનો ડાઉનલોડર બીજી સાઇટના વીડિયો સંભાળી શકે છે."],
    "Link moved to the Downloader.": ["लिंक डाउनलोडर में भेज दिया गया.", "લિંક ડાઉનલોડરમાં મોકલાઈ ગઈ."],
@@ -3903,6 +3908,29 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!isFinite(a) || !isFinite(b) || a < 0 || b <= a || (duration > 0 && b > duration)) { abLabel.textContent = T("Use 0 ≤ A < B, within the video length."); return; }
     abA = a; abB = b; abEnabled = true; updateAB(); send("seekTo", [a, true]);
   });
+  // Round 65: a one-tap practice loop around the section just watched.
+  var replayRecent = document.createElement("div"); replayRecent.id = "replayRecent";
+  replayRecent.innerHTML = '<p class="label" id="recentReplayLab"></p><div class="row" id="recentReplayChips"></div><p class="hint" id="recentReplayHint"></p>';
+  abLabel.parentNode.appendChild(replayRecent);
+  [10, 20, 30].forEach(function (seconds) {
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip";
+    b.dataset.seconds = seconds; b.id = "recentReplay" + seconds;
+    b.addEventListener("click", function () {
+      if (!ready || !curId || !(duration > 0) || curTime < 1) { toast(T("Play a little first, then replay a section.")); return; }
+      abB = Math.min(duration, Math.floor(curTime)); abA = Math.max(0, abB - seconds);
+      abEnabled = true; updateAB(); manualSeek(abA); send("playVideo");
+    });
+    $("recentReplayChips").appendChild(b);
+  });
+  function renderRecentReplay() {
+    $("recentReplayLab").textContent = T("Replay recent section");
+    $("recentReplayHint").textContent = T("Loops the last seconds you watched. Clear A-B to stop.");
+    [].forEach.call($("recentReplayChips").children, function (b) {
+      b.textContent = "↶ " + b.dataset.seconds + "s";
+      b.setAttribute("aria-label", T("Replay last") + " " + b.dataset.seconds + "s");
+    });
+  }
+  (window.__relang = window.__relang || []).push(renderRecentReplay); renderRecentReplay();
   loopBtn.setAttribute("aria-pressed", String(prefs.loop));
   function updateAB() {
     if (abToggle) { abToggle.textContent = T("Repeat A-B") + ": " + (abEnabled ? T("on") : T("off")); abToggle.setAttribute("aria-pressed", String(abEnabled)); }
