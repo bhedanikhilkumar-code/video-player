@@ -1756,10 +1756,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
-  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false };
+  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false, timeLeft: false };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; ["cc", "ccLang", "accent", "lang", "accentCustom"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; if (saved.timeLeft === true) prefs.timeLeft = true; ["cc", "ccLang", "accent", "lang", "accentCustom"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
@@ -1770,6 +1770,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Clipboard is empty.": ["क्लिपबोर्ड खाली है.", "ક્લિપબોર્ડ ખાલી છે."],
    "Clipboard has no YouTube link.": ["क्लिपबोर्ड में YouTube लिंक नहीं है.", "ક્લિપબોર્ડમાં YouTube લિંક નથી."],
    "Remove duplicates": ["डुप्लिकेट हटाएं", "ડુપ્લિકેટ કાઢો"],
+   "left": ["बाकी", "બાકી"],
+   "Showing time left": ["बाकी समय दिख रहा है", "બાકીનો સમય દેખાય છે"],
+   "Showing elapsed time": ["बीता हुआ समय दिख रहा है", "પસાર થયેલો સમય દેખાય છે"],
+   "Tap to switch between elapsed time and time left": ["बीते और बाकी समय के बीच बदलने के लिए टैप करें", "પસાર અને બાકી સમય વચ્ચે બદલવા ટૅપ કરો"],
    "No duplicates in the queue.": ["कतार में कोई डुप्लिकेट नहीं है.", "કતારમાં કોઈ ડુપ્લિકેટ નથી."],
    "1 duplicate removed": ["1 डुप्लिकेट हटाया गया", "1 ડુપ્લિકેટ કાઢ્યું"],
    "duplicates removed": ["डुप्लिकेट हटाए गए", "ડુપ્લિકેટ કાઢ્યા"],
@@ -2799,7 +2803,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (abEnabled && abA != null && abB != null && !seeking && curTime >= abB) { send("seekTo", [abA, true]); curTime = abA; }
       }
       var t = (seeking ? Number(seek.value) : i.currentTime) || 0;
-      timeLabel.textContent = fmt(t) + " / " + fmt(duration);
+      paintTime(t);
       statsTick();
       saveResume();
     }
@@ -3046,11 +3050,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   seek.addEventListener("input", function () {
     seeking = true;
-    timeLabel.textContent = fmt(Number(seek.value)) + " / " + fmt(duration);
+    paintTime(Number(seek.value));
   });
   function commitSeek() { if (seeking) { send("seekTo", [Number(seek.value), true]); seeking = false; } }
   seek.addEventListener("change", commitSeek);
   seek.addEventListener("pointerup", commitSeek);
+  // One place that paints the time read-out, so it can show elapsed/total or time left.
+  function paintTime(t) {
+    t = t || 0;
+    if (prefs.timeLeft && duration > 0) timeLabel.textContent = "\u2212" + fmt(Math.max(0, Math.round(duration - t))) + " " + T("left");
+    else timeLabel.textContent = fmt(t) + " / " + fmt(duration);
+  }
+  // Tap the time read-out to switch between elapsed/total and time left.
+  (function () {
+    timeLabel.style.cursor = "pointer";
+    timeLabel.setAttribute("role", "button");
+    timeLabel.setAttribute("tabindex", "0");
+    timeLabel.setAttribute("aria-pressed", prefs.timeLeft ? "true" : "false");
+    function paintHint() { timeLabel.title = T("Tap to switch between elapsed time and time left"); }
+    (window.__relang = window.__relang || []).push(paintHint); paintHint();
+    function toggleTimeLeft() {
+      prefs.timeLeft = !prefs.timeLeft; savePrefs();
+      timeLabel.setAttribute("aria-pressed", prefs.timeLeft ? "true" : "false");
+      paintTime(seeking ? Number(seek.value) : (curTime || 0));
+      toast(prefs.timeLeft ? T("Showing time left") : T("Showing elapsed time"));
+    }
+    timeLabel.addEventListener("click", toggleTimeLeft);
+    timeLabel.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleTimeLeft(); } });
+  })();
 
   // Seekbar preview: hovering or dragging the bar shows the exact time at that point.
   // YouTube does not share per-second preview frames with embedded players, so this is a precise time bubble.
@@ -3236,7 +3263,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var t = Math.max(0, curTime + d);
     if (duration > 0) t = Math.min(t, duration);
     send("seekTo", [t, true]); curTime = t; seek.value = t;
-    timeLabel.textContent = fmt(t) + " / " + fmt(duration);
+    paintTime(t);
   }
   function volBy(d) {
     var v = Math.max(0, Math.min(100, prefs.volume + d));
