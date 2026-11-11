@@ -1150,6 +1150,21 @@ html.theme-xfade .ctl-card, html.theme-xfade .note, html.theme-xfade .help-card,
 html.theme-xfade .lib-item, html.theme-xfade .pl-item, html.theme-xfade input, html.theme-xfade textarea {
   transition: background-color .4s ease, background .4s ease, color .4s ease, border-color .4s ease, box-shadow .4s ease !important;
 }
+/* Spotlight hover: a soft glow follows the pointer across cards (desktop only). */
+@media (hover: hover) and (pointer: fine) {
+  section { --mx: 50%; --my: -20%; }
+  section::after {
+    content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; border-radius: inherit;
+    background: radial-gradient(320px circle at var(--mx) var(--my), rgba(58,138,119,.13), transparent 62%);
+    opacity: 0; transition: opacity .35s ease;
+  }
+  :root[data-theme="dark"] section::after {
+    background: radial-gradient(320px circle at var(--mx) var(--my), rgba(255,255,255,.09), transparent 62%);
+  }
+  section:hover::after { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { section::after { content: none !important; } }
+html.low-fx section::after, html.high-contrast section::after { content: none !important; }
 </style>
 </head>
 <body>
@@ -6861,6 +6876,19 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     toast(prefs.bgMotion ? T("Moving background on") : T("Moving background off"));
   });
   applyBgMotion();
+})();
+
+// Spotlight hover (round 25): the glow follows the pointer on desktop.
+(function () {
+  if (!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches)) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  Array.prototype.forEach.call(document.querySelectorAll("section"), function (sec) {
+    sec.addEventListener("pointermove", function (e) {
+      var r = sec.getBoundingClientRect();
+      sec.style.setProperty("--mx", (e.clientX - r.left) + "px");
+      sec.style.setProperty("--my", (e.clientY - r.top) + "px");
+    });
+  });
 })();
 </script>
 </body>
