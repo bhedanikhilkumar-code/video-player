@@ -1079,6 +1079,14 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
 .vp-skip-intro[hidden] { display:none; }
 .vp-skip-intro:active { transform:scale(.96); }
 #playerDock.is-mini .vp-skip-intro { display:none; }
+/* Still watching? (round 74): glass card over the video asks before auto-play runs on. */
+.vp-still { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); z-index:7; width:min(340px,calc(100% - 24px)); padding:14px 16px; border-radius:16px; background:rgba(20,20,30,.82); color:#fff; border:1px solid rgba(255,255,255,.3); box-shadow:0 10px 34px #0008; backdrop-filter:blur(16px) saturate(1.5); -webkit-backdrop-filter:blur(16px) saturate(1.5); text-align:center; animation:mp-pop .35s cubic-bezier(.34,1.56,.5,1) both; }
+.vp-still[hidden] { display:none; }
+.vp-still .sw-t { font-size:16px; font-weight:800; }
+.vp-still .sw-s { font-size:12px; opacity:.8; margin:4px 0 10px; }
+.vp-still .sw-row { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+.vp-still .chip { background:rgba(255,255,255,.14); color:#fff; border:1px solid rgba(255,255,255,.3); }
+#playerDock.is-mini .vp-still { display:none; }
 </style>
 <style id="local-workflow">
 .lp-filequeue{list-style:none;padding:0;max-height:240px;overflow:auto;overscroll-behavior:contain;display:grid;gap:8px}
@@ -1744,6 +1752,7 @@ setTimeout(done,3000);})();
           <span class="label" id="sleepLabel" role="status">Off</span>
           <div class="row" style="margin-top:10px"><button class="chip" id="sleepEndBtn" type="button" aria-pressed="false">Stop at end of video</button></div>
           <div class="row" style="margin-top:10px" id="sleepVidsRow"><span class="label" id="sleepVidsLab">Stop after videos:</span><span class="chips" id="sleepVidsChips"></span></div>
+          <div class="row" style="margin-top:10px" id="stillRow"><span class="label" id="stillLab">Still watching? after:</span><span class="chips" id="stillChips"></span></div>
           <div class="row" style="margin-top:10px;flex-wrap:nowrap;gap:8px" id="sleepAtRow"><label class="label" style="white-space:nowrap" for="sleepAtTime" id="sleepAtLab">Stop at clock time:</label><input id="sleepAtTime" type="time" value="23:00" style="width:112px;min-width:0"><button class="chip" id="sleepAtBtn" type="button">Set</button></div>
           <div class="row" style="margin-top:10px"><label for="sleepMinutes" id="sleepMinLab">Custom minutes</label><input id="sleepMinutes" type="number" min="1" max="720" value="20" style="width:90px"><button class="chip" id="sleepStart" type="button">Start timer</button></div>
           <div class="row" style="margin-top:10px"><button class="chip" id="sleepExtend" type="button" hidden>+10 min</button></div>
@@ -3573,7 +3582,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       else if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); }
       else if (data.info === 0 && stopAfter) { stopAfter = false; renderStopAfter(); $("queueModeMsg").textContent = T("Stopped after this track, as you asked."); }
       else if (data.info === 0 && lib.queue.length && queueModes.auto) {
-        if (typeof upnextBegin === "function") { upnextBegin(); } else if (qPos < 0) playQueueAt(0); else if (!playNext()) $("queueModeMsg").textContent = T("Queue finished. Tap a video to play again.");
+        if (!stillGate()) { if (typeof upnextBegin === "function") { upnextBegin(); } else if (qPos < 0) playQueueAt(0); else if (!playNext()) $("queueModeMsg").textContent = T("Queue finished. Tap a video to play again."); }
       }
       if (data.info === 0 && prefs.fsExitEnd && !prefs.loop && !(abEnabled && abA != null && abB != null) && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
     }
@@ -3900,6 +3909,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (window.__vpSeekMarks) window.__vpSeekMarks();
     if (window.__vpABBand) window.__vpABBand(abA, abB);
     introPaint();
+    stillHide();
     if (iframe) { iframe.remove(); iframe = null; }
     iframe = document.createElement("iframe");
     var clip = "";
@@ -6627,6 +6637,85 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     sleepVidsRender();
   }
 
+  // Still watching? (round 74): if videos keep auto-playing with no tap or key at all, ask
+  // before playing on - Netflix style - and leave the player stopped if nobody answers in
+  // 30 seconds. Any tap or key anywhere resets the count. Choice remembered on this device.
+  Object.assign(TR_MSG, {
+    "Still watching? after:": ["Still watching? कब पूछें:", "Still watching? ક્યારે પૂછવું:"],
+    "Still watching?": ["क्या आप अभी भी देख रहे हैं?", "શું તમે હજુ જુઓ છો?"],
+    "Keep watching": ["देखते रहें", "જોતા રહો"],
+    "Pause here": ["यहीं रोकें", "અહીં રોકો"],
+    "No taps for a while - pausing in ": ["काफी देर से कोई टैप नहीं - इतने में रुक जाएगा ", "ઘણા સમયથી કોઈ ટૅપ નથી - આટલામાં રોકાઈ જશે "],
+    "Paused here. Tap a video when you're back.": ["यहीं रोक दिया. वापस आने पर कोई वीडियो टैप करें.", "અહીં રોકી દીધું. પાછા આવો ત્યારે કોઈ વીડિયો ટૅપ કરો."],
+    "Still watching? will ask after ": ["Still watching? पूछेगा ", "Still watching? પૂછશે "],
+    " auto-played videos with no tap.": [" बिना-टैप ऑटो-प्ले वीडियो के बाद.", " વિના-ટૅપ ઑટો-પ્લે વીડિયો પછી."],
+    "Still watching? check off.": ["Still watching? जांच बंद.", "Still watching? ચેક બંધ."]
+  });
+  var SW_KEY = "vp-stillwatch.v1", stillN = 0, stillCount = 0, stillCard = null, stillTimer = 0, stillLeft = 0;
+  try { stillN = Number(localStorage.getItem(SW_KEY)) || 0; if ([0, 2, 3, 5].indexOf(stillN) < 0) stillN = 0; } catch (e) {}
+  var stillChipsEl = $("stillChips");
+  function stillRender() {
+    var lab = $("stillLab"); if (lab) lab.textContent = T("Still watching? after:");
+    if (!stillChipsEl) return;
+    [].forEach.call(stillChipsEl.children, function (c) {
+      var on = Number(c.dataset.v) === stillN;
+      c.classList.toggle("active", on); c.setAttribute("aria-pressed", on ? "true" : "false");
+      if (Number(c.dataset.v) === 0) c.textContent = T("Off");
+    });
+  }
+  function stillHide() { if (stillCard) stillCard.hidden = true; if (stillTimer) { clearInterval(stillTimer); stillTimer = 0; } }
+  function stillEnsureCard() {
+    if (stillCard || !frameBox) return;
+    stillCard = document.createElement("div");
+    stillCard.className = "vp-still"; stillCard.id = "vpStillCard"; stillCard.hidden = true;
+    stillCard.setAttribute("role", "alertdialog");
+    stillCard.innerHTML = '<div class="sw-t"></div><div class="sw-s"></div><div class="sw-row"><button type="button" class="chip sw-yes"></button><button type="button" class="chip sw-no"></button></div>';
+    frameBox.appendChild(stillCard);
+    stillCard.querySelector(".sw-yes").addEventListener("click", function () {
+      stillHide(); stillCount = 0;
+      if (typeof upnextBegin === "function") upnextBegin();
+      else if (qPos < 0) playQueueAt(0); else if (!playNext()) $("queueModeMsg").textContent = T("Queue finished. Tap a video to play again.");
+    });
+    stillCard.querySelector(".sw-no").addEventListener("click", function () { stillHide(); stillCount = 0; $("queueModeMsg").textContent = T("Paused here. Tap a video when you're back."); });
+  }
+  function stillAsk() {
+    stillEnsureCard(); if (!stillCard) return;
+    stillCard.querySelector(".sw-t").textContent = T("Still watching?");
+    stillCard.querySelector(".sw-yes").textContent = T("Keep watching");
+    stillCard.querySelector(".sw-no").textContent = T("Pause here");
+    stillLeft = 30;
+    var sub = stillCard.querySelector(".sw-s");
+    sub.textContent = T("No taps for a while - pausing in ") + stillLeft + "s";
+    stillCard.hidden = false;
+    if (stillTimer) clearInterval(stillTimer);
+    stillTimer = setInterval(function () {
+      stillLeft--;
+      if (stillLeft <= 0) { stillHide(); stillCount = 0; $("queueModeMsg").textContent = T("Paused here. Tap a video when you're back."); }
+      else sub.textContent = T("No taps for a while - pausing in ") + stillLeft + "s";
+    }, 1000);
+  }
+  function stillGate() {
+    if (!stillN || sleepPaused) return false;
+    stillCount++;
+    if (stillCount < stillN) return false;
+    stillAsk();
+    return true;
+  }
+  if (stillChipsEl) {
+    [0, 2, 3, 5].forEach(function (n) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.v = n; b.textContent = n === 0 ? T("Off") : String(n); b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () {
+        stillN = n; stillCount = 0; try { localStorage.setItem(SW_KEY, String(n)); } catch (e) {}
+        stillRender(); stillHide();
+        toast(n ? T("Still watching? will ask after ") + n + T(" auto-played videos with no tap.") : T("Still watching? check off."));
+      });
+      stillChipsEl.appendChild(b);
+    });
+    stillRender();
+  }
+  ["pointerdown", "keydown"].forEach(function (ev) { document.addEventListener(ev, function () { stillCount = 0; }, true); });
+  (window.__relang = window.__relang || []).push(function () { stillRender(); if (stillCard && !stillCard.hidden) stillCard.querySelector(".sw-t").textContent = T("Still watching?"); });
+
   // Re-render dynamic labels when the UI language changes.
   window.__relang = window.__relang || [];
   window.__relang.push(function () {
@@ -8247,7 +8336,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var btn = document.getElementById("resetAllBtn");
   if (!btn) return;
   var T = window.T || function (s) { return s; };
-  var KEYS = ["vp-prefs.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1"];
+  var KEYS = ["vp-prefs.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1", "vp-stillwatch.v1"];
   btn.addEventListener("click", async function () {
     if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices and downloader choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
@@ -9058,6 +9147,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Music mode", "music audio songs", "#musicModeBtn"],
       ["Cinema mode", "cinema dark theatre theater", "#cinemaBtn"],
       ["Skip intro", "skip intro opening start netflix", "#introBtn"],
+      ["Still watching? check", "still watching auto pause netflix ask", "#stillRow"],
       ["Touch lock", "lock touch child freeze pocket tap", "#lockBtn"],
       ["Downloader (non-YouTube sites)", "download downloader mp3 trim save video", "#dl"],
       ["Play a local file, volume boost", "local file boost 300 play", "#lp"],
