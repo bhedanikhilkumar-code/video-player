@@ -39,17 +39,20 @@
     --ink: #1f1a1c; --ink2: #5a5457; --hairline: #e6e2e3;
     --teal: #3a8a77; --teal-ink: #ffffff; --red: #c9252f; --page: #f4f1ef; --card: #ffffff;
     --chipbg: #ffffff; --notebg: #faf3e8; --soft: #f1f6f4;
+    --seek-buf: rgba(31,26,28,.16);
     --radius: 16px; --shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 20px rgba(0,0,0,.05);
   }
   :root[data-theme="dark"] {
     color-scheme: dark;
     --ink: #f1ecee; --ink2: #bcb4b7; --hairline: #3b3438; --page: #131012; --card: #1f1a1d;
     --red: #ff7a83; --chipbg: #2a2427; --notebg: #2b2620; --soft: #1b2623;
+    --seek-buf: rgba(255,255,255,.22);
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
   }
   :root[data-theme="dark"].oled {
     --ink: #f4f0f2; --ink2: #a8a1a5; --hairline: #262122; --page: #000000; --card: #0d0b0c;
     --chipbg: #161314; --notebg: #131010; --soft: #0d1412;
+    --seek-buf: rgba(255,255,255,.16);
     --shadow: 0 1px 2px rgba(0,0,0,.7), 0 8px 24px rgba(0,0,0,.6);
   }
   :root[data-theme="dark"].oled body::before { opacity: .5; }
@@ -3235,6 +3238,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (window.__vpABBand) window.__vpABBand(abA, abB);
         if (curId) { infoCache[curId] = infoCache[curId] || {}; infoCache[curId].dur = duration; infoDur.textContent = "Length " + fmt(duration); }
       }
+      if (typeof i.videoLoadedFraction === "number" && Math.abs(i.videoLoadedFraction - (seekBuffered || 0)) > 0.005) { seekBuffered = i.videoLoadedFraction; if (typeof paintSeekFill === "function") paintSeekFill(); }
       if (typeof i.volume === "number") { prefs.volume = Math.round(i.volume); vol.value = prefs.volume; volLabel.textContent = prefs.volume + "%"; }
       if (typeof i.muted === "boolean") { muted = i.muted; muteBtn.textContent = muted ? T("🔇 Unmute") : T("🔊 Mute"); }
       if (typeof i.currentTime === "number") {
@@ -3434,7 +3438,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     showInfo(id);
     ready = false; playing = false; document.documentElement.classList.remove("vp-playing"); duration = 0; playBtn.disabled = true; playBtn.textContent = T("▶ Play");
     if (typeof sleepFadeRestore === "function") sleepFadeRestore();
-    timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1; if (typeof paintSeekFill === "function") paintSeekFill();
+    timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1; seekBuffered = 0; if (typeof paintSeekFill === "function") paintSeekFill();
     if (typeof paintEndsAt === "function") paintEndsAt(0);
     if (window.__vpSeekMarks) window.__vpSeekMarks();
     if (window.__vpABBand) window.__vpABBand(abA, abB);
@@ -3508,12 +3512,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     send("setVolume", [v]);
     if (v > 0 && muted) send("unMute");
   });
-  // Paints the played part of the seek bar as an accent gradient.
+  // Paints the played part of the seek bar as an accent gradient, with a soft
+  // loaded band ahead of it (how much of the video has buffered so far).
+  var seekBuffered = 0;
   function paintSeekFill() {
     var max = Number(seek.max) || 1, val = Number(seek.value) || 0;
     var pct = Math.max(0, Math.min(100, val / max * 100));
+    var buf = Math.max(pct, Math.min(100, seekBuffered * 100));
     var mb = document.querySelector("#miniBar i"); if (mb) mb.style.width = pct + "%";
-    seek.style.setProperty("--seek-fill", "linear-gradient(90deg, var(--teal) 0%, #9769ff " + pct + "%, var(--soft) " + pct + "%, var(--soft) 100%)");
+    seek.style.setProperty("--seek-fill", "linear-gradient(90deg, var(--teal) 0%, #9769ff " + pct + "%, var(--seek-buf) " + pct + "%, var(--seek-buf) " + buf + "%, var(--soft) " + buf + "%, var(--soft) 100%)");
   }
   paintSeekFill();
   seek.addEventListener("input", function () {
