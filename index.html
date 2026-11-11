@@ -1600,6 +1600,7 @@ setTimeout(done,3000);})();
             <button class="chip quick-seek" id="quickSeekForward" type="button"><span id="quickSeekForwardText">10s</span> <span aria-hidden="true">↷</span></button>
           </div>
           <div class="pct-row" id="pctRow" role="group" aria-label="Jump to a part of the video"><span class="label" id="pctLab">Jump to:</span><button class="chip pct-chip" type="button" data-p="0">0%</button><button class="chip pct-chip" type="button" data-p="25">25%</button><button class="chip pct-chip" type="button" data-p="50">50%</button><button class="chip pct-chip" type="button" data-p="75">75%</button></div>
+          <div class="dim-row" id="dimRow"><label class="label" for="dimRange" id="dimLab">Screen dimmer</label><input class="slider" id="dimRange" type="range" min="0" max="70" step="5" value="0" aria-label="Screen dimmer"><span class="dim-val" id="dimVal" role="status">Off</span></div>
           <div class="ab-strip" id="abStrip" hidden aria-hidden="true"></div>
           <div class="seek-tip" id="seekTip" hidden></div>
           <div class="seek-marks" id="seekMarks" hidden></div>
@@ -2077,6 +2078,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "This video is taking too long to load. Check your internet, or tap Try again.": ["यह वीडियो लोड होने में काफी समय ले रहा है. इंटरनेट जांचें, या 'फिर कोशिश करें' दबाएं.", "આ વીડિયો લોડ થવામાં ઘણો સમય લઈ રહ્યો છે. ઇન્ટરનેટ તપાસો, અથવા 'ફરી પ્રયાસ કરો' દબાવો."],
    "Clear link": ["लिंक हटाएं", "લિંક કાઢો"],
    "Clean link": ["लिंक साफ़ करें", "લિંક સાફ કરો"],
+   "Screen dimmer": ["स्क्रीन डिमर", "સ્ક્રીન ડિમર"],
+   "Screen dimmer: darken the video, 0 to 70 percent": ["स्क्रीन डिमर: वीडियो को 0 से 70 प्रतिशत तक गहरा करें", "સ્ક્રીન ડિમર: વિડિઓને 0 થી 70 ટકા સુધી ઘેરો કરો"],
+   "Off": ["बंद", "બંધ"],
+   "Dimmer set to ": ["डिमर सेट: ", "ડિમર સેટ: "],
+   "Dimmer off": ["डिमर बंद", "ડિમર બંધ"],
    "Clean link: remove tracking extras, keep the video and its start time.": ["लिंक साफ़ करें: ट्रैकिंग एक्स्ट्रा हटाएं, वीडियो और उसका शुरुआती समय बरकरार रखें.", "લિંક સાફ કરો: ટ્રૅકિંગ એક્સ્ટ્રા કાઢો, વીડિયો અને તેનો શરૂઆતી સમય જાળવો."],
    "Removes tracking extras like si= and utm= from the link": ["लिंक से si= और utm= जैसे ट्रैकिंग एक्स्ट्रा हटाता है", "લિંકમાંથી si= અને utm= જેવા ટ્રૅકિંગ એક્સ્ટ્રા કાઢે છે"],
    "Link cleaned - tracking extras removed": ["लिंक साफ़ हुआ - ट्रैकिंग एक्स्ट्रा हट गए", "લિંક સાફ થઈ - ટ્રૅકિંગ એક્સ્ટ્રા કઢાઈ ગયા"],
@@ -9498,6 +9504,39 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   function paint() { btn.textContent = T("My week card"); }
   (window.__relang = window.__relang || []).push(paint);
   paint();
+})();
+</script>
+<script>
+/* Screen dimmer (round 61): a slider under the seek bar darkens the video 0-70% with a soft
+   black layer on top of the player, for night watching. Remembered on the device.
+   Works in full screen too. YouTube's own picture is untouched. */
+(function () {
+  "use strict";
+  var T = window.T || function (x) { return x; };
+  var box = document.getElementById("frameBox"), rng = document.getElementById("dimRange"), val = document.getElementById("dimVal"), lab = document.getElementById("dimLab");
+  if (!box || !rng) return;
+  var st = document.createElement("style");
+  st.textContent = ".dim-row{display:flex;align-items:center;gap:10px;margin:6px 0}.dim-row .slider{flex:1;min-width:0}.dim-val{min-width:44px;text-align:right;font-variant-numeric:tabular-nums;font-size:13px;opacity:.85}.dim-layer{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:6;transition:opacity .25s ease;border-radius:inherit}.dim-row.on .dim-val{color:var(--accent,#7c5cff);font-weight:600}";
+  document.head.appendChild(st);
+  var layer = document.createElement("div"); layer.className = "dim-layer"; layer.id = "dimLayer"; layer.setAttribute("aria-hidden", "true");
+  box.appendChild(layer);
+  var KEY = "vp-dim.v1", v = 0;
+  try { v = Math.max(0, Math.min(70, parseInt(localStorage.getItem(KEY), 10) || 0)); } catch (e) {}
+  function paint(announce) {
+    layer.style.opacity = String(v / 100);
+    rng.value = String(v);
+    val.textContent = v ? v + "%" : T("Off");
+    document.getElementById("dimRow").classList.toggle("on", v > 0);
+    lab.textContent = T("Screen dimmer");
+    rng.setAttribute("aria-label", T("Screen dimmer: darken the video, 0 to 70 percent"));
+    rng.setAttribute("aria-valuetext", v ? v + "%" : T("Off"));
+    if (announce) try { localStorage.setItem(KEY, String(v)); } catch (e) {}
+  }
+  rng.addEventListener("input", function () { v = parseInt(rng.value, 10) || 0; paint(true); });
+  rng.addEventListener("change", function () { if (typeof window.toast === "function") window.toast(v ? T("Dimmer set to ") + v + "%" : T("Dimmer off")); });
+  rng.addEventListener("dblclick", function () { v = 0; paint(true); });
+  (window.__relang = window.__relang || []).push(function () { paint(false); });
+  paint(false);
 })();
 </script>
 </body>
