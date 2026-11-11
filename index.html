@@ -1918,7 +1918,7 @@ setTimeout(done,3000);})();
           <textarea class="note-box" id="lyricsBox" maxlength="4000" rows="5" disabled aria-labelledby="lyricsH"></textarea>
           <div class="note-meta"><span id="lyricsStatus" role="status"></span><span id="lyricsCount">0 / 4000</span></div>
           <div class="row"><button class="chip" id="lyricsShowBtn" type="button" aria-pressed="false" disabled>🎤 Show on video: off</button> <button class="chip" id="lyricsScrollBtn" type="button" aria-pressed="true">Auto-scroll: on</button> <button class="chip" id="lyricsClearBtn" type="button" disabled>🗑 Clear lyrics</button></div>
-          <p class="hint" id="lyricsHint">Paste a song's words once and they stay with this video on this device. Show on video puts them in a glass pane on the player, and auto-scroll moves through the lines evenly as the song plays - an even scroll, not an exact line-by-line sync.</p>
+          <p class="hint" id="lyricsHint">Paste a song's words once and they stay with this video on this device. Show on video puts them in a glass pane on the player; tap Sync lines once while the song plays and the lines then follow it exactly.</p>
         </div>
 
         <details class="shortcuts wide" id="scBox">
@@ -6382,6 +6382,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       moments: (function () { var o = {}; Object.keys(marks).forEach(function (id) { if (Array.isArray(marks[id]) && marks[id].length) o[id] = marks[id].map(function (m) { return { t: m.t, name: m.name || "" }; }); }); return o; })(),
       notes: (function () { var o = {}; if (typeof notes === "object" && notes) Object.keys(notes).forEach(function (id) { if (typeof notes[id] === "string" && notes[id].trim()) o[id] = notes[id]; }); return o; })(),
       lyrics: (function () { var o = {}; if (typeof lyrics === "object" && lyrics) Object.keys(lyrics).forEach(function (id) { if (typeof lyrics[id] === "string" && lyrics[id].trim()) o[id] = lyrics[id]; }); return o; })(),
+      lyricSync: (function () { var o = {}; if (typeof lyrSync === "object" && lyrSync) Object.keys(lyrSync).forEach(function (id) { var a = lyrSync[id]; if (Array.isArray(a) && a.length) o[id] = a.map(function (x) { return Math.round(x * 10) / 10; }); }); return o; })(),
       practiceLoops: practiceLoops,
       settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
     ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1"].forEach(function (k) {
@@ -6400,6 +6401,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (nNotes) libBackupMsg.textContent += " " + T("Notes included: ") + nNotes + ".";
     var nLyrics = Object.keys(data.lyrics || {}).length;
     if (nLyrics) libBackupMsg.textContent += " " + T("Lyrics included: ") + nLyrics + ".";
+    var nLyrSyn = Object.keys(data.lyricSync || {}).length;
+    if (nLyrSyn) libBackupMsg.textContent += " " + T("Lyrics sync included: ") + nLyrSyn + ".";
     bkMark();
   });
   $("libImport").addEventListener("click", function () { $("libImportFile").click(); });
@@ -6464,6 +6467,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           });
           if (nl) { lyricsSave(); renderLyrics(); }
         }
+        var nSyn = 0;
+        if (d.lyricSync && typeof d.lyricSync === "object" && !Array.isArray(d.lyricSync) && typeof lyrSync === "object" && lyrSync) {
+          Object.keys(d.lyricSync).forEach(function (id) {
+            if (!/^[a-zA-Z0-9_-]{11}$/.test(id) || !Array.isArray(d.lyricSync[id])) return;
+            var a = d.lyricSync[id].filter(function (x) { return typeof x === "number" && isFinite(x) && x >= 0; }).slice(0, 300);
+            if (!a.length) return;
+            if (Array.isArray(lyrSync[id]) && lyrSync[id].length) return;
+            if (Object.keys(lyrSync).length >= 100) return;
+            lyrSync[id] = a; nSyn++;
+          });
+          if (nSyn) { lyrSyncSave(); renderLyrics(); }
+        }
         var s = d.settings && typeof d.settings === "object" ? d.settings : null, gotSettings = false;
         if (s) {
           if (s.prefs && typeof s.prefs === "object") { Object.keys(s.prefs).forEach(function (k) { if (k in prefs && typeof s.prefs[k] === typeof prefs[k]) prefs[k] = s.prefs[k]; }); if ([5, 10, 15, 30].indexOf(prefs.seekStep) < 0) prefs.seekStep = 10; savePrefs(); gotSettings = true; }
@@ -6473,13 +6488,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
         }
-        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
+        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
         saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
         bkMark();
         libBackupMsg.textContent = T("Imported ") + qn + T(" queued, ") + fn + " " + (fn === 1 ? T("favourite") : T("favourites")) + T(" and ") + pn + " " + (pn === 1 ? T("playlist") : T("playlists")) + ".";
         if (mn) libBackupMsg.textContent += " " + T("Moments restored: ") + mn + ".";
         if (nn) libBackupMsg.textContent += " " + T("Notes restored: ") + nn + ".";
         if (nl) libBackupMsg.textContent += " " + T("Lyrics restored: ") + nl + ".";
+        if (nSyn) libBackupMsg.textContent += " " + T("Lyrics sync restored: ") + nSyn + ".";
         if (gotSettings) { libBackupMsg.textContent += " " + T("Settings restored. Reloading to apply\u2026"); setTimeout(function () { location.reload(); }, 1200); }
       } catch (e) { libBackupMsg.textContent = T("That file could not be read. Use a backup file made by this app."); }
     };
@@ -7444,7 +7460,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#plPasteCancel", "Close", "बंद करें"],
     ["#notesH", "Notes for this video", "इस वीडियो के नोट्स"],
     ["#lyricsH", "Lyrics", "बोल"],
-    ["#lyricsHint", "Paste a song's words once and they stay with this video on this device. Show on video puts them in a glass pane on the player, and auto-scroll moves through the lines evenly as the song plays - an even scroll, not an exact line-by-line sync.", "गाने के बोल एक बार पेस्ट करें, वे इस वीडियो के साथ इसी डिवाइस पर रहेंगे. Show on video उन्हें प्लेयर पर काँच के पैनल में दिखाता है, और auto-scroll गाने के साथ लाइनों को बराबर रफ़्तार से आगे बढ़ाता है - यह बराबर स्क्रॉल है, एक्ज़ैक्ट लाइन-बाय-लाइन सिंक नहीं."],
+    ["#lyricsHint", "Paste a song's words once and they stay with this video on this device. Show on video puts them in a glass pane on the player; tap Sync lines once while the song plays and the lines then follow it exactly.", "गाने के बोल एक बार पेस्ट करें, वे इस वीडियो के साथ इसी डिवाइस पर रहेंगे. Show on video उन्हें प्लेयर पर काँच के पैनल में दिखाता है; गाना चलते हुए एक बार Sync lines दबाएं और लाइनें एकदम सटीक चलेंगी."],
     ["#markPasteSum", "Add chapters from a typed list", "टाइप की लिस्ट से अध्याय जोड़ें"],
     ["#markPasteAdd", "➕ Add as moments", "➕ पलों में जोड़ें"],
     ["#markPasteHint", "One per line: time, then a name - for example 1:23 Chorus. They become tappable moments and seek-bar dots for this video.", "एक लाइन में एक: समय, फिर नाम - जैसे 1:23 Chorus. ये इस वीडियो के टैप करने वाले पल और सीक-बार डॉट बन जाते हैं."],
@@ -7594,7 +7610,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#focusStop": "બંધ કરો",
  "#focusAutoT": "બ્રેક પૂરો થતાં વીડિયો ફરી ચલાવો",
  "#lyricsH": "બોલ",
- "#lyricsHint": "ગીતના બોલ એક વાર પેસ્ટ કરો, તેઓ આ વીડિયો સાથે આ ડિવાઇસ પર રહેશે. Show on video તેમને પ્લેયર પર કાચના પેનમાં બતાવે છે, અને auto-scroll ગીત સાથે લાઇનો સરખી રીતે આગળ લઈ જાય છે - આ સરખું સ્ક્રોલ છે, ચોક્કસ લાઇન-બાય-લાઇન સિંક નહીં.",
+ "#lyricsHint": "ગીતના બોલ એક વાર પેસ્ટ કરો, તેઓ આ વીડિયો સાથે આ ડિવાઇસ પર રહેશે. Show on video તેમને પ્લેયર પર કાચના પેનમાં બતાવે છે; ગીત ચાલતું હોય ત્યારે એક વાર Sync lines દબાવો અને લાઇનો એકદમ ચોક્કસ ચાલશે.",
  "#markAddBtn": "🔖 આ ક્ષણ સેવ કરો",
  "#markCopyBtn": "📋 યાદી કૉપી કરો",
  "#markTxtBtn": "બધું ટેક્સ્ટ ફાઇલમાં સેવ કરો",
@@ -8545,12 +8561,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // sync). Saved per video on this device, part of the backup, hidden in the mini player,
   // translated in Hindi and Gujarati.
   var LYR_KEY = "vp-lyrics.v1", LYR_UI_KEY = "vp-lyrics-ui.v1", lyrics = {}, lyricsShown = null, lyricsTimer = null, lyrTickTimer = null;
+  // Round 98: tap-to-sync stores the start second of each line, so the on-video pane
+  // can highlight the exact line being sung instead of an even scroll.
+  var LYR_SYNC_KEY = "vp-lyr-sync.v1", lyrSync = {};
+  try { var lsIn = JSON.parse(localStorage.getItem(LYR_SYNC_KEY) || "null"); if (lsIn && typeof lsIn === "object" && !Array.isArray(lsIn)) lyrSync = lsIn; } catch (e) {}
+  function lyrSyncSave() { try { localStorage.setItem(LYR_SYNC_KEY, JSON.stringify(lyrSync)); } catch (e) {} }
+  function lyrSyncValid(id) { var a = id ? lyrSync[id] : null; return !!(Array.isArray(a) && a.length && a.length === lyricsLinesFor(id).length); }
   try { var lyrIn = JSON.parse(localStorage.getItem(LYR_KEY) || "null"); if (lyrIn && typeof lyrIn === "object" && !Array.isArray(lyrIn)) lyrics = lyrIn; } catch (e) {}
   var lyricsUi = { show: false, scroll: true };
   try { var luIn = JSON.parse(localStorage.getItem(LYR_UI_KEY) || "null"); if (luIn && typeof luIn === "object") { lyricsUi.show = !!luIn.show; lyricsUi.scroll = luIn.scroll !== false; } } catch (e) {}
   function lyricsSave() { try { localStorage.setItem(LYR_KEY, JSON.stringify(lyrics)); } catch (e) {} }
   function lyricsUiSave() { try { localStorage.setItem(LYR_UI_KEY, JSON.stringify(lyricsUi)); } catch (e) {} }
-  var lyrOv = null, lyrLines = [], lyrForId = null, lyrForText = null;
+  var lyrOv = null, lyrLines = [], lyrForId = null, lyrForText = null, lyrForSync = false;
   (function () {
     var st = document.createElement("style");
     st.textContent = ".vp-lyricsov{position:absolute;left:7%;right:7%;bottom:10px;z-index:6;max-height:46%;overflow:hidden;border-radius:16px;background:rgba(18,18,28,.62);border:1px solid rgba(255,255,255,.26);box-shadow:0 8px 24px #0008;backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5);color:#fff;padding:8px 14px}"
@@ -8559,6 +8581,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       + ".vp-lyricsov .ly-line{font-size:13.5px;line-height:1.55;text-align:center;opacity:.55}"
       + ".vp-lyricsov .ly-line.on{opacity:1;font-weight:700}"
       + ".vp-lyricsov .ly-empty{font-size:13px;opacity:.85;text-align:center;padding:10px 6px}"
+      + ".vp-lyricsov.synced .ly-line.on{color:var(--teal,#35e0c8);text-shadow:0 0 14px rgba(80,220,200,.5)}"
+      + ".vp-lyricsov .ly-line[data-t]{cursor:pointer}"
+      + "#vpLyrSyncBar{position:absolute;left:7%;right:7%;top:10px;z-index:7;border-radius:16px;background:rgba(18,18,28,.74);border:1px solid rgba(255,255,255,.28);box-shadow:0 8px 24px #0009;backdrop-filter:blur(16px) saturate(1.5);-webkit-backdrop-filter:blur(16px) saturate(1.5);color:#fff;padding:10px 12px;text-align:center}"
+      + "#vpLyrSyncBar .ls-hint{font-size:12.5px;opacity:.85;margin:0 0 6px}"
+      + "#vpLyrSyncBar .ls-next{font-size:15px;font-weight:700;margin:0 0 8px;min-height:1.4em}"
+      + "#vpLyrSyncBar .ls-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}"
+      + "#vpLyrSyncBar .ls-count{font-size:12px;opacity:.8;margin-top:6px}"
+      + "#playerDock.is-mini #vpLyrSyncBar{display:none}"
       + "#playerDock.is-mini .vp-lyricsov{display:none}";
     document.head.appendChild(st);
   })();
@@ -8580,15 +8610,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!show) { if (lyrTickTimer) { clearInterval(lyrTickTimer); lyrTickTimer = null; } return; }
     ov.classList.toggle("free", !lyricsUi.scroll);
     var text = typeof lyrics[curId] === "string" ? lyrics[curId] : "";
-    if (lyrForId !== curId || lyrForText !== text) {
-      lyrForId = curId; lyrForText = text;
+    var synced = lyrSyncValid(curId), syncA = synced ? lyrSync[curId] : null;
+    ov.classList.toggle("synced", synced);
+    if (lyrForId !== curId || lyrForText !== text || lyrForSync !== synced) {
+      lyrForId = curId; lyrForText = text; lyrForSync = synced;
       lyrLines = lyricsLinesFor(curId);
       ov.innerHTML = "";
       if (!lyrLines.length) {
         var em = document.createElement("div"); em.className = "ly-empty"; em.textContent = T("No lyrics saved for this video yet.");
         ov.appendChild(em);
       } else {
-        lyrLines.forEach(function (s) { var d = document.createElement("div"); d.className = "ly-line"; d.textContent = s; ov.appendChild(d); });
+        lyrLines.forEach(function (s, li) { var d = document.createElement("div"); d.className = "ly-line"; d.textContent = s;
+          if (syncA) { d.dataset.t = String(syncA[li]); d.title = T("Jump to this line"); d.addEventListener("click", function () { manualSeek(syncA[li]); send("playVideo"); }); }
+          ov.appendChild(d); });
       }
     }
     lyricsTick();
@@ -8597,7 +8631,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function lyricsTick() {
     if (!lyrOv || lyrOv.hidden || !lyrLines.length) return;
     var idx = 0;
-    if (duration > 0 && curTime > 0) idx = Math.min(lyrLines.length - 1, Math.floor(curTime / duration * lyrLines.length));
+    var syncA = lyrSyncValid(curId) ? lyrSync[curId] : null;
+    if (syncA) { for (var si = 0; si < syncA.length; si++) { if (curTime >= syncA[si] - 0.15) idx = si; else break; } }
+    else if (duration > 0 && curTime > 0) idx = Math.min(lyrLines.length - 1, Math.floor(curTime / duration * lyrLines.length));
     var nodes = lyrOv.children, cur = null;
     for (var i = 0; i < nodes.length; i++) { var on = i === idx; nodes[i].classList.toggle("on", on); if (on) cur = nodes[i]; }
     if (lyricsUi.scroll && cur) lyrOv.scrollTop = Math.max(0, cur.offsetTop - lyrOv.clientHeight / 2 + cur.clientHeight / 2);
@@ -8617,10 +8653,72 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (showB) { showB.disabled = !curId; showB.textContent = T("\ud83c\udfa4 Show on video") + ": " + T(lyricsUi.show ? "on" : "off"); showB.setAttribute("aria-pressed", String(lyricsUi.show)); showB.classList.toggle("active", lyricsUi.show); showB.setAttribute("aria-label", T("Lyrics on video")); }
     if (scrB) { scrB.textContent = T("Auto-scroll") + ": " + T(lyricsUi.scroll ? "on" : "off"); scrB.setAttribute("aria-pressed", String(lyricsUi.scroll)); scrB.classList.toggle("active", lyricsUi.scroll); }
     if (clrB) { clrB.disabled = !has; clrB.textContent = T("\ud83d\uddd1 Clear lyrics"); }
+    var syncB = $("lyricsSyncBtn"), syncHint = $("lyricsSyncHint");
+    var lines = curId ? lyricsLinesFor(curId).length : 0;
+    if (syncB) { syncB.disabled = !(curId && lines); syncB.textContent = T("\ud83c\udfaf Sync lines"); syncB.classList.toggle("active", !!lyrSyncState); syncB.setAttribute("aria-pressed", String(!!lyrSyncState)); syncB.setAttribute("aria-label", T("Sync the lyrics line by line")); }
+    if (syncHint) {
+      var ht = "";
+      if (curId && lines) {
+        if (lyrSyncValid(curId)) ht = T("Exact line sync: on - tap a line to jump to it.");
+        else if (lyrSync[curId] && lyrSync[curId].length) ht = T("Lyrics changed - sync again for exact lines.");
+        else ht = T("Even scroll - tap Sync lines for exact timing.");
+      }
+      syncHint.textContent = ht;
+    }
+  }
+  // Tap-to-sync bar: the song plays from the start and each tap of Next line stamps
+  // that line's start second. Saved per video, part of the backup.
+  var lyrSyncState = null;
+  function lyrSyncStop(saved) {
+    if (lyrSyncState && lyrSyncState.bar) lyrSyncState.bar.remove();
+    lyrSyncState = null;
+    lyrForId = null; lyricsPaintBtns(); lyricsPaintOv();
+    if (saved) toast(T("Lyrics synced - lines now follow the song exactly."));
+  }
+  function lyrSyncPaint() {
+    var s = lyrSyncState; if (!s) return;
+    var next = s.times.length < s.lines.length ? s.lines[s.times.length] : "";
+    s.nextEl.textContent = next ? "\u2192 " + next : "\u2713";
+    s.countEl.textContent = T("Line {a} of {b}").replace("{a}", String(Math.min(s.times.length + 1, s.lines.length))).replace("{b}", String(s.lines.length));
+    s.backB.disabled = !s.times.length;
+  }
+  function lyrSyncStart() {
+    if (!curId || !controls || controls.hidden) return;
+    if (lyrSyncState) return;
+    var lines = lyricsLinesFor(curId);
+    if (!lines.length) { toast(T("Add lyrics first, then tap Sync lines.")); return; }
+    var bar = document.createElement("div");
+    bar.id = "vpLyrSyncBar"; bar.setAttribute("role", "group"); bar.setAttribute("aria-label", T("Sync the lyrics line by line"));
+    var hint = document.createElement("p"); hint.className = "ls-hint"; hint.textContent = T("The song plays from the start - tap Next line each time a line begins.");
+    var nextEl = document.createElement("p"); nextEl.className = "ls-next";
+    var row = document.createElement("div"); row.className = "ls-row";
+    var nextB = document.createElement("button"); nextB.type = "button"; nextB.className = "chip"; nextB.textContent = T("Next line");
+    var backB = document.createElement("button"); backB.type = "button"; backB.className = "chip"; backB.textContent = T("Undo last");
+    var cancelB = document.createElement("button"); cancelB.type = "button"; cancelB.className = "chip"; cancelB.textContent = T("Cancel");
+    var countEl = document.createElement("p"); countEl.className = "ls-count"; countEl.setAttribute("role", "status");
+    row.appendChild(nextB); row.appendChild(backB); row.appendChild(cancelB);
+    bar.appendChild(hint); bar.appendChild(nextEl); bar.appendChild(row); bar.appendChild(countEl);
+    frameBox.appendChild(bar);
+    lyrSyncState = { id: curId, lines: lines, times: [], bar: bar, nextEl: nextEl, countEl: countEl, backB: backB };
+    nextB.addEventListener("click", function () {
+      var s = lyrSyncState; if (!s || s.id !== curId) return;
+      var t = Math.max(0, Math.round(curTime * 10) / 10);
+      if (s.times.length && t < s.times[s.times.length - 1]) t = s.times[s.times.length - 1];
+      s.times.push(t);
+      if (s.times.length >= s.lines.length) { lyrSync[s.id] = s.times.slice(); lyrSyncSave(); lyrSyncStop(true); }
+      else lyrSyncPaint();
+    });
+    backB.addEventListener("click", function () { var s = lyrSyncState; if (s && s.times.length) { s.times.pop(); lyrSyncPaint(); } });
+    cancelB.addEventListener("click", function () { lyrSyncStop(false); toast(T("Sync cancelled.")); });
+    if (!lyricsUi.show) { lyricsUi.show = true; lyricsUiSave(); }
+    lyrForId = null; lyricsPaintBtns(); lyricsPaintOv();
+    lyrSyncPaint();
+    send("seekTo", [0, true]); curTime = 0; send("playVideo");
   }
   function renderLyrics() {
     var b = $("lyricsBox"); if (!b || !lyrics) return; // guard: auto-load can call this before the lyrics store is set up
     if (lyricsShown && lyricsShown !== curId) lyricsFlush();
+    if (lyrSyncState && lyrSyncState.id !== curId) lyrSyncStop(false);
     lyricsShown = curId || null;
     b.disabled = !curId;
     b.placeholder = curId ? T("Paste or write the lyrics for this video...") : T("Load a video first, then add lyrics.");
@@ -8630,6 +8728,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   (function () {
     var b = $("lyricsBox"); if (!b) return;
+    var row = $("lyricsClearBtn").parentNode;
+    var syncB = document.createElement("button"); syncB.type = "button"; syncB.className = "chip"; syncB.id = "lyricsSyncBtn";
+    row.appendChild(syncB);
+    var syncHint = document.createElement("p"); syncHint.className = "hint"; syncHint.id = "lyricsSyncHint"; syncHint.setAttribute("role", "status");
+    row.parentNode.insertBefore(syncHint, row.nextSibling);
+    syncB.addEventListener("click", lyrSyncStart);
     b.addEventListener("input", function () {
       lyricsCounter(); lyricsPaintBtns();
       var st2 = $("lyricsStatus"); if (st2) st2.textContent = T("Saving...");
@@ -8658,6 +8762,27 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   })();
   (window.__relang = window.__relang || []).push(function () { renderLyrics(); });
   renderLyrics();
+
+  // Round 98 translations: tap-to-sync lyrics + big sing-along line.
+  Object.assign(TR_MSG, {
+    "\ud83c\udfaf Sync lines": ["\ud83c\udfaf \u0932\u093e\u0907\u0928\u0947\u0902 \u0938\u093f\u0902\u0915 \u0915\u0930\u0947\u0902", "\ud83c\udfaf \u0ab2\u0abe\u0a87\u0aa8 \u0ab8\u0abf\u0a82\u0a95 \u0a95\u0ab0\u0acb"],
+    "Sync the lyrics line by line": ["\u0932\u093f\u0930\u093f\u0915\u094d\u0938 \u0915\u094b \u0932\u093e\u0907\u0928-\u092c\u093e\u092f-\u0932\u093e\u0907\u0928 \u0938\u093f\u0902\u0915 \u0915\u0930\u0947\u0902", "\u0ab2\u0abf\u0ab0\u0abf\u0a95\u0acd\u0ab8\u0aa8\u0ac7 \u0ab2\u0abe\u0a87\u0aa8-\u0aac\u0abe\u0aaf-\u0ab2\u0abe\u0a87\u0aa8 \u0ab8\u0abf\u0a82\u0a95 \u0a95\u0ab0\u0acb"],
+    "Add lyrics first, then tap Sync lines.": ["\u092a\u0939\u0932\u0947 \u0932\u093f\u0930\u093f\u0915\u094d\u0938 \u091c\u094b\u0921\u093c\u0947\u0902, \u092b\u093f\u0930 Sync lines \u0926\u092c\u093e\u090f\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0ab2\u0abf\u0ab0\u0abf\u0a95\u0acd\u0ab8 \u0a89\u0aae\u0ac7\u0ab0\u0acb, \u0aaa\u0a9b\u0ac0 Sync lines \u0aa6\u0aac\u0abe\u0ab5\u0acb."],
+    "The song plays from the start - tap Next line each time a line begins.": ["\u0917\u093e\u0928\u093e \u0936\u0941\u0930\u0942 \u0938\u0947 \u091a\u0932\u0947\u0917\u093e - \u0939\u0930 \u0932\u093e\u0907\u0928 \u0936\u0941\u0930\u0942 \u0939\u094b\u0924\u0947 \u0939\u0940 \u0905\u0917\u0932\u0940 \u0932\u093e\u0907\u0928 \u0926\u092c\u093e\u090f\u0902.", "\u0a97\u0ac0\u0aa4 \u0ab6\u0ab0\u0ac1\u0a86\u0aa4\u0aa5\u0ac0 \u0ab5\u0a97\u0ab6\u0ac7 - \u0aa6\u0ab0\u0ac7\u0a95 \u0ab2\u0abe\u0a87\u0aa8 \u0ab6\u0ab0\u0ac2 \u0aa5\u0abe\u0aaf \u0aa4\u0acd\u0aaf\u0abe\u0ab0\u0ac7 \u0a86\u0a97\u0ab2\u0ac0 \u0ab2\u0abe\u0a87\u0aa8 \u0aa6\u0aac\u0abe\u0ab5\u0acb."],
+    "Next line": ["\u0905\u0917\u0932\u0940 \u0932\u093e\u0907\u0928", "\u0a86\u0a97\u0ab2\u0ac0 \u0ab2\u0abe\u0a87\u0aa8"],
+    "Undo last": ["\u092a\u093f\u091b\u0932\u0940 \u0932\u093e\u0907\u0928 \u0939\u091f\u093e\u090f\u0902", "\u0a9b\u0ac7\u0ab2\u0acd\u0ab2\u0ac0 \u0ab2\u0abe\u0a87\u0aa8 \u0a95\u0abe\u0aa2\u0acb"],
+    "Cancel": ["\u0930\u0926\u094d\u0926 \u0915\u0930\u0947\u0902", "\u0ab0\u0aa6 \u0a95\u0ab0\u0acb"],
+    "Line {a} of {b}": ["\u0932\u093e\u0907\u0928 {a} / {b}", "\u0ab2\u0abe\u0a87\u0aa8 {a} / {b}"],
+    "Lyrics synced - lines now follow the song exactly.": ["\u0932\u093f\u0930\u093f\u0915\u094d\u0938 \u0938\u093f\u0902\u0915 \u0939\u094b \u0917\u0908\u0902 - \u0905\u092c \u0932\u093e\u0907\u0928\u0947\u0902 \u0917\u093e\u0928\u0947 \u0915\u0947 \u0938\u093e\u0925 \u090f\u0915\u0926\u092e \u0938\u091f\u0940\u0915 \u091a\u0932\u0924\u0940 \u0939\u0948\u0902.", "\u0ab2\u0abf\u0ab0\u0abf\u0a95\u0acd\u0ab8 \u0ab8\u0abf\u0a82\u0a95 \u0aa5\u0a88 \u0a97\u0a88 - \u0ab9\u0ab5\u0ac7 \u0ab2\u0abe\u0a87\u0aa8\u0acb \u0a97\u0ac0\u0aa4 \u0ab8\u0abe\u0aa5\u0ac7 \u0a8f\u0a95\u0aa6\u0aae \u0a9a\u0acb\u0a95\u0acd\u0a95\u0ab8 \u0a9a\u0abe\u0ab2\u0ac7 \u0a9b\u0ac7."],
+    "Sync cancelled.": ["\u0938\u093f\u0902\u0915 \u0930\u0926\u094d\u0926 \u0939\u0941\u0906.", "\u0ab8\u0abf\u0a82\u0a95 \u0ab0\u0aa6 \u0aa5\u0aaf\u0ac1\u0a82."],
+    "Exact line sync: on - tap a line to jump to it.": ["\u0938\u091f\u0940\u0915 \u0932\u093e\u0907\u0928 \u0938\u093f\u0902\u0915: \u091a\u093e\u0932\u0942 - \u0915\u093f\u0938\u0940 \u0932\u093e\u0907\u0928 \u092a\u0930 \u091f\u0948\u092a \u0915\u0930\u0947\u0902 \u0914\u0930 \u0935\u0939\u0940\u0902 \u092a\u0939\u0941\u0901\u091a\u0947\u0902.", "\u0a9a\u0acb\u0a95\u0acd\u0a95\u0ab8 \u0ab2\u0abe\u0a87\u0aa8 \u0ab8\u0abf\u0a82\u0a95: \u0a9a\u0abe\u0ab2\u0ac1 - \u0a95\u0acb\u0a88 \u0ab2\u0abe\u0a87\u0aa8 \u0aaa\u0ab0 \u0a9f\u0ac5\u0aaa \u0a95\u0ab0\u0acb \u0a85\u0aa8\u0ac7 \u0aa4\u0acd\u0aaf\u0abe\u0a82 \u0a9c \u0a9c\u0abe\u0ab5."],
+    "Even scroll - tap Sync lines for exact timing.": ["\u092c\u0930\u093e\u092c\u0930 \u0938\u094d\u0915\u094d\u0930\u0949\u0932 - \u0938\u091f\u0940\u0915 \u091f\u093e\u0907\u092e\u093f\u0902\u0917 \u0915\u0947 \u0932\u093f\u090f Sync lines \u0926\u092c\u093e\u090f\u0902.", "\u0ab8\u0ab0\u0a96\u0ac1\u0a82 \u0ab8\u0acd\u0a95\u0acd\u0ab0\u0acb\u0ab2 - \u0a9a\u0acb\u0a95\u0acd\u0a95\u0ab8 \u0a9f\u0abe\u0a87\u0aae\u0abf\u0a82\u0a97 \u0aae\u0abe\u0a9f\u0ac7 Sync lines \u0aa6\u0aac\u0abe\u0ab5\u0acb."],
+    "Lyrics changed - sync again for exact lines.": ["\u0932\u093f\u0930\u093f\u0915\u094d\u0938 \u092c\u0926\u0932 \u0917\u0908\u0902 - \u0938\u091f\u0940\u0915 \u0932\u093e\u0907\u0928\u094b\u0902 \u0915\u0947 \u0932\u093f\u090f \u092b\u093f\u0930 \u0938\u093f\u0902\u0915 \u0915\u0930\u0947\u0902.", "\u0ab2\u0abf\u0ab0\u0abf\u0a95\u0acd\u0ab8 \u0aac\u0aa6\u0ab2\u0abe\u0a88 \u0a97\u0a88 - \u0a9a\u0acb\u0a95\u0acd\u0a95\u0ab8 \u0ab2\u0abe\u0a87\u0aa8\u0acb \u0aae\u0abe\u0a9f\u0ac7 \u0aab\u0ab0\u0ac0 \u0ab8\u0abf\u0a82\u0a95 \u0a95\u0ab0\u0acb."],
+    "Jump to this line": ["\u0907\u0938 \u0932\u093e\u0907\u0928 \u092a\u0930 \u091c\u093e\u090f\u0902", "\u0a86 \u0ab2\u0abe\u0a87\u0aa8 \u0aaa\u0ab0 \u0a9c\u0abe\u0ab5"],
+    "Tap-to-sync lyrics": ["\u091f\u0948\u092a \u0938\u0947 \u0932\u093f\u0930\u093f\u0915\u094d\u0938 \u0938\u093f\u0902\u0915", "\u0a9f\u0ac5\u0aaa\u0aa5\u0ac0 \u0ab2\u0abf\u0ab0\u0abf\u0a95\u0acd\u0ab8 \u0ab8\u0abf\u0a82\u0a95"],
+    "Lyrics sync included: ": ["\u0932\u093f\u0930\u093f\u0915\u094d\u0938 \u0938\u093f\u0902\u0915 \u0936\u093e\u092e\u093f\u0932: ", "\u0ab2\u0abf\u0ab0\u0abf\u0a95\u0acd\u0ab8 \u0ab8\u0abf\u0a82\u0a95 \u0ab8\u0abe\u0aae\u0ac7\u0ab2: "],
+    "Lyrics sync restored: ": ["\u0932\u093f\u0930\u093f\u0915\u094d\u0938 \u0938\u093f\u0902\u0915 \u0935\u093e\u092a\u0938 \u0906\u092f\u093e: ", "\u0ab2\u0abf\u0ab0\u0abf\u0a95\u0acd\u0ab8 \u0ab8\u0abf\u0a82\u0a95 \u0aaa\u0abe\u0a9a\u0ac1\u0a82 \u0ab2\u0abe\u0ab5\u0acd\u0aaf\u0ac1\u0a82: "]
+  });
 
   // What's new (round 93): a glass card at the top of Help listing the latest additions.
   // Tapping one jumps to that feature and flashes it, exactly like the feature finder.
@@ -8692,6 +8817,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"]
   });
   var WNEW = [
+    ["Tap-to-sync lyrics", "#lyricsSyncBtn"],
     ["Night sound", "#lpNightBtn"],
     ["Left-right balance", "#lpBal"],
     ["Milestone cheers", "#mileBtn"],
@@ -8699,9 +8825,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Sleep countdown on the video", "#ctl-sleep"],
     ["Only unwatched in Watch later", "#laterUnwBtn"],
     ["Pin favourites to the top", "#lhFavs"],
-    ["Pause when headphones disconnect", "#unplugChk"],
-    ["Search subtitles", "#lpSubSearchQ"],
-    ["Watch next card", "#playerHeading"]
+    ["Pause when headphones disconnect", "#unplugChk"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -10830,6 +10954,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Saved moments", "moment chapter bookmark", "#ctl-marks"],
       ["Notes for this video", "note notes write", "#ctl-notes"],
       ["Lyrics", "lyrics song words sing karaoke", "#ctl-lyrics"],
+      ["Tap-to-sync lyrics", "lyrics sync karaoke exact line timing tap", "#lyricsSyncBtn"],
       ["Music mode", "music audio songs", "#musicModeBtn"],
       ["Cinema mode", "cinema dark theatre theater", "#cinemaBtn"],
       ["Skip intro", "skip intro opening start netflix", "#introBtn"],
