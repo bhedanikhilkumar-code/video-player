@@ -697,6 +697,8 @@ body{overflow-x:clip}
 :root[data-accent="pink"] { --teal: #d02f7a; }
 .cont-prog { display: block; height: 4px; border-radius: 2px; background: var(--hairline); margin-top: 6px; overflow: hidden; }
 .cont-prog > i { display: block; height: 100%; background: var(--teal); }
+.goal-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.goal-row .row { gap: 6px; }
 </style>
 <style id="liquid-glass-ui">
 /* Liquid glass across the whole UI (2026-11-10): cards, buttons, chips, inputs.
@@ -1573,7 +1575,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="statsClear" type="button">Clear</button></div>
-      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><div class="stats-days" id="statsDays"></div><ul class="lib-list" id="statsList"></ul>
+      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><div class="stats-days" id="statsDays"></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><ul class="lib-list" id="statsList"></ul>
       <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
     </section>
 
@@ -1662,6 +1664,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "No duplicates in the queue.": ["कतार में कोई डुप्लिकेट नहीं है.", "કતારમાં કોઈ ડુપ્લિકેટ નથી."],
    "1 duplicate removed": ["1 डुप्लिकेट हटाया गया", "1 ડુપ્લિકેટ કાઢ્યું"],
    "duplicates removed": ["डुप्लिकेट हटाए गए", "ડુપ્લિકેટ કાઢ્યા"],
+   "Daily goal:": ["दैनिक लक्ष्य:", "દૈનિક લક્ષ્ય:"],
+   "Goal off. Pick 15, 30 or 60 minutes to start a daily goal.": ["लक्ष्य बंद है. दैनिक लक्ष्य शुरू करने के लिए 15, 30 या 60 मिनट चुनें.", "લક્ષ્ય બંધ છે. દૈનિક લક્ષ્ય શરૂ કરવા 15, 30 કે 60 મિનિટ પસંદ કરો."],
+   "Goal reached!": ["लक्ष्य पूरा!", "લક્ષ્ય પૂરું!"],
+   "day streak": ["दिन की स्ट्रीक", "દિવસની સ્ટ્રીક"],
+   "day streaks": ["दिन की स्ट्रीक", "દિવસની સ્ટ્રીક"],
+   "Daily goal off": ["दैनिक लक्ष्य बंद", "દૈનિક લક્ષ્ય બંધ"],
+   "Daily goal set": ["दैनिक लक्ष्य तय", "દૈનિક લક્ષ્ય નક્કી"],
    "Allow clipboard access, or long-press the field to paste.": ["क्लिपबोर्ड की अनुमति दें, या फ़ील्ड को लॉन्ग-प्रेस करके पेस्ट करें.", "ક્લિપબોર્ડની પરવાનગી આપો, અથવા ફીલ્ડને લૉંગ-પ્રેસ કરીને પેસ્ટ કરો."],
    "Back to top": ["ऊपर जाएं", "ઉપર જાઓ"],
    "Loading video...": ["वीडियो लोड हो रहा है...", "વીડિયો લોડ થઈ રહ્યું છે..."],
@@ -4022,7 +4031,45 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         open.addEventListener("click", function () { linkInput.value = "https://youtu.be/" + v.id; loadVideo(null, null, undefined, true); });
         li.appendChild(open); ul.appendChild(li);
       });
+    if (typeof goalRender === "function") goalRender();
   }
+
+  // Daily goal: pick a target, see today's progress and your streak.
+  var GOAL_OPTS = [0, 15, 30, 60];
+  function goalMin() { return GOAL_OPTS.indexOf(prefs.goalMin) > 0 ? prefs.goalMin : 0; }
+  function goalStreak(min) {
+    var need = min * 60, n = 0, d = new Date();
+    if ((stats.days[dayKey(d)] || 0) < need) d = new Date(d.getTime() - 86400000);
+    while ((stats.days[dayKey(d)] || 0) >= need) { n++; d = new Date(d.getTime() - 86400000); if (n > 3660) break; }
+    return n;
+  }
+  function goalRender() {
+    var chips = $("goalChips"), status = $("goalStatus"), lab = $("goalLab");
+    if (!chips || !status) return;
+    if (lab) lab.textContent = T("Daily goal:");
+    var g = goalMin();
+    [].forEach.call(chips.children, function (c) {
+      var on = Number(c.dataset.v) === g;
+      c.classList.toggle("active", on); c.setAttribute("aria-pressed", on ? "true" : "false");
+      c.textContent = c.dataset.v === "0" ? T("Off") : c.dataset.v + " " + T("min");
+    });
+    if (!g) { status.textContent = T("Goal off. Pick 15, 30 or 60 minutes to start a daily goal."); return; }
+    var today = Math.floor(stats.days[dayKey(new Date())] || 0), need = g * 60;
+    var pct = Math.min(100, Math.round(today / need * 100));
+    var st2 = goalStreak(g);
+    status.textContent = T("Today") + ": " + fmtWatch(Math.min(today, need)) + " / " + fmtWatch(need) + " (" + pct + "%)" + (today >= need ? " \u00b7 " + T("Goal reached!") : "") + (st2 > 0 ? " \u00b7 \ud83d\udd25 " + st2 + " " + T(st2 === 1 ? "day streak" : "day streaks") : "");
+  }
+  (function () {
+    var chips = $("goalChips"); if (!chips) return;
+    GOAL_OPTS.forEach(function (v) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.v = v; b.setAttribute("aria-pressed", "false");
+      b.textContent = v === 0 ? T("Off") : v + " " + T("min");
+      b.addEventListener("click", function () { prefs.goalMin = v; savePrefs(); goalRender(); if (typeof toast === "function") toast(v === 0 ? T("Daily goal off") : T("Daily goal set") + ": " + v + " " + T("min")); });
+      chips.appendChild(b);
+    });
+    (window.__relang = window.__relang || []).push(goalRender);
+    goalRender();
+  })();
   function statsTick() {
     if (!curId || !playing) { lastStatT = -1; return; }
     if (lastStatId !== curId) { lastStatId = curId; lastStatT = -1; }
