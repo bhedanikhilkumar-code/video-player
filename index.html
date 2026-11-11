@@ -918,7 +918,8 @@ html.cinema-on .frame{box-shadow:0 24px 90px rgba(0,0,0,.6);}
 </style>
 <style id="ux-marks">
 /* Saved moments: the viewer's marked times for the current video, shown as tappable chips. */
-#ctl-notes .note-box{width:100%;box-sizing:border-box;min-height:96px;resize:vertical;font:inherit;font-size:16px;line-height:1.45;padding:10px 12px;margin-top:10px;border-radius:14px;border:1px solid var(--hairline,#e6e2e3);background:rgba(255,255,255,.35);color:inherit;outline:none;}
+#library .pl-paste{margin:8px 0 0;}
+#library .pl-paste .note-box,#ctl-notes .note-box{width:100%;box-sizing:border-box;min-height:96px;resize:vertical;font:inherit;font-size:16px;line-height:1.45;padding:10px 12px;margin-top:10px;border-radius:14px;border:1px solid var(--hairline,#e6e2e3);background:rgba(255,255,255,.35);color:inherit;outline:none;}
 #ctl-notes .note-box:focus{border-color:var(--teal,#3a8a77);}
 #ctl-notes .note-meta{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink2);margin-top:6px;}
 #ctl-marks .marks-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center;}
@@ -1834,6 +1835,12 @@ html .shortcuts, html .note, html .faq, html .help-card, html .pl-item, html .mu
       <div class="row pl-import-row">
         <button class="chip" id="plImportBtn" type="button">Import playlist</button>
         <input id="plImportFile" type="file" accept="application/json,.json" hidden>
+        <button class="chip" id="plPasteBtn" type="button" aria-expanded="false">Paste a list of links</button>
+      </div>
+      <div class="pl-paste" id="plPastePanel" hidden>
+        <textarea class="note-box" id="plPasteBox" rows="5" maxlength="6000" aria-label="List of YouTube links" placeholder="One YouTube link per line"></textarea>
+        <div class="row"><button class="chip" id="plPasteAdd" type="button">Add to queue</button> <button class="chip" id="plPasteCancel" type="button">Close</button></div>
+        <p class="hint" id="plPasteMsg" role="status"></p>
       </div>
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
@@ -2420,6 +2427,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Note copied": ["नोट कॉपी हुआ", "નોંધ કૉપી થઈ"],
    "Load a video first, then write a note.": ["पहले वीडियो चलाएं, फिर नोट लिखें.", "પહેલા વીડિયો ચલાવો, પછી નોંધ લખો."],
    "Write a note for this video...": ["इस वीडियो के लिए नोट लिखें...", "આ વીડિયો માટે નોંધ લખો..."],
+   "Paste at least one YouTube link.": ["कम से कम एक YouTube लिंक पेस्ट करें.", "ઓછામાં ઓછી એક YouTube લિંક પેસ્ટ કરો."],
+   "Added ": ["जोड़े गए: ", "ઉમેર્યા: "],
+   " to the queue.": [" कतार में.", " કતારમાં."],
+   " skipped (not a YouTube link, already queued, or queue full).": [" छोड़े गए (YouTube लिंक नहीं, पहले से कतार में, या कतार भरी).", " છોડ્યા (YouTube લિંક નથી, પહેલેથી કતારમાં, અથવા કતાર ભરાઈ)."],
    "Moment saved": ["पल सेव हुआ", "ક્ષણ સેવ થઈ"],
    "Moment removed": ["पल हटाया गया", "ક્ષણ હટાઈ"],
    "Moments copied": ["पल कॉपी हुए", "ક્ષણો કૉપી થઈ"],
@@ -4959,6 +4970,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#aboutNoteTitle", "Good to know", "जानना ज़रूरी"],
     ["#aboutNoteText", "Quality is a request - YouTube chooses the closest option based on your network. Volume in the official player goes up to 100% (YouTube's limit); raise your phone volume if you need it louder. This app adds no ads, banners, or pop-ups of its own. YouTube may still show its own ads inside videos; those are controlled by YouTube and cannot be turned off here.", "क्वालिटी एक रिक्वेस्ट है - YouTube आपके नेटवर्क के हिसाब से सबसे करीबी विकल्प चुनता है. ऑफिशियल प्लेयर में वॉल्यूम 100% तक ही जाता है (YouTube की सीमा); और तेज़ चाहिए तो फोन का वॉल्यूम बढ़ाएं. यह ऐप अपनी तरफ से कोई विज्ञापन, बैनर या पॉप-अप नहीं दिखाता. वीडियो के अंदर YouTube अपने विज्ञापन दिखा सकता है; वे YouTube के नियंत्रण में हैं और यहां से बंद नहीं हो सकते."],
     ["#marksH", "Saved moments", "सेव किए पल"],
+    ["#plPasteBtn", "Paste a list of links", "लिंक की सूची पेस्ट करें"],
+    ["#plPasteAdd", "Add to queue", "कतार में जोड़ें"],
+    ["#plPasteCancel", "Close", "बंद करें"],
     ["#notesH", "Notes for this video", "इस वीडियो के नोट्स"],
     ["#noteCopyBtn", "📋 Copy note", "📋 नोट कॉपी करें"],
     ["#noteClearBtn", "🗑 Clear note", "🗑 नोट मिटाएं"],
@@ -5072,6 +5086,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#musicBarP": "નાનો વીડિયો, મોટા કંટ્રોલ અને તમારી કતાર સાથે. YouTube દેખાય એવું રાખો અને સ્ક્રીન ચાલુ રાખો.",
  "#a11yH": "સુલભતા",
  "#marksH": "સેવ કરેલી ક્ષણો",
+ "#plPasteBtn": "લિંકની યાદી પેસ્ટ કરો",
+ "#plPasteAdd": "કતારમાં ઉમેરો",
+ "#plPasteCancel": "બંધ કરો",
  "#notesH": "આ વીડિયોની નોંધો",
  "#noteCopyBtn": "📋 નોંધ કૉપી કરો",
  "#noteClearBtn": "🗑 નોંધ ભૂંસો",
@@ -5501,6 +5518,30 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   })();
   (window.__relang = window.__relang || []).push(renderMarks);
   renderMarks();
+
+  // Paste a list of links: every YouTube link or video ID found in the pasted text goes into the queue (max 50).
+  (function () {
+    var btn = $("plPasteBtn"), panel = $("plPastePanel"), box = $("plPasteBox"), msg = $("plPasteMsg");
+    if (!btn || !panel || !box) return;
+    function setOpen(o) { panel.hidden = !o; btn.setAttribute("aria-expanded", o ? "true" : "false"); if (o) { try { box.focus(); } catch (e) {} } }
+    btn.addEventListener("click", function () { setOpen(panel.hidden); });
+    $("plPasteCancel").addEventListener("click", function () { setOpen(false); try { btn.focus(); } catch (e) {} });
+    $("plPasteAdd").addEventListener("click", function () {
+      var text = box.value, cands = [];
+      (text.match(/(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)\/[^\s<>"']+/gi) || []).forEach(function (u) { cands.push(u); });
+      text.split(/\r?\n/).forEach(function (ln) { var w = ln.trim(); if (/^[A-Za-z0-9_-]{11}$/.test(w) && /[0-9_-]/.test(w)) cands.push(w); });
+      if (!cands.length) { msg.textContent = T("Paste at least one YouTube link."); return; }
+      var seen = {}, added = 0, skipped = 0;
+      lib.queue.forEach(function (x) { seen[x.id] = 1; });
+      cands.forEach(function (c) {
+        var id = parseVideoId(c);
+        if (!id || seen[id] || lib.queue.length >= 50) { skipped++; return; }
+        seen[id] = 1; lib.queue.push({ id: id, title: titleFor(id) }); added++; fetchTitle(id);
+      });
+      if (added) { saveLib(); renderLib(); box.value = ""; toast(T("Added ") + added + T(" to the queue.")); }
+      msg.textContent = T("Added ") + added + T(" to the queue.") + (skipped ? " " + skipped + T(" skipped (not a YouTube link, already queued, or queue full).") : "");
+    });
+  })();
 
   // Notes: one short private note per YouTube video, saved on this device as you type.
   var NOTES_KEY = "vp-notes.v1", notes = {};
