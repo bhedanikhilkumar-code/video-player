@@ -2439,6 +2439,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Double-tap": ["डबल-टैप", "ડબલ-ટૅપ"],
    "Double-tap skip": ["डबल-टैप स्किप", "ડબલ-ટૅપ સ્કિપ"],
    "Buffering": ["बफ़र हो रहा है", "બફર થઈ રહ્યું છે"],
+   "watched": ["देखा गया", "જોઈ લીધું"],
    "seconds": ["सेकंड", "સેકંડ"],
    " seconds, now at ": [" सेकंड, अब ", " સેકંડ, હવે "],
    "Gesture pad. Double-tap the left side to go back ": ["जेस्चर पैड. बाईं ओर डबल-टैप से ", "જેસ્ચર પૅડ. ડાબી બાજુ ડબલ-ટૅપથી "],
@@ -3249,6 +3250,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       }
       var t = (seeking ? Number(seek.value) : i.currentTime) || 0;
       paintTime(t);
+      if (window.__vpHeroProg) window.__vpHeroProg(t);
       statsTick();
       saveResume();
     }
@@ -8522,6 +8524,46 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
     }
     lastSt = st;
   };
+})();
+</script>
+<style id="r49-heroring">
+/* Round 49: watched-progress ring on the Now playing thumbnail. */
+.np-thumbwrap { position:relative; flex:none; align-self:center; }
+.np-thumbwrap img { display:block; }
+.np-prog { position:absolute; right:-7px; bottom:-7px; width:30px; height:30px; border-radius:50%; background:var(--card); box-shadow:0 2px 8px rgba(0,0,0,.3); align-items:center; justify-content:center; display:none; }
+.np-prog.on { display:flex; }
+.np-prog svg { display:block; transform:rotate(-90deg); }
+.np-prog .np-prog-t { fill:none; stroke:var(--hairline); stroke-width:3; }
+.np-prog .np-prog-p { fill:none; stroke:var(--teal); stroke-width:3; stroke-linecap:round; transition:stroke-dashoffset .4s linear; }
+@media (prefers-reduced-motion:reduce){ .np-prog .np-prog-p{transition:none;} }
+</style>
+<script>
+/* Round 49: the Now playing thumbnail gets a small progress ring that fills as you
+   watch, so the percent watched is visible at a glance (hover/tap-hold shows the %). */
+(function () {
+  var T = window.T || function (s) { return s; };
+  var thumb = document.getElementById("infoThumb");
+  if (!thumb || !thumb.parentNode || thumb.parentNode.classList.contains("np-thumbwrap")) return;
+  var wrap = document.createElement("span"); wrap.className = "np-thumbwrap";
+  thumb.parentNode.insertBefore(wrap, thumb); wrap.appendChild(thumb);
+  var C = 2 * Math.PI * 12.5;
+  var badge = document.createElement("span"); badge.className = "np-prog";
+  badge.innerHTML = '<svg width="30" height="30" viewBox="0 0 30 30"><circle class="np-prog-t" cx="15" cy="15" r="12.5"></circle><circle class="np-prog-p" cx="15" cy="15" r="12.5"></circle></svg>';
+  var prog = badge.querySelector(".np-prog-p");
+  prog.style.strokeDasharray = C.toFixed(1); prog.style.strokeDashoffset = C.toFixed(1);
+  wrap.appendChild(badge);
+  var lastPc = 0;
+  window.__vpHeroProg = function (t) {
+    var seekEl = document.getElementById("seek");
+    var d = seekEl ? Number(seekEl.max) : 0;
+    if (!(d > 1) || !t || t < 3) { badge.classList.remove("on"); lastPc = 0; prog.style.strokeDashoffset = C.toFixed(1); return; }
+    badge.classList.add("on");
+    var frac = Math.max(0, Math.min(1, t / d));
+    prog.style.strokeDashoffset = (C * (1 - frac)).toFixed(1);
+    lastPc = Math.round(frac * 100);
+    badge.title = lastPc + "% " + T("watched");
+  };
+  (window.__relang = window.__relang || []).push(function () { if (badge.classList.contains("on")) badge.title = lastPc + "% " + T("watched"); });
 })();
 </script>
 </body>
