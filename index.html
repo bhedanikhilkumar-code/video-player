@@ -11037,49 +11037,62 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   function qName(q) {
     return { tiny: "144p", small: "240p", medium: "360p", large: "480p", hd720: "720p", hd1080: "1080p", hd1440: "1440p", hd2160: "4K", highres: "4K" }[q] || "Auto";
   }
-  function row(l, v) { return '<div class="so-r"><span class="so-l"></span><span class="so-v"></span></div>'; }
+  // Round 80: build the five rows once. YouTube sends partial updates, so keep
+  // the last known values instead of resetting missing fields on every message.
+  for (var r = 0; r < 5; r++) {
+    var row = document.createElement("div"); row.className = "so-r";
+    var label = document.createElement("span"); label.className = "so-l";
+    var value = document.createElement("span"); value.className = "so-v";
+    row.appendChild(label); row.appendChild(value); ov.appendChild(row);
+  }
+  var infoSource = null;
   function volText(i) {
-    if (typeof i.muted === "boolean" && i.muted) return "0%";
+    if (i.muted === true) return "0%";
     if (typeof i.volume === "number") return Math.round(i.volume) + "%";
-    // YouTube only reports the volume after it changes; until then, use the app's own slider.
     var vs = document.getElementById("vol");
     return vs ? vs.value + "%" : "-";
   }
+  function text(el, next) { if (el.textContent !== next) el.textContent = next; }
+  function paintValues() {
+    if (ov.hidden || !info) return;
+    var i = info;
+    var vals = [
+      [T("Quality"), i.playbackQuality ? qName(i.playbackQuality) : "Auto"],
+      [T("Speed"), typeof i.playbackRate === "number" ? i.playbackRate + "x" : "-"],
+      [T("Volume"), volText(i)],
+      [T("Buffered"), typeof i.videoLoadedFraction === "number" ? Math.round(i.videoLoadedFraction * 100) + "%" : "-"],
+      [T("Time"), (typeof i.currentTime === "number" ? fmtT(i.currentTime) : "-") + (typeof i.duration === "number" && i.duration > 0 ? " / " + fmtT(i.duration) : "")]
+    ];
+    for (var k = 0; k < vals.length; k++) {
+      text(ov.children[k].firstChild, vals[k][0]); text(ov.children[k].lastChild, vals[k][1]);
+    }
+  }
   function paint() {
-    btn.textContent = T("📊 Stats");
+    text(btn, T("📊 Stats"));
     btn.classList.toggle("active", on); btn.setAttribute("aria-pressed", on ? "true" : "false");
     btn.setAttribute("aria-label", T("Live video stats"));
-    var show = on && !!info;
-    ov.hidden = !show;
-    if (!show) return;
-    var i = info;
-    var vol = volText(i);
-    var buf = typeof i.videoLoadedFraction === "number" ? Math.round(i.videoLoadedFraction * 100) + "%" : "-";
-    var qual = i.playbackQuality ? qName(i.playbackQuality) : "Auto";
-    var spd = typeof i.playbackRate === "number" ? i.playbackRate + "x" : "1x";
-    var tim = (typeof i.currentTime === "number" ? fmtT(i.currentTime) : "0:00") + (typeof i.duration === "number" && i.duration > 0 ? " / " + fmtT(i.duration) : "");
-    ov.innerHTML = row() + row() + row() + row() + row();
-    var rows = ov.children, vals = [[T("Quality"), qual], [T("Speed"), spd], [T("Volume"), vol], [T("Buffered"), buf], [T("Time"), tim]];
-    for (var k = 0; k < rows.length; k++) { rows[k].firstChild.textContent = vals[k][0]; rows[k].lastChild.textContent = vals[k][1]; }
+    ov.hidden = !(on && info); paintValues();
   }
+  function resetSource() {
+    var frame = box.querySelector("iframe");
+    var source = frame ? frame.contentWindow : null;
+    if (source !== infoSource) { infoSource = source; info = null; ov.hidden = true; }
+    return source;
+  }
+  if (window.MutationObserver) new MutationObserver(resetSource).observe(box, { childList: true });
   window.addEventListener("message", function (e) {
     if (e.origin !== "https://www.youtube-nocookie.com" && e.origin !== "https://www.youtube.com") return;
+    var source = resetSource();
+    if (!source || e.source !== source) return;
     var d; try { d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch (err) { return; }
-    if (!d || (d.event !== "infoDelivery" && d.event !== "initialDelivery") || !d.info) return;
-    var first = !info; info = d.info;
-    if (!ov.hidden || (on && first)) paint();
-    else if (on) {
-      // Refresh the numbers live, but only the cheap text fields.
-      var rows = ov.children;
-      if (rows.length === 5) {
-        var i = info;
-        rows[0].lastChild.textContent = i.playbackQuality ? qName(i.playbackQuality) : "Auto";
-        rows[1].lastChild.textContent = typeof i.playbackRate === "number" ? i.playbackRate + "x" : "1x";
-        rows[2].lastChild.textContent = volText(i);
-        rows[3].lastChild.textContent = typeof i.videoLoadedFraction === "number" ? Math.round(i.videoLoadedFraction * 100) + "%" : "-";
-        rows[4].lastChild.textContent = (typeof i.currentTime === "number" ? fmtT(i.currentTime) : "0:00") + (typeof i.duration === "number" && i.duration > 0 ? " / " + fmtT(i.duration) : "");
-      }
-    }
+    if (!d || (d.event !== "infoDelivery" && d.event !== "initialDelivery") || !d.info || typeof d.info !== "object") return;
+    if (!info) info = {};
+    ["currentTime", "duration", "volume", "videoLoadedFraction", "playbackRate"].forEach(function (key) {
+      if (typeof d.info[key] === "number" && isFinite(d.info[key])) info[key] = d.info[key];
+    });
+    if (typeof d.info.muted === "boolean") info.muted = d.info.muted;
+    if (typeof d.info.playbackQuality === "string") info.playbackQuality = d.info.playbackQuality;
+    if (on) { ov.hidden = false; paintValues(); }
   });
   btn.addEventListener("click", function () {
     on = !on; try { localStorage.setItem(KEY, on ? "1" : "0"); } catch (e) {}
