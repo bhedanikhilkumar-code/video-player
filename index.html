@@ -2002,6 +2002,7 @@ setTimeout(done,3000);})();
       <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><div class="row lp-qmodes"><button class="chip" id="lpShuffleBtn" type="button" aria-pressed="false">Shuffle: off</button><button class="chip" id="lpRepeatBtn" type="button" aria-pressed="false">Repeat all: off</button></div><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
       <p class="hint" id="lpSessionMsg" role="status">Select one or more local files. Notification and lock-screen controls are local-file only, where supported by your browser. They do not enable screen-off YouTube playback.</p>
       <video id="lpVideo" controls playsinline preload="metadata" crossorigin="anonymous" class="lp-video" hidden></video>
+      <div class="lp-viz" id="lpViz" hidden><canvas id="lpVizCv" height="56"></canvas></div>
       <div class="lp-seekwrap" id="lpSeekWrap" hidden>
         <div class="lp-seekbar" id="lpSeekBar" role="slider" aria-label="Preview and seek the local file" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0"><div class="lp-seekfill" id="lpSeekFill"></div></div>
         <div class="lp-thumb" id="lpThumb" hidden><canvas id="lpThumbCv" width="160" height="90"></canvas><span id="lpThumbT">0:00</span></div>
@@ -2036,6 +2037,8 @@ setTimeout(done,3000);})();
         <label class="dl-lab" for="lpEqT"><span id="lpEqTLab">Treble: </span><b id="lpEqTVal">0 dB</b></label>
         <input id="lpEqT" type="range" min="-12" max="12" step="1" value="0" style="width:100%">
         <p class="hint" id="lpEqHint">The equalizer works on files you open here. The YouTube player's sound cannot be changed (a browser security limit).</p>
+        <div class="row"><button class="chip" id="lpVizBtn" type="button" aria-pressed="false">🎵 Visualizer: off</button></div>
+        <p class="hint" id="lpVizHint" hidden>Dancing bars follow the sound of your file. YouTube videos cannot drive them (a browser security limit).</p>
       </div>
       <p class="hint">This plays a file from your device, or the file you just downloaded. The YouTube player's volume cannot go above 100% (a YouTube limit). The PiP button appears where your browser allows it, and works for local files - for YouTube videos use the player's own controls (a site cannot detach YouTube's player).</p>
     </section>
@@ -5680,7 +5683,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "25% done - keep going!": ["25% पूरा - आगे बढ़ो!", "25% પૂરું - આગળ વધો!"],
     "Halfway there!": ["आधा रास्ता पूरा!", "અડધો રસ્તો પૂરો!"],
     "75% - almost there!": ["75% - बस पहुँचने वाले!", "75% - બસ પહોંચવા જેવું!"],
-    "Milestone cheers": ["माइलस्टोन बधाई", "માઇલસ્ટોન શુભેચ્છા"]
+    "Milestone cheers": ["माइलस्टोन बधाई", "માઇલસ્ટોન શુભેચ્છા"],
+    "Visualizer": ["विज़ुअलाइज़र", "વિઝુઅલાઇઝર"],
+    "Visualizer on": ["विज़ुअलाइज़र चालू", "વિઝુઅલાઇઝર ચાલુ"],
+    "Visualizer off": ["विज़ुअलाइज़र बंद", "વિઝુઅલાઇઝર બંદ"],
+    "Dancing bars follow the sound of your file. YouTube videos cannot drive them (a browser security limit).": ["नाचती बारें आपकी फ़ाइल की आवाज़ पर चलती हैं. YouTube वीडियो इन्हें नहीं चला सकते (ब्राउज़र सुरक्षा सीमा).", "નાચતી બાર તમારી ફાઇલના અવાજ સાથે ચાલે છે. YouTube વીડિયો તેમને ચલાવી શકતા નથી (બ્રાઉઝર સુરક્ષા મર્યાદા)."],
+    "Music visualizer": ["म्यूज़िक विज़ुअलाइज़र", "મ્યુઝિક વિઝુઅલાઇઝર"]
   });
   var mileBtn = $("mileBtn"), mileFired = {}, mileHideT = 0, mileOv = null;
   var mileSt = document.createElement("style");
@@ -8666,6 +8674,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   var WNEW = [
     ["Milestone cheers", "#mileBtn"],
+    ["Music visualizer", "#lpVizBtn"],
     ["Sleep countdown on the video", "#ctl-sleep"],
     ["Only unwatched in Watch later", "#laterUnwBtn"],
     ["Pin favourites to the top", "#lhFavs"],
@@ -8673,8 +8682,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Search subtitles", "#lpSubSearchQ"],
     ["Sleep picture fade", "#sleepPicFade"],
     ["Watch next card", "#playerHeading"],
-    ["Match video colour", "#accentRow"],
-    ["Mark as watched chip", "#watchedBtn"]
+    ["Match video colour", "#accentRow"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -8982,8 +8990,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (typeof eqApply === "function") eqApply();
     window.__lpNode = node; window.__lpCtx = ctx;
   }
-  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, eq: { b: 0, m: 0, t: 0 } };
-  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); } } catch (e) {}
+  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, eq: { b: 0, m: 0, t: 0 } };
+  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; } } catch (e) {}
   gain.value = lp.gain;
   function saveLp() { try { localStorage.setItem(LK, JSON.stringify(lp)); } catch (e) {} }
   function setGain() { var v = Number(gain.value); lp.gain = v; saveLp(); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
@@ -9213,6 +9221,86 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     pair[1].addEventListener("input", function () { ensureAudio(); eq[pair[0]] = Number(pair[1].value); saveLp(); eqApply(); });
   });
   eqApply();
+
+  // Music visualizer (round 96): dancing glass bars under the local player that follow the
+  // sound of the open file, tapped off the same audio chain as the boost and equalizer, so
+  // everything is read on this device. Local files only - the YouTube player's sound cannot
+  // be read (a browser security limit). Off by default, remembered on this device in the
+  // local-player store and riding the backup, translated in Hindi and Gujarati.
+  var vizWrap = $("lpViz"), vizCv = $("lpVizCv"), vizBtn = $("lpVizBtn"), vizHint = $("lpVizHint");
+  var vizSt = document.createElement("style");
+  vizSt.textContent = ".lp-viz{margin-top:10px;border-radius:16px;border:1px solid var(--hairline,#e6e2e3);background:var(--card,rgba(255,255,255,.5));box-shadow:0 8px 24px rgba(0,0,0,.12);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);overflow:hidden}"
+    + ".lp-viz[hidden]{display:none}"
+    + ".lp-viz canvas{display:block;width:100%;height:56px}";
+  document.head.appendChild(vizSt);
+  var vizAn = null, vizData = null, vizRaf = 0, vizCtx = null, vizBars = null;
+  function vizEnsure() {
+    if (vizAn || !window.__lpCtx || !window.__lpNode) return !!vizAn;
+    try {
+      vizAn = window.__lpCtx.createAnalyser();
+      vizAn.fftSize = 128; vizAn.smoothingTimeConstant = 0.78;
+      window.__lpNode.connect(vizAn);
+      vizData = new Uint8Array(vizAn.frequencyBinCount);
+      vizBars = new Float32Array(32);
+    } catch (e) { vizAn = null; }
+    return !!vizAn;
+  }
+  function vizSize() {
+    if (!vizCv || !vizWrap || vizWrap.hidden) return;
+    var dpr = Math.min(2, window.devicePixelRatio || 1), w = vizWrap.clientWidth || 300;
+    if (vizCv.width !== Math.round(w * dpr)) { vizCv.width = Math.round(w * dpr); vizCv.height = Math.round(56 * dpr); }
+    vizCtx = vizCv.getContext("2d"); vizCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function vizAccent() {
+    var cs = getComputedStyle(document.documentElement);
+    var v = (cs.getPropertyValue("--accent") || cs.getPropertyValue("--teal") || "").trim();
+    return /^#[0-9a-fA-F]{6}$/.test(v) ? v : "#2dd4bf";
+  }
+  function vizDraw() {
+    vizRaf = 0;
+    if (!lp.viz || vid.paused || vid.ended || vid.hidden || document.hidden) return;
+    if (!vizEnsure()) return;
+    vizSize(); if (!vizCtx) return;
+    vizAn.getByteFrequencyData(vizData);
+    var w = vizWrap.clientWidth || 300, h = 56, n = 32, bw = w / n;
+    vizCtx.clearRect(0, 0, w, h);
+    var ac = vizAccent();
+    for (var i = 0; i < n; i++) {
+      var bin = Math.floor(Math.pow(i / n, 1.35) * (vizData.length - 6)) + 2;
+      var v = vizData[bin] / 255;
+      vizBars[i] = Math.max(v, vizBars[i] * 0.82);
+      var bh = Math.max(2, vizBars[i] * (h - 8));
+      var x = i * bw + bw * 0.18, bwid = bw * 0.64, y = h - 4 - bh;
+      var g = vizCtx.createLinearGradient(0, y, 0, h);
+      g.addColorStop(0, ac); g.addColorStop(1, ac + "55");
+      vizCtx.fillStyle = g;
+      vizCtx.beginPath();
+      if (vizCtx.roundRect) vizCtx.roundRect(x, y, bwid, bh, 3); else vizCtx.rect(x, y, bwid, bh);
+      vizCtx.fill();
+    }
+    vizRaf = requestAnimationFrame(vizDraw);
+  }
+  function vizKick() { if (!vizRaf && lp.viz && !vid.paused && !vid.ended && !vid.hidden) vizRaf = requestAnimationFrame(vizDraw); }
+  function vizApplyVis() { if (vizWrap) vizWrap.hidden = !(lp.viz && !vid.hidden); if (vizWrap && !vizWrap.hidden) { vizSize(); vizKick(); } }
+  function vizRender() {
+    if (!vizBtn) return;
+    vizBtn.textContent = "\uD83C\uDFB5 " + T("Visualizer") + ": " + T(lp.viz ? "on" : "off");
+    vizBtn.setAttribute("aria-pressed", lp.viz ? "true" : "false");
+    vizBtn.classList.toggle("active", !!lp.viz);
+    if (vizHint) vizHint.textContent = T("Dancing bars follow the sound of your file. YouTube videos cannot drive them (a browser security limit).");
+    if (vizHint) vizHint.hidden = !lp.viz;
+    vizApplyVis();
+  }
+  if (vizBtn) vizBtn.addEventListener("click", function () {
+    lp.viz = !lp.viz; saveLp(); vizRender();
+    if (lp.viz) { ensureAudio(); vizSize(); vizKick(); }
+    toast(lp.viz ? T("Visualizer on") : T("Visualizer off"));
+  });
+  vid.addEventListener("play", vizKick);
+  window.addEventListener("resize", function () { if (vizWrap && !vizWrap.hidden) vizSize(); }, { passive: true });
+  if (window.MutationObserver) new MutationObserver(vizApplyVis).observe(vid, { attributes: true, attributeFilter: ["hidden"] });
+  (window.__relang = window.__relang || []).push(vizRender);
+  vizRender();
 
   // Subtitle upload: .srt/.vtt files are converted to WebVTT on this device, never uploaded.
   var subBtn = $("lpSubBtn"), subFile = $("lpSubFile"), subOff = $("lpSubOff"), subMsg = $("lpSubMsg"), subSizes = $("lpSubSizes");
@@ -10732,7 +10820,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Pause when headphones disconnect", "pause headphones unplug disconnect bluetooth earphones wire out", "#unplugChk"],
       ["Only unwatched in Watch later", "watch later unwatched filter hide watched backlog left to watch", "#laterUnwBtn"],
       ["Sleep countdown on the video", "sleep timer countdown pill video pause time left clock", "#ctl-sleep"],
-      ["Milestone cheers", "milestone progress 25 50 75 percent cheer celebrate halfway done", "#mileBtn"]
+      ["Milestone cheers", "milestone progress 25 50 75 percent cheer celebrate halfway done", "#mileBtn"],
+      ["Music visualizer", "visualizer dancing bars music sound waves audio animation local file", "#lpVizBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
