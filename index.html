@@ -7717,6 +7717,7 @@ html.low-fx :focus-visible { box-shadow: none !important; }
 .recent-row[hidden]{display:none}
 .recent-row .rr-lab{flex:none;font-size:12px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
 .recent-row .chip{flex:none;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recent-row .rr-undo{border-style:dashed;color:var(--ink2)}
 </style>
 <script>
 /* Recently played quick row (round 39): the last few videos as one-tap chips right under the link
@@ -7725,7 +7726,7 @@ html.low-fx :focus-visible { box-shadow: none !important; }
 (function () {
   var input = document.getElementById("linkInput"), load = document.getElementById("loadBtn"), hint = document.getElementById("linkHint");
   if (!input || !load || !hint || !hint.parentNode) return;
-  var TR = { "Recent": ["हाल के", "તાજેતરના"], "Play again: ": ["फिर चलाएं: ", "ફરી ચલાવો: "], "Video ": ["वीडियो ", "વિડિયો "] };
+  var TR = { "Recent": ["हाल के", "તાજેતરના"], "Play again: ": ["फिर चलाएं: ", "ફરી ચલાવો: "], "Video ": ["वीडियो ", "વિડિયો "], "Undo": ["पूर्ववत करें", "પૂર્વવત કરો"], "Chip hidden": ["चिप छिपाई गई", "ચિપ છુપાવી"], "Hold to hide": ["छिपाने के लिए दबाकर रखें", "છુપાવવા દબાવી રાખો"] };
   function t(s) { var l = document.documentElement.lang, r = TR[s]; return (r && (l === "hi" || l === "gu")) ? r[l === "hi" ? 0 : 1] : s; }
   var row = document.createElement("div"); row.className = "recent-row"; row.id = "recentRow"; row.hidden = true;
   row.setAttribute("role", "group");
@@ -7749,18 +7750,54 @@ html.low-fx :focus-visible { box-shadow: none !important; }
       var o = document.createElement("option"); o.value = "https://youtu.be/" + x.id; o.label = x.title || (t("Video ") + x.id); dl.appendChild(o);
     });
     var hist = []; try { hist = (JSON.parse(localStorage.getItem("vp-library.v1") || "null") || {}).hist || []; } catch (e) {}
-    var shown = hist.filter(function (x) { return x && typeof x.id === "string" && /^[a-zA-Z0-9_-]{11}$/.test(x.id); }).slice(0, 5);
+    var hid = hiddenSet();
+    var shown = hist.filter(function (x) { return x && typeof x.id === "string" && /^[a-zA-Z0-9_-]{11}$/.test(x.id) && !hid[x.id]; }).slice(0, 5);
     row.hidden = !shown.length;
     if (!shown.length) return;
     var lab = document.createElement("span"); lab.className = "rr-lab"; lab.textContent = t("Recent"); row.appendChild(lab);
     shown.forEach(function (x) {
       var b = document.createElement("button"); b.type = "button"; b.className = "chip";
-      var name = x.title || (t("Video ") + x.id); b.textContent = name; b.title = name;
+      var name = x.title || (t("Video ") + x.id); b.textContent = name; b.title = name + " · " + t("Hold to hide");
       b.setAttribute("aria-label", t("Play again: ") + name);
-      b.addEventListener("click", function () { input.value = "https://youtu.be/" + x.id; load.click(); });
+      b.addEventListener("click", function () { if (suppressClick) { suppressClick = false; return; } input.value = "https://youtu.be/" + x.id; load.click(); });
+      addHold(b, x.id);
       row.appendChild(b);
     });
     backfill(shown);
+  }
+  /* Round 40: manage the row itself - press and hold (or right-click) a chip to hide it.
+     Hiding only affects this quick row; the video stays in Recently watched. An Undo chip
+     shows for a few seconds after each hide. */
+  var HIDE_KEY = "vp-recent-hide.v1", undoBtn = null, undoTimer = null, suppressClick = false;
+  function hiddenSet() { var o = {}; try { (JSON.parse(localStorage.getItem(HIDE_KEY) || "[]") || []).forEach(function (id) { o[id] = 1; }); } catch (e) {} return o; }
+  function addHold(b, id) {
+    var timer = null;
+    function start(e) { if (e.pointerType === "mouse" && e.button !== 0) return; stop(); timer = setTimeout(function () { timer = null; suppressClick = true; hideChip(id); }, 550); }
+    function stop() { if (timer) { clearTimeout(timer); timer = null; } }
+    b.addEventListener("pointerdown", start);
+    b.addEventListener("pointerup", stop);
+    b.addEventListener("pointercancel", stop);
+    b.addEventListener("pointerleave", stop);
+    b.addEventListener("contextmenu", function (e) { e.preventDefault(); suppressClick = true; hideChip(id); });
+  }
+  function hideChip(id) {
+    var h = []; try { h = JSON.parse(localStorage.getItem(HIDE_KEY) || "[]") || []; } catch (e) {}
+    if (h.indexOf(id) >= 0) return;
+    h.push(id); try { localStorage.setItem(HIDE_KEY, JSON.stringify(h.slice(-50))); } catch (e) {}
+    render(); showUndo(id);
+  }
+  function showUndo(id) {
+    if (undoBtn) undoBtn.remove(); if (undoTimer) clearTimeout(undoTimer);
+    var u = document.createElement("button"); u.type = "button"; u.className = "chip rr-undo";
+    u.textContent = t("Chip hidden") + " · " + t("Undo");
+    u.setAttribute("aria-label", t("Undo"));
+    u.addEventListener("click", function () {
+      var h = []; try { h = JSON.parse(localStorage.getItem(HIDE_KEY) || "[]") || []; } catch (e) {}
+      h = h.filter(function (x) { return x !== id; }); try { localStorage.setItem(HIDE_KEY, JSON.stringify(h)); } catch (e) {}
+      if (undoTimer) clearTimeout(undoTimer); undoBtn = null; render();
+    });
+    undoBtn = u; row.hidden = false; row.appendChild(u);
+    undoTimer = setTimeout(function () { if (undoBtn === u) { undoBtn = null; render(); } }, 6000);
   }
   /* Round 40 fix: an old history entry saved before titles were stored used to show a raw
      video ID in the chips and the suggestion list. Now it gets a friendly label right away,
@@ -7789,7 +7826,7 @@ html.low-fx :focus-visible { box-shadow: none !important; }
     });
   }
   var hl = document.getElementById("histList");
-  if (hl) new MutationObserver(function () { setTimeout(render, 0); }).observe(hl, { childList: true });
+  if (hl) new MutationObserver(function () { setTimeout(function () { if (!undoBtn) render(); }, 0); }).observe(hl, { childList: true });
   var lb = document.getElementById("langBtn"); if (lb) lb.addEventListener("click", function () { setTimeout(render, 50); });
   render();
 })();
