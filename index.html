@@ -1169,6 +1169,20 @@ html.theme-xfade .lib-item, html.theme-xfade .pl-item, html.theme-xfade input, h
 @media (prefers-reduced-motion: reduce) { section::after { content: none !important; } }
 html.low-fx section::after, html.high-contrast section::after { content: none !important; }
 </style>
+<style id="r34-mini">
+/* Mini player: glass bar with a play/pause button and a thin progress line */
+#playerDock.is-mini { backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); border: 1px solid var(--hairline); animation: r34MiniIn .35s cubic-bezier(.2,.9,.3,1.2); }
+#playerDock.is-mini #miniTools { background: transparent; align-items: center; }
+#miniPlay { min-width: 44px; font-weight: 700; margin-right: auto; }
+html:not(.vp-playing) #miniPlay::before { content: "\25B6"; }
+html.vp-playing #miniPlay::before { content: "\23F8"; }
+#miniBar { height: 3px; background: var(--soft); display: none; }
+#playerDock.is-mini #miniBar { display: block; }
+#miniBar i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--teal), #9769ff); border-radius: 0 3px 3px 0; }
+@keyframes r34MiniIn { from { transform: translateY(24px) scale(.94); opacity: 0; } to { transform: none; opacity: 1; } }
+html.low-fx #playerDock.is-mini { animation: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+@media (prefers-reduced-motion: reduce) { #playerDock.is-mini { animation: none; } }
+</style>
 <style id="r33-seek">
 /* Seek bar: gradient progress fill, glowing thumb while playing */
 #seek { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
@@ -3261,6 +3275,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function paintSeekFill() {
     var max = Number(seek.max) || 1, val = Number(seek.value) || 0;
     var pct = Math.max(0, Math.min(100, val / max * 100));
+    var mb = document.querySelector("#miniBar i"); if (mb) mb.style.width = pct + "%";
     seek.style.setProperty("--seek-fill", "linear-gradient(90deg, var(--teal) 0%, #9769ff " + pct + "%, var(--soft) " + pct + "%, var(--soft) 100%)");
   }
   paintSeekFill();
@@ -3465,8 +3480,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   playerSlot.id = "playerSlot"; playerDock.id = "playerDock";
   frameBox.parentNode.insertBefore(playerSlot, frameBox); playerSlot.appendChild(playerDock); playerDock.appendChild(frameBox);
   var miniTools = document.createElement("div"); miniTools.id = "miniTools";
-  miniTools.innerHTML = '<button id="miniBack" class="chip" type="button">' + T("Back to player") + '</button><button id="miniClose" class="chip" type="button" aria-label="' + T("Close mini player and pause") + '">' + T("✕ Pause") + '</button>';
+  miniTools.innerHTML = '<button id="miniPlay" class="chip" type="button" aria-label="Play or pause"></button><button id="miniBack" class="chip" type="button">' + T("Back to player") + '</button><button id="miniClose" class="chip" type="button" aria-label="' + T("Close mini player and pause") + '">' + T("✕ Pause") + '</button>';
   playerDock.appendChild(miniTools);
+  var miniBar = document.createElement("div"); miniBar.id = "miniBar"; miniBar.innerHTML = "<i></i>"; playerDock.appendChild(miniBar);
+  $("miniPlay").addEventListener("click", function () { if (!playBtn.disabled) playBtn.click(); });
   function setMini(on) {
     if (miniActive === on) return;
     if (on) playerSlot.style.height = playerSlot.getBoundingClientRect().height + "px";
