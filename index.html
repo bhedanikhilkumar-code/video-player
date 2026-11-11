@@ -1134,6 +1134,15 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 .accent-custom { background: conic-gradient(from 0deg, #e0533d, #e0b53d, #3aa86a, #3a6fd0, #8a4fd0, #e0533d); }
 #accentCustom { width: 46px; height: 34px; padding: 2px; border: 1px solid var(--hairline); border-radius: 10px; background: var(--card); cursor: pointer; }
 #accentCustom.accent-picked { outline: 3px solid var(--teal); outline-offset: 2px; }
+/* Moving background: slow drifting colours behind the glass (opt-in). */
+html.bg-motion body::before { inset: -12%; animation: bg-drift 46s ease-in-out infinite alternate; }
+@keyframes bg-drift {
+  0% { transform: translate3d(-2.5%, -1.5%, 0) scale(1); }
+  50% { transform: translate3d(2%, 2%, 0) scale(1.06); }
+  100% { transform: translate3d(-1.5%, 2.5%, 0) scale(1.02); }
+}
+@media (prefers-reduced-motion: reduce) { html.bg-motion body::before { animation: none !important; inset: 0; } }
+html.low-fx.bg-motion body::before, html.high-contrast.bg-motion body::before { animation: none !important; inset: 0; }
 </style>
 </head>
 <body>
@@ -1507,6 +1516,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
         <p class="hint" id="settingsHint">Everything the app remembers is stored on this device only: volume, speed, theme, language, queue modes, the sleep timer and saver choices.</p>
         <label class="dl-chk"><input type="checkbox" id="autoPauseChk"> <span id="autoPauseT">Pause when I leave this tab</span></label>
         <label class="dl-chk"><input type="checkbox" id="autoResumeChk"> <span id="autoResumeT">Resume when I come back</span></label>
+        <label class="dl-chk"><input type="checkbox" id="bgMotionChk"> <span id="bgMotionT">Moving background (slow drifting colours)</span></label>
         <p class="hint" id="autoPauseHint">Handy when a call or another app pulls you away. Off by default; both are remembered on this device.</p>
         <div class="actions"><button class="chip" id="resetAllBtn" type="button">Reset to default</button></div>
       </div>
@@ -1656,10 +1666,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
-  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false };
+  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; ["cc", "ccLang", "accent", "lang", "accentCustom"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; ["cc", "ccLang", "accent", "lang", "accentCustom"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
@@ -4388,6 +4398,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#upnextCancel", "Cancel", "रद्द करें"],
     ["#autoPauseT", "Pause when I leave this tab", "टैब छोड़ने पर रोकें"],
     ["#autoResumeT", "Resume when I come back", "वापस आने पर फिर चलाएं"],
+    ["#bgMotionT", "Moving background (slow drifting colours)", "चलती पृष्ठभूमि (धीरे बहते रंग)"],
     ["#autoPauseHint", "Handy when a call or another app pulls you away. Off by default; both are remembered on this device.", "जब कॉल या दूसरा ऐप ध्यान खींच ले तो काम आता है. डिफ़ॉल्ट रूप से बंद; दोनों इसी डिवाइस पर याद रहते हैं."],
   ];
   var I18N_PH = [
@@ -4493,6 +4504,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#upnextCancel": "રદ કરો",
  "#autoPauseT": "ટૅબ છોડું ત્યારે રોકો",
  "#autoResumeT": "પાછો આવું ત્યારે ફરી ચલાવો",
+ "#bgMotionT": "ચાલતી પૃષ્ઠભૂમિ (ધીમે વહેતાં રંગો)",
  "#autoPauseHint": "જ્યારે કૉલ કે બીજી એપ ધ્યાન ખેંચી લે ત્યારે ઉપયોગી. ડિફૉલ્ટ બંધ; બંને આ ડિવાઇસ પર યાદ રહે છે.",
  "#settingsH": "સેટિંગ",
  "#settingsHint": "એપ જે યાદ રાખે છે તે ફક્ત આ ડિવાઇસ પર જ રહે છે: વોલ્યુમ, સ્પીડ, થીમ, ભાષા, કતાર મોડ, સ્લીપ ટાઇમર અને સેવર પસંદગી.",
@@ -6818,6 +6830,25 @@ if (window.__vpApplyLang) window.__vpApplyLang();
  });
 })();
 
+</script>
+<script>
+// Moving background (round 25): opt-in slow colour drift behind the glass.
+(function () {
+  var bgChk = $("bgMotionChk");
+  function bgMotionAllowed() {
+    return !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+  function applyBgMotion() {
+    var on = prefs.bgMotion === true && bgMotionAllowed() && !document.documentElement.classList.contains("low-fx");
+    document.documentElement.classList.toggle("bg-motion", on);
+    if (bgChk) { bgChk.checked = prefs.bgMotion === true; bgChk.disabled = !bgMotionAllowed(); }
+  }
+  if (bgChk) bgChk.addEventListener("change", function () {
+    prefs.bgMotion = bgChk.checked; savePrefs(); applyBgMotion();
+    toast(prefs.bgMotion ? T("Moving background on") : T("Moving background off"));
+  });
+  applyBgMotion();
+})();
 </script>
 </body>
           </html>
