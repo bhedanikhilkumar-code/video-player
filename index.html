@@ -1262,6 +1262,16 @@ html.low-fx.vp-playing .frame-glow { opacity: .22; }
 @media (max-width: 640px) { .frame-glow { filter: blur(16px) saturate(1.2); inset: -8px -10px; } }
 @media (prefers-reduced-motion: reduce) { html .frame-glow, html.vp-playing .frame-glow { animation: none; } }
 </style>
+<style id="r36-mini-title">
+/* Mini player: now-playing title scrolls under the video; tap it to jump back */
+#miniTitle { display: none; width: 100%; border: 0; padding: 7px 12px 0; background: transparent; color: inherit; font: inherit; font-size: 12.5px; font-weight: 600; letter-spacing: .01em; text-align: left; cursor: pointer; overflow: hidden; white-space: nowrap; mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); }
+#playerDock.is-mini #miniTitle { display: block; }
+#miniTitleTxt { display: inline-block; white-space: nowrap; }
+#miniTitle.long #miniTitleTxt { animation: r36marq linear infinite; }
+@keyframes r36marq { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+html.low-fx #miniTitle.long #miniTitleTxt, html.tab-hidden #miniTitle.long #miniTitleTxt { animation: none; }
+@media (prefers-reduced-motion: reduce) { #miniTitle.long #miniTitleTxt { animation: none; } }
+</style>
 <style id="r36-ab-band">
 /* A-B repeat: amber band under the seek bar shows the loop range at a glance */
 .ab-strip { position: relative; height: 10px; margin: 2px 10px 0; }
@@ -7441,6 +7451,36 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       sec.style.setProperty("--my", (e.clientY - r.top) + "px");
     });
   });
+})();
+</script>
+<script id="r36-mini-title-js">
+// Mini player: shows the now-playing title under the video; tap it to jump back to the player.
+(function () {
+  var dock = document.getElementById("playerDock"), tools = document.getElementById("miniTools"), info = document.getElementById("infoTitle");
+  if (!dock || !tools || !info) return;
+  var btn = document.createElement("button"); btn.id = "miniTitle"; btn.type = "button";
+  var txt = document.createElement("span"); txt.id = "miniTitleTxt"; btn.appendChild(txt);
+  dock.insertBefore(btn, tools);
+  var base = null;
+  function paint() {
+    var t = (info.textContent || "").trim();
+    if (t === base) return; base = t;
+    btn.classList.remove("long"); txt.style.animationDuration = ""; txt.textContent = t;
+    btn.setAttribute("aria-label", t ? t + " - " + (window.T ? window.T("Back to player") : "Back to player") : (window.T ? window.T("Back to player") : "Back to player"));
+    if (!t) return;
+    requestAnimationFrame(function () {
+      if (txt.scrollWidth > btn.clientWidth + 8) {
+        var unit = t + "   \u2022   ";
+        txt.textContent = unit + unit;
+        txt.style.animationDuration = Math.min(30, Math.max(8, t.length / 4)) + "s";
+        btn.classList.add("long");
+      }
+    });
+  }
+  if (window.MutationObserver) new MutationObserver(paint).observe(info, { childList: true, characterData: true, subtree: true });
+  window.addEventListener("resize", function () { base = null; paint(); });
+  btn.addEventListener("click", function () { var b = document.getElementById("miniBack"); if (b) b.click(); });
+  paint();
 })();
 </script>
 <script id="r36-ab-band-js">
