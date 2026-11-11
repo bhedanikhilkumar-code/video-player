@@ -1670,7 +1670,7 @@ html.low-fx section::after, html.high-contrast section::after { content: none !i
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
       <div id="musicQueue">
-      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <div class="row music-controls" aria-label="Queue playback options">
         <button class="chip" id="prevQueueBtn" type="button">Previous</button>
         <button class="chip" id="shuffleQueueBtn" type="button" aria-pressed="false">Shuffle: off</button>
@@ -1834,6 +1834,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Play next": ["अगले में चलाएं", "આગળ ચલાવો"],
    "Will play next": ["अगले नंबर पर चलेगा", "આગળના નંબરે ચાલશે"],
    "Already playing": ["यह पहले से चल रहा है", "આ પહેલેથી ચાલે છે"],
+   "Copy list": ["लिस्ट कॉपी करें", "યાદી કોપી કરો"],
+   "Queue copied as a list": ["कतार लिस्ट कॉपी हुई", "કતાર યાદી કોપી થઈ"],
    "Watch later list cleared": ["वॉच लेटर सूची साफ़ हुई", "વોચ લેટર યાદી સાફ થઈ"],
    "Watch later list restored": ["वॉच लेटर सूची वापस आई", "વોચ લેટર યાદી પાછી આવી"],
    "History cleared": ["इतिहास साफ़ हुआ", "ઇતિહાસ સાફ થયો"],
@@ -2580,6 +2582,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (!playNext()) showLibErr(T("That was the last video in the queue."));
     else showLibErr("");
   });
+  // Copy the whole queue as a numbered text list (titles + links) for sharing in chats.
+  var copyQueueBtn = $("copyQueueBtn");
+  if (copyQueueBtn) copyQueueBtn.addEventListener("click", function () {
+    if (!lib.queue.length) { showLibErr(T("Queue is empty. Add links with Add to queue.")); return; }
+    var text = lib.queue.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n");
+    function done(ok) { toast(ok ? T("Queue copied as a list") : T("Could not copy. Try again.")); }
+    function fallback() {
+      try { var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var ok2 = document.execCommand("copy"); ta.remove(); done(!!ok2); } catch (e) { done(false); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback); else fallback();
+  });
+  (window.__relang = window.__relang || []).push(function () { if (copyQueueBtn) copyQueueBtn.textContent = T("Copy list"); });
+  if (copyQueueBtn) copyQueueBtn.textContent = T("Copy list");
   clearQueueBtn.addEventListener("click", function () { var snap = lib.queue.slice(), sp = qPos; lib.queue = []; qPos = -1; showLibErr(""); saveLib(); renderLib(); if (snap.length) toastUndo(T("Queue cleared"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored")); });
   var dedupeQueueBtn = $("dedupeQueueBtn");
   if (dedupeQueueBtn) dedupeQueueBtn.addEventListener("click", function () {
