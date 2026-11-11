@@ -937,6 +937,10 @@ html.cinema-on .frame{box-shadow:0 24px 90px rgba(0,0,0,.6);}
 .upnext-bar{position:fixed;left:50%;bottom:calc(64px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(94vw,520px);display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:16px;border:1px solid var(--hairline);background:var(--card);color:var(--ink);box-shadow:0 12px 32px rgba(0,0,0,.22);font-size:14px;line-height:1.35;z-index:9400;}
 .upnext-bar .row{margin:0;flex:none;}
 .upnext-bar[hidden]{display:none;}
+.vp-lock-veil{position:fixed;inset:0;z-index:99990;touch-action:none;overscroll-behavior:contain;}
+.vp-lock-pill{position:absolute;left:50%;bottom:calc(26px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:13px 20px;border-radius:999px;border:1px solid var(--hairline);background:var(--card);color:var(--ink);box-shadow:0 12px 32px rgba(0,0,0,.28);font-size:14px;font-weight:700;user-select:none;-webkit-user-select:none;touch-action:none;cursor:pointer;overflow:hidden;white-space:nowrap;}
+.vp-lock-pill .lk-fill{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--teal);opacity:.3;pointer-events:none;}
+.vp-lock-pill .lk-txt{position:relative;}
 </style>
 <style id="ux-totop">
 /* Back to top: the page is very long on a phone, so after one screen of scrolling
@@ -1552,7 +1556,7 @@ setTimeout(done,3000);})();
           <div class="row">
             <button class="btn" id="playBtn" disabled>▶ Play</button>
             <span class="time" id="timeLabel">0:00 / 0:00</span> <span class="ends-at" id="endsAt" hidden></span>
-            <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button>
+            <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button> <button class="chip" id="lockBtn" type="button" aria-pressed="false">🔒 Lock touch</button>
           </div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
@@ -2205,6 +2209,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Stop at end of video": ["वीडियो के अंत में रुकें", "વીડિયોના અંતે રોકાઓ"],
    "Will stop at end of video": ["वीडियो के अंत में रुकेगा", "વીડિયોના અંતે રોકાશે"],
    "Stops at the end of this video.": ["इस वीडियो के अंत में रुकेगा.", "આ વીડિયોના અંતે રોકાશે."],
+   "Touch locked": ["टच लॉक हुआ", "ટચ લૉક થયું"],
+   "hold to unlock": ["खोलने के लिए दबाकर रखें", "ખોલવા દબાવી રાખો"],
+   "Touch locked. Hold the lock to unlock.": ["टच लॉक हुआ. खोलने के लिए लॉक को दबाकर रखें.", "ટચ લૉક થયું. ખોલવા લૉકને દબાવી રાખો."],
+   "Touch unlocked": ["टच अनलॉक हुआ", "ટચ અનલૉક થયું"],
    "Load a video first, then set this.": ["पहले वीडियो चलाएं, फिर इसे लगाएं.", "પહેલા વીડિયો ચલાવો, પછી આ સેટ કરો."],
    "Load a video first, then the pad skips and changes volume.": ["पहले वीडियो चलाएं, तब पैड से स्किप और वॉल्यूम बदलेगा.", "પહેલા વીડિયો ચલાવો, ત્યારજ પેડથી સ્કિપ અને વોલ્યુમ બદલાશે."],
    "Volume ": ["आवाज़ ", "અવાજ "],
@@ -4082,6 +4090,75 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (ambGlowBtn) ambGlowBtn.addEventListener("click", function () { prefs.ambGlow = prefs.ambGlow === false; savePrefs(); ambGlowApply(); toast(prefs.ambGlow ? T("Ambient light on") : T("Ambient light off")); });
   ambGlowApply();
 
+  // Touch lock: freezes every tap and key while the video keeps playing - handy in a
+  // pocket or when kids hold the phone. Hold the lock pill 1.5s (or press Escape) to unlock.
+  var touchLocked = false, lockVeil = null, lockFillEl = null, lockHoldRAF = 0, lockHoldT0 = 0;
+  var lockBtn = $("lockBtn");
+  function lockBtnRender() {
+    if (!lockBtn) return;
+    lockBtn.setAttribute("aria-pressed", touchLocked ? "true" : "false");
+    lockBtn.classList.toggle("active", touchLocked);
+  }
+  function lockHoldStop() { if (lockHoldRAF) { cancelAnimationFrame(lockHoldRAF); lockHoldRAF = 0; } if (lockFillEl) lockFillEl.style.width = "0"; }
+  function lockHoldTick() {
+    var pct = Math.min(100, (Date.now() - lockHoldT0) / 1500 * 100);
+    if (lockFillEl) lockFillEl.style.width = pct + "%";
+    if (pct >= 100) { lockHoldRAF = 0; touchLockOff(); return; }
+    lockHoldRAF = requestAnimationFrame(lockHoldTick);
+  }
+  function touchLockOn() {
+    if (touchLocked) return;
+    touchLocked = true; lockBtnRender();
+    lockVeil = document.createElement("div");
+    lockVeil.className = "vp-lock-veil";
+    lockVeil.setAttribute("role", "group");
+    lockVeil.setAttribute("aria-label", T("Touch locked") + ". " + T("hold to unlock"));
+    var pill = document.createElement("div");
+    pill.className = "vp-lock-pill";
+    pill.setAttribute("role", "button");
+    pill.setAttribute("aria-label", T("hold to unlock"));
+    lockFillEl = document.createElement("i"); lockFillEl.className = "lk-fill";
+    var txt = document.createElement("span"); txt.className = "lk-txt";
+    txt.textContent = "\uD83D\uDD12 " + T("Touch locked") + " \u00b7 " + T("hold to unlock");
+    pill.appendChild(lockFillEl); pill.appendChild(txt); lockVeil.appendChild(pill);
+    // The veil swallows every gesture outside the pill so nothing underneath (including
+    // the YouTube player itself) reacts to stray taps; the pill is the only live spot.
+    ["pointerdown", "pointerup", "pointermove", "pointercancel", "click", "dblclick", "wheel", "contextmenu"].forEach(function (ev) {
+      lockVeil.addEventListener(ev, function (e) {
+        if (e.target && e.target.closest && e.target.closest(".vp-lock-pill")) return;
+        e.preventDefault(); e.stopPropagation();
+      }, true);
+    });
+    pill.addEventListener("pointerdown", function (e) {
+      e.preventDefault(); e.stopPropagation();
+      lockHoldStop(); lockHoldT0 = Date.now();
+      lockHoldRAF = requestAnimationFrame(lockHoldTick);
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) { pill.addEventListener(ev, function (e) { e.stopPropagation(); lockHoldStop(); }); });
+    (document.fullscreenElement || document.body).appendChild(lockVeil);
+    toast(T("Touch locked. Hold the lock to unlock."), 4000);
+  }
+  function touchLockOff() {
+    if (!touchLocked) return;
+    touchLocked = false; lockBtnRender(); lockHoldStop();
+    if (lockVeil) { lockVeil.remove(); lockVeil = null; lockFillEl = null; }
+    toast(T("Touch unlocked"));
+  }
+  if (lockBtn) lockBtn.addEventListener("click", function () { if (touchLocked) touchLockOff(); else touchLockOn(); });
+  // While locked, block every shortcut key too; Escape unlocks. This window-level capture
+  // listener runs before the page's own key handlers, so it covers all of them.
+  window.addEventListener("keydown", function (e) {
+    if (!touchLocked) return;
+    e.preventDefault(); e.stopPropagation();
+    if (e.key === "Escape") touchLockOff();
+  }, true);
+  (window.__relang = window.__relang || []).push(function () {
+    var t = lockVeil && lockVeil.querySelector(".lk-txt");
+    if (t) t.textContent = "\uD83D\uDD12 " + T("Touch locked") + " \u00b7 " + T("hold to unlock");
+    if (lockVeil) lockVeil.setAttribute("aria-label", T("Touch locked") + ". " + T("hold to unlock"));
+  });
+  lockBtnRender();
+
   // ================= Support features (2026-11-09) =================
   var DL_API = "https://vp-downloader.onrender.com";
 
@@ -5092,6 +5169,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#shareBtn", "🔗 Share at this time", "🔗 इसी समय से शेयर"],
     ["#cinemaBtn", "🎬 Cinema", "🎬 सिनेमा"],
     ["#ambGlowBtn", "✨ Ambient light", "✨ एम्बिएंट लाइट"],
+    ["#lockBtn", "🔒 Lock touch", "🔒 टच लॉक"],
     ["#npPillT", "Now playing", "अब चल रहा है"],
     ["#qrBtn", "QR code", "QR कोड"],
     ["#nextBtn", "Next ⏭", "अगला ⏭"],
@@ -5328,7 +5406,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#plBtn": "પ્લેલિસ્ટ કતારમાં ઉમેરો",
  "#fsBtn": "⛶ ફુલ સ્ક્રીન",
  "#shareBtn": "🔗 આ સમયથી શેર કરો",
- "#cinemaBtn": "🎬 સિનેમા", "#ambGlowBtn": "✨ એમ્બિયન્ટ લાઇટ", "#npPillT": "હવે ચાલે છે",
+ "#cinemaBtn": "🎬 સિનેમા", "#ambGlowBtn": "✨ એમ્બિયન્ટ લાઇટ", "#lockBtn": "🔒 ટચ લૉક", "#npPillT": "હવે ચાલે છે",
  "#qrBtn": "QR કોડ",
  "#nextBtn": "આગળનો ⏭",
  "#clearQueueBtn": "સાફ કરો",
@@ -8049,6 +8127,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Notes for this video", "note notes write", "#ctl-notes"],
       ["Music mode", "music audio songs", "#musicModeBtn"],
       ["Cinema mode", "cinema dark theatre theater", "#cinemaBtn"],
+      ["Touch lock", "lock touch child freeze pocket tap", "#lockBtn"],
       ["Downloader (non-YouTube sites)", "download downloader mp3 trim save video", "#dl"],
       ["Play a local file, volume boost", "local file boost 300 play", "#lp"],
       ["Equalizer", "equalizer eq bass treble", "#lpEqH"],
