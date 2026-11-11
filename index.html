@@ -2019,6 +2019,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Next in ": ["अगला ", "આગળ "],
    "a shuffled pick": ["शफ़ल से कोई भी", "શફલથી કોઈ પણ"],
    "Auto-next stopped. Tap Next when you're ready.": ["ऑटो-अगला रुक गया. तैयार हों तो Next दबाएं.", "ઓટો-આગળ અટક્યું. તૈયાર હો ત્યારે Next દબાવો."],
+   "Repeat one": ["एक दोहराएं", "એક દોહરાવો"],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
@@ -4740,8 +4741,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (typeof eqApply === "function") eqApply();
     window.__lpNode = node; window.__lpCtx = ctx;
   }
-  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: false, eq: { b: 0, m: 0, t: 0 } };
-  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (typeof sv.lrepeat === "boolean") lp.lrepeat = sv.lrepeat; if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); } } catch (e) {}
+  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, eq: { b: 0, m: 0, t: 0 } };
+  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); } } catch (e) {}
   gain.value = lp.gain;
   function saveLp() { try { localStorage.setItem(LK, JSON.stringify(lp)); } catch (e) {} }
   function setGain() { var v = Number(gain.value); lp.gain = v; saveLp(); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
@@ -4777,16 +4778,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   function updateLocalButtons() { $("lpPrev").disabled = !lp.lshuffle && !lp.lrepeat && localIndex <= 0; $("lpNext").disabled = !lp.lshuffle && !lp.lrepeat && (localIndex < 0 || localIndex >= localFiles.length - 1); renderLocalQueue(); }
   function renderLpModes() {
-    [["lpShuffleBtn", "lshuffle", "Shuffle"], ["lpRepeatBtn", "lrepeat", "Repeat all"]].forEach(function (x) {
+    [["lpShuffleBtn", "lshuffle", "Shuffle"]].forEach(function (x) {
       var b = $(x[0]); if (!b) return;
       b.textContent = T(x[2]) + ": " + T(lp[x[1]] ? "on" : "off");
       b.setAttribute("aria-pressed", String(lp[x[1]])); b.classList.toggle("active", lp[x[1]]);
     });
+    var rptBtn = $("lpRepeatBtn");
+    if (rptBtn) {
+      rptBtn.textContent = lp.lrepeat === 2 ? T("Repeat one") + ": " + T("on") : T("Repeat all") + ": " + T(lp.lrepeat ? "on" : "off");
+      rptBtn.setAttribute("aria-pressed", String(lp.lrepeat > 0)); rptBtn.classList.toggle("active", lp.lrepeat > 0);
+    }
   }
-  [["lpShuffleBtn", "lshuffle"], ["lpRepeatBtn", "lrepeat"]].forEach(function (x) {
+  [["lpShuffleBtn", "lshuffle"]].forEach(function (x) {
     var b = $(x[0]); if (!b) return;
     b.addEventListener("click", function () { lp[x[1]] = !lp[x[1]]; saveLp(); renderLpModes(); updateLocalButtons(); });
   });
+  (function () { var b = $("lpRepeatBtn"); if (b) b.addEventListener("click", function () { lp.lrepeat = lp.lrepeat >= 2 ? 0 : lp.lrepeat + 1; saveLp(); renderLpModes(); updateLocalButtons(); }); })();
   (window.__relang = window.__relang || []).push(renderLpModes);
   renderLpModes();
   function localPlay() { var p = vid.play(); if (p && p.catch) p.catch(function(){ sessionMsg.textContent = T("Tap Play on the local player to continue. Your browser blocked automatic playback."); }); }
@@ -4854,7 +4861,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   vid.addEventListener("timeupdate", function () { updatePosState(false); });
   ["seeked", "ratechange", "durationchange", "play", "pause"].forEach(function (ev) { vid.addEventListener(ev, function () { updatePosState(true); }); });
   vid.addEventListener("pause",function(){if(session)session.playbackState="paused";});
-  vid.addEventListener("ended",function(){if(typeof loopB!=="undefined" && loopB!==null)return;if(lp.lshuffle&&localFiles.length>1)localStep(1);else if(localIndex>=0&&localIndex<localFiles.length-1)localStep(1);else if(lp.lrepeat&&localFiles.length)playLocalAt(0,true);else if(session)session.playbackState="none";});
+  vid.addEventListener("ended",function(){if(typeof loopB!=="undefined" && loopB!==null)return;if(lp.lrepeat===2&&localFiles.length&&localIndex>=0){vid.currentTime=0;localPlay();}else if(lp.lshuffle&&localFiles.length>1)localStep(1);else if(localIndex>=0&&localIndex<localFiles.length-1)localStep(1);else if(lp.lrepeat&&localFiles.length)playLocalAt(0,true);else if(session)session.playbackState="none";});
   vid.addEventListener("error",function(){sessionMsg.textContent=T("This file could not be played. Try a format your browser supports or choose Next file.");});
   document.addEventListener("vp-youtube-selected",function(){vid.pause(); if(session) {session.metadata=null;session.playbackState="none";["play","pause","previoustrack","nexttrack","seekbackward","seekforward","seekto"].forEach(function(n){mediaAction(n,null);});}});
   vid.addEventListener("loadedmetadata", function () {
