@@ -1318,7 +1318,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 
         <div class="ctl-card wide" id="ctl-marks">
           <h3 id="marksH">Saved moments</h3>
-          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button> <button class="chip" id="markCopyBtn" type="button" disabled>📋 Copy list</button></div>
+          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button> <button class="chip" id="markPrevBtn" type="button" disabled>⏮ Previous</button> <button class="chip" id="markNextBtn" type="button" disabled>Next ⏭</button> <button class="chip" id="markCopyBtn" type="button" disabled>📋 Copy list</button></div>
           <div class="marks-list" id="markList"></div>
           <p class="hint" id="marksHint">Keep your favourite spots in this video. Tap one to jump to it. Saved on this device, for each video.</p>
         </div>
@@ -2011,6 +2011,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Moment saved": ["पल सेव हुआ", "ક્ષણ સેવ થઈ"],
    "Moment removed": ["पल हटाया गया", "ક્ષણ હટાઈ"],
    "Moments copied": ["पल कॉपी हुए", "ક્ષણો કૉપી થઈ"],
+   "No earlier moment": ["इससे पहले कोई पल नहीं", "આની પહેલાં કોઈ ક્ષણ નથી"],
+   "No later moment": ["इसके बाद कोई पल नहीं", "આના પછી કોઈ ક્ષણ નથી"],
    "No moments to copy yet.": ["कॉपी करने के लिए अभी कोई पल नहीं.", "કૉપી કરવા હજી કોઈ ક્ષણ નથી."],
    "Could not copy. Try again.": ["कॉपी नहीं हो सका. फिर कोशिश करें.", "કૉપી થઈ શક્યું નહીં. ફરી પ્રયત્ન કરો."],
    "Moments restored: ": ["पल वापस आए: ", "ક્ષણો પાછી આવી: "],
@@ -4071,6 +4073,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#marksH", "Saved moments", "सेव किए पल"],
     ["#markAddBtn", "🔖 Save this moment", "🔖 यह पल सेव करें"],
     ["#markCopyBtn", "📋 Copy list", "📋 सूची कॉपी करें"],
+    ["#markPrevBtn", "⏮ Previous", "⏮ पिछला"],
+    ["#markNextBtn", "Next ⏭", "अगला ⏭"],
     ["#marksHint", "Keep your favourite spots in this video. Tap one to jump to it. Saved on this device, for each video.", "इस वीडियो के अपने पसंदीदा हिस्से सेव करें. किसी पर टैप करके वहां पहुंचें. हर वीडियो के लिए इसी डिवाइस पर सेव रहता है."],
     [".feat-nav a[href=\"#ctl-marks\"]", "Moments", "पल"],
     ["#upnextGo", "Play now", "अभी चलाएं"],
@@ -4168,6 +4172,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#marksH": "સેવ કરેલી ક્ષણો",
  "#markAddBtn": "🔖 આ ક્ષણ સેવ કરો",
  "#markCopyBtn": "📋 યાદી કૉપી કરો",
+ "#markPrevBtn": "⏮ પાછલી",
+ "#markNextBtn": "આગલી ⏭",
  "#marksHint": "આ વીડિયોના તમારા પસંદીદા ભાગ સેવ કરો. કોઈ પર ટૅપ કરીને ત્યાં જાઓ. દરેક વીડિયો માટે આ ડિવાઇસ પર સેવ રહે છે.",
  ".feat-nav a[href=\"#ctl-marks\"]": "ક્ષણો",
  "#upnextGo": "અત્યારે ચલાવો",
@@ -4429,6 +4435,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   })();
   function setMarkBtns(n) { ["markCopyBtn", "markPrevBtn", "markNextBtn"].forEach(function (id) { var b = $(id); if (b) b.disabled = !n; }); }
   function sortedMarks() { var a = (curId && marks[curId]) ? marks[curId].slice() : []; a.sort(function (x, y) { return x.t - y.t; }); return a; }
+  (function () {
+    function hop(dir) {
+      var items = sortedMarks(), now = curTime || 0, pick = null;
+      if (dir < 0) { for (var i = items.length - 1; i >= 0; i--) if (items[i].t < now - 2) { pick = items[i]; break; } }
+      else { for (var j = 0; j < items.length; j++) if (items[j].t > now + 1) { pick = items[j]; break; } }
+      if (!pick) { toast(T(dir < 0 ? "No earlier moment" : "No later moment")); return; }
+      send("seekTo", [pick.t, true]); send("playVideo");
+    }
+    var pb = $("markPrevBtn"), nb = $("markNextBtn");
+    if (pb) pb.addEventListener("click", function () { hop(-1); });
+    if (nb) nb.addEventListener("click", function () { hop(1); });
+  })();
   (function () {
     var cb = $("markCopyBtn");
     if (!cb) return;
