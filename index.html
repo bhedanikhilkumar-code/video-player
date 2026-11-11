@@ -1612,7 +1612,7 @@ setTimeout(done,3000);})();
           <div class="row">
             <button class="btn" id="playBtn" disabled>▶ Play</button>
             <span class="time" id="timeLabel">0:00 / 0:00</span> <span class="ends-at" id="endsAt" hidden></span>
-            <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button> <button class="chip" id="lockBtn" type="button" aria-pressed="false">🔒 Lock touch</button> <button class="chip" id="fsRotBtn" type="button" aria-pressed="true">🔄 Auto-rotate</button> <button class="chip" id="statsBtn" type="button" aria-pressed="false">📊 Stats</button>
+            <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button> <button class="chip" id="lockBtn" type="button" aria-pressed="false">🔒 Lock touch</button> <button class="chip" id="fsRotBtn" type="button" aria-pressed="true">🔄 Auto-rotate</button> <button class="chip" id="statsBtn" type="button" aria-pressed="false">📊 Stats</button> <button class="chip" id="clockOvBtn" type="button" aria-pressed="false">🕐 Clock</button>
           </div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
@@ -2209,6 +2209,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Time": ["समय", "સમય"],
    "Stats shown": ["आंकड़े दिख रहे हैं", "આંકડા દેખાય છે"],
    "Stats hidden": ["आंकड़े छिपे", "આંકડા છુપાયા"],
+   "🕐 Clock": ["🕐 घड़ी", "🕐 घડી"],
+   "Clock on video": ["वीडियो पर घड़ी", "વિડિઓ પર ઘડી"],
+   "Clock shown": ["घड़ी दिख रही है", "ઘડી દેખાય છે"],
+   "Clock hidden": ["घड़ी छिपी", "ઘડી છુપાઈ"],
    "Custom speed": ["अपनी स्पीड", "પોતાની સ્પીડ"],
    "Set": ["सेट", "સેટ"],
    "Pick a speed between 0.25 and 2.": ["0.25 से 2 के बीच स्पीड चुनें.", "0.25 અને 2 વચ્ચે સ્પીડ પસંદ કરો."],
@@ -10338,6 +10342,59 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   });
   (window.__relang = window.__relang || []).push(paint);
   paint();
+})();
+</script>
+<script>
+/* On-video clock (round 70): a small glass pill on the video corner shows the current time,
+   with the video's "Ends at" time underneath while one is playing - handy in full screen,
+   where the phone's own clock is hidden. Toggled with the Clock chip, off by default,
+   remembered on the device, hidden in the mini player, translated in Hindi and Gujarati. */
+(function () {
+  "use strict";
+  var T = window.T || function (x) { return x; };
+  var btn = document.getElementById("clockOvBtn"), box = document.getElementById("frameBox"), ends = document.getElementById("endsAt"), ctl = document.getElementById("controls");
+  if (!btn || !box) return;
+  var st = document.createElement("style");
+  st.textContent = ".vp-clockov{position:absolute;top:8px;left:8px;z-index:6;pointer-events:none;padding:6px 12px;border-radius:999px;background:rgba(20,20,30,.62);color:#fff;border:1px solid rgba(255,255,255,.28);box-shadow:0 4px 16px #0006;backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);text-align:center;font-variant-numeric:tabular-nums}"
+    + ".vp-clockov[hidden]{display:none}"
+    + ".vp-clockov .co-t{font-size:15px;font-weight:700;line-height:1.3}"
+    + ".vp-clockov .co-e{font-size:11px;opacity:.78;line-height:1.3}"
+    + "#playerDock.is-mini .vp-clockov{display:none}";
+  document.head.appendChild(st);
+  var ov = document.createElement("div");
+  ov.className = "vp-clockov"; ov.id = "vpClockOv"; ov.setAttribute("aria-hidden", "true"); ov.hidden = true;
+  ov.innerHTML = '<div class="co-t"></div><div class="co-e"></div>';
+  box.appendChild(ov);
+  var KEY = "vp-clock-ov.v1", on = false, timer = null;
+  try { on = localStorage.getItem(KEY) === "1"; } catch (e) {}
+  function now() {
+    var d = new Date(), h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? "PM" : "AM";
+    h = h % 12; if (h === 0) h = 12;
+    return h + ":" + (m < 10 ? "0" : "") + m + " " + ap;
+  }
+  function paint() {
+    btn.textContent = T("🕐 Clock");
+    btn.classList.toggle("active", on); btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.setAttribute("aria-label", T("Clock on video"));
+    var show = on && ctl && !ctl.hidden;
+    ov.hidden = !show;
+    if (show) {
+      ov.firstChild.textContent = now();
+      var e = ends && !ends.hidden ? (ends.textContent || "").trim() : "";
+      ov.lastChild.textContent = e; ov.lastChild.style.display = e ? "" : "none";
+      if (!timer) timer = setInterval(paint, 5000);
+    } else if (timer) { clearInterval(timer); timer = null; }
+  }
+  btn.addEventListener("click", function () {
+    on = !on; try { localStorage.setItem(KEY, on ? "1" : "0"); } catch (e) {}
+    paint();
+    if (typeof window.toast === "function") window.toast(on ? T("Clock shown") : T("Clock hidden"));
+  });
+  (window.__relang = window.__relang || []).push(paint);
+  paint();
+  // The controls row appears when a video loads; notice it and start or stop the clock.
+  if (ctl && window.MutationObserver) new MutationObserver(paint).observe(ctl, { attributes: true, attributeFilter: ["hidden"] });
+  if (ends && window.MutationObserver) new MutationObserver(function () { if (!ov.hidden) paint(); }).observe(ends, { attributes: true, attributeFilter: ["hidden"], childList: true, characterData: true, subtree: true });
 })();
 </script>
 </body>
