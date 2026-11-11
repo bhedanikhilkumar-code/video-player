@@ -1169,6 +1169,25 @@ html.theme-xfade .lib-item, html.theme-xfade .pl-item, html.theme-xfade input, h
 @media (prefers-reduced-motion: reduce) { section::after { content: none !important; } }
 html.low-fx section::after, html.high-contrast section::after { content: none !important; }
 </style>
+<style id="r33-ambient">
+/* Ambient light: a soft halo behind the video that breathes with the accent colour */
+.frame-wrap { position: relative; }
+.frame-glow {
+  position: absolute; inset: -12px -14px; border-radius: 30px; z-index: 0; pointer-events: none;
+  background: linear-gradient(115deg, var(--teal), #9769ff, #e8336d, #ff8a3d, var(--teal));
+  background-size: 320% 320%;
+  filter: blur(26px) saturate(1.25);
+  opacity: .16; transition: opacity .6s ease;
+  animation: r33GlowDrift 16s ease-in-out infinite;
+}
+html.vp-playing .frame-glow { opacity: .5; animation-duration: 9s; }
+.frame-wrap .frame { position: relative; z-index: 1; }
+html.amb-off .frame-glow { display: none; }
+html.low-fx .frame-glow { animation: none; opacity: .12; filter: blur(20px); }
+html.low-fx.vp-playing .frame-glow { opacity: .22; }
+@keyframes r33GlowDrift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@media (prefers-reduced-motion: reduce) { .frame-glow { animation: none; } }
+</style>
 </head>
 <body>
 <style>
@@ -1324,7 +1343,7 @@ html.low-fx section::after, html.high-contrast section::after { content: none !i
         <span id="upnextT" role="status"></span>
         <span class="row"><button class="chip" id="upnextGo" type="button">Play now</button><button class="chip" id="upnextCancel" type="button">Cancel</button></span>
       </div>
-      <div class="frame" id="frameBox">
+      <div class="frame-wrap"><div class="frame-glow" aria-hidden="true"></div><div class="frame" id="frameBox">
         <div class="placeholder" id="placeholder">
           <svg class="ph-logo" aria-hidden="true" viewBox="0 0 512 512" role="img" aria-label="HD Video Player logo"><defs><linearGradient id="vpC2bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fdfcf9"/><stop offset="1" stop-color="#e6e2da"/></linearGradient></defs><rect width="512" height="512" rx="115" fill="url(#vpC2bg)"/><path d="M140 110 L370 256 L226 256Z" fill="#ff8a3d"/><path d="M140 402 L370 256 L226 256Z" fill="#e8336d"/><path d="M140 110 L226 256 L140 402Z" fill="#6a2fd6"/><path d="M140 110 L226 256 L140 256Z" fill="#8f5cf0"/></svg>
           <div id="phText">Enter a link above to play a video here</div>
@@ -1333,7 +1352,7 @@ html.low-fx section::after, html.high-contrast section::after { content: none !i
           <div class="skel-logo"></div>
           <p class="skel-text" id="frameSkelText">Loading video...</p>
         </div>
-      </div>
+      </div></div>
       <p class="error" id="playerError" role="alert" hidden></p>
       <button class="chip" id="playerRetryBtn" type="button" hidden>&#8635; Try again</button>
 
@@ -1350,7 +1369,7 @@ html.low-fx section::after, html.high-contrast section::after { content: none !i
           <div class="row">
             <button class="btn" id="playBtn" disabled>▶ Play</button>
             <span class="time" id="timeLabel">0:00 / 0:00</span> <span class="ends-at" id="endsAt" hidden></span>
-            <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button>
+            <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button>
           </div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
@@ -1764,10 +1783,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
-  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false, timeLeft: false };
+  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false, timeLeft: false, ambGlow: true };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; if (saved.timeLeft === true) prefs.timeLeft = true; ["cc", "ccLang", "accent", "lang", "accentCustom"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; if (saved.timeLeft === true) prefs.timeLeft = true; if (saved.ambGlow === false) prefs.ambGlow = false; ["cc", "ccLang", "accent", "lang", "accentCustom"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
@@ -1847,6 +1866,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Copy list": ["लिस्ट कॉपी करें", "યાદી કોપી કરો"],
    "Queue copied as a list": ["कतार लिस्ट कॉपी हुई", "કતાર યાદી કોપી થઈ"],
    "Open in YouTube": ["YouTube में खोलें", "YouTube માં ખોલો"],
+   "Ambient light on": ["एम्बिएंट लाइट चालू", "એમ્બિયન્ટ લાઇટ ચાલુ"],
+   "Ambient light off": ["एम्बिएंट लाइट बंद", "એમ્બિયન્ટ લાઇટ બંધ"],
    "Load a video first, then open it on YouTube.": ["पहले कोई वीडियो लोड करें, फिर उसे YouTube पर खोलें.", "પહેલા વિડિયો લોડ કરો, પછી તેને YouTube પર ખોલો."],
    "Watch later list cleared": ["वॉच लेटर सूची साफ़ हुई", "વોચ લેટર યાદી સાફ થઈ"],
    "Watch later list restored": ["वॉच लेटर सूची वापस आई", "વોચ લેટર યાદી પાછી આવી"],
@@ -2869,7 +2890,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     if (data.event === "onStateChange" && typeof data.info === "number") {
       if (sleepPaused && data.info === 1) { send("pauseVideo"); return; }
-      playing = data.info === 1; if (playing) failedQueueCount = 0; if (playing && typeof tabAutoPaused !== "undefined") tabAutoPaused = false;
+      playing = data.info === 1; document.documentElement.classList.toggle("vp-playing", playing); if (playing) failedQueueCount = 0; if (playing && typeof tabAutoPaused !== "undefined") tabAutoPaused = false;
       if (playing && prefs.dataSaver && curId && dsAppliedFor !== curId) { dsAppliedFor = curId; send("setPlaybackQuality", ["large"]); markActive(qualityChips, "large"); }
       if (playing && curId && lastPlayId !== curId) { lastPlayId = curId; stats.plays += 1; statsRec(curId).plays += 1; saveStats(); renderStats(); }
       if (!playing && statsDirty) { statsDirty = false; saveStats(); renderStats(); }
@@ -3123,7 +3144,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var rb = document.getElementById("resumeBox"); if (rb) rb.hidden = true;
     addHistory(id);
     showInfo(id);
-    ready = false; playing = false; duration = 0; playBtn.disabled = true; playBtn.textContent = T("▶ Play");
+    ready = false; playing = false; document.documentElement.classList.remove("vp-playing"); duration = 0; playBtn.disabled = true; playBtn.textContent = T("▶ Play");
     if (typeof sleepFadeRestore === "function") sleepFadeRestore();
     timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1;
     if (typeof paintEndsAt === "function") paintEndsAt(0);
@@ -3642,6 +3663,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     document.addEventListener("fullscreenchange", function () { if (document.fullscreenElement) cinemaSet(false); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && cinemaOn) cinemaSet(false); });
   }
+  // Ambient light: soft halo around the video; can be turned off, saved on this device.
+  var ambGlowBtn = $("ambGlowBtn");
+  function ambGlowApply() {
+    document.documentElement.classList.toggle("amb-off", prefs.ambGlow === false);
+    if (ambGlowBtn) ambGlowBtn.setAttribute("aria-pressed", prefs.ambGlow === false ? "false" : "true");
+  }
+  if (ambGlowBtn) ambGlowBtn.addEventListener("click", function () { prefs.ambGlow = prefs.ambGlow === false; savePrefs(); ambGlowApply(); toast(prefs.ambGlow ? T("Ambient light on") : T("Ambient light off")); });
+  ambGlowApply();
 
   // ================= Support features (2026-11-09) =================
   var DL_API = "https://vp-downloader.onrender.com";
@@ -4563,6 +4592,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#fsBtn", "⛶ Full screen", "⛶ फुल स्क्रीन"],
     ["#shareBtn", "🔗 Share at this time", "🔗 इसी समय से शेयर"],
     ["#cinemaBtn", "🎬 Cinema", "🎬 सिनेमा"],
+    ["#ambGlowBtn", "✨ Ambient light", "✨ एम्बिएंट लाइट"],
     ["#qrBtn", "QR code", "QR कोड"],
     ["#nextBtn", "Next ⏭", "अगला ⏭"],
     ["#clearQueueBtn", "Clear", "साफ़ करें"],
@@ -4776,7 +4806,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#plBtn": "પ્લેલિસ્ટ કતારમાં ઉમેરો",
  "#fsBtn": "⛶ ફુલ સ્ક્રીન",
  "#shareBtn": "🔗 આ સમયથી શેર કરો",
- "#cinemaBtn": "🎬 સિનેમા",
+ "#cinemaBtn": "🎬 સિનેમા", "#ambGlowBtn": "✨ એમ્બિયન્ટ લાઇટ",
  "#qrBtn": "QR કોડ",
  "#nextBtn": "આગળનો ⏭",
  "#clearQueueBtn": "સાફ કરો",
