@@ -2040,6 +2040,14 @@ setTimeout(done,3000);})();
         <input id="libImportFile" type="file" accept="application/json,.json" hidden>
         <span class="hint lib-tools-msg" id="libBackupMsg" role="status"></span>
       </div>
+      <p class="hint" id="backupAge" role="status"></p>
+      <div class="tip-card backup-remind" id="backupRemind" hidden>
+        <div class="tip-main"><p id="backupRemindTx"></p></div>
+        <div class="tip-btns">
+          <button class="chip" id="backupNowBtn" type="button">Export backup now</button>
+          <button class="chip" id="backupLaterBtn" type="button">Remind me later</button>
+        </div>
+      </div>
       <div class="lib-search">
         <div class="vs-row">
           <input id="libSearch" type="search" autocomplete="off" placeholder="Search your videos" aria-label="Search queue, playlists, favourites and recently watched">
@@ -2604,6 +2612,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    " playlists).": [" प्लेलिस्ट).", " પ્લેલિસ્ટ)."],
    "Nothing new to import - use a backup file made by this app.": ["इम्पोर्ट के लिए कुछ नया नहीं - इसी ऐप की बनाई बैकअप फ़ाइल इस्तेमाल करें.", "ઇમ્પોર્ટ કરવાં કંઈ નવું નથી - આ જ એપની બનાવેલી બેકઅપ ફાઇલ વાપરો."],
    "Imported ": ["इम्पोर्ट किए ", "ઇમ્પોર્ટ થયા "],
+   "No backup yet.": ["अभी कोई बैकअप नहीं.", "હજી કોઈ બેકઅપ નહીં."],
+   "Last backup: ": ["आखिरी बैकअप: ", "છેલ્લું બેકઅપ: "],
+   "today": ["आज", "આજ"],
+   "yesterday": ["कल", "ગઈકાલે"],
+   " days ago": [" दिन पहले", " દિવસ પહેલાં"],
+   "Your lists live only in this browser. Export a backup so a cleanup never wipes them.": ["आपकी लिस्ट सिर्फ इस ब्राउज़र में रहती हैं. बैकअप निकालें ताकि कोई सफाई उन्हें मिटा न दे.", "તમારી યાદીઓ ફક્ત આ બ્રાઉઝરમાં રહે છે. બેકઅપ કાઢો જેથી કોઈ સફાઈ તેને ભૂંસી ન નાખે."],
    "favourite": ["पसंदीदा", "મનપસંદ"],
    "favourites": ["पसंदीदा", "મનપસંદ"],
    " and ": [" और ", " અને "],
@@ -5857,6 +5871,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (nNotes) libBackupMsg.textContent += " " + T("Notes included: ") + nNotes + ".";
     var nLyrics = Object.keys(data.lyrics || {}).length;
     if (nLyrics) libBackupMsg.textContent += " " + T("Lyrics included: ") + nLyrics + ".";
+    bkMark();
   });
   $("libImport").addEventListener("click", function () { $("libImportFile").click(); });
   $("libImportFile").addEventListener("change", function () {
@@ -5931,6 +5946,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         }
         if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
         saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
+        bkMark();
         libBackupMsg.textContent = T("Imported ") + qn + T(" queued, ") + fn + " " + (fn === 1 ? T("favourite") : T("favourites")) + T(" and ") + pn + " " + (pn === 1 ? T("playlist") : T("playlists")) + ".";
         if (mn) libBackupMsg.textContent += " " + T("Moments restored: ") + mn + ".";
         if (nn) libBackupMsg.textContent += " " + T("Notes restored: ") + nn + ".";
@@ -5940,6 +5956,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     };
     rd.readAsText(f);
   });
+
+  // ---- Round 84: backup reminder + last-backup line ----
+  // Lists live only in this browser's storage, so if the device has data and the last
+  // export is 14+ days old (or never happened), a small card nudges to export a backup.
+  var BK_LAST = "vp-backup-last.v1", BK_SNOOZE = "vp-backup-snooze.v1";
+  var bkAgeEl = $("backupAge"), bkCard = $("backupRemind"), bkTx = $("backupRemindTx");
+  function bkLast() { try { var v = Number(localStorage.getItem(BK_LAST)); return v > 0 ? v : 0; } catch (e) { return 0; } }
+  function bkSnoozed() { try { return Number(localStorage.getItem(BK_SNOOZE)) > Date.now(); } catch (e) { return false; } }
+  function bkMark() { try { localStorage.setItem(BK_LAST, String(Date.now())); localStorage.removeItem(BK_SNOOZE); } catch (e) {} bkRender(); }
+  function bkCount() { var n = lib.queue.length + lib.favs.length + lib.later.length + playlists.length; if (typeof marks === "object" && marks) n += Object.keys(marks).length; if (typeof notes === "object" && notes) n += Object.keys(notes).length; return n; }
+  function bkAgeText(ts) {
+    if (!ts) return T("No backup yet.");
+    var d = Math.floor((Date.now() - ts) / 864e5);
+    return T("Last backup: ") + (d <= 0 ? T("today") : d === 1 ? T("yesterday") : d + T(" days ago")) + ".";
+  }
+  function bkRender() {
+    var last = bkLast();
+    if (bkAgeEl) bkAgeEl.textContent = bkAgeText(last);
+    if (!bkCard || !bkTx) return;
+    var stale = !last || (Date.now() - last) > 14 * 864e5;
+    var show = stale && !bkSnoozed() && bkCount() >= 3;
+    bkCard.hidden = !show;
+    if (show) bkTx.textContent = T("Your lists live only in this browser. Export a backup so a cleanup never wipes them.") + " " + bkAgeText(last);
+  }
+  if ($("backupNowBtn")) $("backupNowBtn").addEventListener("click", function () { $("libExport").click(); });
+  if ($("backupLaterBtn")) $("backupLaterBtn").addEventListener("click", function () { try { localStorage.setItem(BK_SNOOZE, String(Date.now() + 3 * 864e5)); } catch (e) {} bkRender(); });
+  (window.__relang = window.__relang || []).push(bkRender);
+  bkRender();
 
   // ---- Offline: clear banner + stop video loads with a clear message ----
   var offlineBanner = $("offlineBanner");
@@ -6590,6 +6634,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#statsTxtBtn", "Save as text file", "टेक्स्ट फ़ाइल में सेव करें"],
     ["#statsClear", "Clear", "साफ़ करें"],
     ["#libExport", "Export backup", "बैकअप निकालें"],
+    ["#backupNowBtn", "Export backup now", "अभी बैकअप निकालें"],
+    ["#backupLaterBtn", "Remind me later", "बाद में याद दिलाएं"],
     ["#libImport", "Import backup", "बैकअप लाएं"],
     ["#plSaveBtn", "Save queue as playlist", "कतार को प्लेलिस्ट बनाएं"],
     ["#plImportBtn", "Import playlist", "प्लेलिस्ट इम्पोर्ट करें"],
@@ -6831,6 +6877,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#libExport": "બેકઅપ કાઢો",
  "#libImport": "બેકઅપ લાવો",
  "#plSaveBtn": "કતારને પ્લેલિસ્ટ બનાવો",
+ "#backupNowBtn": "હમણાં બેકઅપ કાઢો",
+ "#backupLaterBtn": "પછી યાદ કરાવો",
  "#plImportBtn": "પ્લેલિસ્ટ ઇમ્પોર્ટ કરો",
  "#playMusicBtn": "મ્યુઝિક ચલાવો",
  "#saveMusicBtn": "કતારને Music માં સેવ કરો",
@@ -9814,6 +9862,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Add playlist to queue", "playlist youtube import", "#plBtn"],
       ["Paste a list of links", "paste many links bulk", "#plPasteBtn"],
       ["Saved playlists", "playlist saved study", "#lhPlaylists"],
+      ["Backup reminder", "backup reminder last backup export safe storage", "#backupAge"],
       ["Play Music (saved music queue)", "play music saved", "#playMusicBtn"],
       ["Up next queue", "queue next upnext order", "#lhQueue"],
       ["Queue total time", "queue total time how long length duration", "#queueTime"],
@@ -11243,6 +11292,9 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
 .tip-main p{margin:0;color:var(--ink2,#555);overflow-wrap:anywhere}
 .tip-btns{display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end}
 .tip-ico{width:15px;height:15px;vertical-align:-2px;margin-right:6px;color:#e8930c}
+.backup-remind{margin-top:8px}
+.backup-remind .tip-main p{margin:0;color:var(--ink2,#555);overflow-wrap:anywhere}
+#backupAge{margin:2px 2px 0}
 @media (max-width:560px){.tip-card{flex-direction:column;align-items:stretch}.tip-btns{justify-content:flex-start}}
 </style>
 <script>
