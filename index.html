@@ -1143,6 +1143,13 @@ html.bg-motion body::before { inset: -12%; animation: bg-drift 46s ease-in-out i
 }
 @media (prefers-reduced-motion: reduce) { html.bg-motion body::before { animation: none !important; inset: 0; } }
 html.low-fx.bg-motion body::before, html.high-contrast.bg-motion body::before { animation: none !important; inset: 0; }
+/* Smooth cross-fade when the light/dark theme flips (skipped for reduced motion). */
+html.theme-xfade body, html.theme-xfade body::before, html.theme-xfade section, html.theme-xfade .site-head,
+html.theme-xfade .feat-nav, html.theme-xfade .chip, html.theme-xfade .btn, html.theme-xfade .info-card,
+html.theme-xfade .ctl-card, html.theme-xfade .note, html.theme-xfade .help-card, html.theme-xfade .faq,
+html.theme-xfade .lib-item, html.theme-xfade .pl-item, html.theme-xfade input, html.theme-xfade textarea {
+  transition: background-color .4s ease, background .4s ease, color .4s ease, border-color .4s ease, box-shadow .4s ease !important;
+}
 </style>
 </head>
 <body>
@@ -2560,7 +2567,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function applyTheme() {
     var hr2 = new Date().getHours(), night2 = hr2 >= 19 || hr2 < 7;
     var dark = prefs.theme === "dark" || (prefs.theme === "auto" && darkQuery && darkQuery.matches) || (prefs.theme === "daynight" && night2);
+    var prevTheme = document.documentElement.getAttribute("data-theme");
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    if (prevTheme && prevTheme !== (dark ? "dark" : "light") && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+      document.documentElement.classList.add("theme-xfade");
+      clearTimeout(window.__xfadeT);
+      window.__xfadeT = setTimeout(function () { document.documentElement.classList.remove("theme-xfade"); }, 480);
+    }
     var themeLabel = prefs.theme === "auto" ? "Auto" : prefs.theme === "daynight" ? "Day/Night" : prefs.theme === "dark" ? "Dark" : "Light";
     var ico = prefs.theme === "auto" ? "\u25D0" : prefs.theme === "daynight" ? "\u263C" : prefs.theme === "dark" ? "\u263E" : "\u2600";
     themeBtn.innerHTML = '<span class="theme-ico" aria-hidden="true">' + ico + '</span><span class="theme-prefix">Theme: </span><span>' + themeLabel + '</span>';
