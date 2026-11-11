@@ -1122,6 +1122,8 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 .lib-empty-ic svg { width: 22px; height: 22px; display: block; }
 :root[data-theme="dark"] .lib-empty-ic { color: #7fd2bf; }
 .lib-empty span:last-child { flex: 1; min-width: 0; }
+.lib-empty-acts { display: flex; gap: 10px; flex-wrap: wrap; padding: 0 2px 4px 44px; }
+.lib-empty-acts .chip { min-height: 40px; font-size: 14px; }
 </style><style id="delight-micro">
 /* Micro-interactions: a springy pop confirms Favourites / Watch later taps,
    and the Continue watching card gets a single glass sheen sweep when it appears.
@@ -2219,6 +2221,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Making the MP3... ": ["MP3 बन रहा... ", "MP3 બની રહ્યો... "],
    "Done! Your download will start: ": ["हो गया! आपका डाउनलोड शुरू होगा: ", "થઈ ગયું! તમારું ડાઉનલોડ શરૂ થશે: "],
    "Paste a link first.": ["पहले लिंक पेस्ट करें.", "પહેલા લિંક પેસ્ટ કરો."],
+   "Paste a link": ["लिंक पेस्ट करें", "લિંક પેસ્ટ કરો"],
+   "Import playlist": ["प्लेलिस्ट इम्पोर्ट करें", "પ્લેલિસ્ટ ઇમ્પોર્ટ કરો"],
    "Several links found. Tap Queue links to download them one after another.": ["कई लिंक मिले. उन्हें एक के बाद एक डाउनलोड करने के लिए Queue links दबाएं.", "ઘણી લિંક મળી. તેને એક પછી એક ડાઉનલોડ કરવા Queue links દબાવો."],
    "Paste one or more links first (separated by spaces).": ["पहले एक या ज़्यादा लिंक पेस्ट करें (space से अलग).", "પહેલા એક કે વધુ લિંક પેસ્ટ કરો (સ્પેસથી અલગ)."],
    "Added to the queue.": ["कतार में जुड़ गया.", "કતારમાં ઉમેરાયું."],
@@ -2599,9 +2603,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var tx = document.createElement("span"); tx.textContent = text; box.appendChild(tx);
     li.appendChild(box); return li;
   }
-  function fillList(ul, items, emptyText, actionLabel, onAction, onOpen, extraAction, emptyIcon) {
+  function fillList(ul, items, emptyText, actionLabel, onAction, onOpen, extraAction, emptyIcon, emptyActions) {
     ul.textContent = "";
-    if (!items.length) { ul.appendChild(emptyLi(emptyText, emptyIcon)); return; }
+    if (!items.length) {
+      ul.appendChild(emptyLi(emptyText, emptyIcon));
+      if (emptyActions && emptyActions.length) {
+        var actLi = document.createElement("li");
+        var actRow = document.createElement("div"); actRow.className = "lib-empty-acts";
+        emptyActions.forEach(function (a) {
+          var ab = document.createElement("button"); ab.type = "button"; ab.className = "chip"; ab.textContent = a.label;
+          ab.addEventListener("click", a.fn); actRow.appendChild(ab);
+        });
+        actLi.appendChild(actRow); ul.appendChild(actLi);
+      }
+      return;
+    }
     items.forEach(function (item, idx) { ul.appendChild(buildItem(item, actionLabel, function () { onAction(item, idx); }, onOpen ? function () { onOpen(item, idx); } : null, ul === queueList && idx === qPos, extraAction)); });
   }
   function queueAdd(text) {
@@ -2671,7 +2687,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (idx < qPos) qPos--; else if (idx === qPos) qPos = -1;
       saveLib(); renderLib();
       toastUndo(T("Removed from queue"), function () { lib.queue = snapQ; qPos = snapP; saveLib(); renderLib(); }, T("Queue restored"));
-    }, function (item, idx) { playQueueAt(idx); }, { label: T("Play next"), fn: function (item) { queuePlayNext(item); } }, "queue");
+    }, function (item, idx) { playQueueAt(idx); }, { label: T("Play next"), fn: function (item) { queuePlayNext(item); } }, "queue", [
+      { label: T("Paste a link"), fn: function () { var lb = $("pasteLinkBtn"); if (lb) lb.click(); var li2 = $("link"); if (li2) li2.scrollIntoView({ behavior: "smooth", block: "center" }); var inp = $("linkInput"); if (inp) setTimeout(function () { inp.focus(); }, 350); } },
+      { label: T("Import playlist"), fn: function () { var pb = $("plImportBtn"); if (pb) pb.click(); } }
+    ]);
     fillList(laterList, laterView(), T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); }, null, null, "later");
     fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) { toggleFav(item.id); }, null, null, "fav");
     fillList(histList, histView(), T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, { label: T("Remove"), fn: function (item) {
