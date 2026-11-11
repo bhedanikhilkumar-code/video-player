@@ -1078,6 +1078,8 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
 .vp-skip-intro { position:absolute; right:10px; bottom:12px; z-index:6; padding:9px 18px; border-radius:999px; background:rgba(20,20,30,.78); color:#fff; border:1px solid rgba(255,255,255,.34); box-shadow:0 6px 22px #0008; backdrop-filter:blur(14px) saturate(1.5); -webkit-backdrop-filter:blur(14px) saturate(1.5); font-size:14px; font-weight:800; letter-spacing:.01em; cursor:pointer; animation:mp-pop .35s cubic-bezier(.34,1.56,.5,1) both; }
 .vp-skip-intro[hidden] { display:none; }
 .vp-skip-intro:active { transform:scale(.96); }
+.vp-skip-intro.is-outro { right:auto; left:10px; }
+.vp-skip-intro.is-outro:focus-visible { outline:3px solid #fff; outline-offset:2px; }
 #playerDock.is-mini .vp-skip-intro { display:none; }
 /* Still watching? (round 74): glass card over the video asks before auto-play runs on. */
 .vp-still { position:absolute; left:50%; bottom:14px; transform:translateX(-50%); z-index:7; width:min(340px,calc(100% - 24px)); padding:14px 16px; border-radius:16px; background:rgba(20,20,30,.82); color:#fff; border:1px solid rgba(255,255,255,.3); box-shadow:0 10px 34px #0008; backdrop-filter:blur(16px) saturate(1.5); -webkit-backdrop-filter:blur(16px) saturate(1.5); text-align:center; animation:mp-pop .35s cubic-bezier(.34,1.56,.5,1) both; }
@@ -1648,7 +1650,7 @@ setTimeout(done,3000);})();
             <button class="btn" id="playBtn" disabled>▶ Play</button>
             <span class="time" id="timeLabel">0:00 / 0:00</span> <span class="ends-at" id="endsAt" hidden></span>
             <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button> <button class="chip" id="lockBtn" type="button" aria-pressed="false">🔒 Lock touch</button> <button class="chip" id="fsRotBtn" type="button" aria-pressed="true">🔄 Auto-rotate</button> <button class="chip" id="statsBtn" type="button" aria-pressed="false">📊 Stats</button> <button class="chip" id="clockOvBtn" type="button" aria-pressed="false">🕐 Clock</button>
-      <button class="chip" id="calmMotionBtn" type="button" aria-pressed="false">Calm motion: off</button> <button class="chip" id="fsExitBtn" type="button" aria-pressed="false">Exit at end: off</button> <button class="chip" id="introBtn" type="button" aria-pressed="false">⏭ Skip intro</button>
+      <button class="chip" id="calmMotionBtn" type="button" aria-pressed="false">Calm motion: off</button> <button class="chip" id="fsExitBtn" type="button" aria-pressed="false">Exit at end: off</button> <button class="chip" id="introBtn" type="button" aria-pressed="false">⏭ Skip intro</button> <button class="chip" id="outroBtn" type="button" aria-pressed="false">⏩ Skip outro</button>
           </div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
@@ -3702,6 +3704,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       paintTime(t);
       if (window.__vpHeroProg) window.__vpHeroProg(t);
       introOvTick();
+      if (typeof outroTick === "function") outroTick();
       statsTick();
       saveResume();
     }
@@ -3757,6 +3760,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (typeof vm.speed === "number" && vm.speed !== 1) bits.push(vm.speed + "x");
     if (vm.cc) bits.push(T("CC on"));
     if (typeof vm.intro === "number" && vm.intro >= 1) bits.push(T("skip to ") + fmt(vm.intro));
+    if (typeof vm.outro === "number" && vm.outro >= 1) bits.push(T("outro from ") + fmt(vm.outro));
     vmemNote(bits.length ? T("Remembered for this video: ") + bits.join(" \u00b7 ") : "");
     if (typeof introPaint === "function") introPaint();
   }
@@ -3804,6 +3808,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       introOv.hidden = !show;
       if (show) introOv.textContent = T("Skip intro ▶");
     }
+    if (typeof outroPaint === "function") outroPaint();
   }
   function introOvTick() {
     var end = introEndFor(); if (end == null) return;
@@ -3819,6 +3824,71 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     vmemRec({ intro: Math.floor(curTime) }); introPaint(); vmemApply(); toast(T("Intro end saved at ") + fmt(Math.floor(curTime)) + T(" - the Skip chip shows at the start of this video."));
   });
   (window.__relang = window.__relang || []).push(introPaint);
+
+  // ---- Skip outro (round 77): mark where a video's ending credits start once; on every later
+  // watch a glass chip on the video's bottom-left corner appears when the outro begins and jumps
+  // to the end, so the queue, Up next or Exit at end take over. Kept per video in the per-video
+  // memory on this device, so it is included in the backup next to the intro mark.
+  Object.assign(TR_MSG, {
+    "⏩ Skip outro": ["⏩ आउट्रो छोड़ें", "⏩ આઉટ્રો સ્કિપ કરો"],
+    "Skip outro ▶": ["आउट्रो छोड़ें ▶", "આઉટ્રો સ્કિપ કરો ▶"],
+    "Mark where the outro starts at the time playing now": ["अभी चल रहे समय को आउट्रो की शुरुआत चुनें", "હમણાં ચાલી રહેલા સમયને આઉટ્રોની શરૂઆત તરીકે પસંદ કરો"],
+    "Tap to clear this video's outro start": ["इस वीडियो का आउट्रो स्टार्ट हटाने के लिए टैप करें", "આ વીડિયોનો આઉટ્રો સ્ટાર્ટ હટાવવા ટૅપ કરો"],
+    "Skipped the outro.": ["आउट्रो छोड़ दिया.", "આઉટ્રો સ્કિપ કરી દીધું."],
+    "Play a YouTube video first, then mark its outro.": ["पहले कोई YouTube वीडियो चलाएं, फिर उसका आउट्रो चुनें.", "પહેલા કોઈ YouTube વીડિયો ચલાવો, પછી તેનો આઉટ્રો પસંદ કરો."],
+    "Play to the moment the outro starts, then tap this.": ["आउट्रो जहां शुरू होता है वहां तक चलाएं, फिर इसे टैप करें.", "આઉટ્રો જ્યાં શરૂ થાય ત્યાં સુધી ચલાવો, પછી આને ટૅપ કરો."],
+    "⏩ Outro from ": ["⏩ आउट्रो ", "⏩ આઉટ્રો "],
+    "Outro start saved at ": ["आउट्रो स्टार्ट सेव हुआ ", "આઉટ્રો સ્ટાર્ટ સેવ થયો "],
+    " - the Skip chip shows when it begins.": [" - शुरू होते ही Skip चिप दिखेगी.", " - શરૂ થતાં જ Skip ચિપ દેખાશે."],
+    "Outro start cleared for this video.": ["इस वीडियो का आउट्रो स्टार्ट हट गया.", "આ વીડિયોનો આઉટ્રો સ્ટાર્ટ હટી ગયો."],
+    "outro from ": ["आउट्रो ", "આઉટ્રો "]
+  });
+  var outroBtn = $("outroBtn"), outroOv = null;
+  function outroStartFor() { var v = curId && vmem[curId]; return v && typeof v.outro === "number" && v.outro >= 1 ? v.outro : null; }
+  function outroEnsureOv() {
+    if (outroOv || !frameBox) return;
+    outroOv = document.createElement("button");
+    outroOv.type = "button"; outroOv.id = "vpSkipOutro"; outroOv.className = "vp-skip-intro is-outro"; outroOv.hidden = true;
+    outroOv.addEventListener("click", function () {
+      if (!(duration > 2)) return;
+      var to = Math.max(0, duration - 0.4);
+      send("seekTo", [to, true]); curTime = to; seek.value = to; paintTime(to); if (typeof paintSeekFill === "function") paintSeekFill();
+      outroOv.hidden = true; toast(T("Skipped the outro."));
+    });
+    frameBox.appendChild(outroOv);
+  }
+  function outroWanted() {
+    var st = outroStartFor();
+    return st != null && duration > 2 && curTime >= st && curTime < duration - 1.2 && controls && !controls.hidden;
+  }
+  function outroPaint() {
+    var st = outroStartFor();
+    if (outroBtn) {
+      outroBtn.classList.toggle("active", st != null);
+      outroBtn.setAttribute("aria-pressed", st != null ? "true" : "false");
+      outroBtn.textContent = st != null ? T("⏩ Outro from ") + fmt(st) : T("⏩ Skip outro");
+      outroBtn.title = st != null ? T("Tap to clear this video's outro start") : T("Mark where the outro starts at the time playing now");
+    }
+    outroEnsureOv();
+    if (outroOv) {
+      var show = outroWanted();
+      outroOv.hidden = !show;
+      if (show) outroOv.textContent = T("Skip outro ▶");
+    }
+  }
+  function outroTick() {
+    if (outroStartFor() == null) { if (outroOv && !outroOv.hidden) outroOv.hidden = true; return; }
+    outroEnsureOv(); if (!outroOv) return;
+    if (outroWanted() !== !outroOv.hidden) outroPaint();
+  }
+  if (outroBtn) outroBtn.addEventListener("click", function () {
+    if (!curId) { toast(T("Play a YouTube video first, then mark its outro.")); return; }
+    var st = outroStartFor();
+    if (st != null) { vmemRec({ outro: null }); outroPaint(); vmemApply(); toast(T("Outro start cleared for this video.")); return; }
+    if (!(duration > 20) || curTime < 10 || curTime >= duration - 3) { toast(T("Play to the moment the outro starts, then tap this.")); return; }
+    vmemRec({ outro: Math.floor(curTime) }); outroPaint(); vmemApply(); toast(T("Outro start saved at ") + fmt(Math.floor(curTime)) + T(" - the Skip chip shows when it begins."));
+  });
+  (window.__relang = window.__relang || []).push(outroPaint);
   var resumeRec = null;
   function resumeRender() {
     if (!resumeRec) return;
@@ -9254,6 +9324,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Music mode", "music audio songs", "#musicModeBtn"],
       ["Cinema mode", "cinema dark theatre theater", "#cinemaBtn"],
       ["Skip intro", "skip intro opening start netflix", "#introBtn"],
+      ["Skip outro", "skip outro ending credits end netflix", "#outroBtn"],
       ["Pause at each saved moment", "pause moment auto stop note study", "#ctl-marks"],
       ["Still watching? check", "still watching auto pause netflix ask", "#stillRow"],
       ["Touch lock", "lock touch child freeze pocket tap", "#lockBtn"],
