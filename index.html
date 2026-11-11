@@ -1343,6 +1343,10 @@ html .shortcuts, html .note, html .faq, html .help-card, html .pl-item, html .mu
 }
 </style>
 <style>
+.undo-seek-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:8px;padding:10px;border:1px solid var(--teal);border-radius:16px;background:var(--soft)}
+.undo-seek-wrap[hidden]{display:none!important}
+#undoSeekBtn{min-height:44px;font-weight:700}
+.undo-seek-wrap .hint{margin:0;font-size:12px}
 .quick-seek-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0 6px;flex-wrap:wrap}
 .quick-seek.chip{position:relative;overflow:hidden;min-height:44px;min-width:82px;border-radius:18px;font-weight:700;font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:center;gap:9px}
 .quick-seek>span[aria-hidden]{font-size:24px;line-height:1}
@@ -1583,6 +1587,7 @@ setTimeout(done,3000);})();
             <button class="chip" type="submit" id="jumpGo">Go</button>
           </form>
           <span class="label" id="jumpMsg" role="status"></span>
+          <div id="undoSeekWrap" class="undo-seek-wrap" hidden><button class="chip" id="undoSeekBtn" type="button"></button><span id="undoSeekHint" class="hint"></span></div>
         </div>
 
         <div class="ctl-card wide" id="ctl-gestures">
@@ -2111,6 +2116,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Added to queue": ["कतार में जोड़ा गया", "કતારમાં ઉમેરાયું"],
    "videos added to queue": ["वीडियो कतार में जोड़े गए", "વિડિયો કતારમાં ઉમેરાયા"],
    "Queue cleared": ["कतार साफ़ हुई", "કતાર સાફ થઈ"],
+   "Undo jump": ["जंप वापस लें", "જમ્પ પાછો લો"],
+   "Back to": ["वापस", "પાછા"],
+   "Available for 12 seconds": ["12 सेकंड तक उपलब्ध", "12 સેકંડ સુધી ઉપલબ્ધ"],
+   "Returned to": ["वापस आए", "પાછા આવ્યા"],
    "Tap to skip": ["टैप करके आगे-पीछे जाएं", "ટૅપ કરીને આગળ-પાછળ જાઓ"],
    "Quick seek": ["जल्दी आगे-पीछे जाएं", "ઝડપથી આગળ-પાછળ જાઓ"],
    "Undo": ["पूर्ववत करें", "પૂર્વવત કરો"],
@@ -3510,6 +3519,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function loadVideo(startSec, endSec, queueIndex, autoplay) {
     if (typeof upnextCancel === "function") upnextCancel(true);
     var id = parseVideoId(linkInput.value);
+    if (id) clearUndoSeek();
     if (id) qPos = typeof queueIndex === "number" ? queueIndex : -1;
     if (!id) {
       var rawLink = linkInput.value.trim();
@@ -3618,6 +3628,42 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     send("setVolume", [v]);
     if (v > 0 && muted) send("unMute");
   });
+  // Keep one deliberate app seek, never automatic loop seeks or YouTube's controls.
+  var undoSeekState = null, undoSeekTimer = 0, scrubOrigin = null;
+  function clearUndoSeek() {
+    undoSeekState = null;
+    if (undoSeekTimer) clearTimeout(undoSeekTimer);
+    undoSeekTimer = 0;
+    var w = $("undoSeekWrap"); if (w) w.hidden = true;
+  }
+  function renderUndoSeek() {
+    if (!undoSeekState) return;
+    $("undoSeekBtn").textContent = "↶ " + T("Undo jump") + " · " + T("Back to") + " " + fmt(undoSeekState.time);
+    $("undoSeekHint").textContent = T("Available for 12 seconds");
+  }
+  function manualSeek(t, origin) {
+    if (!ready || !iframe || !(duration > 0) || !isFinite(t)) return;
+    t = Math.max(0, Math.min(duration, t));
+    var from = typeof origin === "number" ? origin : curTime;
+    if (Math.abs(t - from) >= .5) {
+      undoSeekState = {id:curId, time:from}; renderUndoSeek();
+      $("undoSeekWrap").hidden = false;
+      if (undoSeekTimer) clearTimeout(undoSeekTimer);
+      undoSeekTimer = setTimeout(clearUndoSeek, 12000);
+    }
+    send("seekTo", [t, true]); curTime = t; seek.value = t; paintTime(t); paintSeekFill();
+  }
+  $("undoSeekBtn").addEventListener("click", function () {
+    if (!undoSeekState || undoSeekState.id !== curId || !ready || !iframe) { clearUndoSeek(); return; }
+    var t = undoSeekState.time; clearUndoSeek();
+    // A remembered position outside A-B must not immediately snap back into the loop.
+    if (abEnabled && abA != null && abB != null && (t < abA || t >= abB)) { abEnabled = false; updateAB(); }
+    send("seekTo", [t, true]); curTime = t; seek.value = t; paintTime(t); paintSeekFill();
+    toast(T("Returned to") + " " + fmt(t));
+  });
+  document.addEventListener("vp-local-playing", clearUndoSeek);
+  (window.__relang = window.__relang || []).push(renderUndoSeek);
+
   // Paints the played part of the seek bar as an accent gradient, with a soft
   // loaded band ahead of it (how much of the video has buffered so far).
   var seekBuffered = 0;
@@ -3630,11 +3676,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   paintSeekFill();
   seek.addEventListener("input", function () {
+    if (!seeking) scrubOrigin = curTime;
     seeking = true;
     paintTime(Number(seek.value));
     paintSeekFill();
   });
-  function commitSeek() { if (seeking) { send("seekTo", [Number(seek.value), true]); seeking = false; } }
+  function commitSeek() { if (seeking) { seeking = false; manualSeek(Number(seek.value), scrubOrigin); scrubOrigin = null; } }
   seek.addEventListener("change", commitSeek);
   seek.addEventListener("pointerup", commitSeek);
   // One place that paints the time read-out, so it can show elapsed/total or time left.
@@ -3844,13 +3891,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   })();
   var miniBar = document.createElement("div"); miniBar.id = "miniBar"; miniBar.innerHTML = "<i></i>"; playerDock.appendChild(miniBar);
   (function () {
-    var drag = false;
+    var drag = false, dragOrigin = 0;
     function seekTo(e) {
       if (!(duration > 0)) return;
       var r = miniBar.getBoundingClientRect(), f = Math.max(0, Math.min(1, (e.clientX - r.left) / Math.max(1, r.width)));
-      var t = duration * f; send("seekTo", [t, true]); curTime = t; seek.value = t; paintTime(t);
+      var t = duration * f; manualSeek(t, dragOrigin);
     }
-    miniBar.addEventListener("pointerdown", function (e) { drag = true; try { miniBar.setPointerCapture(e.pointerId); } catch (x) {} seekTo(e); });
+    miniBar.addEventListener("pointerdown", function (e) { dragOrigin = curTime; drag = true; try { miniBar.setPointerCapture(e.pointerId); } catch (x) {} seekTo(e); });
     miniBar.addEventListener("pointermove", function (e) { if (drag) seekTo(e); });
     miniBar.addEventListener("pointerup", function () { drag = false; });
     miniBar.addEventListener("pointercancel", function () { drag = false; });
@@ -3881,8 +3928,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function seekBy(d) {
     var t = Math.max(0, curTime + d);
     if (duration > 0) t = Math.min(t, duration);
-    send("seekTo", [t, true]); curTime = t; seek.value = t;
-    paintTime(t);
+    manualSeek(t);
   }
   function volBy(d) {
     var v = Math.max(0, Math.min(100, prefs.volume + d));
@@ -3920,7 +3966,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (k === "s" || k === "S") { var mAdd = $("markAddBtn"); if (mAdd) mAdd.click(); }
     else if (k === ",") { var mPv = $("markPrevBtn"); if (mPv && !mPv.disabled) mPv.click(); else handled = false; }
     else if (k === ".") { var mNx = $("markNextBtn"); if (mNx && !mNx.disabled) mNx.click(); else handled = false; }
-    else if (/^[0-9]$/.test(k) && duration > 0) { var t = duration * Number(k) / 10; send("seekTo", [t, true]); curTime = t; seek.value = t; }
+    else if (/^[0-9]$/.test(k) && duration > 0) { var t = duration * Number(k) / 10; manualSeek(t); }
     else handled = false;
     if (handled) e.preventDefault();
   });
@@ -3943,7 +3989,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (!isFinite(t) || t < 0) { out.textContent = T("Type a time like 1:23 or 90s."); input.setAttribute("aria-invalid", "true"); return; }
       if (duration > 0 && t >= duration) { out.textContent = T("That is past the end of this video") + " (" + fmt(duration) + ")."; input.setAttribute("aria-invalid", "true"); return; }
       input.setAttribute("aria-invalid", "false");
-      send("seekTo", [t, true]); curTime = t; seek.value = t;
+      manualSeek(t);
       out.textContent = T("Jumped to ") + fmt(t) + ".";
       if (typeof toast === "function") toast(T("Jumped to ") + fmt(t));
     });
@@ -5807,7 +5853,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     items.forEach(function (m) {
       var go = document.createElement("button"); go.type = "button"; go.className = "chip";
       go.textContent = "\u25b6 " + fmt(m.t) + (m.name ? " \u00b7 " + m.name : "");
-      go.addEventListener("click", function () { send("seekTo", [m.t, true]); send("playVideo"); });
+      go.addEventListener("click", function () { manualSeek(m.t); send("playVideo"); });
       var sh = document.createElement("button"); sh.type = "button"; sh.className = "chip mark-x"; sh.textContent = "🔗";
       sh.setAttribute("aria-label", T("Copy link to moment") + " " + fmt(m.t));
       sh.addEventListener("click", function () { momentLinkCopy(m); });
@@ -5901,7 +5947,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var lab = fmt(m.t) + (m.name ? " " + m.name : "");
       d.title = lab;
       d.setAttribute("aria-label", T("Jump to moment") + " " + lab);
-      d.addEventListener("click", function () { send("seekTo", [m.t, true]); send("playVideo"); });
+      d.addEventListener("click", function () { manualSeek(m.t); send("playVideo"); });
       box.appendChild(d);
     });
     box.hidden = !box.children.length;
@@ -6042,7 +6088,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (dir < 0) { for (var i = items.length - 1; i >= 0; i--) if (items[i].t < now - 2) { pick = items[i]; break; } }
       else { for (var j = 0; j < items.length; j++) if (items[j].t > now + 1) { pick = items[j]; break; } }
       if (!pick) { toast(T(dir < 0 ? "No earlier moment" : "No later moment")); return; }
-      send("seekTo", [pick.t, true]); send("playVideo");
+      manualSeek(pick.t); send("playVideo");
     }
     var pb = $("markPrevBtn"), nb = $("markNextBtn");
     if (pb) pb.addEventListener("click", function () { hop(-1); });
@@ -6117,7 +6163,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       (function (sec) {
         var go = document.createElement("button"); go.type = "button"; go.className = "chip";
         go.textContent = "\u25b6 " + fmt(sec);
-        go.addEventListener("click", function () { send("seekTo", [sec, true]); send("playVideo"); });
+        go.addEventListener("click", function () { manualSeek(sec); send("playVideo"); });
         box.appendChild(go);
       })(sec);
     }
