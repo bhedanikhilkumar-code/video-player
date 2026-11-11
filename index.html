@@ -1169,6 +1169,17 @@ html.theme-xfade .lib-item, html.theme-xfade .pl-item, html.theme-xfade input, h
 @media (prefers-reduced-motion: reduce) { section::after { content: none !important; } }
 html.low-fx section::after, html.high-contrast section::after { content: none !important; }
 </style>
+<style id="r33-seek">
+/* Seek bar: gradient progress fill, glowing thumb while playing */
+#seek { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; }
+#seek::-webkit-slider-runnable-track { height: 8px; border-radius: 99px; background: var(--seek-fill, var(--soft)); }
+#seek::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 3px solid var(--teal); margin-top: -6px; box-shadow: 0 2px 10px rgba(0,0,0,.25); transition: box-shadow .3s ease; }
+#seek::-moz-range-track { height: 8px; border-radius: 99px; background: var(--soft); }
+#seek::-moz-range-progress { height: 8px; border-radius: 99px; background: linear-gradient(90deg, var(--teal), #9769ff); }
+#seek::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 3px solid var(--teal); box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+html.vp-playing #seek::-webkit-slider-thumb { box-shadow: 0 0 16px var(--teal), 0 2px 10px rgba(0,0,0,.25); }
+html.vp-playing #seek::-moz-range-thumb { box-shadow: 0 0 16px var(--teal); }
+</style>
 <style id="r33-nowplaying">
 /* Now playing: hero card with a live equalizer badge */
 .info-card { position: relative; overflow: hidden; border: 1px solid var(--hairline); }
@@ -2968,7 +2979,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     if ((data.event === "infoDelivery" || data.event === "initialDelivery") && data.info && typeof data.info === "object") {
       var i = data.info;
-      if (typeof i.currentTime === "number" && !seeking) seek.value = i.currentTime;
+      if (typeof i.currentTime === "number" && !seeking) { seek.value = i.currentTime; if (typeof paintSeekFill === "function") paintSeekFill(); }
       if (typeof i.duration === "number" && i.duration > 0) {
         duration = i.duration; seek.max = duration;
         if (window.__vpSeekMarks) window.__vpSeekMarks();
@@ -3172,7 +3183,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     showInfo(id);
     ready = false; playing = false; document.documentElement.classList.remove("vp-playing"); duration = 0; playBtn.disabled = true; playBtn.textContent = T("▶ Play");
     if (typeof sleepFadeRestore === "function") sleepFadeRestore();
-    timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1;
+    timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1; if (typeof paintSeekFill === "function") paintSeekFill();
     if (typeof paintEndsAt === "function") paintEndsAt(0);
     if (window.__vpSeekMarks) window.__vpSeekMarks();
     if (iframe) { iframe.remove(); iframe = null; }
@@ -3245,9 +3256,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     send("setVolume", [v]);
     if (v > 0 && muted) send("unMute");
   });
+  // Paints the played part of the seek bar as an accent gradient.
+  function paintSeekFill() {
+    var max = Number(seek.max) || 1, val = Number(seek.value) || 0;
+    var pct = Math.max(0, Math.min(100, val / max * 100));
+    seek.style.setProperty("--seek-fill", "linear-gradient(90deg, var(--teal) 0%, #9769ff " + pct + "%, var(--soft) " + pct + "%, var(--soft) 100%)");
+  }
+  paintSeekFill();
   seek.addEventListener("input", function () {
     seeking = true;
     paintTime(Number(seek.value));
+    paintSeekFill();
   });
   function commitSeek() { if (seeking) { send("seekTo", [Number(seek.value), true]); seeking = false; } }
   seek.addEventListener("change", commitSeek);
