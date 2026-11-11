@@ -1631,8 +1631,9 @@ html .shortcuts, html .note, html .faq, html .help-card, html .pl-item, html .mu
           <h3 id="notesH">Notes for this video</h3>
           <textarea class="note-box" id="noteBox" maxlength="600" rows="4" disabled aria-labelledby="notesH"></textarea>
           <div class="note-meta"><span id="noteStatus" role="status"></span><span id="noteCount">0 / 600</span></div>
-          <div class="row"><button class="chip" id="noteCopyBtn" type="button" disabled>📋 Copy note</button> <button class="chip" id="noteClearBtn" type="button" disabled>🗑 Clear note</button></div>
-          <p class="hint" id="notesHint">Write what you want to remember. Saved on this device, for each video.</p>
+          <div class="marks-list" id="noteTimes"></div>
+          <div class="row"><button class="chip" id="noteTimeBtn" type="button" disabled>⏱ Add current time</button> <button class="chip" id="noteCopyBtn" type="button" disabled>📋 Copy note</button> <button class="chip" id="noteClearBtn" type="button" disabled>🗑 Clear note</button></div>
+          <p class="hint" id="notesHint">Write what you want to remember. Times like 1:23 in your note become buttons that jump there. Saved on this device, for each video.</p>
         </div>
 
         <details class="shortcuts wide" id="scBox">
@@ -4974,9 +4975,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#plPasteAdd", "Add to queue", "कतार में जोड़ें"],
     ["#plPasteCancel", "Close", "बंद करें"],
     ["#notesH", "Notes for this video", "इस वीडियो के नोट्स"],
+    ["#noteTimeBtn", "⏱ Add current time", "⏱ अभी का समय जोड़ें"],
     ["#noteCopyBtn", "📋 Copy note", "📋 नोट कॉपी करें"],
     ["#noteClearBtn", "🗑 Clear note", "🗑 नोट मिटाएं"],
-    ["#notesHint", "Write what you want to remember. Saved on this device, for each video.", "जो याद रखना है वो लिखें. हर वीडियो के लिए इसी डिवाइस पर सेव रहता है."],
+    ["#notesHint", "Write what you want to remember. Saved on this device, for each video.", "जो याद रखना है वो लिखें. नोट में 1:23 जैसे समय बटन बन जाते हैं जो वहां ले जाते हैं. हर वीडियो के लिए इसी डिवाइस पर सेव रहता है."],
     [".feat-nav a[href=\"#ctl-notes\"]", "Notes", "नोट्स"],
     ["#markAddBtn", "🔖 Save this moment", "🔖 यह पल सेव करें"],
     ["#markCopyBtn", "📋 Copy list", "📋 सूची कॉपी करें"],
@@ -5090,9 +5092,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#plPasteAdd": "કતારમાં ઉમેરો",
  "#plPasteCancel": "બંધ કરો",
  "#notesH": "આ વીડિયોની નોંધો",
+ "#noteTimeBtn": "⏱ અત્યારનો સમય ઉમેરો",
  "#noteCopyBtn": "📋 નોંધ કૉપી કરો",
  "#noteClearBtn": "🗑 નોંધ ભૂંસો",
- "#notesHint": "જે યાદ રાખવું છે તે લખો. દરેક વીડિયો માટે આ ડિવાઇસ પર સેવ રહે છે.",
+ "#notesHint": "જે યાદ રાખવું છે તે લખો. નોંધમાં 1:23 જેવા સમય બટન બની જાય છે જે ત્યાં લઈ જાય છે. દરેક વીડિયો માટે આ ડિવાઇસ પર સેવ રહે છે.",
  ".feat-nav a[href=\"#ctl-notes\"]": "નોંધો",
  "#markAddBtn": "🔖 આ ક્ષણ સેવ કરો",
  "#markCopyBtn": "📋 યાદી કૉપી કરો",
@@ -5548,6 +5551,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   try { var nIn = JSON.parse(localStorage.getItem(NOTES_KEY) || "null"); if (nIn && typeof nIn === "object" && !Array.isArray(nIn)) notes = nIn; } catch (e) {}
   var noteTimer = null, noteShown = null;
   function notesSave() { try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch (e) {} }
+  // Times written in a note (1:23 or 1:02:03) become buttons that jump to that moment.
+  function renderNoteTimes() {
+    var box = $("noteTimes"), b = $("noteBox"); if (!box || !b) return;
+    box.innerHTML = "";
+    var seen = {}, n = 0, m, re = /(?:^|[^0-9:])((?:\d{1,2}:)?\d{1,2}:[0-5]\d)(?![0-9:])/g;
+    while ((m = re.exec(b.value)) && n < 12) {
+      var p = m[1].split(":").map(Number), sec = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1];
+      if (seen[sec]) continue; seen[sec] = 1; n++;
+      (function (sec) {
+        var go = document.createElement("button"); go.type = "button"; go.className = "chip";
+        go.textContent = "\u25b6 " + fmt(sec);
+        go.addEventListener("click", function () { send("seekTo", [sec, true]); send("playVideo"); });
+        box.appendChild(go);
+      })(sec);
+    }
+  }
   function noteCounter() { var b = $("noteBox"), c = $("noteCount"); if (b && c) c.textContent = b.value.length + " / 600"; }
   function noteFlush() {
     if (noteTimer) { clearTimeout(noteTimer); noteTimer = null; }
@@ -5569,12 +5588,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if ($("noteCopyBtn")) $("noteCopyBtn").disabled = !has;
     if ($("noteClearBtn")) $("noteClearBtn").disabled = !has;
     if ($("noteStatus")) $("noteStatus").textContent = "";
-    noteCounter();
+    if ($("noteTimeBtn")) $("noteTimeBtn").disabled = !curId;
+    noteCounter(); renderNoteTimes();
   }
   (function () {
     var b = $("noteBox"); if (!b) return;
+    $("noteTimeBtn").addEventListener("click", function () {
+      if (!curId || b.disabled) return;
+      var tag = "[" + fmt(Math.floor(curTime || 0)) + "] ";
+      var a = typeof b.selectionStart === "number" ? b.selectionStart : b.value.length, e = typeof b.selectionEnd === "number" ? b.selectionEnd : a;
+      if (b.value.length - (e - a) + tag.length > 600) return;
+      b.value = b.value.slice(0, a) + tag + b.value.slice(e);
+      try { b.focus(); b.setSelectionRange(a + tag.length, a + tag.length); } catch (x) {}
+      b.dispatchEvent(new Event("input"));
+    });
     b.addEventListener("input", function () {
-      noteCounter();
+      noteCounter(); renderNoteTimes();
       var has = !!b.value.trim();
       $("noteCopyBtn").disabled = !has; $("noteClearBtn").disabled = !has;
       $("noteStatus").textContent = T("Saving...");
