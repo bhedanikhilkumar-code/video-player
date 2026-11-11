@@ -2793,6 +2793,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Next tip": ["अगली टिप", "આગળની ટિપ"],
    "Hide tips for today": ["आज के लिए टिप्स छिपाएं", "આજ માટે ટિપ્સ છુપાવો"],
    "Tips hidden for today": ["आज के लिए टिप्स छिपा दीं", "આજ માટે ટિપ્સ છુપાવી દીધી"],
+   "Started 10 seconds early to jog your memory": ["याद दिलाने के लिए 10 सेकंड पीछे से शुरू किया", "યાદ કરાવવા 10 સેકન્ડ પાછળથી શરૂ કર્યું"],
    "Loop any part of a song: tap Set A, then Set B on the Repeat line.": ["गाने का कोई भी हिस्सा लूप करें: Repeat लाइन पर पहले Set A, फिर Set B दबाएं.", "ગીતનો કોઈપણ ભાગ લૂપ કરો: Repeat લાઇન પર પહેલા Set A, પછી Set B દબાવો."],
    "Fall asleep watching - the sleep timer pauses the video for you.": ["देखते-देखते सो जाएं - स्लीप टाइमर वीडियो खुद रोक देगा.", "જોતાં જોતાં ઊંઘી જાઓ - સ્લીપ ટાઇમર વીડિયો પોતે રોકી દેશે."],
    "Type in the Search box at the top to jump straight to any of the 40+ features.": ["ऊपर Search बॉक्स में टाइप करें और सीधे किसी भी 40+ फ़ीचर पर पहुंचें.", "ઉપર Search બોક્સમાં ટાઇપ કરો અને સીધા કોઈપણ 40+ ફીચર પર પહોંચો."],
@@ -3608,7 +3609,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var box = $("resumeBox");
     resumeRender();
     box.hidden = false;
-    $("resumeGo").addEventListener("click", function () { box.hidden = true; linkInput.value = "https://youtu.be/" + r.id; loadVideo(r.t, null, undefined, true); });
+    $("resumeGo").addEventListener("click", function () { box.hidden = true; linkInput.value = "https://youtu.be/" + r.id; loadVideo(resumeStart(r.t), null, undefined, true); });
     $("resumeX").addEventListener("click", function () { box.hidden = true; try { localStorage.removeItem(RK); } catch (e) {} });
   })();
 
@@ -3698,12 +3699,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     loadVideo(t, null, qPos >= 0 ? qPos : undefined, true);
   });
 
+  // Resume rewind (round 68): continuing a half-watched video starts 10 seconds early,
+  // Netflix-style, so the story comes back to you. The toast's Undo jumps to the exact
+  // saved spot. Only true resume paths use this - shared links and retries stay exact.
+  var rwExact = 0;
+  function resumeStart(t) {
+    if (typeof t === "number" && isFinite(t) && t >= 20) { rwExact = Math.round(t); return Math.max(0, Math.round(t) - 10); }
+    return t;
+  }
   function loadVideo(startSec, endSec, queueIndex, autoplay) {
     if (typeof upnextCancel === "function") upnextCancel(true);
     var id = parseVideoId(linkInput.value);
     if (id) clearUndoSeek();
     if (id) qPos = typeof queueIndex === "number" ? queueIndex : -1;
     if (!id) {
+      rwExact = 0;
       var rawLink = linkInput.value.trim();
       var mHost = rawLink.match(/^https?:\/\/([^\s/]+)/i);
       var isYtHost = mHost && /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)$/i.test(mHost[1]);
@@ -3724,7 +3734,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     showDlHandoff(false);
     saveResume(true);
     var previous = findIn(lib.hist, id);
-    if (startSec == null && previous >= 0 && lib.hist[previous].t >= 5) startSec = lib.hist[previous].t;
+    if (startSec == null && previous >= 0 && lib.hist[previous].t >= 5) startSec = resumeStart(lib.hist[previous].t);
     document.dispatchEvent(new Event("vp-youtube-selected"));
     curId = id; curTime = startSec || 0; lastResumeSave = 0; clearAB(); if ($("practiceName")) { $("practiceName").value = ""; renderPracticeLoops(); } if (typeof vmemNote === "function") vmemNote("");
     dsAppliedFor = null;
@@ -3761,6 +3771,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     frameBox.appendChild(iframe);
     placeholder.style.display = "none";
     controls.hidden = false;
+    if (rwExact && startSec != null && rwExact > startSec) {
+      var exactSpot = rwExact;
+      toastUndo(T("Started 10 seconds early to jog your memory"), function () { manualSeek(exactSpot); });
+    }
+    rwExact = 0;
     armLoadWatch(id);
   }
   document.addEventListener("vp-local-playing", function(){ send("pauseVideo"); miniDismissed = true; setMini(false); });
@@ -6218,7 +6233,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var fill = document.createElement("i"); fill.style.width = Math.min(100, Math.round(item.t / item.dur * 100)) + "%";
       prog.appendChild(fill); box.appendChild(span); box.appendChild(prog);
       open.appendChild(img); open.appendChild(box);
-      open.addEventListener("click", function () { linkInput.value = "https://youtu.be/" + item.id; loadVideo(item.t, null, undefined, true); });
+      open.addEventListener("click", function () { linkInput.value = "https://youtu.be/" + item.id; loadVideo(resumeStart(item.t), null, undefined, true); });
       var act = document.createElement("button"); act.className = "chip"; act.type = "button"; act.textContent = T("Remove");
       act.addEventListener("click", function () { item.t = 0; saveLib(); renderLib(); });
       li.appendChild(open); li.appendChild(act); ul.appendChild(li);
