@@ -137,6 +137,7 @@
   .ctl-card h3 { color: var(--ink2); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .time { color: var(--ink2); font-variant-numeric: tabular-nums; font-size: 14px; flex: 1; text-align: center; }
+  .ends-at { font-size: 12px; color: var(--ink2); opacity: .8; white-space: nowrap; align-self: center; }
   .label { color: var(--ink2); font-size: 14px; }
   .slider { width: 100%; height: 44px; margin: 0; accent-color: var(--teal); }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -1348,7 +1349,7 @@ html.low-fx section::after, html.high-contrast section::after { content: none !i
         <div class="ctl-card wide transport" id="ctl-transport">
           <div class="row">
             <button class="btn" id="playBtn" disabled>▶ Play</button>
-            <span class="time" id="timeLabel">0:00 / 0:00</span>
+            <span class="time" id="timeLabel">0:00 / 0:00</span> <span class="ends-at" id="endsAt" hidden></span>
             <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button>
           </div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
@@ -1772,6 +1773,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Remove duplicates": ["डुप्लिकेट हटाएं", "ડુપ્લિકેટ કાઢો"],
    "Mix order": ["क्रम मिलाएं", "ક્રમ મિક્સ કરો"],
    "Queue order mixed": ["कतार का क्रम मिला दिया", "ક્યૂનો ક્રમ મિક્સ થયો"],
+   "Ends at": ["खत्म होगा", "પૂરું થશે"],
    "Need at least 2 more videos after the current one to mix.": ["मिलाने के लिए मौजूदा वीडियो के बाद कम से कम 2 और वीडियो चाहिए.", "મિક્સ કરવા માટે હાલના વીડિયો પછી ઓછામાં ઓછા 2 વધુ વીડિયો જોઈએ."],
    "left": ["बाकी", "બાકી"],
    "Showing time left": ["बाकी समय दिख रहा है", "બાકીનો સમય દેખાય છે"],
@@ -3003,6 +3005,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ready = false; playing = false; duration = 0; playBtn.disabled = true; playBtn.textContent = T("▶ Play");
     if (typeof sleepFadeRestore === "function") sleepFadeRestore();
     timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1;
+    if (typeof paintEndsAt === "function") paintEndsAt(0);
     if (window.__vpSeekMarks) window.__vpSeekMarks();
     if (iframe) { iframe.remove(); iframe = null; }
     iframe = document.createElement("iframe");
@@ -3082,10 +3085,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   seek.addEventListener("change", commitSeek);
   seek.addEventListener("pointerup", commitSeek);
   // One place that paints the time read-out, so it can show elapsed/total or time left.
+  // Ends at: the wall-clock time this video finishes at the current speed.
+  var endsAtEl = $("endsAt");
+  function paintEndsAt(t) {
+    if (!endsAtEl) return;
+    if (!curId || !(duration > 0)) { endsAtEl.hidden = true; endsAtEl.textContent = ""; return; }
+    var left = Math.max(0, (duration - (t || 0)) / (prefs.speed > 0 ? prefs.speed : 1));
+    var d = new Date(Date.now() + left * 1000);
+    var h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12;
+    endsAtEl.textContent = T("Ends at") + " " + h + ":" + (m < 10 ? "0" : "") + m + " " + ap;
+    endsAtEl.hidden = false;
+  }
   function paintTime(t) {
     t = t || 0;
     if (prefs.timeLeft && duration > 0) timeLabel.textContent = "\u2212" + fmt(Math.max(0, Math.round(duration - t))) + " " + T("left");
     else timeLabel.textContent = fmt(t) + " / " + fmt(duration);
+    paintEndsAt(t);
   }
   // Tap the time read-out to switch between elapsed/total and time left.
   (function () {
