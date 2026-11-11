@@ -1362,6 +1362,10 @@ html .shortcuts, html .note, html .faq, html .help-card, html .pl-item, html .mu
 .undo-seek-wrap[hidden]{display:none!important}
 #undoSeekBtn{min-height:44px;font-weight:700}
 .undo-seek-wrap .hint{margin:0;font-size:12px}
+.pct-row{display:flex;align-items:center;justify-content:center;gap:8px;margin:4px 0 6px;flex-wrap:wrap}
+.pct-chip{display:inline-flex;flex-direction:column;align-items:center;line-height:1.15;min-width:62px;padding:6px 10px}
+.pct-chip small{font-size:11px;opacity:.7;font-variant-numeric:tabular-nums}
+.pct-chip.active{box-shadow:0 0 0 2px var(--accent,#7c5cff) inset,0 0 14px rgba(124,92,255,.35)}
 .quick-seek-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0 6px;flex-wrap:wrap}
 .quick-seek.chip{position:relative;overflow:hidden;min-height:44px;min-width:82px;border-radius:18px;font-weight:700;font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:center;gap:9px}
 .quick-seek>span[aria-hidden]{font-size:24px;line-height:1}
@@ -1593,6 +1597,7 @@ setTimeout(done,3000);})();
             <span class="quick-seek-hint" id="quickSeekHint">Tap to skip</span>
             <button class="chip quick-seek" id="quickSeekForward" type="button"><span id="quickSeekForwardText">10s</span> <span aria-hidden="true">↷</span></button>
           </div>
+          <div class="pct-row" id="pctRow" role="group" aria-label="Jump to a part of the video"><span class="label" id="pctLab">Jump to:</span><button class="chip pct-chip" type="button" data-p="0">0%</button><button class="chip pct-chip" type="button" data-p="25">25%</button><button class="chip pct-chip" type="button" data-p="50">50%</button><button class="chip pct-chip" type="button" data-p="75">75%</button></div>
           <div class="ab-strip" id="abStrip" hidden aria-hidden="true"></div>
           <div class="seek-tip" id="seekTip" hidden></div>
           <div class="seek-marks" id="seekMarks" hidden></div>
@@ -2258,6 +2263,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Sleep timer finished - paused. Press Play to continue.": ["स्लीप टाइमर पूरा - रोक दिया. जारी रखने के लिए Play दबाएं.", "સ્લીપ ટાઈમર પૂરો - રોકાયું. ચાલુ રાખવા Play દબાવો."],
    "Choose 1 to 720 whole minutes.": ["1 से 720 के बीच पूरे मिनट चुनें.", "1 થી 720 વચ્ચે આખા મિનિટ પસંદ કરો."],
    "Stopped at the end of the video (sleep timer).": ["वीडियो के अंत में रोका गया (स्लीप टाइमर).", "વીડિયોના અંતે રોકાયું (સ્લીપ ટાઈમર)."],
+   "Jump to:": ["यहां जाएं:", "અહીં જાઓ:"],
+   "Jumped to ": ["यहां पहुंचे: ", "અહીં પહોંચ્યા: "],
    "Stop at clock time:": ["इस समय पर रुकें:", "આ સમયે રોકાઓ:"],
    "Sleep timer: until ": ["स्लीप टाइमर: इस समय तक ", "સ્લીપ ટાઈમર: આ સમય સુધી "],
    "Pick a time first.": ["पहले समय चुनें.", "પહેલા સમય પસંદ કરો."],
@@ -3755,7 +3762,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (prefs.timeLeft && duration > 0) timeLabel.textContent = "\u2212" + fmt(Math.max(0, Math.round(duration - t))) + " " + T("left");
     else timeLabel.textContent = fmt(t) + " / " + fmt(duration);
     paintEndsAt(t);
+    if (typeof paintPct === "function") paintPct(t);
   }
+  // Jump-to-part chips: 0 / 25 / 50 / 75 percent, each shows its time and the current part glows.
+  var pctChips = [].slice.call(document.querySelectorAll(".pct-chip"));
+  function paintPct(t) {
+    var lab = $("pctLab"); if (lab && lab.dataset.l !== String(prefs.lang)) { lab.dataset.l = String(prefs.lang); lab.textContent = T("Jump to:"); }
+    var has = duration > 0, cur = has ? Math.min(3, Math.floor((t || 0) / duration * 4)) : -1;
+    pctChips.forEach(function (c, i) {
+      var p = Number(c.dataset.p), ts = has ? fmt(duration * p / 100) : "";
+      var key = p + "|" + ts; if (c.dataset.k !== key) { c.dataset.k = key; c.innerHTML = p + "%" + (ts ? "<small>" + ts + "</small>" : ""); }
+      c.disabled = !has; c.classList.toggle("active", i === cur);
+      c.setAttribute("aria-pressed", i === cur ? "true" : "false");
+    });
+  }
+  pctChips.forEach(function (c) { c.addEventListener("click", function () {
+    if (!(duration > 0)) return;
+    manualSeek(duration * Number(c.dataset.p) / 100);
+    toast(T("Jumped to ") + c.dataset.p + "%");
+  }); });
   // Tap the time read-out to switch between elapsed/total and time left.
   (function () {
     timeLabel.style.cursor = "pointer";
@@ -5944,7 +5969,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Re-render dynamic labels when the UI language changes.
   window.__relang = window.__relang || [];
   window.__relang.push(function () {
-    sleepVidsRender(); (function () { var l = $("sleepAtLab"), b = $("sleepAtBtn"); if (l) l.textContent = T("Stop at clock time:"); if (b) b.textContent = T("Set"); })(); updateFavBtn(); updateLaterBtn(); renderQueueModes(); ccRender(); sleepEndRender(); updateAB();
+    sleepVidsRender(); if (typeof paintPct === "function") paintPct(curTime); (function () { var l = $("sleepAtLab"), b = $("sleepAtBtn"); if (l) l.textContent = T("Stop at clock time:"); if (b) b.textContent = T("Set"); })(); updateFavBtn(); updateLaterBtn(); renderQueueModes(); ccRender(); sleepEndRender(); updateAB();
     playBtn.textContent = playing ? T("\u23f8 Pause") : T("\u25b6 Play");
     muteBtn.textContent = muted ? T("\ud83d\udd07 Unmute") : T("\ud83d\udd0a Mute");
     loopBtn.textContent = prefs.loop ? T("\ud83d\udd01 Loop on") : T("\ud83d\udd01 Loop off");
