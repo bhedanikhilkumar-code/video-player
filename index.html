@@ -1973,7 +1973,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhHist">Recently watched</h3><button class="chip" id="clearHistBtn">Clear</button></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
-      <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsClear" type="button">Clear</button></div>
+      <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsClear" type="button">Clear</button></div>
       <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><div class="stats-days" id="statsDays"></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><ul class="lib-list" id="statsList"></ul>
       <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
       <div class="goal-row" id="storRow"><p class="hint" id="storInfo" role="status"></p><button class="chip" id="storBtn" type="button">Refresh</button></div>
@@ -2080,6 +2080,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Clean link: remove tracking extras, keep the video and its start time.": ["लिंक साफ़ करें: ट्रैकिंग एक्स्ट्रा हटाएं, वीडियो और उसका शुरुआती समय बरकरार रखें.", "લિંક સાફ કરો: ટ્રૅકિંગ એક્સ્ટ્રા કાઢો, વીડિયો અને તેનો શરૂઆતી સમય જાળવો."],
    "Removes tracking extras like si= and utm= from the link": ["लिंक से si= और utm= जैसे ट्रैकिंग एक्स्ट्रा हटाता है", "લિંકમાંથી si= અને utm= જેવા ટ્રૅકિંગ એક્સ્ટ્રા કાઢે છે"],
    "Link cleaned - tracking extras removed": ["लिंक साफ़ हुआ - ट्रैकिंग एक्स्ट्रा हट गए", "લિંક સાફ થઈ - ટ્રૅકિંગ એક્સ્ટ્રા કઢાઈ ગયા"],
+   "My week card": ["मेरा हफ़्ता कार्ड", "મારો અઠવાડિયો કાર્ડ"],
+   "Made on this device": ["इसी डिवाइस पर बना", "આ ડિવાઇસ પર બન્યું"],
+   "MY WEEK": ["मेरा हफ़्ता", "મારો અઠવાડિયું"],
+   "watched this week": ["इस हफ़्ते देखा", "આ અઠવાડિયે જોયું"],
+   "Best day:": ["सबसे अच्छा दिन:", "શ્રેષ્ઠ દિવસ:"],
+   "Most watched:": ["सबसे ज़्यादा देखा:", "સૌથી વધુ જોયું:"],
+   "Watch a little first - your week card appears once you have watched something.": ["पहले थोड़ा देखें - कुछ देखने के बाद आपका हफ़्ता कार्ड बनेगा.", "પહેલા થોડું જુઓ - કંઈક જોયા પછી તમારો અઠવાડિયાનો કાર્ડ બનશે."],
    "Link cleared": ["लिंक हटाया गया", "લિંક કાઢી નાખી"],
    "Good morning": ["शुभ प्रभात", "સુપ્રભાત"],
    "Good afternoon": ["नमस्कार", "નમસ્કાર"],
@@ -9354,6 +9361,141 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   });
   input.addEventListener("input", paint); input.addEventListener("change", paint);
   setInterval(paint, 900);
+  (window.__relang = window.__relang || []).push(paint);
+  paint();
+})();
+</script>
+<script>
+/* My week card (round 60): a shareable PNG picture of the last 7 days - total watch time,
+   a bar per day, best day, watch streak and the most-watched video. Drawn on this device
+   in the chosen share-card style; shared where possible, else saved as an image. */
+(function () {
+  "use strict";
+  var T = window.T || function (x) { return x; };
+  var btn = document.getElementById("weekCardBtn");
+  if (!btn) return;
+  var SKEY = "vp-stats.v1", PKEY = "vp-prefs.v1";
+  var THEMES = {
+    midnight: { stops: [[0, "#1b2340"], [.55, "#3b2a63"], [1, "#0f6154"]], accent: "#7fd2bf",
+      blobs: [[180, 220, 360, "rgba(127,210,191,.28)"], [900, 1100, 420, "rgba(255,170,120,.18)"], [940, 160, 260, "rgba(150,140,255,.25)"]] },
+    sunrise: { stops: [[0, "#3a1c5c"], [.55, "#b23a6d"], [1, "#ff8c42"]], accent: "#ffd166",
+      blobs: [[200, 240, 360, "rgba(255,209,102,.30)"], [880, 1080, 420, "rgba(255,110,90,.22)"], [920, 180, 260, "rgba(255,255,255,.20)"]] },
+    ocean: { stops: [[0, "#062a4d"], [.55, "#0b5d7e"], [1, "#0aa38f"]], accent: "#8be3ff",
+      blobs: [[180, 220, 360, "rgba(139,227,255,.26)"], [900, 1100, 420, "rgba(10,163,143,.25)"], [940, 160, 260, "rgba(255,255,255,.16)"]] },
+    candy: { stops: [[0, "#5b1e6e"], [.55, "#c2378f"], [1, "#ff5e7a"]], accent: "#ffc4e1",
+      blobs: [[180, 220, 360, "rgba(255,196,225,.28)"], [900, 1100, 420, "rgba(122,92,255,.24)"], [940, 160, 260, "rgba(255,94,122,.28)"]] }
+  };
+  function theme() {
+    try { var p = JSON.parse(localStorage.getItem(PKEY) || "null"); if (p && THEMES[p.cardTheme]) return THEMES[p.cardTheme]; } catch (e) {}
+    return THEMES.midnight;
+  }
+  function lang() {
+    try { var p = JSON.parse(localStorage.getItem(PKEY) || "null"); if (p && (p.lang === "hi" || p.lang === "gu")) return p.lang; } catch (e) {}
+    return "en";
+  }
+  function fmtW(s) {
+    s = Math.floor(s);
+    if (s < 60) return s + " " + T("sec");
+    var h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+    if (m === 60) { h += 1; m = 0; }
+    return h > 0 ? h + " " + T("hr") + " " + m + " " + T("min") : m + " " + T("min");
+  }
+  function dayKey(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function make() {
+    var st = null;
+    try { st = JSON.parse(localStorage.getItem(SKEY) || "null"); } catch (e) {}
+    if (!st || !st.days || ((!st.plays) && !Object.keys(st.videos || {}).length)) {
+      if (typeof window.toast === "function") window.toast(T("Watch a little first - your week card appears once you have watched something."));
+      return;
+    }
+    var loc = lang() === "hi" ? "hi-IN" : lang() === "gu" ? "gu-IN" : "en-US";
+    var days = [];
+    for (var off = 6; off >= 0; off--) {
+      var dt = new Date(Date.now() - off * 86400000);
+      days.push({ secs: Math.floor(st.days[dayKey(dt)] || 0),
+        letter: dt.toLocaleDateString(loc, { weekday: "narrow" }),
+        date: dt, today: off === 0 });
+    }
+    var total = 0, best = days[0];
+    days.forEach(function (d) { total += d.secs; if (d.secs > best.secs) best = d; });
+    var streak = 0, sd = new Date();
+    if ((st.days[dayKey(sd)] || 0) <= 0) sd = new Date(sd.getTime() - 86400000);
+    while ((st.days[dayKey(sd)] || 0) > 0) { streak++; sd = new Date(sd.getTime() - 86400000); if (streak > 3660) break; }
+    var top = null;
+    Object.keys(st.videos || {}).forEach(function (id) {
+      var v = st.videos[id]; if (!v) return;
+      if (!top || (v.secs || 0) > top.secs) top = { secs: v.secs || 0, title: v.title || ("Video " + id) };
+    });
+    var th = theme();
+    var W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+    var c = cv.getContext("2d");
+    var g = c.createLinearGradient(0, 0, W, H); th.stops.forEach(function (sp) { g.addColorStop(sp[0], sp[1]); });
+    c.fillStyle = g; c.fillRect(0, 0, W, H);
+    th.blobs.forEach(function (b) {
+      var rg = c.createRadialGradient(b[0], b[1], 0, b[0], b[1], b[2]); rg.addColorStop(0, b[3]); rg.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = rg; c.fillRect(0, 0, W, H);
+    });
+    function rr(x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+    rr(70, 70, W - 140, H - 140, 64); c.fillStyle = "rgba(255,255,255,.10)"; c.fill(); c.lineWidth = 3; c.strokeStyle = "rgba(255,255,255,.28)"; c.stroke();
+    var FF = '-apple-system, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+    rr(130, 130, 96, 96, 26); c.fillStyle = "#fff"; c.fill();
+    var lg = c.createLinearGradient(160, 150, 205, 210); lg.addColorStop(0, "#ff6a88"); lg.addColorStop(1, "#6a5cff");
+    c.fillStyle = lg; c.beginPath(); c.moveTo(165, 154); c.lineTo(205, 178); c.lineTo(165, 202); c.closePath(); c.fill();
+    c.fillStyle = "rgba(255,255,255,.85)"; c.font = "600 40px " + FF; c.textBaseline = "middle";
+    c.fillText("HD Video Player", 252, 178); c.textBaseline = "alphabetic";
+    c.fillStyle = th.accent; c.font = "700 34px " + FF; c.fillText(T("MY WEEK"), 130, 330);
+    var d0 = days[0].date.toLocaleDateString(loc, { day: "numeric", month: "short" });
+    var d1 = days[6].date.toLocaleDateString(loc, { day: "numeric", month: "short" });
+    c.fillStyle = "rgba(255,255,255,.75)"; c.font = "500 36px " + FF; c.fillText(d0 + " - " + d1, 130, 382);
+    c.fillStyle = "#fff"; c.font = "800 120px " + FF; c.fillText(fmtW(total), 130, 520);
+    c.fillStyle = "rgba(255,255,255,.8)"; c.font = "500 40px " + FF; c.fillText(T("watched this week"), 130, 580);
+    // 7-day bar chart
+    var maxS = Math.max.apply(null, days.map(function (d) { return d.secs; }).concat([1]));
+    var bx = 130, bw = (W - 260 - 6 * 28) / 7, base = 1000, bh = 300;
+    days.forEach(function (d, i) {
+      var h = Math.max(10, Math.round(d.secs / maxS * bh));
+      var x = bx + i * (bw + 28);
+      rr(x, base - h, bw, h, 14);
+      c.fillStyle = d.secs === maxS && d.secs > 0 ? th.accent : "rgba(255,255,255," + (d.today ? ".95" : ".55") + ")";
+      c.fill();
+      c.fillStyle = "rgba(255,255,255,.75)"; c.font = "600 32px " + FF; c.textAlign = "center";
+      c.fillText(d.letter, x + bw / 2, base + 52);
+      if (d.secs > 0) { c.font = "500 26px " + FF; c.fillStyle = "rgba(255,255,255,.65)"; c.fillText(fmtW(d.secs), x + bw / 2, base - h - 16); }
+      c.textAlign = "left";
+    });
+    var y = base + 130;
+    c.fillStyle = "rgba(255,255,255,.85)"; c.font = "600 38px " + FF;
+    if (best.secs > 0) {
+      c.fillText(T("Best day:") + " " + best.date.toLocaleDateString(loc, { weekday: "long" }) + " (" + fmtW(best.secs) + ")", 130, y); y += 58;
+    }
+    if (streak > 1) { c.fillText("\uD83D\uDD25 " + streak + " " + T(streak === 1 ? "day streak" : "day streaks"), 130, y); y += 58; }
+    if (top && top.title) {
+      c.fillStyle = th.accent; c.font = "700 34px " + FF; c.fillText(T("Most watched:"), 130, y); y += 52;
+      c.fillStyle = "#fff"; c.font = "600 40px " + FF;
+      var words = String(top.title).split(/\s+/), lines = [], cur = "";
+      words.forEach(function (w) { var t = cur ? cur + " " + w : w; if (c.measureText(t).width > W - 260 && cur) { lines.push(cur); cur = w; } else cur = t; });
+      if (cur) lines.push(cur);
+      if (lines.length > 2) { lines = lines.slice(0, 2); lines[1] = lines[1].replace(/.{0,2}$/, "") + "\u2026"; }
+      lines.forEach(function (ln) { c.fillText(ln, 130, y); y += 50; });
+    }
+    c.fillStyle = "rgba(255,255,255,.6)"; c.font = "500 30px " + FF;
+    c.fillText(location.host + " \u00b7 " + T("Made on this device"), 130, H - 110);
+    var fname = "my-week-" + dayKey(new Date()) + ".png";
+    cv.toBlob(function (blob) {
+      if (!blob) { if (typeof window.toast === "function") window.toast(T("Could not make the share card.")); return; }
+      var file = null; try { file = new File([blob], fname, { type: "image/png" }); } catch (e) {}
+      function save() {
+        var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fname;
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        if (typeof window.toast === "function") window.toast(T("Share card saved as an image"));
+      }
+      if (file && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+        navigator.share({ files: [file] }).catch(function (e) { if (e && e.name !== "AbortError") save(); });
+      } else save();
+    }, "image/png");
+  }
+  btn.addEventListener("click", make);
+  function paint() { btn.textContent = T("My week card"); }
   (window.__relang = window.__relang || []).push(paint);
   paint();
 })();
