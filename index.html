@@ -1671,7 +1671,7 @@ html.low-fx section::after, html.high-contrast section::after { content: none !i
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
       <div id="musicQueue">
-      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="queueToLaterBtn" type="button">Save all to Watch later</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <div class="row music-controls" aria-label="Queue playback options">
         <button class="chip" id="prevQueueBtn" type="button">Previous</button>
         <button class="chip" id="shuffleQueueBtn" type="button" aria-pressed="false">Shuffle: off</button>
@@ -1782,6 +1782,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Reverse order": ["क्रम उलटें", "ક્રમ ઉલટાવો"],
    "Queue order reversed": ["कतार का क्रम उलट दिया", "ક્યૂનો ક્રમ ઉલટાવ્યો"],
    "Need at least 2 more videos after the current one to reverse.": ["उलटने के लिए मौजूदा वीडियो के बाद कम से कम 2 वीडियो चाहिए.", "ઉલટાવવા માટે હાલના વીડિયો પછી ઓછામાં ઓછા 2 વીડિયો જોઈએ."],
+   "Save all to Watch later": ["सब बाद के लिए सेव करें", "બધું પછી માટે સેવ કરો"],
+   "Everything in the queue is already in Watch later.": ["कतार का सब कुछ पहले से बाद के लिए सेव है.", "ક્યૂમાં બધું પહેલેથી પછી માટે સેવ છે."],
+   "1 video saved to Watch later": ["1 वीडियो बाद के लिए सेव हुआ", "1 વીડિયો પછી માટે સેવ થયો"],
+   "videos saved to Watch later": ["वीडियो बाद के लिए सेव हुए", "વીડિયો પછી માટે સેવ થયા"],
+   "Watch later restored": ["बाद के लिए सूची वापस आ गई", "પછી માટેની યાદી પાછી આવી"],
    "Queue order mixed": ["कतार का क्रम मिला दिया", "ક્યૂનો ક્રમ મિક્સ થયો"],
    "Ends at": ["खत्म होगा", "પૂરું થશે"],
    "Custom speed": ["अपनी स्पीड", "પોતાની સ્પીડ"],
@@ -2657,6 +2662,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     lib.queue = lib.queue.slice(0, start).concat(lib.queue.slice(start).reverse()); resetShuffle(); saveLib(); renderLib(); showLibErr("");
     toastUndo(T("Queue order reversed"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
   });
+  // Copy every queued video into Watch later (skips ones already there, max 50), with undo.
+  var queueToLaterBtn = $("queueToLaterBtn");
+  if (queueToLaterBtn) queueToLaterBtn.addEventListener("click", function () {
+    if (!lib.queue.length) { showLibErr(T("Queue is empty. Add links with Add to queue.")); return; }
+    var snap = lib.later.slice(), added = 0;
+    lib.queue.forEach(function (q) {
+      if (findIn(lib.later, q.id) < 0 && lib.later.length < 50) { lib.later.push({ id: q.id, title: q.title }); added++; }
+    });
+    if (!added) { showLibErr(T("Everything in the queue is already in Watch later.")); return; }
+    saveLib(); renderLib(); showLibErr("");
+    toastUndo(added === 1 ? T("1 video saved to Watch later") : added + " " + T("videos saved to Watch later"), function () { lib.later = snap; saveLib(); renderLib(); }, T("Watch later restored"));
+  });
+  (window.__relang = window.__relang || []).push(function () { if (queueToLaterBtn) queueToLaterBtn.textContent = T("Save all to Watch later"); });
+  if (queueToLaterBtn) queueToLaterBtn.textContent = T("Save all to Watch later");
   (window.__relang = window.__relang || []).push(function () { if (reverseQueueBtn) reverseQueueBtn.textContent = T("Reverse order"); });
   if (reverseQueueBtn) reverseQueueBtn.textContent = T("Reverse order");
   (window.__relang = window.__relang || []).push(function () { if (mixQueueBtn) mixQueueBtn.textContent = T("Mix order"); });
