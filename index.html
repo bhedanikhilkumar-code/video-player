@@ -2032,6 +2032,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Moment saved": ["पल सेव हुआ", "ક્ષણ સેવ થઈ"],
    "Moment removed": ["पल हटाया गया", "ક્ષણ હટાઈ"],
    "Moments copied": ["पल कॉपी हुए", "ક્ષણો કૉપી થઈ"],
+   "Copy link to moment": ["इस पल का लिंक कॉपी करें", "આ ક્ષણની લિંક કૉપી કરો"],
+   "Moment link copied": ["पल का लिंक कॉपी हुआ", "ક્ષણની લિંક કૉપી થઈ"],
    "No earlier moment": ["इससे पहले कोई पल नहीं", "આની પહેલાં કોઈ ક્ષણ નથી"],
    "No later moment": ["इसके बाद कोई पल नहीं", "આના પછી કોઈ ક્ષણ નથી"],
    "No moments to copy yet.": ["कॉपी करने के लिए अभी कोई पल नहीं.", "કૉપી કરવા હજી કોઈ ક્ષણ નથી."],
@@ -4488,6 +4490,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var go = document.createElement("button"); go.type = "button"; go.className = "chip";
       go.textContent = "\u25b6 " + fmt(m.t) + (m.name ? " \u00b7 " + m.name : "");
       go.addEventListener("click", function () { send("seekTo", [m.t, true]); send("playVideo"); });
+      var sh = document.createElement("button"); sh.type = "button"; sh.className = "chip mark-x"; sh.textContent = "🔗";
+      sh.setAttribute("aria-label", T("Copy link to moment") + " " + fmt(m.t));
+      sh.addEventListener("click", function () { momentLinkCopy(m); });
       var del = document.createElement("button"); del.type = "button"; del.className = "chip mark-x"; del.textContent = "\u2715";
       del.setAttribute("aria-label", T("Delete moment") + " " + fmt(m.t));
       del.addEventListener("click", function () {
@@ -4495,7 +4500,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         marks[curId] = arr.filter(function (x) { return x.t !== m.t; });
         marksSave(); renderMarks(); toast(T("Moment removed"));
       });
-      list.appendChild(go); list.appendChild(del);
+      list.appendChild(go); list.appendChild(sh); list.appendChild(del);
     });
   }
   (function () {
@@ -4513,6 +4518,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
   function setMarkBtns(n) { ["markCopyBtn", "markPrevBtn", "markNextBtn"].forEach(function (id) { var b = $(id); if (b) b.disabled = !n; }); }
+  // Copy a link that opens this video right at one saved moment.
+  function momentLinkCopy(m) {
+    if (!curId) return;
+    var link = location.origin + location.pathname + "?v=" + curId + "&from=" + m.t;
+    function ok() { toast(T("Moment link copied")); }
+    function fallback() {
+      try { var ta = document.createElement("textarea"); ta.value = link; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var done = document.execCommand("copy"); ta.remove(); if (done) ok(); else toast(T("Could not copy. Try again.")); } catch (e) { toast(T("Could not copy. Try again.")); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok, fallback); else fallback();
+  }
   function sortedMarks() { var a = (curId && marks[curId]) ? marks[curId].slice() : []; a.sort(function (x, y) { return x.t - y.t; }); return a; }
   (function () {
     function hop(dir) {
