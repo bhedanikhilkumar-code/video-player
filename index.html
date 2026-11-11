@@ -885,6 +885,12 @@ html.high-contrast section::before, html.high-contrast .btn::before { content: n
 <style id="ux-toast">
 /* Toast feedback: a small glass note at the bottom that confirms saved, copied and added actions.
    It replaces nothing - the inline status lines stay - it just makes silent state changes visible. */
+/* Cinema mode: dim the whole page and keep only the player above the dark veil. */
+#cinemaVeil{position:fixed;inset:0;z-index:60;background:rgba(9,9,15,.88);opacity:0;pointer-events:none;transition:opacity .25s ease;}
+html.cinema-on #cinemaVeil{opacity:1;pointer-events:auto;}
+html.cinema-on #player{position:relative;z-index:65;}
+html.cinema-on .frame{box-shadow:0 24px 90px rgba(0,0,0,.6);}
+@media (prefers-reduced-motion:reduce){#cinemaVeil{transition:none;}}
 #vpToast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);max-width:min(92vw,420px);padding:10px 16px;border-radius:14px;border:1px solid var(--hairline);background:var(--card);color:var(--ink);box-shadow:0 10px 30px rgba(0,0,0,.18);font-size:14px;line-height:1.35;text-align:center;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;z-index:9500;}
 #vpToast.show{opacity:1;transform:translate(-50%,0);}
 @media (prefers-reduced-motion:reduce){#vpToast{transition:none;}}
@@ -1222,7 +1228,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
           <div class="row">
             <button class="btn" id="playBtn" disabled>▶ Play</button>
             <span class="time" id="timeLabel">0:00 / 0:00</span>
-            <button class="chip" id="fsBtn">⛶ Full screen</button>
+            <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button>
           </div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
@@ -1335,6 +1341,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
             <li id="sc7"><b>C</b>: subtitles on / off</li>
             <li id="sc8"><b>?</b>: show or hide this list</li>
             <li id="sc9"><b>A</b> / <b>B</b>: set loop points A and B, <b>X</b>: clear the A-B loop</li>
+            <li id="sc10"><b>T</b>: cinema mode on / off</li>
           </ul>
           <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
         </details>
@@ -1635,6 +1642,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Added to queue": ["कतार में जोड़ा गया", "કતારમાં ઉમેરાયું"],
    "videos added to queue": ["वीडियो कतार में जोड़े गए", "વિડિયો કતારમાં ઉમેરાયા"],
    "Queue cleared": ["कतार साफ़ हुई", "કતાર સાફ થઈ"],
+   "Cinema mode on - tap the dark area or press T to exit.": ["सिनेमा मोड चालू - बाहर टैप करें या बंद करने के लिए T दबाएं.", "સિનેમા મોડ ચાલુ - બહાર ટેપ કરો અથવા બંધ કરવા T દબાવો."],
    "Link copied": ["लिंक कॉपी हुआ", "લિંક કોપી થઈ"],
    "Theme: Auto": ["थीम: ऑटो", "થીમ: ઓટો"],
    "Theme: Day/Night": ["थीम: दिन/रात", "થીમ: દિવસ/રાત"],
@@ -3005,6 +3013,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (k === "x" || k === "X") abClearBtn.click();
     else if (k === "n" || k === "N") nextBtn.click();
     else if (k === "c" || k === "C") $("ccBtn").click();
+    else if (k === "t" || k === "T") { var cineB = $("cinemaBtn"); if (cineB) cineB.click(); }
     else if (/^[0-9]$/.test(k) && duration > 0) { var t = duration * Number(k) / 10; send("seekTo", [t, true]); curTime = t; seek.value = t; }
     else handled = false;
     if (handled) e.preventDefault();
@@ -3101,6 +3110,28 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (el.requestFullscreen) el.requestFullscreen();
     else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
   });
+
+  // Cinema mode: dim everything except the player. Session-only, always starts off.
+  var cinemaBtn = $("cinemaBtn"), cinemaOn = false;
+  var cinemaVeil = document.createElement("div");
+  cinemaVeil.id = "cinemaVeil";
+  cinemaVeil.setAttribute("aria-hidden", "true");
+  document.body.appendChild(cinemaVeil);
+  function cinemaSet(on) {
+    if (!cinemaBtn) return;
+    on = !!on;
+    if (on === cinemaOn) return;
+    cinemaOn = on;
+    document.documentElement.classList.toggle("cinema-on", on);
+    cinemaBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    if (on) toast(T("Cinema mode on - tap the dark area or press T to exit."));
+  }
+  if (cinemaBtn) {
+    cinemaBtn.addEventListener("click", function () { cinemaSet(!cinemaOn); });
+    cinemaVeil.addEventListener("click", function () { cinemaSet(false); });
+    document.addEventListener("fullscreenchange", function () { if (document.fullscreenElement) cinemaSet(false); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && cinemaOn) cinemaSet(false); });
+  }
 
   // ================= Support features (2026-11-09) =================
   var DL_API = "https://vp-downloader.onrender.com";
@@ -3932,6 +3963,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#plBtn", "Add playlist to queue", "प्लेलिस्ट कतार में डालें"],
     ["#fsBtn", "⛶ Full screen", "⛶ फुल स्क्रीन"],
     ["#shareBtn", "🔗 Share at this time", "🔗 इसी समय से शेयर"],
+    ["#cinemaBtn", "🎬 Cinema", "🎬 सिनेमा"],
     ["#qrBtn", "QR code", "QR कोड"],
     ["#nextBtn", "Next ⏭", "अगला ⏭"],
     ["#clearQueueBtn", "Clear", "साफ़ करें"],
@@ -4137,6 +4169,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#plBtn": "પ્લેલિસ્ટ કતારમાં ઉમેરો",
  "#fsBtn": "⛶ ફુલ સ્ક્રીન",
  "#shareBtn": "🔗 આ સમયથી શેર કરો",
+ "#cinemaBtn": "🎬 સિનેમા",
  "#qrBtn": "QR કોડ",
  "#nextBtn": "આગળનો ⏭",
  "#clearQueueBtn": "સાફ કરો",
@@ -4297,6 +4330,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#sc7", "<b>C</b>: subtitles on / off", "<b>C</b>: सबटाइटल चालू / बंद"],
     ["#sc8", "<b>?</b>: show or hide this list", "<b>?</b>: यह सूची दिखाएं / छिपाएं"],
     ["#sc9", "<b>A</b> / <b>B</b>: set loop points A and B, <b>X</b>: clear the A-B loop", "<b>A</b> / <b>B</b>: लूप पॉइंट A और B लगाएं, <b>X</b>: A-B लूप हटाएं"],
+    ["#sc10", "<b>T</b>: cinema mode on / off", "<b>T</b>: सिनेमा मोड चालू / बंद"],
     ["#faq7a", "See the <a href=\"#backgroundHelp\">Listening help card</a> below the player for simple steps and the screen-off limits.", "सरल steps और screen-off सीमाओं के लिए प्लेयर के नीचे <a href=\"#backgroundHelp\">Listening help कार्ड</a> देखें."]
   ];
   var I18N_GU_HTML = {
@@ -4309,6 +4343,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#sc7": "<b>C</b>: સબટાઇટલ ચાલુ / બંધ",
  "#sc8": "<b>?</b>: આ યાદી બતાવો / છુપાવો",
  "#sc9": "<b>A</b> / <b>B</b>: લૂપ પોઈન્ટ A અને B લગાવો, <b>X</b>: A-B લૂપ હટાવો",
+ "#sc10": "<b>T</b>: સિનેમા મોડ ચાલુ / બંધ",
  "#faq7a": "સરળ steps અને screen-off મર્યાદા માટે પ્લેયર નીચે <a href=\"#backgroundHelp\">Listening help કાર્ડ</a> જુઓ."
   };
   var LANGS = ["en", "hi", "gu"];
