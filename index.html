@@ -719,6 +719,8 @@ html.tab-hidden *, html.tab-hidden *::before, html.tab-hidden *::after { animati
 .goal-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .watched-badge { font-style: normal; font-size: .68rem; font-weight: 600; line-height: 1; padding: .28rem .5rem; border-radius: 999px; background: rgba(52,199,89,.16); color: #248a3d; align-self: center; white-space: nowrap; }
 .dark .watched-badge { background: rgba(48,209,88,.22); color: #63e38b; }
+.rate-badge { font-style: normal; font-size: .68rem; font-weight: 600; line-height: 1; padding: .28rem .5rem; border-radius: 999px; background: rgba(255,181,36,.16); color: #a86e00; align-self: center; white-space: nowrap; }
+.dark .rate-badge { background: rgba(255,181,36,.22); color: #ffcf6b; }
 .goal-row .row { gap: 6px; }
 </style>
 <style id="liquid-glass-ui">
@@ -2871,6 +2873,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     vpPop(laterBtn);
     toast(i >= 0 ? T("Removed from Watch later.") : T("Saved to Watch later."));
   }
+  function vpRateOf(id) {
+    if (!id) return 0;
+    try { var m = JSON.parse(localStorage.getItem("vp-rate.v1") || "{}") || {}; var r = m[id] | 0; return r >= 1 && r <= 5 ? r : 0; } catch (e) { return 0; }
+  }
   function buildItem(item, actionLabel, onAction, onOpen, isCurrent, extraAction) {
     var li = document.createElement("li"); li.className = "lib-item";
     var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
@@ -2879,6 +2885,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var span = document.createElement("span"); span.textContent = (isCurrent ? "▶ " : "") + (item.title || ("Video " + item.id)) + (item.t >= 5 ? " · Resume " + fmt(item.t) : "");
     open.appendChild(img); open.appendChild(span);
     if (item.done) { var wb = document.createElement("i"); wb.className = "watched-badge"; wb.textContent = "\u2713 " + T("Watched"); open.appendChild(wb); }
+    var rr = vpRateOf(item.id);
+    if (rr > 0) { var rb = document.createElement("i"); rb.className = "rate-badge"; rb.textContent = "\u2605 " + rr; rb.title = T("Your rating") + ": " + rr + "/5"; open.appendChild(rb); }
     open.addEventListener("click", function () {
       if (onOpen) onOpen(); else { linkInput.value = item.id; loadVideo(null, null, undefined, true); }
       if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
@@ -9584,6 +9592,7 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
     if (map[id] === n) { delete map[id]; if (typeof window.toast === "function") window.toast(T("Rating removed")); }
     else { map[id] = n; if (typeof window.toast === "function") window.toast(T("Rating saved: ") + n + "/5"); }
     try { localStorage.setItem(KEY, JSON.stringify(map)); } catch (e) {}
+    try { window.dispatchEvent(new Event("vp-rate-changed")); } catch (e) {}
     paint();
   }
   function sync() { var n = curId(); if (n !== id) { id = n; paint(); } }
@@ -9591,6 +9600,16 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   setInterval(sync, 1500);
   (window.__relang = window.__relang || []).push(paint);
   sync(); paint();
+})();
+</script>
+<script>
+/* Rated badges in the library (round 62): when a rating is saved or removed on the Now
+   playing card, the library lists re-render so every star badge updates at once. */
+(function () {
+  "use strict";
+  window.addEventListener("vp-rate-changed", function () {
+    if (typeof window.renderLib === "function") window.renderLib();
+  });
 })();
 </script>
 </body>
