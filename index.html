@@ -4905,6 +4905,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (ap) { ap.checked = prefs.autoPause === true; ap.addEventListener("change", function () { prefs.autoPause = ap.checked; savePrefs(); }); }
     if (ar) { ar.checked = prefs.autoResume === true; ar.addEventListener("change", function () { prefs.autoResume = ar.checked; savePrefs(); }); }
   })();
+
+  // Moving background: opt-in slow colour drift behind the glass.
+  (function () {
+    var bgChk = $("bgMotionChk");
+    function bgMotionAllowed() {
+      return !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    }
+    function applyBgMotion() {
+      var on = prefs.bgMotion === true && bgMotionAllowed() && !document.documentElement.classList.contains("low-fx");
+      document.documentElement.classList.toggle("bg-motion", on);
+      if (bgChk) { bgChk.checked = prefs.bgMotion === true; bgChk.disabled = !bgMotionAllowed(); }
+    }
+    if (bgChk) bgChk.addEventListener("change", function () {
+      prefs.bgMotion = bgChk.checked; savePrefs(); applyBgMotion();
+      toast(prefs.bgMotion ? T("Moving background on") : T("Moving background off"));
+    });
+    applyBgMotion();
+  })();
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) {
       if (prefs.autoPause === true) {
@@ -6860,24 +6878,6 @@ if (window.__vpApplyLang) window.__vpApplyLang();
 
 </script>
 <script>
-// Moving background (round 25): opt-in slow colour drift behind the glass.
-(function () {
-  var bgChk = $("bgMotionChk");
-  function bgMotionAllowed() {
-    return !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
-  }
-  function applyBgMotion() {
-    var on = prefs.bgMotion === true && bgMotionAllowed() && !document.documentElement.classList.contains("low-fx");
-    document.documentElement.classList.toggle("bg-motion", on);
-    if (bgChk) { bgChk.checked = prefs.bgMotion === true; bgChk.disabled = !bgMotionAllowed(); }
-  }
-  if (bgChk) bgChk.addEventListener("change", function () {
-    prefs.bgMotion = bgChk.checked; savePrefs(); applyBgMotion();
-    toast(prefs.bgMotion ? T("Moving background on") : T("Moving background off"));
-  });
-  applyBgMotion();
-})();
-
 // Spotlight hover (round 25): the glow follows the pointer on desktop.
 (function () {
   if (!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches)) return;
