@@ -1239,7 +1239,7 @@ html.mini-left #playerDock.is-mini { inset: auto auto 16px 16px; }
 /* Mini player buttons stay on one line and fit small phones */
 #playerDock.is-mini #miniTools { gap: 6px; padding: 6px 8px; flex-wrap: nowrap; }
 #playerDock.is-mini #miniTools .chip { white-space: nowrap; font-size: 13px; padding-left: 10px; padding-right: 10px; min-height: 40px; }
-#playerDock.is-mini #miniTools #miniPlay, #playerDock.is-mini #miniTools #miniSide { min-width: 40px; padding-left: 6px; padding-right: 6px; }
+#playerDock.is-mini #miniTools #miniPlay, #playerDock.is-mini #miniTools #miniSide, #playerDock.is-mini #miniTools #miniPrev, #playerDock.is-mini #miniTools #miniNext { min-width: 40px; padding-left: 6px; padding-right: 6px; }
 </style>
 <style id="r34-mini">
 /* Mini player: glass bar with a play/pause button and a thin progress line */
@@ -2392,6 +2392,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "More": ["ज़्यादा", "વધુ"],
    "No watching": ["कुछ नहीं देखा", "કંઈ જોયું નહીં"],
    "full square = daily goal": ["पूरा चौकोर = दैनिक लक्ष्य", "ભરેલો ચોરસ = દૈનિક લક્ષ્ય"],
+   "Previous video in queue": ["कतार में पिछला वीडियो", "કતારમાં પાછળનો વીડિયો"],
+   "Next video in queue": ["कतार में अगला वीडियो", "કતારમાં આગળનો વીડિયો"],
    "Battery": ["बैटरी", "બેટરી"],
    "charging": ["चार्ज हो रहा", "ચાર્જ થઈ રહ્યું છે"],
    "Battery saver is off.": ["बैटरी सेवर बंद है.", "બેટરી સેવર બંધ છે."],
@@ -3922,7 +3924,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   playerSlot.id = "playerSlot"; playerDock.id = "playerDock";
   frameBox.parentNode.insertBefore(playerSlot, frameBox); playerSlot.appendChild(playerDock); playerDock.appendChild(frameBox);
   var miniTools = document.createElement("div"); miniTools.id = "miniTools";
-  miniTools.innerHTML = '<button id="miniPlay" class="chip" type="button" aria-label="Play or pause"></button><button id="miniSide" class="chip" type="button" aria-label="' + T("Move mini player to the other side") + '">\u21c4</button><button id="miniBack" class="chip" type="button">' + T("Back to player") + '</button><button id="miniClose" class="chip" type="button" aria-label="' + T("Close mini player and pause") + '">' + T("✕ Pause") + '</button>';
+  miniTools.innerHTML = '<button id="miniPrev" class="chip" type="button" aria-label="' + T("Previous video in queue") + '" title="' + T("Previous video in queue") + '">\u23ee</button><button id="miniPlay" class="chip" type="button" aria-label="Play or pause"></button><button id="miniNext" class="chip" type="button" aria-label="' + T("Next video in queue") + '" title="' + T("Next video in queue") + '">\u23ed</button><button id="miniSide" class="chip" type="button" aria-label="' + T("Move mini player to the other side") + '">\u21c4</button><button id="miniBack" class="chip" type="button">' + T("Back to player") + '</button><button id="miniClose" class="chip" type="button" aria-label="' + T("Close mini player and pause") + '">' + T("✕ Pause") + '</button>';
   playerDock.appendChild(miniTools);
   (function () {
     var root = document.documentElement, side = $("miniSide");
@@ -3947,6 +3949,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     miniBar.addEventListener("pointercancel", function () { drag = false; });
   })();
   $("miniPlay").addEventListener("click", function () { if (!playBtn.disabled) playBtn.click(); });
+  var miniPrevB = $("miniPrev"), miniNextB = $("miniNext");
+  miniPrevB.addEventListener("click", function () { var b = $("prevQueueBtn"); if (b) b.click(); });
+  miniNextB.addEventListener("click", function () { var b = $("nextBtn"); if (b) b.click(); });
+  function miniQueueBtns() {
+    var show = lib.queue.length > 1 && qPos >= 0;
+    miniPrevB.hidden = !show; miniNextB.hidden = !show;
+  }
+  var baseRenderLibQ = renderLib;
+  renderLib = function () { baseRenderLibQ(); miniQueueBtns(); };
+  (window.__relang = window.__relang || []).push(function () {
+    miniPrevB.setAttribute("aria-label", T("Previous video in queue")); miniPrevB.title = T("Previous video in queue");
+    miniNextB.setAttribute("aria-label", T("Next video in queue")); miniNextB.title = T("Next video in queue");
+  });
+  miniQueueBtns();
   function setMini(on) {
     if (miniActive === on) return;
     if (on) playerSlot.style.height = playerSlot.getBoundingClientRect().height + "px";
@@ -5042,12 +5058,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var calLab = $("statsCalLab");
         if (calLab) {
           calLab.innerHTML = "";
-          calLab.appendChild(document.createTextNode(T("Watch calendar") + " \u00b7 " + T("last 14 weeks") + " "));
+          calLab.appendChild(document.createTextNode(T("Watch calendar") + " \u00b7 " + T("last 14 weeks")));
           var leg = document.createElement("span"); leg.className = "stats-cal-legend";
-          var legL = document.createElement("span"); legL.textContent = T("Less"); leg.appendChild(legL);
+          leg.appendChild(document.createElement("span"));
+          leg.lastChild.textContent = T("Less");
           for (var li2 = 1; li2 <= 4; li2++) { var li3 = document.createElement("i"); li3.className = "l" + li2; leg.appendChild(li3); }
-          var legM = document.createElement("span"); legM.textContent = T("More"); leg.appendChild(legM);
+          leg.appendChild(document.createElement("span"));
+          leg.lastChild.textContent = T("More");
           if (calGoal > 0) { var gs = document.createElement("span"); gs.textContent = "\u00b7 " + T("full square = daily goal"); leg.appendChild(gs); }
+          calLab.appendChild(document.createElement("br"));
           calLab.appendChild(leg);
         }
         calEl.setAttribute("role", "img");
