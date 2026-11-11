@@ -3632,6 +3632,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (sleepPaused && data.info === 1) { send("pauseVideo"); return; }
       playing = data.info === 1; document.documentElement.classList.toggle("vp-playing", playing); if (playing) failedQueueCount = 0; if (playing && typeof tabAutoPaused !== "undefined") tabAutoPaused = false;
       if (window.__vpStateFx) window.__vpStateFx(data.info);
+      if (data.info === 2) rwPausedAt = Date.now();
+      else if (data.info === 1 && rwPausedAt) {
+        var rwGap = Date.now() - rwPausedAt; rwPausedAt = 0;
+        if (prefs.rwPause > 0 && rwGap >= 30000 && curTime > prefs.rwPause + 2) {
+          send("seekTo", [Math.max(0, curTime - prefs.rwPause), true]);
+          toast(T("Went back {n} seconds after the break.").replace("{n}", prefs.rwPause));
+        }
+      } else if (data.info === 0 || data.info === 5) rwPausedAt = 0;
       if (playing && prefs.dataSaver && curId && dsAppliedFor !== curId) { dsAppliedFor = curId; send("setPlaybackQuality", ["large"]); markActive(qualityChips, "large"); }
       if (playing && curId && lastPlayId !== curId) { lastPlayId = curId; stats.plays += 1; statsRec(curId).plays += 1; saveStats(); renderStats(); }
       if (!playing && statsDirty) { statsDirty = false; saveStats(); renderStats(); }
@@ -4199,6 +4207,37 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toast(prefs.pvVol ? T("Per-video volume on - each video keeps its own volume on this device.") : T("Per-video volume off - one volume for every video."));
   });
   (window.__relang = window.__relang || []).push(pvVolRender); pvVolRender();
+
+  /* Rewind after a pause (round 78): like a podcast app - when a pause lasts 30 seconds or
+     more, pressing Play first jumps back a few seconds so the thread of the video comes back.
+     Off by default; 3, 5 or 10 seconds from the chips under the seek bar. The pause stamp is
+     taken in the player-state listener above; cleared on play, video end and a new video. */
+  Object.assign(TR_MSG, {
+    "Rewind after a pause": ["रुकने के बाद थोड़ा पीछे", "અટક્યા પછી થોડું પાછળ"],
+    "After a pause of 30 seconds or more, Play goes back a few seconds so the story comes back to you.": ["30 सेकंड या उससे ज़्यादा रुकने के बाद Play कुछ सेकंड पीछे जाता है, ताकि कहानी फिर याद आ जाए.", "30 સેકન્ડ કે વધુ અટક્યા પછી Play થોડી સેકન્ડ પાછળ જાય છે, જેથી વાર્તા ફરી યાદ આવી જાય."],
+    "Rewind after a pause off.": ["रुकने के बाद पीछे जाना बंद.", "અટક્યા પછી પાછળ જવું બંધ."],
+    "Rewind after a pause set to {n} seconds.": ["रुकने के बाद {n} सेकंड पीछे जाएगा.", "અટક્યા પછી {n} સેકન્ડ પાછળ જશે."],
+    "Went back {n} seconds after the break.": ["विराम के बाद {n} सेकंड पीछे गए.", "વિરામ પછી {n} સેકન્ડ પાછળ ગયા."]
+  });
+  var rwPausedAt = 0, rwChips = $("rwPauseChips");
+  function rwPauseRender() {
+    if (!rwChips) return;
+    rwChips.innerHTML = "";
+    [0, 3, 5, 10].forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip" + (prefs.rwPause === c ? " active" : "");
+      b.dataset.value = String(c); b.setAttribute("aria-pressed", String(prefs.rwPause === c));
+      b.textContent = c === 0 ? T("Off") : c + " s";
+      b.addEventListener("click", function () {
+        prefs.rwPause = c; savePrefs(); rwPauseRender();
+        toast(c === 0 ? T("Rewind after a pause off.") : T("Rewind after a pause set to {n} seconds.").replace("{n}", c));
+      });
+      rwChips.appendChild(b);
+    });
+    var h = $("rwPauseHint"); if (h) h.textContent = T("After a pause of 30 seconds or more, Play goes back a few seconds so the story comes back to you.");
+    var l = $("rwPauseLab"); if (l) l.textContent = T("Rewind after a pause");
+  }
+  (window.__relang = window.__relang || []).push(rwPauseRender); rwPauseRender();
   // Keep one deliberate app seek, never automatic loop seeks or YouTube's controls.
   var undoSeekState = null, undoSeekTimer = 0, scrubOrigin = null;
   function clearUndoSeek() {
@@ -11032,58 +11071,6 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   // The controls row appears when a video loads; notice it and start or stop the clock.
   if (ctl && window.MutationObserver) new MutationObserver(paint).observe(ctl, { attributes: true, attributeFilter: ["hidden"] });
   if (ends && window.MutationObserver) new MutationObserver(function () { if (!ov.hidden) paint(); }).observe(ends, { attributes: true, attributeFilter: ["hidden"], childList: true, characterData: true, subtree: true });
-})();
-</script>
-<script id="r78-rewind-pause-js">
-/* Rewind after a pause (round 78): like a podcast app - when a pause lasts 30 seconds or
-   more, pressing Play first jumps back a few seconds so the thread of the video comes back.
-   Off by default; 3, 5 or 10 seconds from the chips next to the seek bar. Remembered on the
-   device. Hooks into the player state events after the round 49 play/pause flash. */
-(function () {
-  var T = window.T || function (s) { return s; };
-  var toast = window.toast || function () {};
-  var TR_MSG = window.TR_MSG || {};
-  Object.assign(TR_MSG, {
-    "Rewind after a pause": ["रुकने के बाद थोड़ा पीछे", "અટક્યા પછી થોડું પાછળ"],
-    "After a pause of 30 seconds or more, Play goes back a few seconds so the story comes back to you.": ["30 सेकंड या उससे ज़्यादा रुकने के बाद Play कुछ सेकंड पीछे जाता है, ताकि कहानी फिर याद आ जाए.", "30 સેકન્ડ કે વધુ અટક્યા પછી Play થોડી સેકન્ડ પાછળ જાય છે, જેથી વાર્તા ફરી યાદ આવી જાય."],
-    "Rewind after a pause off.": ["रुकने के बाद पीछे जाना बंद.", "અટક્યા પછી પાછળ જવું બંધ."],
-    "Rewind after a pause set to {n} seconds.": ["रुकने के बाद {n} सेकंड पीछे जाएगा.", "અટક્યા પછી {n} સેકન્ડ પાછળ જશે."],
-    "Went back {n} seconds after the break.": ["विराम के बाद {n} सेकंड पीछे गए.", "વિરામ પછી {n} સેકન્ડ પાછળ ગયા."]
-  });
-  var rwPausedAt = 0;
-  var rwChips = document.getElementById("rwPauseChips");
-  function rwRender() {
-    if (!rwChips) return;
-    rwChips.innerHTML = "";
-    [0, 3, 5, 10].forEach(function (c) {
-      var b = document.createElement("button");
-      b.type = "button"; b.className = "chip" + (prefs.rwPause === c ? " active" : "");
-      b.dataset.value = String(c); b.setAttribute("aria-pressed", String(prefs.rwPause === c));
-      b.textContent = c === 0 ? T("Off") : c + " s";
-      b.addEventListener("click", function () {
-        prefs.rwPause = c; savePrefs(); rwRender();
-        toast(c === 0 ? T("Rewind after a pause off.") : T("Rewind after a pause set to {n} seconds.").replace("{n}", c));
-      });
-      rwChips.appendChild(b);
-    });
-    var h = document.getElementById("rwPauseHint"); if (h) h.textContent = T("After a pause of 30 seconds or more, Play goes back a few seconds so the story comes back to you.");
-    var l = document.getElementById("rwPauseLab"); if (l) l.textContent = T("Rewind after a pause");
-  }
-  (window.__relang = window.__relang || []).push(rwRender); rwRender();
-  var prevFx = window.__vpStateFx || null;
-  window.__vpStateFx = function (st) {
-    if (prevFx) { try { prevFx(st); } catch (e) {} }
-    if (st === 2) { rwPausedAt = Date.now(); return; }
-    if (st === 1 && rwPausedAt) {
-      var gap = Date.now() - rwPausedAt; rwPausedAt = 0;
-      if (prefs.rwPause > 0 && gap >= 30000 && curTime > prefs.rwPause + 2 && ready) {
-        send("seekTo", [Math.max(0, curTime - prefs.rwPause), true]);
-        toast(T("Went back {n} seconds after the break.").replace("{n}", prefs.rwPause));
-      }
-      return;
-    }
-    if (st === 0 || st === 5) rwPausedAt = 0;
-  };
 })();
 </script>
 </body>
