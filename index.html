@@ -1179,6 +1179,12 @@ html.mini-on #toTop { opacity: 0; pointer-events: none; transform: translateY(12
 html.mini-left #playerDock.is-mini { inset: auto auto 16px 16px; }
 @media(max-width:480px) { html.mini-left #playerDock.is-mini { inset: auto auto 8px 8px; } }
 </style>
+<style id="r35-mini-seek">
+/* Mini player: tap or drag the progress line to seek */
+#playerDock.is-mini #miniBar { position: relative; height: 5px; touch-action: none; cursor: pointer; }
+#playerDock.is-mini #miniBar::before { content: ""; position: absolute; left: 0; right: 0; top: -12px; bottom: -4px; }
+#playerDock.is-mini #miniBar:active { height: 8px; }
+</style>
 <style id="r34-mini">
 /* Mini player: glass bar with a play/pause button and a thin progress line */
 #playerDock.is-mini { backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); border: 1px solid var(--hairline); animation: r34MiniIn .35s cubic-bezier(.2,.9,.3,1.2); }
@@ -3504,6 +3510,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     (window.__relang = window.__relang || []).push(function () { side.setAttribute("aria-label", T("Move mini player to the other side")); });
   })();
   var miniBar = document.createElement("div"); miniBar.id = "miniBar"; miniBar.innerHTML = "<i></i>"; playerDock.appendChild(miniBar);
+  (function () {
+    var drag = false;
+    function seekTo(e) {
+      if (!(duration > 0)) return;
+      var r = miniBar.getBoundingClientRect(), f = Math.max(0, Math.min(1, (e.clientX - r.left) / Math.max(1, r.width)));
+      var t = duration * f; send("seekTo", [t, true]); curTime = t; seek.value = t; paintTime(t);
+    }
+    miniBar.addEventListener("pointerdown", function (e) { drag = true; try { miniBar.setPointerCapture(e.pointerId); } catch (x) {} seekTo(e); });
+    miniBar.addEventListener("pointermove", function (e) { if (drag) seekTo(e); });
+    miniBar.addEventListener("pointerup", function () { drag = false; });
+    miniBar.addEventListener("pointercancel", function () { drag = false; });
+  })();
   $("miniPlay").addEventListener("click", function () { if (!playBtn.disabled) playBtn.click(); });
   function setMini(on) {
     if (miniActive === on) return;
