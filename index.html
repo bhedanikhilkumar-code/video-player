@@ -891,6 +891,7 @@ html.cinema-on #cinemaVeil{opacity:1;pointer-events:auto;}
 html.cinema-on #player{position:relative;z-index:65;}
 html.cinema-on .frame{box-shadow:0 24px 90px rgba(0,0,0,.6);}
 @media (prefers-reduced-motion:reduce){#cinemaVeil{transition:none;}}
+#vpToastUndo{margin-left:10px;}
 #vpToast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);max-width:min(92vw,420px);padding:10px 16px;border-radius:14px;border:1px solid var(--hairline);background:var(--card);color:var(--ink);box-shadow:0 10px 30px rgba(0,0,0,.18);font-size:14px;line-height:1.35;text-align:center;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;z-index:9500;}
 #vpToast.show{opacity:1;transform:translate(-50%,0);}
 @media (prefers-reduced-motion:reduce){#vpToast{transition:none;}}
@@ -1642,6 +1643,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Added to queue": ["कतार में जोड़ा गया", "કતારમાં ઉમેરાયું"],
    "videos added to queue": ["वीडियो कतार में जोड़े गए", "વિડિયો કતારમાં ઉમેરાયા"],
    "Queue cleared": ["कतार साफ़ हुई", "કતાર સાફ થઈ"],
+   "Undo": ["पूर्ववत करें", "પૂર્વવત કરો"],
+   "Queue restored": ["कतार वापस आई", "કતાર પાછી આવી"],
+   "Watch later list cleared": ["वॉच लेटर सूची साफ़ हुई", "વોચ લેટર યાદી સાફ થઈ"],
+   "Watch later list restored": ["वॉच लेटर सूची वापस आई", "વોચ લેટર યાદી પાછી આવી"],
+   "History cleared": ["इतिहास साफ़ हुआ", "ઇતિહાસ સાફ થયો"],
+   "History restored": ["इतिहास वापस आया", "ઇતિહાસ પાછો આવ્યો"],
+   "Download queue cleared": ["डाउनलोड कतार साफ़ हुई", "ડાઉનલોડ કતાર સાફ થઈ"],
+   "Download queue restored": ["डाउनलोड कतार वापस आई", "ડાઉનલોડ કતાર પાછી આવી"],
+   "Recent downloads cleared": ["हाल के डाउनलोड साफ़ हुए", "તાજેતરના ડાઉનલોડ સાફ થયા"],
+   "Recent downloads restored": ["हाल के डाउनलोड वापस आए", "તાજેતરના ડાઉનલોડ પાછા આવ્યા"],
+   "Watch stats cleared": ["देखने के आंकड़े साफ़ हुए", "જોવાના આંકડા સાફ થયા"],
+   "Watch stats restored": ["देखने के आंकड़े वापस आए", "જોવાના આંકડા પાછા આવ્યા"],
    "Cinema mode on - tap the dark area or press T to exit.": ["सिनेमा मोड चालू - बाहर टैप करें या बंद करने के लिए T दबाएं.", "સિનેમા મોડ ચાલુ - બહાર ટેપ કરો અથવા બંધ કરવા T દબાવો."],
    "Link copied": ["लिंक कॉपी हुआ", "લિંક કોપી થઈ"],
    "Theme: Auto": ["थीम: ऑटो", "થીમ: ઓટો"],
@@ -2040,7 +2053,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   /* Toast feedback: one short note at the bottom for actions that used to be silent or
      only changed a far-away status line. role=status so screen readers announce it. */
   var toastEl = null, toastTimer = 0;
-  function toast(msg) {
+  function toast(msg, ms) {
     if (!msg) return;
     if (!toastEl) {
       toastEl = document.createElement("div");
@@ -2050,11 +2063,29 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       document.body.appendChild(toastEl);
     }
     toastEl.textContent = msg;
+    toastEl._undo = null;
     toastEl.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, 2200);
+    toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, ms || 2200);
   }
   window.toast = toast;
+
+  // A toast with an Undo button for destructive clears; stays up longer so the button is reachable.
+  function toastUndo(msg, undoFn, doneMsg) {
+    toast(msg, 6000);
+    if (!toastEl) return;
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.id = "vpToastUndo";
+    b.textContent = T("Undo");
+    b.addEventListener("click", function () {
+      clearTimeout(toastTimer);
+      if (toastEl) toastEl.classList.remove("show");
+      try { undoFn(); } catch (e) {}
+      if (doneMsg) toast(doneMsg);
+    });
+    toastEl._undo = b;
+    toastEl.appendChild(b);
+  }
   window.T = T;
 
   // Recent videos and favourites, saved in this browser only.
@@ -2267,8 +2298,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toggleLater(curId);
     shareMsg.textContent = findIn(lib.later, curId) >= 0 ? T("Saved to Watch later.") : T("Removed from Watch later.");
   });
-  if (laterClearBtn) laterClearBtn.addEventListener("click", function () { lib.later = []; saveLib(); renderLib(); });
-  clearHistBtn.addEventListener("click", function () { lib.hist = []; try { localStorage.removeItem("vp-resume.v1"); } catch(e) {} $("resumeBox").hidden = true; saveLib(); renderLib(); });
+  if (laterClearBtn) laterClearBtn.addEventListener("click", function () { var snap = lib.later.slice(); lib.later = []; saveLib(); renderLib(); if (snap.length) toastUndo(T("Watch later list cleared"), function () { lib.later = snap; saveLib(); renderLib(); }, T("Watch later list restored")); });
+  clearHistBtn.addEventListener("click", function () {
+    var snap = lib.hist.slice(), res = null;
+    try { res = localStorage.getItem("vp-resume.v1"); } catch (e) {}
+    lib.hist = []; try { localStorage.removeItem("vp-resume.v1"); } catch(e) {} $("resumeBox").hidden = true; saveLib(); renderLib();
+    if (snap.length) toastUndo(T("History cleared"), function () {
+      lib.hist = snap; saveLib();
+      try { if (res != null) localStorage.setItem("vp-resume.v1", res); } catch (e) {}
+      renderLib();
+      if (typeof renderContinue === "function") renderContinue();
+      if (typeof resumeRender === "function") resumeRender();
+    }, T("History restored"));
+  });
   queueBtn.addEventListener("click", function () {
     var firstNew = lib.queue.length, n = queueAdd(linkInput.value);
     if (!n) {
@@ -2298,7 +2340,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (!playNext()) showLibErr(T("That was the last video in the queue."));
     else showLibErr("");
   });
-  clearQueueBtn.addEventListener("click", function () { var had = lib.queue.length; lib.queue = []; qPos = -1; showLibErr(""); saveLib(); renderLib(); if (had) toast(T("Queue cleared")); });
+  clearQueueBtn.addEventListener("click", function () { var snap = lib.queue.slice(), sp = qPos; lib.queue = []; qPos = -1; showLibErr(""); saveLib(); renderLib(); if (snap.length) toastUndo(T("Queue cleared"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored")); });
   renderLib();
 
   /* Library: play or queue a whole list at once. */
@@ -3855,7 +3897,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     lastStatT = curTime;
   }
   if ($("statsClear")) $("statsClear").addEventListener("click", function () {
+    var snap = JSON.parse(JSON.stringify(stats));
     stats = { total: 0, plays: 0, videos: {}, days: {} }; saveStats(); renderStats();
+    if (snap.plays || snap.total) toastUndo(T("Watch stats cleared"), function () { stats = snap; saveStats(); renderStats(); }, T("Watch stats restored"));
   });
   window.addEventListener("pagehide", saveStats);
   renderStats();
@@ -4601,7 +4645,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       li.appendChild(b); histEl.appendChild(li);
     });
   }
-  $("dlHistClear").addEventListener("click", function () { try { localStorage.removeItem(HK); } catch (e) {} histRender(); });
+  $("dlHistClear").addEventListener("click", function () {
+    var snap = null; try { snap = localStorage.getItem(HK); } catch (e) {}
+    try { localStorage.removeItem(HK); } catch (e) {} histRender();
+    if (snap) toastUndo(T("Recent downloads cleared"), function () { try { localStorage.setItem(HK, snap); } catch (e) {} histRender(); }, T("Recent downloads restored"));
+  });
   histRender();
   var DEF_DL_STATUS = statusEl.textContent;
   var dlRelang = function () {
@@ -4793,7 +4841,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       it.err = ERR[c] || (c === "net" || e instanceof TypeError ? "Could not reach the server." : "Failed");
     }).then(function () { qRun = false; qRender(); qNext(); });
   }
-  $("dlQClear").addEventListener("click", function () { Q = Q.filter(function (q) { return q.status === "running"; }); qRender(); });
+  $("dlQClear").addEventListener("click", function () {
+    var snap = Q.slice();
+    Q = Q.filter(function (q) { return q.status === "running"; }); qRender();
+    if (snap.length - Q.length > 0) toastUndo(T("Download queue cleared"), function () { Q = snap; qRender(); }, T("Download queue restored"));
+  });
   $("dlQAllBtn").addEventListener("click", function () {
     showErr(""); var ls = links(urlIn.value), kind = $("dlBulkMp3").checked ? "mp3" : "video", added = 0, skipped = 0;
     if (!ls.length) return showErr("Paste one or more links first (separated by spaces).");
