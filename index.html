@@ -1702,6 +1702,8 @@ setTimeout(done,3000);})();
           <input class="slider" id="vol" type="range" min="0" max="100" step="1" value="80">
           <div class="row" id="nightVolRow" style="margin-top:8px"><span class="label" id="nightVolLab">Night volume</span><span class="chips" id="nightVolChips"></span></div>
           <p class="hint" id="nightVolHint">Between 10 pm and 7 am the volume is capped at the level you pick. Your normal volume stays saved for the day.</p>
+          <div class="row" style="margin-top:8px"><button class="chip" id="pvVolBtn" type="button" aria-pressed="false">Per-video volume: off</button></div>
+          <p class="hint" id="pvVolHint">When on, the volume you pick is remembered for each video and comes back the next time you play it. Songs can stay loud and lectures quiet.</p>
         </div>
 
         <div class="ctl-card" id="ctl-speed">
@@ -2148,10 +2150,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
-  var prefs = { reduceMotion: false, volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false, timeLeft: false, ambGlow: true, nightVol: 0, fsExitEnd: false, cardTheme: "midnight" };
+  var prefs = { reduceMotion: false, volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false, timeLeft: false, ambGlow: true, nightVol: 0, fsExitEnd: false, pvVol: false, cardTheme: "midnight" };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight" || saved.theme === "midnight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.reduceMotion === true) prefs.reduceMotion = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; if (saved.timeLeft === true) prefs.timeLeft = true; if (saved.ambGlow === false) prefs.ambGlow = false; ["cc", "ccLang", "accent", "lang", "accentCustom", "cardTheme"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; if ([0, 15, 30, 60].indexOf(saved.goalMin) >= 0) prefs.goalMin = saved.goalMin; if ([0, 30, 40, 50, 60].indexOf(saved.nightVol) >= 0) prefs.nightVol = saved.nightVol; if (saved.fsExitEnd === true) prefs.fsExitEnd = true; }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight" || saved.theme === "midnight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.reduceMotion === true) prefs.reduceMotion = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; if (saved.timeLeft === true) prefs.timeLeft = true; if (saved.ambGlow === false) prefs.ambGlow = false; ["cc", "ccLang", "accent", "lang", "accentCustom", "cardTheme"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; if ([0, 15, 30, 60].indexOf(saved.goalMin) >= 0) prefs.goalMin = saved.goalMin; if ([0, 30, 40, 50, 60].indexOf(saved.nightVol) >= 0) prefs.nightVol = saved.nightVol; if (saved.fsExitEnd === true) prefs.fsExitEnd = true; if (saved.pvVol === true) prefs.pvVol = true; }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
@@ -3745,6 +3747,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     for (var k in patch) v[k] = patch[k];
     v.ts = Date.now(); vmemSave();
   }
+  function pvVolRec() { if (prefs.pvVol && curId) { var ex = vmem[curId]; if (!ex || ex.vol !== prefs.volume) vmemRec({ vol: prefs.volume }); } }
   function vmemNote(m) { var n = $("vmemNote"); if (n) { n.textContent = m || ""; n.hidden = !m; } }
   function vmemApply() {
     var vm = curId && vmem[curId];
@@ -3756,9 +3759,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       prefs.cc = vm.cc; if (typeof vm.ccLang === "string") prefs.ccLang = vm.ccLang;
       savePrefs(); ccRender(); ccApply();
     }
+    if (prefs.pvVol && typeof vm.vol === "number" && vm.vol >= 0 && vm.vol <= 100 && vm.vol !== prefs.volume) {
+      prefs.volume = vm.vol; savePrefs(); vol.value = vm.vol;
+      if (ready && iframe) send("setVolume", [effVol()]);
+      paintVolLabel();
+    }
     var bits = [];
     if (typeof vm.speed === "number" && vm.speed !== 1) bits.push(vm.speed + "x");
     if (vm.cc) bits.push(T("CC on"));
+    if (prefs.pvVol && typeof vm.vol === "number") bits.push(T("vol ") + vm.vol + "%");
     if (typeof vm.intro === "number" && vm.intro >= 1) bits.push(T("skip to ") + fmt(vm.intro));
     if (typeof vm.outro === "number" && vm.outro >= 1) bits.push(T("outro from ") + fmt(vm.outro));
     vmemNote(bits.length ? T("Remembered for this video: ") + bits.join(" \u00b7 ") : "");
@@ -4118,6 +4127,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     prefs.volume = v; savePrefs(); paintVolLabel();
     send("setVolume", [effVol()]);
     if (v > 0 && muted) send("unMute");
+    pvVolRec();
   });
 
   /* Night volume: between 10 pm and 7 am the sound is capped at the level picked here.
@@ -4161,6 +4171,32 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     paintVolLabel();
   }
   (window.__relang = window.__relang || []).push(renderNightVol); renderNightVol(); nightTick();
+
+  /* Per-video volume (round 78): with the chip on, the volume you pick is kept in the
+     per-video memory next to speed, CC and the skip marks, and comes back on the next play.
+     The slider, arrow keys and the gesture pad all record it; the night cap stays on top. */
+  Object.assign(TR_MSG, {
+    "Per-video volume: on": ["हर वीडियो की आवाज़: चालू", "દરેક વીડિયોનો અવાજ: ચાલુ"],
+    "Per-video volume: off": ["हर वीडियो की आवाज़: बंद", "દરેક વીડિયોનો અવાજ: બંધ"],
+    "Per-video volume": ["हर वीडियो की आवाज़", "દરેક વીડિયોનો અવાજ"],
+    "When on, the volume you pick is remembered for each video and comes back the next time you play it. Songs can stay loud and lectures quiet.": ["चालू होने पर आपकी चुनी आवाज़ हर वीडियो के लिए याद रहती है और अगली बार चलाते ही वापस आ जाती है. गाने तेज़ और लेक्चर धीमे रह सकते हैं.", "ચાલુ હોય ત્યારે તમારો પસંદ કરેલો અવાજ દરેક વીડિયો માટે યાદ રહે છે અને આગલી વાર ચલાવતાં જ પાછો આવી જાય છે. ગીતો મોટા અને લેક્ચર ધીમા રહી શકે."],
+    "Per-video volume on - each video keeps its own volume on this device.": ["हर वीडियो की आवाज़ चालू - हर वीडियो की अपनी आवाज़ इस डिवाइस पर याद रहेगी.", "દરેક વીડિયોનો અવાજ ચાલુ - દરેક વીડિયોનો પોતાનો અવાજ આ ડિવાઇસ પર યાદ રહેશે."],
+    "Per-video volume off - one volume for every video.": ["हर वीडियो की आवाज़ बंद - सब वीडियो के लिए एक ही आवाज़.", "દરેક વીડિયોનો અવાજ બંધ - બધા વીડિયો માટે એક જ અવાજ."],
+    "vol ": ["आवाज़ ", "અવાજ "]
+  });
+  var pvVolBtn = $("pvVolBtn");
+  function pvVolRender() {
+    if (!pvVolBtn) return;
+    pvVolBtn.setAttribute("aria-pressed", String(prefs.pvVol));
+    pvVolBtn.textContent = T(prefs.pvVol ? "Per-video volume: on" : "Per-video volume: off");
+    var h = $("pvVolHint"); if (h) h.textContent = T("When on, the volume you pick is remembered for each video and comes back the next time you play it. Songs can stay loud and lectures quiet.");
+  }
+  if (pvVolBtn) pvVolBtn.addEventListener("click", function () {
+    prefs.pvVol = !prefs.pvVol; savePrefs(); pvVolRender();
+    if (prefs.pvVol && curId) { vmemRec({ vol: prefs.volume }); vmemApply(); }
+    toast(prefs.pvVol ? T("Per-video volume on - each video keeps its own volume on this device.") : T("Per-video volume off - one volume for every video."));
+  });
+  (window.__relang = window.__relang || []).push(pvVolRender); pvVolRender();
   // Keep one deliberate app seek, never automatic loop seeks or YouTube's controls.
   var undoSeekState = null, undoSeekTimer = 0, scrubOrigin = null;
   function clearUndoSeek() {
@@ -4691,6 +4727,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     prefs.volume = v; savePrefs(); vol.value = v; paintVolLabel();
     send("setVolume", [effVol()]);
     if (v > 0 && muted) send("unMute");
+    pvVolRec();
   }
   document.addEventListener("keydown", function (e) {
     if (e.ctrlKey || e.metaKey || e.altKey || !iframe || controls.hidden) return;
@@ -9288,6 +9325,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     out.push({ label: T("Cinema mode on / off"), group: "Actions", run: click("cinemaBtn") });
     out.push({ label: T("Night volume"), group: "Player", run: jump("#nightVolRow") });
     out.push({ label: T("Leave full screen when the video ends"), group: "Player", run: click("fsExitBtn") });
+    out.push({ label: T("Per-video volume"), group: "Player", run: click("pvVolBtn") });
     out.push({ label: T("Collapse or expand all sections"), group: "Actions", run: click("secAllBtn") });
     var inst = document.getElementById("installBtn");
     if (inst && !inst.hidden) out.push({ label: "Install app", group: "Actions", run: click("installBtn") });
@@ -9310,6 +9348,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     }
     var FEATS = [
       ["Volume and sound", "volume sound awaaz mute loud louder", "#ctl-sound"],
+      ["Per-video volume", "per video volume remember own loud quiet", "#pvVolBtn"],
       ["Playback speed", "speed tez slow fast 2x", "#ctl-speed"],
       ["Video quality", "quality hd 1080 720 4k", "#ctl-quality"],
       ["Data and battery saver", "saver data battery low", "#ctl-saver"],
