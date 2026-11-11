@@ -1173,11 +1173,18 @@ html.low-fx section::after, html.high-contrast section::after { content: none !i
 /* Back-to-top button hides while the mini player floats so the two never overlap */
 html.mini-on #toTop { opacity: 0; pointer-events: none; transform: translateY(12px); }
 </style>
+<style id="r35-mini-side">
+/* Mini player: move to the left or right corner, remembered */
+#miniSide { min-width: 40px; }
+html.mini-left #playerDock.is-mini { inset: auto auto 16px 16px; }
+@media(max-width:480px) { html.mini-left #playerDock.is-mini { inset: auto auto 8px 8px; } }
+</style>
 <style id="r34-mini">
 /* Mini player: glass bar with a play/pause button and a thin progress line */
 #playerDock.is-mini { backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); border: 1px solid var(--hairline); animation: r34MiniIn .35s cubic-bezier(.2,.9,.3,1.2); }
 #playerDock.is-mini #miniTools { background: transparent; align-items: center; }
-#miniPlay { min-width: 44px; font-weight: 700; margin-right: auto; }
+#miniPlay { min-width: 44px; font-weight: 700; }
+#miniSide { margin-right: auto; }
 html:not(.vp-playing) #miniPlay::before { content: "\25B6"; }
 html.vp-playing #miniPlay::before { content: "\23F8"; }
 #miniBar { height: 3px; background: var(--soft); display: none; }
@@ -1974,6 +1981,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Load a video first.": ["पहले वीडियो चलाएं.", "પહેલા વીડિયો ચલાવો."],
    "Use 0 ≤ A < B, within the video length.": ["0 ≤ A < B रखें, वीडियो की लंबाई के अंदर.", "0 ≤ A < B રાખો, વીડિયોની લંબાઈની અંદર."],
    "Back to player": ["प्लेयर पर वापस", "પ્લેયર પર પાછા"],
+   "Move mini player to the other side": ["मिनी प्लेयर को दूसरी तरफ ले जाएं", "મિની પ્લેયરને બીજી બાજુ લઈ જાઓ"],
    "✕ Pause": ["✕ रोकें", "✕ રોકો"],
    "Close mini player and pause": ["मिनी प्लेयर बंद करें और रोकें", "મિની પ્લેયર બંધ કરો અને રોકો"],
    "This video is private, deleted, or the link is incomplete. It cannot be played.": ["यह वीडियो निजी है, मिट चुका है या लिंक अधूरा है. इसे नहीं चलाया जा सकता.", "આ વીડિયો ખાનગી છે, ડિલીટ થઈ ગયો છે કે લિંક અધૂરી છે. તે ચલાવી શકાય નહીં."],
@@ -3484,8 +3492,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   playerSlot.id = "playerSlot"; playerDock.id = "playerDock";
   frameBox.parentNode.insertBefore(playerSlot, frameBox); playerSlot.appendChild(playerDock); playerDock.appendChild(frameBox);
   var miniTools = document.createElement("div"); miniTools.id = "miniTools";
-  miniTools.innerHTML = '<button id="miniPlay" class="chip" type="button" aria-label="Play or pause"></button><button id="miniBack" class="chip" type="button">' + T("Back to player") + '</button><button id="miniClose" class="chip" type="button" aria-label="' + T("Close mini player and pause") + '">' + T("✕ Pause") + '</button>';
+  miniTools.innerHTML = '<button id="miniPlay" class="chip" type="button" aria-label="Play or pause"></button><button id="miniSide" class="chip" type="button" aria-label="' + T("Move mini player to the other side") + '">\u21c4</button><button id="miniBack" class="chip" type="button">' + T("Back to player") + '</button><button id="miniClose" class="chip" type="button" aria-label="' + T("Close mini player and pause") + '">' + T("✕ Pause") + '</button>';
   playerDock.appendChild(miniTools);
+  (function () {
+    var root = document.documentElement, side = $("miniSide");
+    try { if (localStorage.getItem("vp-mini-side.v1") === "left") root.classList.add("mini-left"); } catch (e) {}
+    side.addEventListener("click", function () {
+      var left = root.classList.toggle("mini-left");
+      try { localStorage.setItem("vp-mini-side.v1", left ? "left" : "right"); } catch (e) {}
+    });
+    (window.__relang = window.__relang || []).push(function () { side.setAttribute("aria-label", T("Move mini player to the other side")); });
+  })();
   var miniBar = document.createElement("div"); miniBar.id = "miniBar"; miniBar.innerHTML = "<i></i>"; playerDock.appendChild(miniBar);
   $("miniPlay").addEventListener("click", function () { if (!playBtn.disabled) playBtn.click(); });
   function setMini(on) {
