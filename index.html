@@ -2092,6 +2092,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This range is outside the current video.": ["यह हिस्सा मौजूदा वीडियो से बाहर है.", "આ ભાગ હાલના વીડિયોની બહાર છે."],
     "Could not save. Device storage may be full.": ["सेव नहीं हो सका. डिवाइस स्टोरेज भर सकता है.", "સાચવી શકાયું નહીં. ઉપકરણનું સ્ટોરેજ ભરેલું હોઈ શકે છે."],
     "Practice loops included: ": ["अभ्यास लूप शामिल: ", "પ્રેક્ટિસ લૂપ સામેલ: "],
+    "Fine-tune (half-second steps):": ["फ़ाइन-ट्यून (आधे सेकंड के स्टेप):", "ફાઇન-ટ્યૂન (અડધી સેકન્ડના સ્ટેપ):"],
+    "Set A and B first to fine-tune.": ["फ़ाइन-ट्यून के लिए पहले A और B सेट करें.", "ફાઇન-ટ્યૂન માટે પહેલા A અને B સેટ કરો."],
 
     "Replay recent section": ["हाल का हिस्सा दोहराएं", "તાજેતરનો ભાગ ફરી ચલાવો"],
     "Replay last": ["पिछले हिस्से को दोहराएं", "છેલ્લો ભાગ ફરી ચલાવો"],
@@ -3923,6 +3925,33 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!isFinite(a) || !isFinite(b) || a < 0 || b <= a || (duration > 0 && b > duration)) { abLabel.textContent = T("Use 0 ≤ A < B, within the video length."); return; }
     abA = a; abB = b; abEnabled = true; updateAB(); send("seekTo", [a, true]);
   });
+  // Round 66: fine-tune A and B in half-second steps; labels show the half second (1:05.5).
+  function fmtAB(s) { var t = fmt(s); return (isFinite(s) && Math.abs(s % 1) > 0.01) ? t + ".5" : t; }
+  var abNudge = document.createElement("div"); abNudge.className = "row"; abNudge.style.marginTop = "8px"; abNudge.id = "abNudge";
+  abNudge.innerHTML = '<span class="hint" id="abNudgeLab"></span>' +
+    '<button class="chip" type="button" data-np="a" data-ns="-0.5">A &#8722;0.5s</button>' +
+    '<button class="chip" type="button" data-np="a" data-ns="0.5">A +0.5s</button>' +
+    '<button class="chip" type="button" data-np="b" data-ns="-0.5">B &#8722;0.5s</button>' +
+    '<button class="chip" type="button" data-np="b" data-ns="0.5">B +0.5s</button>';
+  abLabel.parentNode.appendChild(abNudge);
+  function renderAbNudge() { var l = $("abNudgeLab"); if (l) l.textContent = T("Fine-tune (half-second steps):"); }
+  (window.__relang = window.__relang || []).push(renderAbNudge); renderAbNudge();
+  abNudge.addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-np]"); if (!b) return;
+    if (!curId || !(duration > 0)) { toast(T("Load a video first.")); return; }
+    var point = b.dataset.np, d = Number(b.dataset.ns);
+    if (point === "a") {
+      if (abA == null) { toast(T("Set A and B first to fine-tune.")); return; }
+      var na = Math.max(0, abA + d);
+      if (abB != null && na > abB - 0.5) na = Math.max(0, abB - 0.5);
+      abA = Math.round(na * 2) / 2; updateAB(); manualSeek(abA);
+    } else {
+      if (abB == null) { toast(T("Set A and B first to fine-tune.")); return; }
+      var nb = Math.min(duration, abB + d);
+      if (abA != null && nb < abA + 0.5) nb = Math.min(duration, abA + 0.5);
+      abB = Math.round(nb * 2) / 2; updateAB(); manualSeek(Math.max(abA != null ? abA : 0, abB - 0.5));
+    }
+  });
   // Round 65: a one-tap practice loop around the section just watched.
   var replayRecent = document.createElement("div"); replayRecent.id = "replayRecent";
   replayRecent.innerHTML = '<p class="label" id="recentReplayLab"></p><div class="row" id="recentReplayChips"></div><p class="hint" id="recentReplayHint"></p>';
@@ -4027,9 +4056,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     aBtn.classList.toggle("active", abA != null);
     bBtn.classList.toggle("active", abB != null);
     if (abA == null && abB == null) abLabel.textContent = T("Off");
-    else if (abB == null) abLabel.textContent = "A " + fmt(abA) + T(" - set B to start repeating");
-    else if (abA == null) abLabel.textContent = "B " + fmt(abB) + T(" - set A to start repeating");
-    else abLabel.textContent = (abEnabled ? T("Repeating ") : T("Paused repeat: ")) + fmt(abA) + T(" to ") + fmt(abB);
+    else if (abB == null) abLabel.textContent = "A " + fmtAB(abA) + T(" - set B to start repeating");
+    else if (abA == null) abLabel.textContent = "B " + fmtAB(abB) + T(" - set A to start repeating");
+    else abLabel.textContent = (abEnabled ? T("Repeating ") : T("Paused repeat: ")) + fmtAB(abA) + T(" to ") + fmtAB(abB);
     if (window.__vpABBand) window.__vpABBand(abA, abB);
   }
   function clearAB() { abA = null; abB = null; abEnabled = true; updateAB(); }
