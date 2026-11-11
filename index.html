@@ -1553,7 +1553,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
       <div id="musicQueue">
-      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <div class="row music-controls" aria-label="Queue playback options">
         <button class="chip" id="prevQueueBtn" type="button">Previous</button>
         <button class="chip" id="shuffleQueueBtn" type="button" aria-pressed="false">Shuffle: off</button>
@@ -1658,6 +1658,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "This video is taking too long to load. Check your internet, or tap Try again.": ["यह वीडियो लोड होने में काफी समय ले रहा है. इंटरनेट जांचें, या 'फिर कोशिश करें' दबाएं.", "આ વીડિયો લોડ થવામાં ઘણો સમય લઈ રહ્યો છે. ઇન્ટરનેટ તપાસો, અથવા 'ફરી પ્રયાસ કરો' દબાવો."],
    "Clipboard is empty.": ["क्लिपबोर्ड खाली है.", "ક્લિપબોર્ડ ખાલી છે."],
    "Clipboard has no YouTube link.": ["क्लिपबोर्ड में YouTube लिंक नहीं है.", "ક્લિપબોર્ડમાં YouTube લિંક નથી."],
+   "Remove duplicates": ["डुप्लिकेट हटाएं", "ડુપ્લિકેટ કાઢો"],
+   "No duplicates in the queue.": ["कतार में कोई डुप्लिकेट नहीं है.", "કતારમાં કોઈ ડુપ્લિકેટ નથી."],
+   "1 duplicate removed": ["1 डुप्लिकेट हटाया गया", "1 ડુપ્લિકેટ કાઢ્યું"],
+   "duplicates removed": ["डुप्लिकेट हटाए गए", "ડુપ્લિકેટ કાઢ્યા"],
    "Allow clipboard access, or long-press the field to paste.": ["क्लिपबोर्ड की अनुमति दें, या फ़ील्ड को लॉन्ग-प्रेस करके पेस्ट करें.", "ક્લિપબોર્ડની પરવાનગી આપો, અથવા ફીલ્ડને લૉંગ-પ્રેસ કરીને પેસ્ટ કરો."],
    "Back to top": ["ऊपर जाएं", "ઉપર જાઓ"],
    "Loading video...": ["वीडियो लोड हो रहा है...", "વીડિયો લોડ થઈ રહ્યું છે..."],
@@ -2402,6 +2406,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else showLibErr("");
   });
   clearQueueBtn.addEventListener("click", function () { var snap = lib.queue.slice(), sp = qPos; lib.queue = []; qPos = -1; showLibErr(""); saveLib(); renderLib(); if (snap.length) toastUndo(T("Queue cleared"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored")); });
+  var dedupeQueueBtn = $("dedupeQueueBtn");
+  if (dedupeQueueBtn) dedupeQueueBtn.addEventListener("click", function () {
+    var seen = {}, nq = [], nqPos = -1, removed = 0, snap = lib.queue.slice(), sp = qPos;
+    lib.queue.forEach(function (it, i) {
+      if (seen[it.id]) { removed++; return; }
+      seen[it.id] = true;
+      if (i === qPos) nqPos = nq.length;
+      nq.push(it);
+    });
+    if (!removed) { showLibErr(T("No duplicates in the queue.")); return; }
+    lib.queue = nq; qPos = nqPos; saveLib(); renderLib(); showLibErr("");
+    toastUndo(removed === 1 ? T("1 duplicate removed") : removed + " " + T("duplicates removed"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+  });
+  (window.__relang = window.__relang || []).push(function () { if (dedupeQueueBtn) dedupeQueueBtn.textContent = T("Remove duplicates"); });
+  if (dedupeQueueBtn) dedupeQueueBtn.textContent = T("Remove duplicates");
   renderLib();
 
   /* Library: play or queue a whole list at once. */
