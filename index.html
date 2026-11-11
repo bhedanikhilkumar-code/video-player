@@ -5062,9 +5062,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       rec.lang = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-IN";
       rec.interimResults = false;
       rec.maxAlternatives = 1;
-      var heard = false;
+      var heard = false, timer = 0;
+      function vsTimeout() {
+        if (heard) return;
+        heard = true;
+        try { rec.stop(); } catch (e) {}
+        vsState(false, null);
+        if (vsMsg) vsMsg.textContent = T("Didn't catch that - tap the mic and try again.");
+      }
       rec.onresult = function (ev) {
         heard = true;
+        if (timer) { clearTimeout(timer); timer = 0; }
         var text = "";
         try { text = ev.results[0][0].transcript || ""; } catch (e2) {}
         text = text.trim();
@@ -5077,6 +5085,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       };
       rec.onerror = function (ev) {
         heard = true;
+        if (timer) { clearTimeout(timer); timer = 0; }
         if (vsMsg) vsMsg.textContent = (ev && ev.error === "not-allowed") ? T("Microphone permission is off - allow it to use voice search.") : T("Voice search did not work - type instead.");
       };
       rec.onend = function () {
@@ -5084,7 +5093,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (!heard && vsMsg) vsMsg.textContent = "";
       };
       vsState(true, T("Listening - speak now"));
-      try { rec.start(); } catch (e) { vsState(false, null); }
+      try { rec.start(); timer = setTimeout(vsTimeout, 8000); } catch (e) { vsState(false, null); }
     });
     (window.__relang = window.__relang || []).push(function () { vsBtn.setAttribute("aria-label", T("Voice search")); });
   })();
