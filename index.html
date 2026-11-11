@@ -24,9 +24,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="VideoPlayer">
 <script>
+window.vpReducedMotion = function () {
+  return document.documentElement.classList.contains("calm-motion") || !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+};
 (function () {
   try {
     var p = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null"), t = p && p.theme;
+    if (p && p.reduceMotion === true) document.documentElement.classList.add("calm-motion");
     var hr = new Date().getHours(), night = hr >= 19 || hr < 7;
     var dark = t === "dark" || t === "midnight" || (t === "daynight" ? night : ((t !== "light") && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches));
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
@@ -1377,6 +1381,16 @@ html .shortcuts, html .note, html .faq, html .help-card, html .pl-item, html .mu
 @keyframes seek-chip-ripple{from{transform:scale(.25);opacity:.5}to{transform:scale(2);opacity:0}}
 @media(prefers-reduced-motion:reduce){.quick-seek.seek-pulse::after{animation:none}}
 </style>
+
+<style id="r71-calm-motion">
+/* Preserve glass, colours, picture transforms and focus rings; only decorative motion stops. */
+html.calm-motion, html.calm-motion *, html.calm-motion *::before, html.calm-motion *::after {
+  animation: none !important; transition: none !important; scroll-behavior: auto !important;
+}
+html.calm-motion .btn:active, html.calm-motion .chip:active, html.calm-motion .feat:active { transform: none !important; }
+html.calm-motion .fx-ripple, html.calm-motion section::after { display: none !important; }
+html.calm-motion #miniTitle.long #miniTitleTxt { white-space: normal; }
+</style>
 </head>
 <body>
 <style id="launch-splash">
@@ -1613,6 +1627,7 @@ setTimeout(done,3000);})();
             <button class="btn" id="playBtn" disabled>▶ Play</button>
             <span class="time" id="timeLabel">0:00 / 0:00</span> <span class="ends-at" id="endsAt" hidden></span>
             <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button> <button class="chip" id="lockBtn" type="button" aria-pressed="false">🔒 Lock touch</button> <button class="chip" id="fsRotBtn" type="button" aria-pressed="true">🔄 Auto-rotate</button> <button class="chip" id="statsBtn" type="button" aria-pressed="false">📊 Stats</button> <button class="chip" id="clockOvBtn" type="button" aria-pressed="false">🕐 Clock</button>
+      <button class="chip" id="calmMotionBtn" type="button" aria-pressed="false">Calm motion: off</button>
           </div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
@@ -1902,6 +1917,8 @@ setTimeout(done,3000);})();
         <label class="dl-chk"><input type="checkbox" id="a11yBig"> <span id="a11yBigT">Larger text</span></label>
         <label class="dl-chk"><input type="checkbox" id="a11yHc"> <span id="a11yHcT">High contrast (solid colors, strong borders)</span></label>
         <label class="dl-chk"><input type="checkbox" id="a11yLow"> <span id="a11yLowT">Low-end mode (lighter effects for slow phones)</span></label>
+        <label class="dl-chk"><input type="checkbox" id="a11yCalm"> <span id="a11yCalmT">Calm motion (keep glass, stop animations)</span></label>
+        <p class="hint" id="calmMotionHint">Stops app animations, ripples, smooth scrolling and vibration. Video playback is unchanged. Your device's reduced-motion setting always takes priority.</p>
         <p class="label" style="margin:10px 0 2px" id="accentT">App color</p>
         <div class="accent-row" id="accentRow" role="group" aria-label="App color"></div>
         <div class="row" style="align-items:center;gap:10px;margin-top:8px"><input type="color" id="accentCustom" value="#3a8a77" aria-label="Choose any app color"><span class="hint" id="accentCustomHint">Pick any colour</span></div>
@@ -2091,10 +2108,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
-  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false, timeLeft: false, ambGlow: true, cardTheme: "midnight" };
+  var prefs = { reduceMotion: false, volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false, timeLeft: false, ambGlow: true, cardTheme: "midnight" };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight" || saved.theme === "midnight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; if (saved.timeLeft === true) prefs.timeLeft = true; if (saved.ambGlow === false) prefs.ambGlow = false; ["cc", "ccLang", "accent", "lang", "accentCustom", "cardTheme"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; if ([0, 15, 30, 60].indexOf(saved.goalMin) >= 0) prefs.goalMin = saved.goalMin; }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight" || saved.theme === "midnight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.reduceMotion === true) prefs.reduceMotion = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; if (saved.timeLeft === true) prefs.timeLeft = true; if (saved.ambGlow === false) prefs.ambGlow = false; ["cc", "ccLang", "accent", "lang", "accentCustom", "cardTheme"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; if ([0, 15, 30, 60].indexOf(saved.goalMin) >= 0) prefs.goalMin = saved.goalMin; }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
@@ -2864,6 +2881,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "same as last week": ["पिछले हफ़्ते जितना ही", "ગયા અઠવાડિયા જેટલું જ"],
    "no stats from last week yet": ["पिछले हफ़्ते के आंकड़े अभी नहीं", "ગયા અઠવાડિયાના આંકડા હજી નથી"],
   };
+  Object.assign(TR_MSG, {"Calm motion: on": ["शांत गति: चालू", "શાંત ગતિ: ચાલુ"], "Calm motion: off": ["शांत गति: बंद", "શાંત ગતિ: બંધ"], "Calm motion (keep glass, stop animations)": ["शांत गति (ग्लास रखें, एनिमेशन रोकें)", "શાંત ગતિ (ગ્લાસ રાખો, એનિમેશન રોકો)"], "Keep glass, stop app motion. Device reduced motion always takes priority.": ["ग्लास रखें, ऐप की गति रोकें. डिवाइस की कम गति सेटिंग हमेशा पहले आती है.", "ગ્લાસ રાખો, એપની ગતિ રોકો. ડિવાઇસની ઓછી ગતિ સેટિંગ હંમેશા પહેલા આવે છે."], "Stops app animations, ripples, smooth scrolling and vibration. Video playback is unchanged. Your device's reduced-motion setting always takes priority.": ["ऐप के एनिमेशन, लहरें, स्मूथ स्क्रॉल और कंपन रोकता है. वीडियो पहले जैसा चलता है. डिवाइस की कम गति सेटिंग हमेशा पहले आती है.", "એપના એનિમેશન, તરંગો, સ્મૂથ સ્ક્રોલ અને વાઇબ્રેશન રોકે છે. વિડિયો પહેલાં જેવો ચાલે છે. ડિવાઇસની ઓછી ગતિ સેટિંગ હંમેશા પહેલા આવે છે."]});
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
   /* Toast feedback: one short note at the bottom for actions that used to be silent or
@@ -2974,7 +2992,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   function vpPop(el) {
     if (!el || !el.classList) return;
-    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (window.vpReducedMotion()) return;
     el.classList.remove("vp-pop"); void el.offsetWidth; el.classList.add("vp-pop");
   }
   function toggleFav(id) {
@@ -3007,7 +3025,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (rr > 0) { var rb = document.createElement("i"); rb.className = "rate-badge"; rb.textContent = "\u2605 " + rr; rb.title = T("Your rating") + ": " + rr + "/5"; open.appendChild(rb); }
     open.addEventListener("click", function () {
       if (onOpen) onOpen(); else { linkInput.value = item.id; loadVideo(null, null, undefined, true); }
-      if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+      if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
     });
     var act = document.createElement("button"); act.className = "chip"; act.type = "button";
     act.textContent = actionLabel; act.setAttribute("aria-label", actionLabel + ": " + (item.title || item.id));
@@ -3123,7 +3141,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       saveLib(); renderLib();
       toastUndo(T("Removed from queue"), function () { lib.queue = snapQ; qPos = snapP; saveLib(); renderLib(); }, T("Queue restored"));
     }, function (item, idx) { playQueueAt(idx); }, { label: T("Play next"), fn: function (item) { queuePlayNext(item); } }, "queue", [
-      { label: T("Paste a link"), fn: function () { var lb = $("pasteLinkBtn"); if (lb) lb.click(); var li2 = $("link"); if (li2) li2.scrollIntoView({ behavior: "smooth", block: "center" }); var inp = $("linkInput"); if (inp) setTimeout(function () { inp.focus(); }, 350); } },
+      { label: T("Paste a link"), fn: function () { var lb = $("pasteLinkBtn"); if (lb) lb.click(); var li2 = $("link"); if (li2) li2.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); var inp = $("linkInput"); if (inp) setTimeout(function () { inp.focus(); }, 350); } },
       { label: T("Import playlist"), fn: function () { var pb = $("plImportBtn"); if (pb) pb.click(); } }
     ]);
     fillList(laterList, laterView(), T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); }, null, null, "later");
@@ -3314,7 +3332,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     saveLib(); renderLib(); showLibErr("");
     libSay(T("Queue replaced and playing. Items:") + " " + lib.queue.length + (src.length > 50 ? ". " + T("Only the first 50 were used.") : ""));
     playQueueAt(0);
-    if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+    if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
   }
   function listAdd(items) {
     var n = 0;
@@ -3416,7 +3434,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var prevTheme = document.documentElement.getAttribute("data-theme");
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
     document.documentElement.classList.toggle("oled", prefs.theme === "midnight");
-    if (prevTheme && prevTheme !== (dark ? "dark" : "light") && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
+    if (prevTheme && prevTheme !== (dark ? "dark" : "light") && !(window.vpReducedMotion())) {
       document.documentElement.classList.add("theme-xfade");
       clearTimeout(window.__xfadeT);
       window.__xfadeT = setTimeout(function () { document.documentElement.classList.remove("theme-xfade"); }, 480);
@@ -3691,7 +3709,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     showDlHandoff(false); linkError.hidden = true;
     if (window.vpExpandSection) vpExpandSection("dl");
     var dlSec = $("dl");
-    if (dlSec) dlSec.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    if (dlSec) dlSec.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth" });
     toast(T("Link moved to the Downloader."));
   });
   linkInput.addEventListener("input", function () { showDlHandoff(false); linkError.hidden = true; });
@@ -4980,7 +4998,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function scrollQueueCurrent() {
     if (!musicMode || qPos < 0 || !queueList.children[qPos]) return;
     var el = queueList.children[qPos];
-    if (el.scrollIntoView) el.scrollIntoView({ block: "nearest", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    if (el.scrollIntoView) el.scrollIntoView({ block: "nearest", behavior: window.vpReducedMotion() ? "auto" : "smooth" });
   }
   var baseRenderLibM = renderLib;
   renderLib = function () { baseRenderLibM(); scrollQueueCurrent(); };
@@ -5045,7 +5063,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         lib.queue = pl.items.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1;
         saveLib(); renderLib(); showLibErr(""); plSay(T("Playing") + " \"" + pl.name + "\". " + T("The queue now holds its") + " " + pl.items.length + " " + T("videos") + ".");
         playQueueAt(0);
-        if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+        if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
       });
       btn(T("Add to queue"), "", function () {
         var n = 0; pl.items.forEach(function (x) { if (findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: x.title }); n++; } });
@@ -5268,6 +5286,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // ---- Accessibility options (saved on this device) ----
   var a11yBig = $("a11yBig"), a11yHc = $("a11yHc"), a11yLow = $("a11yLow");
   function applyA11y() {
+    document.documentElement.classList.toggle("calm-motion", prefs.reduceMotion === true);
     document.documentElement.classList.toggle("big-text", prefs.bigText === true);
     document.documentElement.classList.toggle("high-contrast", prefs.highContrast === true);
     document.documentElement.classList.toggle("low-fx", prefs.lowFx === true || prefs.battSaver === true);
@@ -5276,6 +5295,28 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (a11yHc) { a11yHc.checked = prefs.highContrast === true; a11yHc.addEventListener("change", function () { prefs.highContrast = a11yHc.checked; savePrefs(); applyA11y(); }); }
   if (a11yLow) { a11yLow.checked = prefs.lowFx === true; a11yLow.addEventListener("change", function () { prefs.lowFx = a11yLow.checked; savePrefs(); applyA11y(); }); }
   applyA11y();
+
+  var calmBtn = $("calmMotionBtn"), calmCheck = $("a11yCalm");
+  function paintCalm() {
+    if (calmBtn) {
+      calmBtn.textContent = T(prefs.reduceMotion ? "Calm motion: on" : "Calm motion: off");
+      calmBtn.classList.toggle("active", prefs.reduceMotion === true);
+      calmBtn.setAttribute("aria-pressed", prefs.reduceMotion ? "true" : "false");
+      calmBtn.title = T("Keep glass, stop app motion. Device reduced motion always takes priority.");
+    }
+    if (calmCheck) calmCheck.checked = prefs.reduceMotion === true;
+    $("a11yCalmT").textContent = T("Calm motion (keep glass, stop animations)");
+    $("calmMotionHint").textContent = T("Stops app animations, ripples, smooth scrolling and vibration. Video playback is unchanged. Your device's reduced-motion setting always takes priority.");
+  }
+  function setCalm(on) {
+    prefs.reduceMotion = on; savePrefs(); applyA11y();
+    if (window.vpReducedMotion() && document.getAnimations) document.getAnimations().forEach(function (a) { a.cancel(); });
+    window.dispatchEvent(new Event("vp-motion-change")); paintCalm();
+  }
+  if (calmBtn) calmBtn.addEventListener("click", function () { setCalm(!prefs.reduceMotion); });
+  if (calmCheck) calmCheck.addEventListener("change", function () { setCalm(calmCheck.checked); });
+  (window.__relang = window.__relang || []).push(paintCalm);
+  paintCalm();
 
   // Data and battery saver: 480p quality cap, thumbnail-free lists, lighter effects, battery readout.
   var saverData = $("saverData"), saverBatt = $("saverBatt"), battStatus = $("battStatus");
@@ -5556,7 +5597,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Daily goal celebration: the moment today's watch time crosses the goal, confetti rains and the goal line glows. Once per day and goal (remembered on this device).
   var goalCheered = "";
   function goalConfetti() {
-    try { if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch (e) {}
+    try { if (window.vpReducedMotion()) return; } catch (e) {}
     var cv = document.createElement("canvas"); cv.id = "goalConfetti"; cv.setAttribute("aria-hidden", "true");
     document.body.appendChild(cv);
     var ctx = cv.getContext("2d"); if (!ctx) { cv.remove(); return; }
@@ -6747,7 +6788,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         go.textContent = "\u25b6 " + (titleFor(id) || (T("Video ") + id)) + " - " + snip;
         go.addEventListener("click", function () {
           linkInput.value = "https://youtu.be/" + id; loadBtn.click();
-          window.scrollTo({ top: 0, behavior: "smooth" });
+          window.scrollTo({ top: 0, behavior: window.vpReducedMotion() ? "auto" : "smooth" });
         });
         out.appendChild(go);
       });
@@ -6786,7 +6827,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (!pool.length) { toast(T("Save a few videos first (Favourites, Watch later or history), then Surprise me can pick one.")); return; }
       var pick = pool[Math.floor(Math.random() * pool.length)];
       linkInput.value = "https://youtu.be/" + pick.id; loadBtn.click();
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: window.vpReducedMotion() ? "auto" : "smooth" });
       toast(T("Surprise! Playing: ") + (pick.title || pick.id));
     });
   })();
@@ -6842,7 +6883,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   (function () {
     var bgChk = $("bgMotionChk");
     function bgMotionAllowed() {
-      return !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+      return !(window.vpReducedMotion());
     }
     function applyBgMotion() {
       var on = prefs.bgMotion === true && bgMotionAllowed() && !document.documentElement.classList.contains("low-fx");
@@ -6853,6 +6894,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       prefs.bgMotion = bgChk.checked; savePrefs(); applyBgMotion();
       toast(prefs.bgMotion ? T("Moving background on") : T("Moving background off"));
     });
+    window.addEventListener("vp-motion-change", applyBgMotion);
+    var motionQuery = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (motionQuery && motionQuery.addEventListener) motionQuery.addEventListener("change", applyBgMotion);
     applyBgMotion();
   })();
   document.addEventListener("visibilitychange", function () {
@@ -7554,7 +7598,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var lpRelang = function () { if (!curUrl) sessionMsg.textContent = T(LP_DEF); subChipText(); eqPresetText(); chRender(); renderLocalQueue(); };
   (window.__relang = window.__relang || []).push(lpRelang);
   lpRelang();
-  window.vpPlayUrl = function (url, key) { saveLocalPositionNow(); localFiles = []; localIndex = -1; updateLocalButtons(); posKey = typeof key === "string" && key ? key : null; show(url, false); if (window.vpExpandSection) window.vpExpandSection("lp"); $("lp").scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); };
+  window.vpPlayUrl = function (url, key) { saveLocalPositionNow(); localFiles = []; localIndex = -1; updateLocalButtons(); posKey = typeof key === "string" && key ? key : null; show(url, false); if (window.vpExpandSection) window.vpExpandSection("lp"); $("lp").scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth" }); };
 })();
 </script>
 <script>
@@ -7617,7 +7661,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (iosP) iosP.hidden = !isIOS;
     if (otherP) otherP.hidden = isIOS;
     help.hidden = false;
-    if (help.scrollIntoView) help.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
+    if (help.scrollIntoView) help.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
   });
   var helpClose = document.getElementById("installHelpClose");
   if (helpClose) helpClose.addEventListener("click", function () { if (help) help.hidden = true; btn.focus(); });
@@ -7653,13 +7697,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (controls && controls.hidden && controls.contains(el)) {
       e.preventDefault();
       var p = document.getElementById("player");
-      p.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+      p.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "start" });
       pulse(p);
       return;
     }
     setTimeout(function () { pulse(el); }, 400);
     var nav2 = a.parentNode;
-    nav2.scrollTo({ left: a.offsetLeft - nav2.clientWidth / 2 + a.clientWidth / 2, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    nav2.scrollTo({ left: a.offsetLeft - nav2.clientWidth / 2 + a.clientWidth / 2, behavior: window.vpReducedMotion() ? "auto" : "smooth" });
   });
   var ticking = false, spyHold = 0, lastSpyCur = null;
   function spyEligible(el) {
@@ -7683,7 +7727,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     links.forEach(function (a) { a.classList.toggle("active", a === cur); });
     if (cur && cur !== lastSpyCur) {
       lastSpyCur = cur;
-      if (nav.scrollWidth > nav.clientWidth + 2) nav.scrollTo({ left: cur.offsetLeft - nav.clientWidth / 2 + cur.clientWidth / 2, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+      if (nav.scrollWidth > nav.clientWidth + 2) nav.scrollTo({ left: cur.offsetLeft - nav.clientWidth / 2 + cur.clientWidth / 2, behavior: window.vpReducedMotion() ? "auto" : "smooth" });
     }
   }
   window.addEventListener("scroll", function () {
@@ -7700,12 +7744,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var coarse = window.matchMedia('(pointer: coarse)');
   var active = new Set();
   function animate(el, frames, options) {
-    if (reduce.matches || !el.animate || document.documentElement.classList.contains('low-fx')) return;
+    if (window.vpReducedMotion() || !el.animate || document.documentElement.classList.contains('low-fx')) return;
     var a = el.animate(frames, options); active.add(a);
     a.onfinish = a.oncancel = function () { active.delete(a); };
     return a;
   }
-  function onReduce() { if (reduce.matches) active.forEach(function(a) { a.cancel(); }); }
+  window.addEventListener("vp-motion-change", onReduce);
+  function onReduce() { if (window.vpReducedMotion()) active.forEach(function(a) { a.cancel(); }); }
   if (reduce.addEventListener) reduce.addEventListener('change', onReduce);
   else if (reduce.addListener) reduce.addListener(onReduce);
   var hero = document.querySelector('.site-head');
@@ -7728,7 +7773,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   document.addEventListener('click',function(e){
     var button = e.target.closest && e.target.closest('button');
-    if (!button || button.disabled || reduce.matches) return;
+    if (!button || button.disabled || window.vpReducedMotion()) return;
     var r=button.getBoundingClientRect(),size=Math.max(r.width,r.height)*2;
     var ripple=document.createElement('span');ripple.className='fx-ripple';ripple.setAttribute('aria-hidden','true');
     var x=e.detail?e.clientX-r.left:r.width/2,y=e.detail?e.clientY-r.top:r.height/2;
@@ -7842,7 +7887,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   ov.querySelector("#tourSkip").addEventListener("click", close);
   function go(n) {
     var swap = ov.querySelector("#tourSwap");
-    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var reduce = window.vpReducedMotion();
     if (reduce || !swap) { i = n; render(); return; }
     swap.classList.add("tour-fade");
     setTimeout(function () { i = n; render(); swap.classList.remove("tour-fade"); }, 175);
@@ -8551,7 +8596,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   function upd() { var s = window.scrollY > 900; if (s !== on) { on = s; b.classList.toggle("show", on); } }
   window.addEventListener("scroll", upd, { passive: true });
   b.addEventListener("click", function () {
-    var r = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var r = window.vpReducedMotion();
     window.scrollTo({ top: 0, behavior: r ? "auto" : "smooth" });
   });
   (window.__relang = window.__relang || []).push(relabel);
@@ -8563,7 +8608,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
    has no vibrate API, so this simply does nothing there. Off in Low-end mode. */
 (function () {
   function buzz(ms) {
-    if (navigator.vibrate && !document.documentElement.classList.contains("low-fx")) { try { navigator.vibrate(ms); } catch (e) {} }
+    if (navigator.vibrate && !window.vpReducedMotion() && !document.documentElement.classList.contains("low-fx")) { try { navigator.vibrate(ms); } catch (e) {} }
   }
   var pb = document.getElementById("playBtn"); if (pb) pb.addEventListener("click", function () { buzz(10); });
   var sk = document.getElementById("seek"); if (sk) sk.addEventListener("change", function () { buzz(6); });
@@ -8711,7 +8756,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     out.push({ label: T("Collapse or expand all sections"), group: "Actions", run: click("secAllBtn") });
     var inst = document.getElementById("installBtn");
     if (inst && !inst.hidden) out.push({ label: "Install app", group: "Actions", run: click("installBtn") });
-    out.push({ label: T("Back to top"), group: "Actions", run: function () { window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); } });
+    out.push({ label: T("Back to top"), group: "Actions", run: function () { window.scrollTo({ top: 0, behavior: window.vpReducedMotion() ? "auto" : "smooth" }); } });
     // Feature finder (round 52): jump straight to a control anywhere on this long page.
     // Picking one opens its folded section if needed, scrolls it into view and flashes it.
     function jump(sel) {
@@ -8722,7 +8767,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
         var det = el.closest ? el.closest("details:not([open])") : null;
         if (det) det.open = true;
         setTimeout(function () {
-          try { el.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" }); } catch (e) { el.scrollIntoView(); }
+          try { el.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); } catch (e) { el.scrollIntoView(); }
           el.classList.remove("vp-find-flash"); void el.offsetWidth; el.classList.add("vp-find-flash");
           setTimeout(function () { el.classList.remove("vp-find-flash"); }, 2400);
         }, 80);
@@ -8983,9 +9028,10 @@ if (window.__vpApplyLang) window.__vpApplyLang();
 // Spotlight hover (round 25): the glow follows the pointer on desktop.
 (function () {
   if (!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches)) return;
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (window.vpReducedMotion()) return;
   Array.prototype.forEach.call(document.querySelectorAll("section"), function (sec) {
     sec.addEventListener("pointermove", function (e) {
+      if (window.vpReducedMotion()) return;
       var r = sec.getBoundingClientRect();
       sec.style.setProperty("--mx", (e.clientX - r.left) + "px");
       sec.style.setProperty("--my", (e.clientY - r.top) + "px");
@@ -9145,7 +9191,7 @@ html.low-fx :focus-visible { box-shadow: none !important; }
 (function () {
   var rm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
   document.addEventListener("click", function (e) {
-    if (!navigator.vibrate || (rm && rm.matches) || !e.isTrusted) return;
+    if (!navigator.vibrate || window.vpReducedMotion() || !e.isTrusted) return;
     var t = e.target && e.target.closest && e.target.closest("button, .btn, .chip, .feat, [role=button]");
     if (!t || t.disabled || t.id === "playBtn") return;
     if (window.__vpBuzz) window.__vpBuzz(5);
@@ -9395,7 +9441,7 @@ html.low-fx #sleepPill .sp-dot{animation:none}
   if (dock) new MutationObserver(place).observe(dock, { attributes: true, attributeFilter: ["class"] });
   window.addEventListener("resize", place, { passive: true });
   go.addEventListener("click", function () {
-    var r = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    var r = window.vpReducedMotion();
     card.scrollIntoView({ behavior: r ? "auto" : "smooth", block: "center" });
   });
   plus.addEventListener("click", function () { extend.click(); });
@@ -9661,7 +9707,7 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
     var el = document.getElementById("statsBox") || document.getElementById("lhStats");
     if (!el) return;
     setTimeout(function () {
-      try { el.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" }); } catch (e) { el.scrollIntoView(); }
+      try { el.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); } catch (e) { el.scrollIntoView(); }
       el.classList.remove("vp-find-flash"); void el.offsetWidth; el.classList.add("vp-find-flash");
       setTimeout(function () { el.classList.remove("vp-find-flash"); }, 2400);
     }, 80);
@@ -10161,7 +10207,7 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
     var det = el.closest ? el.closest("details:not([open])") : null;
     if (det) det.open = true;
     setTimeout(function () {
-      try { el.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" }); } catch (e) { el.scrollIntoView(); }
+      try { el.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); } catch (e) { el.scrollIntoView(); }
       el.classList.remove("vp-find-flash"); void el.offsetWidth; el.classList.add("vp-find-flash");
       setTimeout(function () { el.classList.remove("vp-find-flash"); }, 2400);
     }, 80);
