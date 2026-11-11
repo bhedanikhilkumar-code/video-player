@@ -1607,7 +1607,7 @@ html.low-fx section::after, html.high-contrast section::after { content: none !i
         <label class="dl-chk"><input type="checkbox" id="autoResumeChk"> <span id="autoResumeT">Resume when I come back</span></label>
         <label class="dl-chk"><input type="checkbox" id="bgMotionChk"> <span id="bgMotionT">Moving background (slow drifting colours)</span></label>
         <p class="hint" id="autoPauseHint">Handy when a call or another app pulls you away. Off by default; both are remembered on this device.</p>
-        <div class="actions"><button class="chip" id="resetAllBtn" type="button">Reset to default</button></div>
+        <div class="actions"><button class="chip" id="resetAllBtn" type="button">Reset to default</button> <button class="chip" id="tourReplayBtn" type="button">Replay welcome tour</button></div>
       </div>
       <div class="help-card">
         <h3 id="rpH">Report a problem</h3>
@@ -4395,6 +4395,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#lhDlQ", "Download queue", "डाउनलोड कतार"],
     ["#lhDlH", "Recent downloads", "हाल के डाउनलोड"],
     ["#loadBtn", "Load video", "वीडियो चलाएं"],
+    ["#tourReplayBtn", "Replay welcome tour", "वेलकम टूर फिर देखें"],
     ["#queueBtn", "+ Add to queue", "+ कतार में डालें"],
     ["#plBtn", "Add playlist to queue", "प्लेलिस्ट कतार में डालें"],
     ["#fsBtn", "⛶ Full screen", "⛶ फुल स्क्रीन"],
@@ -4608,6 +4609,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#lhDlQ": "ડાઉનલોડ કતાર",
  "#lhDlH": "તાજેતરના ડાઉનલોડ",
  "#loadBtn": "વીડિયો ચલાવો",
+ "#tourReplayBtn": "વેલકમ ટૂર ફરી જુઓ",
  "#queueBtn": "+ કતારમાં ઉમેરો",
  "#plBtn": "પ્લેલિસ્ટ કતારમાં ઉમેરો",
  "#fsBtn": "⛶ ફુલ સ્ક્રીન",
@@ -5961,7 +5963,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var KEY = "vp-tour.v1";
   var seen = false;
   try { seen = !!localStorage.getItem(KEY); } catch (e) { seen = true; }
-  if (seen) return;
   var T = window.T || function (s) { return s; };
   var css = "#tourOverlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(8,10,18,.66);backdrop-filter:blur(3px);padding:20px;opacity:1;transition:opacity .2s ease;}"
     + "#tourOverlay.tour-out{opacity:0;pointer-events:none;}"
@@ -6048,15 +6049,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (i < steps.length - 1) { go(i + 1); } else close();
   });
   ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
-  document.addEventListener("keydown", onKey, true);
   function open() {
+    if (ov.parentNode) return;
     prevFocus = document.activeElement;
+    document.addEventListener("keydown", onKey, true);
     document.body.appendChild(ov);
     render();
     ov.querySelector("#tourNext").focus();
   }
-  if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", function () { setTimeout(open, 700); });
-  else setTimeout(open, 700);
+  // Help > Settings has a Replay button so the tour can be watched again any time.
+  var replayBtn = document.getElementById("tourReplayBtn");
+  if (replayBtn) replayBtn.addEventListener("click", function () { i = 0; open(); });
+  if (!seen) {
+    if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", function () { setTimeout(open, 700); });
+    else setTimeout(open, 700);
+  }
 })();
 </script>
 <script>
