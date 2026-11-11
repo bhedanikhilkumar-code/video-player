@@ -1950,6 +1950,10 @@ setTimeout(done,3000);})();
 .stats-bar{display:block;width:100%;max-width:26px;border-radius:6px 6px 3px 3px;background:var(--teal);opacity:.8;min-height:3px}
 .stats-day.today .stats-bar{opacity:1}
 .stats-day span{font-size:11px;color:var(--ink2)}
+#goalConfetti{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:4000}
+.goal-cheer{border-radius:10px;animation:goalPulse 1.4s ease-out 2}
+@keyframes goalPulse{0%{box-shadow:0 0 0 0 rgba(127,210,191,.55)}100%{box-shadow:0 0 0 16px rgba(127,210,191,0)}}
+@media (prefers-reduced-motion:reduce){.goal-cheer{animation:none}}
 .stats-day.today span{font-weight:700;color:var(--ink)}
 </style>
 <script type="text/plain" id="qrLibSrc">
@@ -2066,6 +2070,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Daily goal:": ["दैनिक लक्ष्य:", "દૈનિક લક્ષ્ય:"],
    "Goal off. Pick 15, 30 or 60 minutes to start a daily goal.": ["लक्ष्य बंद है. दैनिक लक्ष्य शुरू करने के लिए 15, 30 या 60 मिनट चुनें.", "લક્ષ્ય બંધ છે. દૈનિક લક્ષ્ય શરૂ કરવા 15, 30 કે 60 મિનિટ પસંદ કરો."],
    "Goal reached!": ["लक्ष्य पूरा!", "લક્ષ્ય પૂરું!"],
+   "Nice watching today.": ["आज अच्छा देखा!", "આજે સરસ જોયું!"],
    "day streak": ["दिन की स्ट्रीक", "દિવસની સ્ટ્રીક"],
    "day streaks": ["दिन की स्ट्रीक", "દિવસની સ્ટ્રીક"],
    "Daily goal off": ["दैनिक लक्ष्य बंद", "દૈનિક લક્ષ્ય બંધ"],
@@ -4873,6 +4878,50 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     new MutationObserver(sync).observe(it, { childList: true, characterData: true, subtree: true });
     sync();
   })();
+  // Daily goal celebration: the moment today's watch time crosses the goal, confetti rains and the goal line glows. Once per day and goal (remembered on this device).
+  var goalCheered = "";
+  function goalConfetti() {
+    try { if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch (e) {}
+    var cv = document.createElement("canvas"); cv.id = "goalConfetti"; cv.setAttribute("aria-hidden", "true");
+    document.body.appendChild(cv);
+    var ctx = cv.getContext("2d"); if (!ctx) { cv.remove(); return; }
+    cv.width = window.innerWidth; cv.height = window.innerHeight;
+    var colors = ["#ff6a88", "#6a5cff", "#7fd2bf", "#ffd166", "#4cc9f0", "#f72585"];
+    var parts = [];
+    for (var i = 0; i < 140; i++) {
+      parts.push({ x: Math.random() * cv.width, y: -20 - Math.random() * cv.height * .5,
+        w: 6 + Math.random() * 8, h: 8 + Math.random() * 10, vy: 2 + Math.random() * 3.5,
+        vx: -1.5 + Math.random() * 3, rot: Math.random() * Math.PI, vr: -.15 + Math.random() * .3,
+        col: colors[i % colors.length], circle: Math.random() < .3 });
+    }
+    var t0 = performance.now();
+    function frame(now) {
+      var el = now - t0, done = el >= 3200;
+      ctx.clearRect(0, 0, cv.width, cv.height);
+      parts.forEach(function (p) {
+        p.x += p.vx; p.y += p.vy; p.rot += p.vr; p.vy += .02;
+        if (p.y < cv.height + 30) done = false;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillStyle = p.col; ctx.globalAlpha = Math.max(0, 1 - el / 3200);
+        if (p.circle) { ctx.beginPath(); ctx.arc(0, 0, p.w / 2, 0, 7); ctx.fill(); } else ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+        ctx.restore();
+      });
+      if (!done) requestAnimationFrame(frame); else cv.remove();
+    }
+    requestAnimationFrame(frame);
+    setTimeout(function () { if (cv.parentNode) cv.remove(); }, 3600);
+  }
+  function goalCelebrate(g) {
+    var key = dayKey(new Date()) + ":" + g;
+    if (goalCheered === key) return;
+    try { if (localStorage.getItem("vp-goal-cheer.v1") === key) { goalCheered = key; return; } } catch (e) {}
+    goalCheered = key;
+    try { localStorage.setItem("vp-goal-cheer.v1", key); } catch (e) {}
+    var st = $("goalStatus");
+    if (st) { st.classList.remove("goal-cheer"); void st.offsetWidth; st.classList.add("goal-cheer"); }
+    goalConfetti();
+    if (typeof toast === "function") toast("\ud83c\udf89 " + T("Goal reached!") + " " + T("Nice watching today."), 4200);
+  }
   function statsTick() {
     if (!curId || !playing) { lastStatT = -1; return; }
     if (lastStatId !== curId) { lastStatId = curId; lastStatT = -1; }
@@ -4881,6 +4930,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (d > 0 && d <= 3) {
         stats.total += d;
         stats.days[dayKey(new Date())] = (stats.days[dayKey(new Date())] || 0) + d;
+        var g2 = goalMin(), tAfter = stats.days[dayKey(new Date())] || 0;
+        if (g2 > 0 && tAfter >= g2 * 60 && tAfter - d < g2 * 60) goalCelebrate(g2);
         var rec = statsRec(curId); rec.secs += d;
         var ti = titleFor(curId) || infoTitle.textContent; if (ti && ti !== rec.title) rec.title = ti;
         statsDirty = true;
