@@ -1931,7 +1931,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhHist">Recently watched</h3><button class="chip" id="clearHistBtn">Clear</button></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
-      <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="statsClear" type="button">Clear</button></div>
+      <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsClear" type="button">Clear</button></div>
       <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><div class="stats-days" id="statsDays"></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><ul class="lib-list" id="statsList"></ul>
       <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
       <div class="goal-row" id="storRow"><p class="hint" id="storInfo" role="status"></p><button class="chip" id="storBtn" type="button">Refresh</button></div>
@@ -2131,6 +2131,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Recent downloads restored": ["हाल के डाउनलोड वापस आए", "તાજેતરના ડાઉનલોડ પાછા આવ્યા"],
    "Watch stats cleared": ["देखने के आंकड़े साफ़ हुए", "જોવાના આંકડા સાફ થયા"],
    "Watch stats restored": ["देखने के आंकड़े वापस आए", "જોવાના આંકડા પાછા આવ્યા"],
+   "Watch stats saved as a text file": ["देखने के आंकड़े टेक्स्ट फ़ाइल में सेव हुए", "જોવાના આંકડા ટેક્સ્ટ ફાઇલમાં સેવ થયા"],
+   "No watch stats yet.": ["अभी देखने के कोई आंकड़े नहीं हैं.", "જોવાના આંકડા હજી નથી."],
    "Cinema mode on - tap the dark area or press T to exit.": ["सिनेमा मोड चालू - बाहर टैप करें या बंद करने के लिए T दबाएं.", "સિનેમા મોડ ચાલુ - બહાર ટેપ કરો અથવા બંધ કરવા T દબાવો."],
    "Link copied": ["लिंक कॉपी हुआ", "લિંક કોપી થઈ"],
    "2x speed while held.": ["दबाए रखने पर 2x स्पीड.", "દબાવી રાખવાથી 2x સ્પીડ."],
@@ -5042,6 +5044,38 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   window.addEventListener("pagehide", saveStats);
   renderStats();
 
+  // Watch stats: Save as text file - totals, the last 7 days and most-watched videos, made on the device.
+  var statsTxtBtn = $("statsTxtBtn");
+  if (statsTxtBtn) statsTxtBtn.addEventListener("click", function () {
+    var ids0 = Object.keys(stats.videos);
+    if (!stats.plays && !ids0.length) { toast(T("No watch stats yet.")); return; }
+    var loc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-US";
+    var lines = [];
+    lines.push("HD Video Player - Watch stats");
+    lines.push("Total watched: " + fmtWatch(Math.floor(stats.total)) + " · " + stats.plays + " plays · " + ids0.length + " videos");
+    lines.push("Today: " + fmtWatch(Math.floor(stats.days[dayKey(new Date())] || 0)));
+    lines.push("");
+    lines.push("Last 7 days:");
+    for (var off = 6; off >= 0; off--) {
+      var dt = new Date(Date.now() - off * 86400000);
+      lines.push(dt.toLocaleDateString(loc, { weekday: "short", day: "numeric", month: "short" }) + ": " + fmtWatch(Math.floor(stats.days[dayKey(dt)] || 0)));
+    }
+    var tops = ids0.map(function (id) { var v = stats.videos[id]; return { id: id, secs: v.secs || 0, plays: v.plays || 0, title: v.title || titleFor(id) || ("Video " + id) }; }).sort(function (a, b) { return b.secs - a.secs; }).slice(0, 10);
+    if (tops.length) {
+      lines.push("");
+      lines.push("Most watched:");
+      tops.forEach(function (v, i) {
+        lines.push((i + 1) + ". " + v.title + " · " + fmtWatch(Math.floor(v.secs)) + (v.plays ? " · " + v.plays + "x" : ""));
+        lines.push("   https://youtu.be/" + v.id);
+      });
+    }
+    try {
+      var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([lines.join("\n") + "\n"], { type: "text/plain" })); a.download = "video-player-watch-stats.txt";
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      toast(T("Watch stats saved as a text file"));
+    } catch (e) { toast(T("Could not copy. Try again.")); }
+  });
+
   // Subtitles: the official captions module of the YouTube iframe player, plus a language shortcut.
   var ccBtn = $("ccBtn"), ccLangChips = $("ccLangChips");
   var CC_LANGS = [["auto", "Auto"], ["en", "English"], ["hi", "Hindi"], ["gu", "Gujarati"]];
@@ -5183,6 +5217,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#jumpLab", "Jump to time", "समय पर जाएं"],
     ["#jumpGo", "Go", "जाएं"],
     ["#gpWheelHint", "On a computer, scroll on the pad with the mouse wheel to change the volume.", "कंप्यूटर पर पैड पर माउस व्हील घुमाकर आवाज़ बदलें."],
+    ["#statsTxtBtn", "Save as text file", "टेक्स्ट फ़ाइल में सेव करें"],
     ["#statsClear", "Clear", "साफ़ करें"],
     ["#libExport", "Export backup", "बैकअप निकालें"],
     ["#libImport", "Import backup", "बैकअप लाएं"],
@@ -5419,7 +5454,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#jumpLab": "સમય પર જાઓ",
  "#jumpGo": "જાઓ",
  "#gpWheelHint": "કંપ્યુટર પર પેડ પર માઉસ વ્હીલ ફેરવીને અવાજ બદલો.",
- "#statsClear": "સાફ કરો",
+ "#statsClear": "સાફ કરો", "#statsTxtBtn": "ટેક્સ્ટ ફાઇલમાં સેવ કરો",
  "#libExport": "બેકઅપ કાઢો",
  "#libImport": "બેકઅપ લાવો",
  "#plSaveBtn": "કતારને પ્લેલિસ્ટ બનાવો",
