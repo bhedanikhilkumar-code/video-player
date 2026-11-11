@@ -2097,6 +2097,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Rest your eyes for a minute.": ["आंखों को एक मिनट आराम दें.", "આંખોને એક મિનિટ આરામ આપો."],
    "Pause for a break": ["ब्रेक के लिए रोकें", "વિરામ માટે રોકો"],
    "Keep watching": ["देखते रहें", "જોતા રહો"],
+   "Keep screen awake": ["स्क्रीन चालू रखें", "સ્ક્રીન ચાલુ રાખો"],
+   "Stops the screen from dimming while a video plays. Not every browser supports this.": ["वीडियो चलते समय स्क्रीन को मंद होने से रोकता है. हर ब्राउज़र में काम नहीं करता.", "વિડિયો ચાલતો હોય ત્યારે સ્ક્રીન ઝાંખી થતી અટકાવે છે. દરેક બ્રાઉઝરમાં કામ કરતું નથી."],
+   "Not supported in this browser.": ["यह ब्राउज़र इसे सपोर्ट नहीं करता.", "આ બ્રાઉઝર આને સપોર્ટ કરતું નથી."],
+   "On": ["चालू", "ચાલુ"],
    "Drop a video or audio file to open it": ["वीडियो या ऑडियो फ़ाइल यहां छोड़ें", "વિડિયો કે ઓડિયો ફાઇલ અહીં છોડો"],
    "That file cannot be played here.": ["यह फ़ाइल यहां नहीं चल सकती.", "આ ફાઇલ અહીં ચાલી શકતી નથી."],
   };
@@ -6669,6 +6673,24 @@ if (window.__vpApplyLang) window.__vpApplyLang();
  window.addEventListener("blur",hide);window.addEventListener("keydown",function(e){if(e.key==="Escape")hide();});
  window.addEventListener("drop",function(e){if(!files(e))return;e.preventDefault();hide();var f=e.dataTransfer.files[0];if(!f)return;var ext=(f.name.split(".").pop()||"").toLowerCase();if(!/^(video|audio)\//.test(f.type||"")&&["mp4","webm","mkv","mov","m4v","mp3","m4a","aac","ogg","wav","flac"].indexOf(ext)<0){window.toast(T("That file cannot be played here."));return;}if(window.vpPlayUrl)window.vpPlayUrl(URL.createObjectURL(f),f.name+"|"+f.size);});
 })();
+</script>
+<script>
+/* Keep screen awake while playing (Screen Wake Lock). On by default, never on a paused video. */
+(function(){"use strict";var T=window.T,key="vp-awake.v1",on=true,lock=null,supported=("wakeLock" in navigator);
+ try{if(localStorage.getItem(key)==="0")on=false;}catch(e){}
+ var host=document.querySelector("#ctl-sleep p.hint");if(!host)return;
+ var wrap=document.createElement("div"),label=document.createElement("p"),chips=document.createElement("div"),hint=document.createElement("p");
+ wrap.style.marginTop="16px";label.id="awkLabel";label.className="label";chips.id="awkChips";chips.className="chips";chips.setAttribute("role","group");chips.setAttribute("aria-labelledby","awkLabel");hint.className="hint";
+ wrap.append(label,chips,hint);host.before(wrap);
+ function playing(){var v=document.getElementById("lpVideo");return !!((window.__vpIsPlaying&&window.__vpIsPlaying())||(v&&!v.hidden&&!v.paused&&!v.ended&&v.readyState>=2));}
+ function release(){if(lock){try{lock.release();}catch(e){}lock=null;}}
+ function sync(){if(!supported)return;var want=on&&!document.hidden&&playing();if(want&&!lock){navigator.wakeLock.request("screen").then(function(l){lock=l;l.addEventListener("release",function(){if(lock===l)lock=null;});}).catch(function(){});}else if(!want&&lock){release();}}
+ function render(){label.textContent=T("Keep screen awake");hint.textContent=supported?T("Stops the screen from dimming while a video plays. Not every browser supports this."):T("Not supported in this browser.");chips.textContent="";
+  [[true,T("On")],[false,T("Off")]].forEach(function(o){var b=document.createElement("button");b.type="button";b.className="chip"+(o[0]===on?" active":"");b.setAttribute("aria-pressed",String(o[0]===on));b.textContent=o[1];b.disabled=!supported;b.onclick=function(){on=o[0];try{localStorage.setItem(key,on?"1":"0");}catch(e){}if(!on)release();render();sync();};chips.append(b);});}
+ setInterval(sync,3000);document.addEventListener("visibilitychange",function(){if(document.hidden)release();else sync();});
+ (window.__relang=window.__relang||[]).push(render);render();
+})();
+
 </script>
 </body>
           </html>
