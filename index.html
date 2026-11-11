@@ -1125,7 +1125,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 .vp-pal-item{padding:10px 12px;border-radius:12px;cursor:pointer;font-size:15px;}
 .vp-pal-item.is-act{background:var(--teal,#0a8);color:#fff;}
 .vp-pal-empty{padding:18px;text-align:center;color:var(--ink2,#666);font-size:14px;}
-</style><style>#vpBreak{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9997;width:min(430px,calc(100vw - 32px));padding:18px;box-sizing:border-box;border:1px solid var(--hairline);border-radius:18px;background:var(--card);color:var(--ink);box-shadow:0 16px 50px #0005;text-align:center}#vpBreak h3{margin:0 0 8px}#vpBreak p{margin:0 0 12px}#vpBreak .row{justify-content:center;gap:8px;flex-wrap:wrap}</style></head>
+</style><style>#vpBreak{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9997;width:min(430px,calc(100vw - 32px));padding:18px;box-sizing:border-box;border:1px solid var(--hairline);border-radius:18px;background:var(--card);color:var(--ink);box-shadow:0 16px 50px #0005;text-align:center}#vpBreak h3{margin:0 0 8px}#vpBreak p{margin:0 0 12px}#vpBreak .row{justify-content:center;gap:8px;flex-wrap:wrap}</style><style>#vpDrop[hidden]{display:none}#vpDrop{position:fixed;inset:0;z-index:9996;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:#080a1288;pointer-events:none}#vpDrop p{padding:40px 28px;border:2px dashed var(--teal);border-radius:22px;background:var(--card);color:var(--ink);font-size:18px;text-align:center;max-width:460px}</style></head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
 <div class="wrap">
@@ -2097,6 +2097,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Rest your eyes for a minute.": ["आंखों को एक मिनट आराम दें.", "આંખોને એક મિનિટ આરામ આપો."],
    "Pause for a break": ["ब्रेक के लिए रोकें", "વિરામ માટે રોકો"],
    "Keep watching": ["देखते रहें", "જોતા રહો"],
+   "Drop a video or audio file to open it": ["वीडियो या ऑडियो फ़ाइल यहां छोड़ें", "વિડિયો કે ઓડિયો ફાઇલ અહીં છોડો"],
+   "That file cannot be played here.": ["यह फ़ाइल यहां नहीं चल सकती.", "આ ફાઇલ અહીં ચાલી શકતી નથી."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
@@ -6648,6 +6650,19 @@ if (window.__vpApplyLang) window.__vpApplyLang();
  function render(){label.textContent=T("Break reminder");hint.textContent=T("Suggests a rest after this much active watching.");chips.textContent="";choices.forEach(function(n){var b=document.createElement("button");b.type="button";b.className="chip"+(n===minutes?" active":"");b.setAttribute("aria-pressed",String(n===minutes));b.textContent=n?n+" "+T("min"):T("Off");b.onclick=function(){minutes=n;dismiss();last=Date.now();try{localStorage.setItem(key,String(n));}catch(e){}render();};chips.append(b);});}
  setInterval(function(){var now=Date.now(),delta=Math.min(5,Math.max(0,(now-last)/1000));last=now;if(!minutes||card||document.hidden)return;var v=document.getElementById("lpVideo"),active=(window.__vpIsPlaying&&window.__vpIsPlaying())||(v&&!v.hidden&&!v.paused&&!v.ended&&v.readyState>=2);if(active){elapsed+=delta;if(elapsed>=minutes*60)show();}},5000);
  (window.__relang=window.__relang||[]).push(function(){render();if(card){dismiss();}});render();
+})();
+</script>
+<script>
+/* Desktop file drop: first media file opens locally, never uploads. */
+(function(){"use strict";var veil=null,depth=0,T=window.T;
+ function files(e){return !!(e.dataTransfer&&Array.from(e.dataTransfer.types||[]).indexOf("Files")>=0);}
+ function hide(){depth=0;if(veil)veil.hidden=true;}
+ function show(){if(!veil){veil=document.createElement("div");veil.id="vpDrop";veil.setAttribute("aria-hidden","true");veil.append(document.createElement("p"));document.body.append(veil);}veil.querySelector("p").textContent=T("Drop a video or audio file to open it");veil.hidden=false;}
+ window.addEventListener("dragenter",function(e){if(files(e)){e.preventDefault();depth++;show();}});
+ window.addEventListener("dragover",function(e){if(files(e)){e.preventDefault();e.dataTransfer.dropEffect="copy";}});
+ window.addEventListener("dragleave",function(e){if(files(e)){depth=Math.max(0,depth-1);if(!depth)hide();}});
+ window.addEventListener("blur",hide);window.addEventListener("keydown",function(e){if(e.key==="Escape")hide();});
+ window.addEventListener("drop",function(e){if(!files(e))return;e.preventDefault();hide();var f=e.dataTransfer.files[0];if(!f)return;var ext=(f.name.split(".").pop()||"").toLowerCase();if(!/^(video|audio)\//.test(f.type||"")&&["mp4","webm","mkv","mov","m4v","mp3","m4a","aac","ogg","wav","flac"].indexOf(ext)<0){window.toast(T("That file cannot be played here."));return;}if(window.vpPlayUrl)window.vpPlayUrl(URL.createObjectURL(f),f.name+"|"+f.size);});
 })();
 </script>
 </body>
