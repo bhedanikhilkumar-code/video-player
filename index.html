@@ -2076,6 +2076,10 @@ setTimeout(done,3000);})();
         <input id="plName" type="text" maxlength="40" autocomplete="off" placeholder="Playlist name, e.g. Study" aria-label="Playlist name">
         <button class="chip" id="plSaveBtn" type="button">Save queue as playlist</button>
       </div>
+      <div class="pl-addcur">
+        <select id="plPick" aria-label="Choose a playlist"></select>
+        <button class="chip" id="plAddCurBtn" type="button">Add current video</button>
+      </div>
       <div class="row pl-import-row">
         <button class="chip" id="plImportBtn" type="button">Import playlist</button>
         <input id="plImportFile" type="file" accept="application/json,.json" hidden>
@@ -2618,6 +2622,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "yesterday": ["कल", "ગઈકાલે"],
    " days ago": [" दिन पहले", " દિવસ પહેલાં"],
    "Your lists live only in this browser. Export a backup so a cleanup never wipes them.": ["आपकी लिस्ट सिर्फ इस ब्राउज़र में रहती हैं. बैकअप निकालें ताकि कोई सफाई उन्हें मिटा न दे.", "તમારી યાદીઓ ફક્ત આ બ્રાઉઝરમાં રહે છે. બેકઅપ કાઢો જેથી કોઈ સફાઈ તેને ભૂંસી ન નાખે."],
+   "Load a video first, then add it to a playlist.": ["पहले एक वीडियो चलाएं, फिर उसे प्लेलिस्ट में जोड़ें.", "પહેલા વીડિયો ચલાવો, પછી તેને પ્લેલિસ્ટમાં ઉમેરો."],
+   "Save a playlist first - type a name above and tap Save.": ["पहले एक प्लेलिस्ट बनाएं - ऊपर नाम लिखें और Save दबाएं.", "પહેલા પ્લેલિસ્ટ બનાવો - ઉપર નામ લખો અને Save દબાવો."],
+   "is full (50 videos).": ["भर गई है (50 वीडियो).", "ભરાઈ ગઈ છે (50 વીડિયો)."],
+   "already has this video.": ["में यह वीडियो पहले से है.", "માં આ વીડિયો પહેલેથી છે."],
+   "Added to ": ["इसमें जोड़ा गया: ", "આમાં ઉમેરાયું: "],
+   "No saved playlists yet": ["अभी कोई सेव की प्लेलिस्ट नहीं", "હજી કોઈ સેવ કરેલી પ્લેલિસ્ટ નહીં"],
    "favourite": ["पसंदीदा", "મનપસંદ"],
    "favourites": ["पसंदीदा", "મનપસંદ"],
    " and ": [" और ", " અને "],
@@ -5781,6 +5791,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       });
       li.appendChild(top); li.appendChild(acts); plList.appendChild(li);
     });
+    if (window.__plPickRender) window.__plPickRender();
   }
   $("plSaveBtn").addEventListener("click", async function () {
     var name = cleanName(plName.value);
@@ -5984,6 +5995,38 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if ($("backupLaterBtn")) $("backupLaterBtn").addEventListener("click", function () { try { localStorage.setItem(BK_SNOOZE, String(Date.now() + 3 * 864e5)); } catch (e) {} bkRender(); });
   (window.__relang = window.__relang || []).push(bkRender);
   bkRender();
+
+  // ---- Round 84: add the playing video straight into a saved playlist ----
+  // Until now a playlist only changed as a whole-queue save; this adds one video.
+  var plPick = $("plPick"), plAddCurBtn = $("plAddCurBtn");
+  function plPickRender() {
+    if (!plPick) return;
+    var keep = plPick.value;
+    plPick.textContent = "";
+    if (!playlists.length) {
+      var o0 = document.createElement("option"); o0.value = ""; o0.textContent = T("No saved playlists yet"); plPick.appendChild(o0);
+      plPick.disabled = true;
+    } else {
+      playlists.forEach(function (p, i) { var o = document.createElement("option"); o.value = String(i); o.textContent = p.name + " (" + p.items.length + ")"; plPick.appendChild(o); });
+      plPick.disabled = false;
+      if (keep !== "" && playlists[Number(keep)]) plPick.value = keep;
+    }
+    if (plAddCurBtn) plAddCurBtn.disabled = !playlists.length;
+  }
+  if (plAddCurBtn) plAddCurBtn.addEventListener("click", function () {
+    if (!curId) { plSay(T("Load a video first, then add it to a playlist.")); return; }
+    var pl = playlists[Number(plPick.value)];
+    if (!pl) { plSay(T("Save a playlist first - type a name above and tap Save.")); return; }
+    if (pl.items.length >= 50) { plSay("\"" + pl.name + "\" " + T("is full (50 videos).")); return; }
+    if (findIn(pl.items, curId) >= 0) { plSay("\"" + pl.name + "\" " + T("already has this video.")); return; }
+    pl.items.push({ id: curId, title: titleFor(curId) || "" });
+    savePlaylists(); renderPlaylists();
+    plSay(T("Added to ") + "\"" + pl.name + "\".");
+    toast(T("Added to ") + "\"" + pl.name + "\".");
+  });
+  (window.__relang = window.__relang || []).push(plPickRender);
+  window.__plPickRender = plPickRender;
+  plPickRender();
 
   // ---- Offline: clear banner + stop video loads with a clear message ----
   var offlineBanner = $("offlineBanner");
@@ -6636,6 +6679,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#libExport", "Export backup", "बैकअप निकालें"],
     ["#backupNowBtn", "Export backup now", "अभी बैकअप निकालें"],
     ["#backupLaterBtn", "Remind me later", "बाद में याद दिलाएं"],
+    ["#plAddCurBtn", "Add current video", "अभी का वीडियो जोड़ें"],
     ["#libImport", "Import backup", "बैकअप लाएं"],
     ["#plSaveBtn", "Save queue as playlist", "कतार को प्लेलिस्ट बनाएं"],
     ["#plImportBtn", "Import playlist", "प्लेलिस्ट इम्पोर्ट करें"],
@@ -6879,6 +6923,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#plSaveBtn": "કતારને પ્લેલિસ્ટ બનાવો",
  "#backupNowBtn": "હમણાં બેકઅપ કાઢો",
  "#backupLaterBtn": "પછી યાદ કરાવો",
+ "#plAddCurBtn": "હાલનો વીડિયો ઉમેરો",
  "#plImportBtn": "પ્લેલિસ્ટ ઇમ્પોર્ટ કરો",
  "#playMusicBtn": "મ્યુઝિક ચલાવો",
  "#saveMusicBtn": "કતારને Music માં સેવ કરો",
@@ -9863,6 +9908,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Paste a list of links", "paste many links bulk", "#plPasteBtn"],
       ["Saved playlists", "playlist saved study", "#lhPlaylists"],
       ["Backup reminder", "backup reminder last backup export safe storage", "#backupAge"],
+      ["Add current video to a playlist", "add current video playlist now playing save", "#plAddCurBtn"],
       ["Play Music (saved music queue)", "play music saved", "#playMusicBtn"],
       ["Up next queue", "queue next upnext order", "#lhQueue"],
       ["Queue total time", "queue total time how long length duration", "#queueTime"],
@@ -11295,6 +11341,9 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
 .backup-remind{margin-top:8px}
 .backup-remind .tip-main p{margin:0;color:var(--ink2,#555);overflow-wrap:anywhere}
 #backupAge{margin:2px 2px 0}
+.pl-addcur{display:flex;gap:8px;flex-wrap:wrap;align-items:stretch;margin:0 0 6px}
+.pl-addcur select{flex:1 1 160px;min-width:0;min-height:46px;padding:8px 12px;font-size:16px;border-radius:12px;border:1px solid var(--hairline);background:var(--card);color:var(--ink)}
+.pl-addcur select:disabled{opacity:.6}
 @media (max-width:560px){.tip-card{flex-direction:column;align-items:stretch}.tip-btns{justify-content:flex-start}}
 </style>
 <script>
