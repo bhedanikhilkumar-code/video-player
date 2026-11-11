@@ -172,6 +172,7 @@ window.vpReducedMotion = function () {
   .lib-head .chip { min-height: 40px; padding: 6px 12px; font-size: 14px; }
   .lib-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   .lib-item { display: flex; align-items: center; gap: 8px; }
+  .lib-item.pinned { box-shadow: inset 3px 0 0 var(--teal); border-radius: 10px; background: rgba(127,127,127,.07); }
   .lib-open { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; text-align: left; min-height: 60px; padding: 5px 10px 5px 5px; border: 1px solid var(--hairline); border-radius: 12px; background: var(--chipbg); color: var(--ink); cursor: pointer; font-size: 14px; }
   .lib-open:hover { border-color: var(--teal); }
   .lib-open img { width: 80px; height: 45px; object-fit: cover; border-radius: 8px; background: #141114; flex: none; }
@@ -3264,6 +3265,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     vpPop(favBtn);
     toast(i >= 0 ? T("Removed from favourites") : T("Added to favourites"));
   }
+  // Round 94: pin a favourite so it stays at the top of the list, whatever the sort.
+  // The pin flag is saved on this device and rides the backup export/import.
+  function togglePinFav(id) {
+    var i = findIn(lib.favs, id);
+    if (i < 0) return;
+    lib.favs[i].pin = !lib.favs[i].pin;
+    var nowPinned = lib.favs[i].pin;
+    saveLib(); renderLib();
+    toast(nowPinned ? T("Pinned to the top") : T("Pin removed"));
+  }
   function toggleLater(id) {
     var i = findIn(lib.later, id);
     if (i >= 0) lib.later.splice(i, 1); else lib.later.unshift({ id: id, title: titleFor(id), ts: Date.now() });
@@ -3277,6 +3288,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   function buildItem(item, actionLabel, onAction, onOpen, isCurrent, extraAction, showAge) {
     var li = document.createElement("li"); li.className = "lib-item";
+    if (item.pin) li.classList.add("pinned");
     var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
     var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
     thumbSet(img, item.id, "mqdefault.jpg");
@@ -3311,7 +3323,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     li.appendChild(open); li.appendChild(act);
     if (extraAction) {
       var act2 = document.createElement("button"); act2.className = "chip"; act2.type = "button";
-      act2.textContent = extraAction.label; act2.setAttribute("aria-label", extraAction.label + ": " + (item.title || item.id));
+      var lab2 = typeof extraAction.label === "function" ? extraAction.label(item) : extraAction.label;
+      act2.textContent = lab2; act2.setAttribute("aria-label", lab2 + ": " + (item.title || item.id));
+      if (extraAction.on) { var on2 = !!extraAction.on(item); act2.classList.toggle("active", on2); act2.setAttribute("aria-pressed", String(on2)); }
       act2.addEventListener("click", function () { extraAction.fn(item); });
       li.appendChild(act2);
     }
@@ -3443,7 +3457,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       { label: T("Import playlist"), fn: function () { var pb = $("plImportBtn"); if (pb) pb.click(); } }
     ]);
     fillList(laterList, laterView(), T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); }, null, null, "later", undefined, true);
-    fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) { toggleFav(item.id); }, null, null, "fav");
+    fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) { toggleFav(item.id); }, null, { label: function (item) { return item.pin ? "\ud83d\udccc " + T("Pinned") : "\ud83d\udccc " + T("Pin"); }, on: function (item) { return !!item.pin; }, fn: function (item) { togglePinFav(item.id); } }, "fav");
     fillList(histList, histView(), T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, { label: T("Remove"), fn: function (item) {
       var i = findIn(lib.hist, item.id);
       if (i >= 0) { var snapH = lib.hist.slice(); lib.hist.splice(i, 1); saveLib(); renderLib(); if (typeof libSay === "function") libSay(T("Removed from history.")); toastUndo(T("Removed from history."), function () { lib.hist = snapH; saveLib(); renderLib(); }, T("History restored")); }
@@ -3782,9 +3796,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favSortMode = "new";
   try { var fm = localStorage.getItem("vp-favsort.v1"); favSortMode = (fm === "az" || fm === "rate") ? fm : "new"; } catch (e) {}
   function favView() {
-    if (favSortMode === "az") return lib.favs.slice().sort(function (a, b) { return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase()); });
-    if (favSortMode === "rate") return lib.favs.slice().sort(function (a, b) { return vpRateOf(b.id) - vpRateOf(a.id); });
-    return lib.favs;
+    var v;
+    if (favSortMode === "az") v = lib.favs.slice().sort(function (a, b) { return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase()); });
+    else if (favSortMode === "rate") v = lib.favs.slice().sort(function (a, b) { return vpRateOf(b.id) - vpRateOf(a.id); });
+    else v = lib.favs.slice();
+    // Round 94: pinned favourites float to the top, keeping their order within each group.
+    return v.sort(function (a, b) { return (b.pin ? 1 : 0) - (a.pin ? 1 : 0); });
   }
   var favSortBtn = document.createElement("button"); favSortBtn.type = "button"; favSortBtn.className = "chip"; favSortBtn.id = "favSortBtn";
   favSortBtn.addEventListener("click", function () {
@@ -6207,7 +6224,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (typeof lyricsFlush === "function") lyricsFlush();
     var data = { app: "hd-video-player", version: 2, exportedAt: new Date().toISOString(),
       queue: lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }),
-      favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "" }; }),
+      favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "", pin: x.pin === true }; }),
       later: lib.later.map(function (x) { return { id: x.id, title: x.title || "" }; }),
       playlists: playlists.map(function (p) { return { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; }),
       moments: (function () { var o = {}; Object.keys(marks).forEach(function (id) { if (Array.isArray(marks[id]) && marks[id].length) o[id] = marks[id].map(function (m) { return { t: m.t, name: m.name || "" }; }); }); return o; })(),
@@ -6246,7 +6263,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (mergePracticeLoops(d.practiceLoops)) { savePracticeLoops(); renderPracticeLoops(); }
         var qn = 0, fn = 0;
         q.forEach(function (x) { if (validItem(x) && findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: typeof x.title === "string" ? x.title : "" }); qn++; } });
-        fv.forEach(function (x) { if (validItem(x) && findIn(lib.favs, x.id) < 0) { lib.favs.push({ id: x.id, title: typeof x.title === "string" ? x.title : "" }); fn++; } });
+        fv.forEach(function (x) { if (validItem(x) && findIn(lib.favs, x.id) < 0) { lib.favs.push({ id: x.id, title: typeof x.title === "string" ? x.title : "", pin: x.pin === true }); fn++; } });
         var pn = 0;
         (Array.isArray(d.playlists) ? d.playlists : []).forEach(function (p) {
           if (!p || typeof p.name !== "string" || !Array.isArray(p.items) || playlists.length >= PL_MAX) return;
@@ -8502,10 +8519,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Up-next countdown length": ["अगले वीडियो की उल्टी गिनती की लंबाई", "આગળના વીડિયોની ઉલટી ગણતરીની લંબાઈ"],
     "Speed change pill": ["स्पीड बदलने की सूचना", "સ્પીડ બદલવાની સૂચના"],
     "Added today": ["आज जोड़ा", "આજે ઉમેર્યું"],
+    "Pin": ["पिन करें", "પિન કરો"],
+    "Pinned": ["पिन किया हुआ", "પિન કરેલું"],
+    "Pinned to the top": ["सबसे ऊपर पिन किया", "સૌથી ઉપર પિન કર્યું"],
+    "Pin removed": ["पिन हटा दिया", "પિન દૂર કરી"],
+    "Pin favourites to the top": ["पसंदीदा सबसे ऊपर पिन करें", "પસંદગીઓ સૌથી ઉપર પિન કરો"],
     "Added yesterday": ["कल जोड़ा", "ગઈકાલે ઉમેર્યું"],
     "Added": ["जोड़ा गया", "ઉમેર્યું"]
   });
   var WNEW = [
+    ["Pin favourites to the top", "#lhFavs"],
     ["Search subtitles", "#lpSubSearchQ"],
     ["Sleep picture fade", "#sleepPicFade"],
     ["Watch next card", "#playerHeading"],
@@ -8514,8 +8537,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Played count", "#infoCard"],
     ["Share on WhatsApp", "#waBtn"],
     ["Queue finish clock time", "#queueTime"],
-    ["Up-next countdown length", "#upnextSecsRow"],
-    ["Speed change pill", "#ctl-speed"]
+    ["Up-next countdown length", "#upnextSecsRow"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -10568,7 +10590,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Keyboard shortcuts", "keyboard shortcut keys", "#scBox"],
       ["Listening help (screen off)", "screen off background listen premium", "#backgroundHelp"],
       ["What's new", "new latest recent additions updates features whats new", "#whatsNewCard"],
-      ["Watch later added date", "watch later added date when saved how old days ago", "#lhLater"]
+      ["Watch later added date", "watch later added date when saved how old days ago", "#lhLater"],
+      ["Pin favourites to the top", "pin favourite top keep important first p pinned", "#lhFavs"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
