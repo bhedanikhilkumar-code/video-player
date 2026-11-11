@@ -2094,6 +2094,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Practice loops included: ": ["अभ्यास लूप शामिल: ", "પ્રેક્ટિસ લૂપ સામેલ: "],
     "Fine-tune (half-second steps):": ["फ़ाइन-ट्यून (आधे सेकंड के स्टेप):", "ફાઇન-ટ્યૂન (અડધી સેકન્ડના સ્ટેપ):"],
     "Set A and B first to fine-tune.": ["फ़ाइन-ट्यून के लिए पहले A और B सेट करें.", "ફાઇન-ટ્યૂન માટે પહેલા A અને B સેટ કરો."],
+    "Repeat:": ["दोहराव:", "પુનરાવર્તન:"],
+    "Endless": ["अनंत", "અનંત"],
+    "Repeat endlessly": ["अनंत बार दोहराएं", "અનંત વાર ફરી ચલાવો"],
+    "Repeat N times": ["N बार दोहराएं", "N વાર ફરી ચલાવો"],
+    "loop": ["लूप", "લૂપ"],
+    "A-B repeat finished: ": ["A-B दोहराव पूरा हुआ: ", "A-B પુનરાવર્તન પૂર્ણ થયું: "],
+    "Pick how many times the A-B section plays, then it stops on its own.": ["चुनें कि A-B हिस्सा कितनी बार चले, फिर वह खुद रुक जाएगा.", "પસંદ કરો કે A-B ભાગ કેટલી વાર ચાલે, પછી તે આપે આપ અટકી જશે."],
 
     "Replay recent section": ["हाल का हिस्सा दोहराएं", "તાજેતરનો ભાગ ફરી ચલાવો"],
     "Replay last": ["पिछले हिस्से को दोहराएं", "છેલ્લો ભાગ ફરી ચલાવો"],
@@ -3443,7 +3450,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         sleepLabel.textContent = T("Stopped at the end of the video (sleep timer).");
         return;
       }
-      if (data.info === 0 && abEnabled && abA != null && abB != null) { send("seekTo", [abA, true]); send("playVideo"); }
+      if (data.info === 0 && abEnabled && abA != null && abB != null) abLoopBack(true);
       else if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); }
       else if (data.info === 0 && stopAfter) { stopAfter = false; renderStopAfter(); $("queueModeMsg").textContent = T("Stopped after this track, as you asked."); }
       else if (data.info === 0 && lib.queue.length && queueModes.auto) {
@@ -3495,7 +3502,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (typeof i.muted === "boolean") { muted = i.muted; muteBtn.textContent = muted ? T("🔇 Unmute") : T("🔊 Mute"); }
       if (typeof i.currentTime === "number") {
         curTime = i.currentTime;
-        if (abEnabled && abA != null && abB != null && !seeking && curTime >= abB) { send("seekTo", [abA, true]); curTime = abA; }
+        if (abEnabled && abA != null && abB != null && !seeking && curTime >= abB) abLoopBack(false);
       }
       var t = (seeking ? Number(seek.value) : i.currentTime) || 0;
       paintTime(t);
@@ -3923,7 +3930,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var a = Number($("abFrom").value), b = Number($("abTo").value);
     if (!curId) { abLabel.textContent = T("Load a video first."); return; }
     if (!isFinite(a) || !isFinite(b) || a < 0 || b <= a || (duration > 0 && b > duration)) { abLabel.textContent = T("Use 0 ≤ A < B, within the video length."); return; }
-    abA = a; abB = b; abEnabled = true; updateAB(); send("seekTo", [a, true]);
+    abA = a; abB = b; abEnabled = true; abLoopCount = 0; updateAB(); send("seekTo", [a, true]);
   });
   // Round 66: fine-tune A and B in half-second steps; labels show the half second (1:05.5).
   function fmtAB(s) { var t = fmt(s); return (isFinite(s) && Math.abs(s % 1) > 0.01) ? t + ".5" : t; }
@@ -3952,6 +3959,47 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       abB = Math.round(nb * 2) / 2; updateAB(); manualSeek(Math.max(abA != null ? abA : 0, abB - 0.5));
     }
   });
+  // Round 66: repeat count - play the A-B section a set number of times, then it stops on its own.
+  var abLoopLimit = 0, abLoopCount = 0;
+  function abLoopBack(restart) {
+    if (abLoopLimit > 0) {
+      abLoopCount++;
+      if (abLoopCount >= abLoopLimit) {
+        abEnabled = false; updateAB();
+        var w = T("loop"); if (prefs.lang !== "hi" && prefs.lang !== "gu" && abLoopLimit > 1) w += "s";
+        toast(T("A-B repeat finished: ") + abLoopLimit + " " + w);
+        return;
+      }
+      updateAB();
+    }
+    send("seekTo", [abA, true]); curTime = abA;
+    if (restart) send("playVideo");
+  }
+  var abLoopRow = document.createElement("div"); abLoopRow.className = "row"; abLoopRow.style.marginTop = "8px"; abLoopRow.id = "abLoopRow";
+  abLoopRow.innerHTML = '<span class="hint" id="abLoopLab"></span><span class="chips" id="abLoopChips"></span><p class="hint" id="abLoopHint" style="flex-basis:100%;margin:2px 0 0"></p>';
+  abLabel.parentNode.appendChild(abLoopRow);
+  [0, 2, 3, 5, 10].forEach(function (n) {
+    var c = document.createElement("button"); c.type = "button"; c.className = "chip"; c.dataset.loops = n;
+    c.textContent = n === 0 ? "∞" : n + "×";
+    c.addEventListener("click", function () {
+      abLoopLimit = n; abLoopCount = 0;
+      if (abA != null && abB != null) abEnabled = true;
+      renderAbLoops(); updateAB();
+    });
+    $("abLoopChips").appendChild(c);
+  });
+  function renderAbLoops() {
+    if (!$("abLoopChips")) return;
+    $("abLoopLab").textContent = T("Repeat:");
+    $("abLoopHint").textContent = T("Pick how many times the A-B section plays, then it stops on its own.");
+    [].forEach.call($("abLoopChips").children, function (c) {
+      var n = Number(c.dataset.loops), on = abLoopLimit === n;
+      c.classList.toggle("active", on); c.setAttribute("aria-pressed", String(on));
+      var al = n === 0 ? T("Repeat endlessly") : T("Repeat N times").replace("N", n);
+      c.setAttribute("aria-label", al); c.title = al;
+    });
+  }
+  (window.__relang = window.__relang || []).push(renderAbLoops); renderAbLoops();
   // Round 65: a one-tap practice loop around the section just watched.
   var replayRecent = document.createElement("div"); replayRecent.id = "replayRecent";
   replayRecent.innerHTML = '<p class="label" id="recentReplayLab"></p><div class="row" id="recentReplayChips"></div><p class="hint" id="recentReplayHint"></p>';
@@ -3962,7 +4010,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     b.addEventListener("click", function () {
       if (!ready || !curId || !(duration > 0) || curTime < 1) { toast(T("Play a little first, then replay a section.")); return; }
       abB = Math.min(duration, Math.floor(curTime)); abA = Math.max(0, abB - seconds);
-      abEnabled = true; updateAB(); manualSeek(abA); send("playVideo");
+      abEnabled = true; abLoopCount = 0; updateAB(); manualSeek(abA); send("playVideo");
     });
     $("recentReplayChips").appendChild(b);
   });
@@ -4021,7 +4069,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       play.addEventListener("click", function () {
         if (!ready || !(duration > 0)) { toast(T("Play a little first, then replay a section.")); return; }
         if (x.b > duration) { toast(T("This range is outside the current video.")); return; }
-        abA = x.a; abB = x.b; abEnabled = true; updateAB(); manualSeek(abA); send("playVideo");
+        abA = x.a; abB = x.b; abEnabled = true; abLoopCount = 0; updateAB(); manualSeek(abA); send("playVideo");
       });
       var del = document.createElement("button"); del.type = "button"; del.className = "chip";
       del.textContent = T("Remove"); del.setAttribute("aria-label", T("Remove") + ": " + x.name);
@@ -4058,19 +4106,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (abA == null && abB == null) abLabel.textContent = T("Off");
     else if (abB == null) abLabel.textContent = "A " + fmtAB(abA) + T(" - set B to start repeating");
     else if (abA == null) abLabel.textContent = "B " + fmtAB(abB) + T(" - set A to start repeating");
-    else abLabel.textContent = (abEnabled ? T("Repeating ") : T("Paused repeat: ")) + fmtAB(abA) + T(" to ") + fmtAB(abB);
+    else abLabel.textContent = (abEnabled ? T("Repeating ") : T("Paused repeat: ")) + fmtAB(abA) + T(" to ") + fmtAB(abB) + (abLoopLimit > 0 ? " · " + T("loop") + " " + abLoopCount + "/" + abLoopLimit : "");
     if (window.__vpABBand) window.__vpABBand(abA, abB);
   }
-  function clearAB() { abA = null; abB = null; abEnabled = true; updateAB(); }
+  function clearAB() { abA = null; abB = null; abEnabled = true; abLoopCount = 0; updateAB(); }
   aBtn.addEventListener("click", function () {
-    abA = Math.floor(curTime);
+    abA = Math.floor(curTime); abLoopCount = 0;
     if (abB != null && abB <= abA) abB = null;
     updateAB();
   });
   bBtn.addEventListener("click", function () {
     var b = Math.floor(curTime);
     if (abA != null && b <= abA) { abLabel.textContent = T("B must be after A"); return; }
-    abB = b; updateAB();
+    abB = b; abLoopCount = 0; updateAB();
     if (abA != null) send("seekTo", [abA, true]);
   });
   abClearBtn.addEventListener("click", clearAB);
