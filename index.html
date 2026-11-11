@@ -3268,7 +3268,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!id) return 0;
     try { var m = JSON.parse(localStorage.getItem("vp-rate.v1") || "{}") || {}; var r = m[id] | 0; return r >= 1 && r <= 5 ? r : 0; } catch (e) { return 0; }
   }
-  function buildItem(item, actionLabel, onAction, onOpen, isCurrent, extraAction) {
+  function buildItem(item, actionLabel, onAction, onOpen, isCurrent, extraAction, showAge) {
     var li = document.createElement("li"); li.className = "lib-item";
     var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
     var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
@@ -3282,6 +3282,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var pbar = document.createElement("span"); pbar.className = "cont-prog";
       var pfill = document.createElement("i"); pfill.style.width = Math.min(100, Math.round(hInfo.t / hInfo.dur * 100)) + "%";
       pbar.appendChild(pfill); box.appendChild(pbar);
+    }
+    // Round 93: Watch later rows say when the video was saved (only rows that have a saved time).
+    if (showAge && typeof item.ts === "number" && item.ts > 0) {
+      var ageDays = Math.floor((Date.now() - item.ts) / 86400000);
+      var ageEl = document.createElement("span"); ageEl.className = "later-age";
+      ageEl.textContent = ageDays <= 0 ? T("Added today") : ageDays === 1 ? T("Added yesterday") : T("Added") + " " + ageDays + T(" days ago");
+      box.appendChild(ageEl);
     }
     open.appendChild(img); open.appendChild(box);
     if (item.done || (hInfo && hInfo.done)) { var wb = document.createElement("i"); wb.className = "watched-badge"; wb.textContent = "\u2713 " + T("Watched"); open.appendChild(wb); }
@@ -3320,7 +3327,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var tx = document.createElement("span"); tx.textContent = text; box.appendChild(tx);
     li.appendChild(box); return li;
   }
-  function fillList(ul, items, emptyText, actionLabel, onAction, onOpen, extraAction, emptyIcon, emptyActions) {
+  function fillList(ul, items, emptyText, actionLabel, onAction, onOpen, extraAction, emptyIcon, emptyActions, showAge) {
     ul.textContent = "";
     if (!items.length) {
       ul.appendChild(emptyLi(emptyText, emptyIcon));
@@ -3335,7 +3342,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       }
       return;
     }
-    items.forEach(function (item, idx) { ul.appendChild(buildItem(item, actionLabel, function () { onAction(item, idx); }, onOpen ? function () { onOpen(item, idx); } : null, ul === queueList && idx === qPos, extraAction)); });
+    items.forEach(function (item, idx) { ul.appendChild(buildItem(item, actionLabel, function () { onAction(item, idx); }, onOpen ? function () { onOpen(item, idx); } : null, ul === queueList && idx === qPos, extraAction, showAge)); });
   }
   function queueAdd(text) {
     var tokens = text.split(/[\s,]+/).filter(Boolean), added = 0;
@@ -3428,7 +3435,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       { label: T("Paste a link"), fn: function () { var lb = $("pasteLinkBtn"); if (lb) lb.click(); var li2 = $("link"); if (li2) li2.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); var inp = $("linkInput"); if (inp) setTimeout(function () { inp.focus(); }, 350); } },
       { label: T("Import playlist"), fn: function () { var pb = $("plImportBtn"); if (pb) pb.click(); } }
     ]);
-    fillList(laterList, laterView(), T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); }, null, null, "later");
+    fillList(laterList, laterView(), T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); }, null, null, "later", undefined, true);
     fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) { toggleFav(item.id); }, null, null, "fav");
     fillList(histList, histView(), T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, { label: T("Remove"), fn: function (item) {
       var i = findIn(lib.hist, item.id);
@@ -3722,7 +3729,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!lib.queue.length) { showLibErr(T("Queue is empty. Add links with Add to queue.")); return; }
     var snap = lib.later.slice(), added = 0;
     lib.queue.forEach(function (q) {
-      if (findIn(lib.later, q.id) < 0 && lib.later.length < 50) { lib.later.push({ id: q.id, title: q.title }); added++; }
+      if (findIn(lib.later, q.id) < 0 && lib.later.length < 50) { lib.later.push({ id: q.id, title: q.title, ts: Date.now() }); added++; }
     });
     if (!added) { showLibErr(T("Everything in the queue is already in Watch later.")); return; }
     saveLib(); renderLib(); showLibErr("");
@@ -6242,7 +6249,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           playlists.push({ name: nm, items: items }); pn++;
         });
         var ln = 0;
-        (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { lib.later.push({ id: x.id, title: typeof x.title === "string" ? x.title : "" }); ln++; } });
+        (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { lib.later.push({ id: x.id, title: typeof x.title === "string" ? x.title : "", ts: typeof x.ts === "number" ? x.ts : 0 }); ln++; } });
         var mn = 0;
         if (d.moments && typeof d.moments === "object" && !Array.isArray(d.moments)) {
           Object.keys(d.moments).forEach(function (id) {
@@ -10553,7 +10560,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Report a problem", "report problem bug feedback email", "#rpH"],
       ["Keyboard shortcuts", "keyboard shortcut keys", "#scBox"],
       ["Listening help (screen off)", "screen off background listen premium", "#backgroundHelp"],
-      ["What's new", "new latest recent additions updates features whats new", "#whatsNewCard"]
+      ["What's new", "new latest recent additions updates features whats new", "#whatsNewCard"],
+      ["Watch later added date", "watch later added date when saved how old days ago", "#lhLater"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
