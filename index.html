@@ -1604,6 +1604,7 @@ setTimeout(done,3000);})();
           <div class="pct-row" id="pctRow" role="group" aria-label="Jump to a part of the video"><span class="label" id="pctLab">Jump to:</span><button class="chip pct-chip" type="button" data-p="0">0%</button><button class="chip pct-chip" type="button" data-p="25">25%</button><button class="chip pct-chip" type="button" data-p="50">50%</button><button class="chip pct-chip" type="button" data-p="75">75%</button></div>
           <div class="dim-row" id="dimRow"><label class="label" for="dimRange" id="dimLab">Screen dimmer</label><input class="slider" id="dimRange" type="range" min="0" max="70" step="5" value="0" aria-label="Screen dimmer"><span class="dim-val" id="dimVal" role="status">Off</span></div>
           <div class="look-row" id="lookRow" role="group" aria-label="Picture look"><span class="label" id="lookLab">Picture look</span><span class="look-chips" id="lookChips"></span></div>
+          <div class="flip-row" id="flipRow" role="group" aria-label="Flip the picture"><span class="label" id="flipLab">Flip picture</span><button class="chip flip-chip" type="button" id="flipH" aria-pressed="false"><span id="flipHT">Mirror</span> &#8596;</button><button class="chip flip-chip" type="button" id="flipV" aria-pressed="false"><span id="flipVT">Upside down</span> &#8597;</button></div>
           <div class="ab-strip" id="abStrip" hidden aria-hidden="true"></div>
           <div class="seek-tip" id="seekTip" hidden></div>
           <div class="seek-marks" id="seekMarks" hidden></div>
@@ -2088,6 +2089,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Black & white": ["श्वेत-श्याम", "કાળો-સફેદ"],
    "Cinema": ["सिनेमा", "સિનેમા"],
    "Look: ": ["लुक: ", "લુક: "],
+   "Flip picture": ["तस्वीर पलटें", "ચિત્ર પલટાવો"],
+   "Flip picture: mirror the video or turn it upside down": ["तस्वीर पलटें: वीडियो को शीशे जैसा या उल्टा करें", "ચિત્ર પલટાવો: વિડિઓને અરીસા જેવો અથવા ઊંધો કરો"],
+   "Mirror": ["शीशा", "અરીસો"],
+   "Upside down": ["उल्टा", "ઊંધું"],
+   "Mirror on": ["शीशा मोड चालू", "અરીસો ચાલુ"],
+   "Mirror off": ["शीशा मोड बंद", "અરીસો બંધ"],
+   "Upside down on": ["उल्टा मोड चालू", "ઊંધું ચાલુ"],
+   "Upside down off": ["उल्टा मोड बंद", "ઊંધું બંધ"],
    "Clear link": ["लिंक हटाएं", "લિંક કાઢો"],
    "Clean link": ["लिंक साफ़ करें", "લિંક સાફ કરો"],
    "Your rating": ["आपकी रेटिंग", "તમારું રેટિંગ"],
@@ -9670,6 +9679,37 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
       var on = b.dataset.id === cur; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false");
     });
   }
+  (window.__relang = window.__relang || []).push(paint);
+  paint();
+})();
+</script>
+<script>
+/* Flip picture (round 63): Mirror (left-right) and Upside down for the video picture. Handy for
+   learning dance, guitar or drawing from a tutorial. Only the picture is flipped; the controls
+   stay normal. Works on the YouTube frame and local files. Remembered on the device. */
+(function () {
+  "use strict";
+  var T = window.T || function (x) { return x; };
+  var h = document.getElementById("flipH"), v = document.getElementById("flipV"), lab = document.getElementById("flipLab"), row = document.getElementById("flipRow");
+  if (!h || !v) return;
+  var st = document.createElement("style");
+  st.textContent = ".flip-row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}.flip-chip{padding:5px 11px;font-size:13px}.flip-chip.active{outline:2px solid rgba(10,132,255,.75);outline-offset:1px;font-weight:700}#frameBox iframe,#lpVideo{transform:scale(var(--vp-fx,1),var(--vp-fy,1))}";
+  document.head.appendChild(st);
+  var KEY = "vp-flip.v1", fh = false, fv = false;
+  try { var o = JSON.parse(localStorage.getItem(KEY) || "{}"); fh = !!o.h; fv = !!o.v; } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify({ h: fh, v: fv })); } catch (e) {} }
+  function paint() {
+    var r = document.documentElement.style;
+    r.setProperty("--vp-fx", fh ? "-1" : "1"); r.setProperty("--vp-fy", fv ? "-1" : "1");
+    lab.textContent = T("Flip picture");
+    row.setAttribute("aria-label", T("Flip picture: mirror the video or turn it upside down"));
+    document.getElementById("flipHT").textContent = T("Mirror"); document.getElementById("flipVT").textContent = T("Upside down");
+    h.classList.toggle("active", fh); h.setAttribute("aria-pressed", fh ? "true" : "false");
+    v.classList.toggle("active", fv); v.setAttribute("aria-pressed", fv ? "true" : "false");
+  }
+  function say(m) { if (typeof window.toast === "function") window.toast(T(m)); }
+  h.addEventListener("click", function () { fh = !fh; save(); paint(); say(fh ? "Mirror on" : "Mirror off"); });
+  v.addEventListener("click", function () { fv = !fv; save(); paint(); say(fv ? "Upside down on" : "Upside down off"); });
   (window.__relang = window.__relang || []).push(paint);
   paint();
 })();
