@@ -1262,6 +1262,18 @@ html.low-fx.vp-playing .frame-glow { opacity: .22; }
 @media (max-width: 640px) { .frame-glow { filter: blur(16px) saturate(1.2); inset: -8px -10px; } }
 @media (prefers-reduced-motion: reduce) { html .frame-glow, html.vp-playing .frame-glow { animation: none; } }
 </style>
+<style id="r36-vol-hud">
+/* Sound: iPhone-style volume pill pops up when the volume changes */
+#volHud { position: fixed; top: 12px; left: 50%; transform: translate(-50%, -10px) scale(.94); z-index: 90; display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 99px; background: var(--bg); border: 1px solid var(--hairline); box-shadow: 0 10px 34px rgba(0,0,0,.28); backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4); opacity: 0; pointer-events: none; transition: opacity .22s ease, transform .32s cubic-bezier(.2,.9,.3,1.25); }
+#volHud.on { opacity: 1; transform: translate(-50%, 0) scale(1); }
+#volHud .vh-ico { font-size: 16px; line-height: 1; }
+#volHud .vh-track { width: 110px; height: 6px; border-radius: 99px; background: var(--soft); overflow: hidden; }
+#volHud .vh-fill { display: block; height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--teal), #9769ff); transition: width .18s ease; }
+#volHud .vh-pct { font-size: 13px; font-weight: 700; min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; }
+html.low-fx #volHud { backdrop-filter: none; -webkit-backdrop-filter: none; transition: opacity .15s ease; }
+html.tab-hidden #volHud { transition: none; }
+@media (prefers-reduced-motion: reduce) { #volHud { transition: none; transform: translate(-50%, 0); } #volHud .vh-fill { transition: none; } }
+</style>
 <style id="r36-mini-title">
 /* Mini player: now-playing title scrolls under the video; tap it to jump back */
 #miniTitle { display: none; width: 100%; border: 0; padding: 7px 12px 0; background: transparent; color: inherit; font: inherit; font-size: 12.5px; font-weight: 600; letter-spacing: .01em; text-align: left; cursor: pointer; overflow: hidden; white-space: nowrap; mask-image: linear-gradient(90deg, #000 88%, transparent); -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent); }
@@ -7451,6 +7463,37 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       sec.style.setProperty("--my", (e.clientY - r.top) + "px");
     });
   });
+})();
+</script>
+<script id="r36-vol-hud-js">
+// Sound: iPhone-style volume pill pops up when the volume changes (slider, arrow keys, mute).
+(function () {
+  var volEl = document.getElementById("vol"), volLabel = document.getElementById("volLabel"), muteBtn = document.getElementById("muteBtn");
+  if (!volLabel || !muteBtn) return;
+  var hud = document.createElement("div"); hud.id = "volHud"; hud.setAttribute("role", "status"); hud.setAttribute("aria-live", "polite");
+  hud.innerHTML = '<span class="vh-ico" aria-hidden="true">\uD83D\uDD0A</span><span class="vh-track" aria-hidden="true"><i class="vh-fill"></i></span><span class="vh-pct"></span>';
+  document.body.appendChild(hud);
+  var ico = hud.querySelector(".vh-ico"), fill = hud.querySelector(".vh-fill"), pct = hud.querySelector(".vh-pct");
+  var armed = false, hideT = 0, lastKey = "";
+  function arm() { armed = true; }
+  document.addEventListener("pointerdown", arm, { once: true });
+  document.addEventListener("keydown", arm, { once: true });
+  function show() {
+    if (!armed) return;
+    var v = Math.round(Number(volEl && volEl.value) || 0);
+    var muted = (muteBtn.textContent || "").indexOf("\uD83D\uDD07") >= 0;
+    var key = (muted ? "m" : "v") + v;
+    if (key === lastKey) return; lastKey = key;
+    ico.textContent = (muted || v === 0) ? "\uD83D\uDD07" : (v < 50 ? "\uD83D\uDD09" : "\uD83D\uDD0A");
+    fill.style.width = (muted ? 0 : v) + "%";
+    pct.textContent = muted ? (window.T ? window.T("Muted") : "Muted") : v + "%";
+    hud.classList.add("on");
+    clearTimeout(hideT); hideT = setTimeout(function () { hud.classList.remove("on"); }, 1100);
+  }
+  if (window.MutationObserver) {
+    new MutationObserver(show).observe(volLabel, { childList: true, characterData: true, subtree: true });
+    new MutationObserver(show).observe(muteBtn, { childList: true, characterData: true, subtree: true });
+  }
 })();
 </script>
 <script id="r36-mini-title-js">
