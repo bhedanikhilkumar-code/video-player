@@ -1605,6 +1605,7 @@ setTimeout(done,3000);})();
           <div class="dim-row" id="dimRow"><label class="label" for="dimRange" id="dimLab">Screen dimmer</label><input class="slider" id="dimRange" type="range" min="0" max="70" step="5" value="0" aria-label="Screen dimmer"><span class="dim-val" id="dimVal" role="status">Off</span></div>
           <div class="look-row" id="lookRow" role="group" aria-label="Picture look"><span class="label" id="lookLab">Picture look</span><span class="look-chips" id="lookChips"></span></div>
           <div class="flip-row" id="flipRow" role="group" aria-label="Flip the picture"><span class="label" id="flipLab">Flip picture</span><button class="chip flip-chip" type="button" id="flipH" aria-pressed="false"><span id="flipHT">Mirror</span> &#8596;</button><button class="chip flip-chip" type="button" id="flipV" aria-pressed="false"><span id="flipVT">Upside down</span> &#8597;</button></div>
+          <div class="zoom-row" id="zoomRow" role="group" aria-label="Zoom the picture"><span class="label" id="zoomLab">Picture zoom</span><button class="chip zoom-chip" type="button" data-z="1" aria-pressed="true">100%</button><button class="chip zoom-chip" type="button" data-z="1.15" aria-pressed="false">115%</button><button class="chip zoom-chip" type="button" data-z="1.3" aria-pressed="false">130%</button></div>
           <div class="ab-strip" id="abStrip" hidden aria-hidden="true"></div>
           <div class="seek-tip" id="seekTip" hidden></div>
           <div class="seek-marks" id="seekMarks" hidden></div>
@@ -2097,6 +2098,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Mirror off": ["शीशा मोड बंद", "અરીસો બંધ"],
    "Upside down on": ["उल्टा मोड चालू", "ઊંધું ચાલુ"],
    "Upside down off": ["उल्टा मोड बंद", "ઊંધું બંધ"],
+   "Picture zoom": ["पिक्चर ज़ूम", "પિક્ચર ઝૂમ"],
+   "Picture zoom: crop the edges of the video to fill the frame": ["पिक्चर ज़ूम: किनारे काटकर वीडियो फ्रेम भरें", "પિક્ચર ઝૂમ: કિનારા કાપીને વિડિઓ ફ્રેમ ભરો"],
+   "Zoom ": ["ज़ूम ", "ઝૂમ "],
    "Clear link": ["लिंक हटाएं", "લિંક કાઢો"],
    "Clean link": ["लिंक साफ़ करें", "લિંક સાફ કરો"],
    "Your rating": ["आपकी रेटिंग", "તમારું રેટિંગ"],
@@ -9710,6 +9714,38 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   function say(m) { if (typeof window.toast === "function") window.toast(T(m)); }
   h.addEventListener("click", function () { fh = !fh; save(); paint(); say(fh ? "Mirror on" : "Mirror off"); });
   v.addEventListener("click", function () { fv = !fv; save(); paint(); say(fv ? "Upside down on" : "Upside down off"); });
+  (window.__relang = window.__relang || []).push(paint);
+  paint();
+})();
+</script>
+<script>
+/* Picture zoom (round 64): 100 / 115 / 130 percent zoom on the YouTube picture. The frame crops the
+   edges, so black bars or empty borders disappear. Works with Flip picture. The YouTube control bar
+   crops too at 130%, use the app seek bar. Remembered on the device. */
+(function () {
+  "use strict";
+  var T = window.T || function (x) { return x; };
+  var row = document.getElementById("zoomRow"), lab = document.getElementById("zoomLab");
+  if (!row) return;
+  var chips = Array.prototype.slice.call(row.querySelectorAll(".zoom-chip"));
+  var st = document.createElement("style");
+  st.textContent = ".zoom-row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}.zoom-chip{padding:5px 11px;font-size:13px}.zoom-chip.active{outline:2px solid rgba(10,132,255,.75);outline-offset:1px;font-weight:700}#frameBox iframe{transform:scale(calc(var(--vp-fx,1) * var(--vp-z,1)),calc(var(--vp-fy,1) * var(--vp-z,1)))}";
+  document.head.appendChild(st);
+  var KEY = "vp-zoom.v1", cur = 1;
+  try { var n = parseFloat(localStorage.getItem(KEY)); if (n === 1 || n === 1.15 || n === 1.3) cur = n; } catch (e) {}
+  function paint() {
+    document.documentElement.style.setProperty("--vp-z", String(cur));
+    lab.textContent = T("Picture zoom");
+    row.setAttribute("aria-label", T("Picture zoom: crop the edges of the video to fill the frame"));
+    chips.forEach(function (b) { var on = parseFloat(b.dataset.z) === cur; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
+  }
+  chips.forEach(function (b) {
+    b.addEventListener("click", function () {
+      cur = parseFloat(b.dataset.z); try { localStorage.setItem(KEY, String(cur)); } catch (e) {}
+      paint();
+      if (typeof window.toast === "function") window.toast(T("Zoom ") + b.textContent);
+    });
+  });
   (window.__relang = window.__relang || []).push(paint);
   paint();
 })();
