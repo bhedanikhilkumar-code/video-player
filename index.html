@@ -1821,6 +1821,7 @@ setTimeout(done,3000);})();
             <li id="sc10"><b>T</b>: cinema mode on / off</li>
             <li id="sc11"><b>S</b>: save this moment</li>
             <li id="sc12"><b>,</b> / <b>.</b>: previous / next saved moment</li>
+            <li id="sc13"><b>Ctrl+V</b>: paste a video link anywhere on the page</li>
           </ul>
           <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
         </details>
@@ -2276,6 +2277,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Pause at moments off.": ["पलों पर रुकना बंद.", "ક્ષણો પર રોકવું બંદ."],
    "Paused at moment ": ["पल पर रोका गया ", "ક્ષણ પર રોકાયું "],
    "Pause at each saved moment": ["हर सेव किए पल पर रुकें", "દરેક સેવ કરેલા ક્ષણ પર રોકો"],
+   "Pasted link - loading the video": ["लिंक पेस्ट हुआ - वीडियो खुल रहा है", "લિંક પેસ્ટ થઈ - વીડિયો ખુલી રહ્યો છે"],
    "Speed set to": ["स्पीड सेट हुई", "સ્પીડ સેટ થઈ"],
    "Clear watched": ["देखे हुए हटाएं", "જોયેલા કાઢો"],
    "Auto-remove watched": ["देखा हुआ अपने-आप हटाएं", "જોયેલું આપોઆપ કાઢો"],
@@ -3318,6 +3320,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       }, function () { toast(T("Allow clipboard access, or long-press the field to paste.")); linkInput.focus(); });
     });
   } else if (pasteLinkBtn) { pasteLinkBtn.hidden = true; }
+  // Paste anywhere (round 76): on a computer you can press Ctrl+V / Cmd+V anywhere on the page
+  // - no need to tap the link box first - and if the clipboard holds a YouTube link, the video
+  // loads straight away. Text boxes keep their normal paste; only a real link anywhere in the
+  // pasted text is picked up.
+  document.addEventListener("paste", function (e) {
+    var t = e.target;
+    if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+    var txt = e.clipboardData && e.clipboardData.getData("text");
+    if (!txt) return;
+    var id = parseVideoId(txt.trim());
+    if (!id) {
+      var m = txt.match(/https?:\/\/[^\s]+/);
+      if (m) id = parseVideoId(m[0]);
+    }
+    if (!id || id === curId) return;
+    e.preventDefault();
+    linkInput.value = "https://youtu.be/" + id;
+    loadBtn.click();
+    toast(T("Pasted link - loading the video"));
+  });
   nextBtn.addEventListener("click", function () {
     if (!lib.queue.length) showLibErr(T("The queue is empty."));
     else if (!playNext()) showLibErr(T("That was the last video in the queue."));
@@ -6574,10 +6596,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#sc10", "<b>T</b>: cinema mode on / off", "<b>T</b>: सिनेमा मोड चालू / बंद"],
     ["#sc11", "<b>S</b>: save this moment", "<b>S</b>: यह पल सेव करें"],
     ["#sc12", "<b>,</b> / <b>.</b>: previous / next saved moment", "<b>,</b> / <b>.</b>: पिछला / अगला सेव पल"],
+    ["#sc13", "<b>Ctrl+V</b>: paste a video link anywhere on the page", "<b>Ctrl+V</b>: पेज पर कहीं भी वीडियो लिंक पेस्ट करें"],
     ["#faq7a", "See the <a href=\"#backgroundHelp\">Listening help card</a> below the player for simple steps and the screen-off limits.", "सरल steps और screen-off सीमाओं के लिए प्लेयर के नीचे <a href=\"#backgroundHelp\">Listening help कार्ड</a> देखें."]
   ];
   var I18N_GU_HTML = {
  "#sc12": "<b>,</b> / <b>.</b>: પાછલી / આગળની સેવ ક્ષણ",
+ "#sc13": "<b>Ctrl+V</b>: પેજ પર ગમે ત્યાં વીડિયો લિંક પેસ્ટ કરો",
  "#sc1": "<b>Space</b> અથવા <b>K</b>: ચલાવો / રોકો",
  "#sc2": "<b>Left / Right</b>: 5 સેકંડ પાછળ / આગળ",
  "#sc3": "<b>J / L</b>: 10 સેકંડ પાછળ / આગળ",
