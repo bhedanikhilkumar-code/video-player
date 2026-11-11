@@ -2195,6 +2195,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "playlist": ["प्लेलिस्ट", "પ્લેલિસ્ટ"],
    "Settings restored. Reloading to apply\u2026": ["सेटिंग वापस आ गईं. लागू करने के लिए रीलोड हो रहा है\u2026", "સેટિંગ પાછી આવી. લાગુ કરવા રીલોડ થાય છે\u2026"],
    "That file could not be read. Use a backup file made by this app.": ["वह फ़ाइल नहीं पढ़ी जा सकी. इसी ऐप की बनाई बैकअप फ़ाइल इस्तेमाल करें.", "તે ફાઇલ વાંચી ન શકાઈ. આ જ એપની બનાવેલી બેકઅપ ફાઇલ વાપરો."],
+   "Notes included: ": ["नोट्स शामिल: ", "નોંધો સામેલ: "],
+   "Notes restored: ": ["नोट्स वापस आए: ", "નોંધો પાછી આવી: "],
    "Showing ": ["दिख रहे ", "દેખાય છે "],
    "All": ["सब", "બધું"],
    "Queue": ["कतार", "કતાર"],
@@ -4350,12 +4352,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // ---- Library backup: export and import queue + favourites as a file ----
   var libBackupMsg = $("libBackupMsg");
   $("libExport").addEventListener("click", function () {
+    if (typeof noteFlush === "function") noteFlush();
     var data = { app: "hd-video-player", version: 2, exportedAt: new Date().toISOString(),
       queue: lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }),
       favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "" }; }),
       later: lib.later.map(function (x) { return { id: x.id, title: x.title || "" }; }),
       playlists: playlists.map(function (p) { return { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; }),
       moments: (function () { var o = {}; Object.keys(marks).forEach(function (id) { if (Array.isArray(marks[id]) && marks[id].length) o[id] = marks[id].map(function (m) { return { t: m.t, name: m.name || "" }; }); }); return o; })(),
+      notes: (function () { var o = {}; if (typeof notes === "object" && notes) Object.keys(notes).forEach(function (id) { if (typeof notes[id] === "string" && notes[id].trim()) o[id] = notes[id]; }); return o; })(),
       settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
     ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
@@ -4367,6 +4371,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
     libBackupMsg.textContent = T("Backup saved") + " (" + data.queue.length + T(" queued, ") + data.favourites.length + T(" favourites, ") + data.playlists.length + T(" playlists).");
+    var nNotes = Object.keys(data.notes).length;
+    if (nNotes) libBackupMsg.textContent += " " + T("Notes included: ") + nNotes + ".";
   });
   $("libImport").addEventListener("click", function () { $("libImportFile").click(); });
   $("libImportFile").addEventListener("change", function () {
@@ -4407,6 +4413,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           });
           if (mn) { marksSave(); renderMarks(); }
         }
+        var nn = 0;
+        if (d.notes && typeof d.notes === "object" && !Array.isArray(d.notes) && typeof notes === "object" && notes) {
+          Object.keys(d.notes).forEach(function (id) {
+            if (!/^[a-zA-Z0-9_-]{11}$/.test(id) || typeof d.notes[id] !== "string") return;
+            var v = d.notes[id].slice(0, 600); if (!v.trim()) return;
+            if (typeof notes[id] === "string" && notes[id].trim()) return;
+            if (Object.keys(notes).length >= 200) return;
+            notes[id] = v; nn++;
+          });
+          if (nn) { notesSave(); renderNotes(); }
+        }
         var s = d.settings && typeof d.settings === "object" ? d.settings : null, gotSettings = false;
         if (s) {
           if (s.prefs && typeof s.prefs === "object") { Object.keys(s.prefs).forEach(function (k) { if (k in prefs && typeof s.prefs[k] === typeof prefs[k]) prefs[k] = s.prefs[k]; }); if ([5, 10, 15, 30].indexOf(prefs.seekStep) < 0) prefs.seekStep = 10; savePrefs(); gotSettings = true; }
@@ -4416,10 +4433,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
         }
-        if (!qn && !fn && !pn && !ln && !mn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
+        if (!qn && !fn && !pn && !ln && !mn && !nn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
         saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
         libBackupMsg.textContent = T("Imported ") + qn + T(" queued, ") + fn + " " + (fn === 1 ? T("favourite") : T("favourites")) + T(" and ") + pn + " " + (pn === 1 ? T("playlist") : T("playlists")) + ".";
         if (mn) libBackupMsg.textContent += " " + T("Moments restored: ") + mn + ".";
+        if (nn) libBackupMsg.textContent += " " + T("Notes restored: ") + nn + ".";
         if (gotSettings) { libBackupMsg.textContent += " " + T("Settings restored. Reloading to apply\u2026"); setTimeout(function () { location.reload(); }, 1200); }
       } catch (e) { libBackupMsg.textContent = T("That file could not be read. Use a backup file made by this app."); }
     };
