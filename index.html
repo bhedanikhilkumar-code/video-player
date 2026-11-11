@@ -954,6 +954,8 @@ html.cinema-on .frame{box-shadow:0 24px 90px rgba(0,0,0,.6);}
 /* Up-next countdown: a small glass bar offers the next queue video for a few seconds, with cancel. */
 .upnext-bar{position:fixed;left:50%;bottom:calc(64px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(94vw,520px);display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:16px;border:1px solid var(--hairline);background:var(--card);color:var(--ink);box-shadow:0 12px 32px rgba(0,0,0,.22);font-size:14px;line-height:1.35;z-index:9400;}
 .upnext-bar .row{margin:0;flex:none;}
+.upnext-bar img{width:64px;height:36px;object-fit:cover;border-radius:8px;flex:none;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.upnext-bar img[hidden]{display:none;}
 .upnext-bar[hidden]{display:none;}
 .vp-lock-veil{position:fixed;inset:0;z-index:99990;touch-action:none;overscroll-behavior:contain;}
 .vp-lock-pill{position:absolute;left:50%;bottom:calc(26px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:13px 20px;border-radius:999px;border:1px solid var(--hairline);background:var(--card);color:var(--ink);box-shadow:0 12px 32px rgba(0,0,0,.28);font-size:14px;font-weight:700;user-select:none;-webkit-user-select:none;touch-action:none;cursor:pointer;overflow:hidden;white-space:nowrap;}
@@ -1672,6 +1674,7 @@ setTimeout(done,3000);})();
         <button class="btn" id="musicModeBtn" type="button" aria-pressed="false">Music mode: off</button>
       </div>
       <div id="upnextBar" class="upnext-bar" hidden>
+        <img id="upnextImg" alt="" hidden>
         <span id="upnextT" role="status"></span>
         <span class="row"><button class="chip" id="upnextGo" type="button">Play now</button><button class="chip" id="upnextCancel" type="button">Cancel</button></span>
       </div>
@@ -7949,7 +7952,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
   // Up-next countdown: when a queue video ends, a short cancellable countdown plays the next one.
   var upnextTimer = 0, upnextLeft = 0, upnextToken = 0;
-  function upnextHide() { var b = $("upnextBar"); if (b) b.hidden = true; if (upnextTimer) { clearInterval(upnextTimer); upnextTimer = 0; } }
+  function upnextHide() { var b = $("upnextBar"); if (b) b.hidden = true; var im = $("upnextImg"); if (im) { im.hidden = true; im.removeAttribute("src"); } if (upnextTimer) { clearInterval(upnextTimer); upnextTimer = 0; } }
   function upnextCancel(silent) {
     upnextToken++; upnextHide();
     if (!silent) { var qm = $("queueModeMsg"); if (qm) qm.textContent = T("Auto-next stopped. Tap Next when you're ready."); }
@@ -7970,6 +7973,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var label = function () {
       var name = peek >= 0 && lib.queue[peek] ? (lib.queue[peek].title || (T("Video ") + lib.queue[peek].id)) : T("a shuffled pick");
       $("upnextT").textContent = T("Next in ") + upnextLeft + "s: " + name;
+      var im = $("upnextImg");
+      if (im) { if (peek >= 0 && lib.queue[peek]) thumbSet(im, lib.queue[peek].id, "mqdefault.jpg"); else { im.hidden = true; im.removeAttribute("src"); } }
     };
     label(); bar.hidden = false;
     clearInterval(upnextTimer);
@@ -10021,6 +10026,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Often used controls", "often used frequent quick bar controls top shortcuts", "#favCtlBar"],
       ["Playback speed", "speed tez slow fast 2x", "#ctl-speed"],
       ["Speed change pill", "speed pill popup confirm rate change 2x", "#ctl-speed"],
+      ["Up next countdown with thumbnail", "up next countdown thumbnail preview auto next picture", "#lhQueue"],
       ["Finish within (minutes)", "finish fit budget minutes time speed lecture", "#fitTimeForm"],
       ["Video quality", "quality hd 1080 720 4k", "#ctl-quality"],
       ["Data and battery saver", "saver data battery low", "#ctl-saver"],
