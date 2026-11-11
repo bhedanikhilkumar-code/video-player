@@ -918,6 +918,9 @@ html.cinema-on .frame{box-shadow:0 24px 90px rgba(0,0,0,.6);}
 </style>
 <style id="ux-marks">
 /* Saved moments: the viewer's marked times for the current video, shown as tappable chips. */
+#ctl-notes .note-box{width:100%;box-sizing:border-box;min-height:96px;resize:vertical;font:inherit;font-size:16px;line-height:1.45;padding:10px 12px;margin-top:10px;border-radius:14px;border:1px solid var(--hairline,#e6e2e3);background:rgba(255,255,255,.35);color:inherit;outline:none;}
+#ctl-notes .note-box:focus{border-color:var(--teal,#3a8a77);}
+#ctl-notes .note-meta{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink2);margin-top:6px;}
 #ctl-marks .marks-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center;}
 .mark-x{padding:4px 10px;}
 /* Up-next countdown: a small glass bar offers the next queue video for a few seconds, with cancel. */
@@ -1413,6 +1416,7 @@ html .shortcuts, html .note, html .faq, html .help-card, html .pl-item, html .mu
     <a class="feat" href="#backgroundHelp">Listening help</a>
     <a class="feat" href="#ctl-share">Share &amp; save</a>
     <a class="feat" href="#ctl-marks">Moments</a>
+    <a class="feat" href="#ctl-notes">Notes</a>
     <a class="feat" href="#dl">Downloader</a>
     <a class="feat" href="#lp">Local file</a>
     <a class="feat" href="#library">Library</a>
@@ -1620,6 +1624,14 @@ html .shortcuts, html .note, html .faq, html .help-card, html .pl-item, html .mu
           <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button> <button class="chip" id="markPrevBtn" type="button" disabled>⏮ Previous</button> <button class="chip" id="markNextBtn" type="button" disabled>Next ⏭</button> <button class="chip" id="markCopyBtn" type="button" disabled>📋 Copy list</button></div>
           <div class="marks-list" id="markList"></div>
           <p class="hint" id="marksHint">Keep your favourite spots in this video. Tap one to jump to it. Saved on this device, for each video.</p>
+        </div>
+
+        <div class="ctl-card wide" id="ctl-notes">
+          <h3 id="notesH">Notes for this video</h3>
+          <textarea class="note-box" id="noteBox" maxlength="600" rows="4" disabled aria-labelledby="notesH"></textarea>
+          <div class="note-meta"><span id="noteStatus" role="status"></span><span id="noteCount">0 / 600</span></div>
+          <div class="row"><button class="chip" id="noteCopyBtn" type="button" disabled>📋 Copy note</button> <button class="chip" id="noteClearBtn" type="button" disabled>🗑 Clear note</button></div>
+          <p class="hint" id="notesHint">Write what you want to remember. Saved on this device, for each video.</p>
         </div>
 
         <details class="shortcuts wide" id="scBox">
@@ -2402,6 +2414,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "All sections open": ["सभी सेक्शन खुले", "બધા સેક્શન ખુલ્યા"],
    "App updated to the latest version.": ["ऐप नए वर्शन में अपडेट हो गया.", "એપ નવા વર્ઝનમાં અપડેટ થઈ ગઈ."],
    "Arrow keys work here too.": ["तीर कुंजियाँ यहाँ भी काम करती हैं.", "એરો કીઝ અહીં પણ કામ કરે છે."],
+   "Note saved": ["नोट सेव हुआ", "નોંધ સેવ થઈ"],
+   "Saving...": ["सेव हो रहा है...", "સેવ થઈ રહ્યું છે..."],
+   "Note cleared": ["नोट मिटाया गया", "નોંધ ભૂંસાઈ"],
+   "Note copied": ["नोट कॉपी हुआ", "નોંધ કૉપી થઈ"],
+   "Load a video first, then write a note.": ["पहले वीडियो चलाएं, फिर नोट लिखें.", "પહેલા વીડિયો ચલાવો, પછી નોંધ લખો."],
+   "Write a note for this video...": ["इस वीडियो के लिए नोट लिखें...", "આ વીડિયો માટે નોંધ લખો..."],
    "Moment saved": ["पल सेव हुआ", "ક્ષણ સેવ થઈ"],
    "Moment removed": ["पल हटाया गया", "ક્ષણ હટાઈ"],
    "Moments copied": ["पल कॉपी हुए", "ક્ષણો કૉપી થઈ"],
@@ -3306,6 +3324,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     curId = id; curTime = startSec || 0; lastResumeSave = 0; clearAB(); if (typeof vmemNote === "function") vmemNote("");
     dsAppliedFor = null;
     if (typeof renderMarks === "function") renderMarks();
+    if (typeof renderNotes === "function") renderNotes();
     miniDismissed = false; if (typeof updateMini === "function") requestAnimationFrame(updateMini);
     var rb = document.getElementById("resumeBox"); if (rb) rb.hidden = true;
     addHistory(id);
@@ -4940,6 +4959,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#aboutNoteTitle", "Good to know", "जानना ज़रूरी"],
     ["#aboutNoteText", "Quality is a request - YouTube chooses the closest option based on your network. Volume in the official player goes up to 100% (YouTube's limit); raise your phone volume if you need it louder. This app adds no ads, banners, or pop-ups of its own. YouTube may still show its own ads inside videos; those are controlled by YouTube and cannot be turned off here.", "क्वालिटी एक रिक्वेस्ट है - YouTube आपके नेटवर्क के हिसाब से सबसे करीबी विकल्प चुनता है. ऑफिशियल प्लेयर में वॉल्यूम 100% तक ही जाता है (YouTube की सीमा); और तेज़ चाहिए तो फोन का वॉल्यूम बढ़ाएं. यह ऐप अपनी तरफ से कोई विज्ञापन, बैनर या पॉप-अप नहीं दिखाता. वीडियो के अंदर YouTube अपने विज्ञापन दिखा सकता है; वे YouTube के नियंत्रण में हैं और यहां से बंद नहीं हो सकते."],
     ["#marksH", "Saved moments", "सेव किए पल"],
+    ["#notesH", "Notes for this video", "इस वीडियो के नोट्स"],
+    ["#noteCopyBtn", "📋 Copy note", "📋 नोट कॉपी करें"],
+    ["#noteClearBtn", "🗑 Clear note", "🗑 नोट मिटाएं"],
+    ["#notesHint", "Write what you want to remember. Saved on this device, for each video.", "जो याद रखना है वो लिखें. हर वीडियो के लिए इसी डिवाइस पर सेव रहता है."],
+    [".feat-nav a[href=\"#ctl-notes\"]", "Notes", "नोट्स"],
     ["#markAddBtn", "🔖 Save this moment", "🔖 यह पल सेव करें"],
     ["#markCopyBtn", "📋 Copy list", "📋 सूची कॉपी करें"],
     ["#markPrevBtn", "⏮ Previous", "⏮ पिछला"],
@@ -5048,6 +5072,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#musicBarP": "નાનો વીડિયો, મોટા કંટ્રોલ અને તમારી કતાર સાથે. YouTube દેખાય એવું રાખો અને સ્ક્રીન ચાલુ રાખો.",
  "#a11yH": "સુલભતા",
  "#marksH": "સેવ કરેલી ક્ષણો",
+ "#notesH": "આ વીડિયોની નોંધો",
+ "#noteCopyBtn": "📋 નોંધ કૉપી કરો",
+ "#noteClearBtn": "🗑 નોંધ ભૂંસો",
+ "#notesHint": "જે યાદ રાખવું છે તે લખો. દરેક વીડિયો માટે આ ડિવાઇસ પર સેવ રહે છે.",
+ ".feat-nav a[href=\"#ctl-notes\"]": "નોંધો",
  "#markAddBtn": "🔖 આ ક્ષણ સેવ કરો",
  "#markCopyBtn": "📋 યાદી કૉપી કરો",
  "#markPrevBtn": "⏮ પાછલી",
@@ -5472,6 +5501,62 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   })();
   (window.__relang = window.__relang || []).push(renderMarks);
   renderMarks();
+
+  // Notes: one short private note per YouTube video, saved on this device as you type.
+  var NOTES_KEY = "vp-notes.v1", notes = {};
+  try { var nIn = JSON.parse(localStorage.getItem(NOTES_KEY) || "null"); if (nIn && typeof nIn === "object" && !Array.isArray(nIn)) notes = nIn; } catch (e) {}
+  var noteTimer = null, noteShown = null;
+  function notesSave() { try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch (e) {} }
+  function noteCounter() { var b = $("noteBox"), c = $("noteCount"); if (b && c) c.textContent = b.value.length + " / 600"; }
+  function noteFlush() {
+    if (noteTimer) { clearTimeout(noteTimer); noteTimer = null; }
+    var b = $("noteBox"), st = $("noteStatus");
+    if (!b || !noteShown) return;
+    var v = b.value.slice(0, 600);
+    if (v.trim()) notes[noteShown] = v; else delete notes[noteShown];
+    notesSave();
+    if (st) st.textContent = T("Note saved");
+  }
+  function renderNotes() {
+    var b = $("noteBox"); if (!b) return;
+    if (noteShown && noteShown !== curId) noteFlush();
+    noteShown = curId || null;
+    b.disabled = !curId;
+    b.placeholder = curId ? T("Write a note for this video...") : T("Load a video first, then write a note.");
+    b.value = (curId && typeof notes[curId] === "string") ? notes[curId] : "";
+    var has = !!b.value.trim();
+    if ($("noteCopyBtn")) $("noteCopyBtn").disabled = !has;
+    if ($("noteClearBtn")) $("noteClearBtn").disabled = !has;
+    if ($("noteStatus")) $("noteStatus").textContent = "";
+    noteCounter();
+  }
+  (function () {
+    var b = $("noteBox"); if (!b) return;
+    b.addEventListener("input", function () {
+      noteCounter();
+      var has = !!b.value.trim();
+      $("noteCopyBtn").disabled = !has; $("noteClearBtn").disabled = !has;
+      $("noteStatus").textContent = T("Saving...");
+      if (noteTimer) clearTimeout(noteTimer);
+      noteTimer = setTimeout(noteFlush, 500);
+    });
+    b.addEventListener("blur", noteFlush);
+    window.addEventListener("pagehide", noteFlush);
+    document.addEventListener("visibilitychange", function () { if (document.hidden) noteFlush(); });
+    $("noteCopyBtn").addEventListener("click", function () {
+      var v = b.value; if (!v.trim()) return;
+      function ok() { toast(T("Note copied")); }
+      function fb() { try { b.select(); document.execCommand("copy"); ok(); } catch (e) {} }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(ok, fb); else fb();
+    });
+    $("noteClearBtn").addEventListener("click", function () {
+      var id = noteShown, old = b.value; if (!id || !old.trim()) return;
+      b.value = ""; noteFlush(); renderNotes();
+      toastUndo(T("Note cleared"), function () { if (curId === id) { b.value = old; noteShown = id; noteFlush(); renderNotes(); } else { notes[id] = old; notesSave(); } });
+    });
+  })();
+  (window.__relang = window.__relang || []).push(renderNotes);
+  renderNotes();
 
   // Up-next countdown: when a queue video ends, a short cancellable countdown plays the next one.
   var upnextTimer = 0, upnextLeft = 0, upnextToken = 0;
