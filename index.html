@@ -1125,7 +1125,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 .vp-pal-item{padding:10px 12px;border-radius:12px;cursor:pointer;font-size:15px;}
 .vp-pal-item.is-act{background:var(--teal,#0a8);color:#fff;}
 .vp-pal-empty{padding:18px;text-align:center;color:var(--ink2,#666);font-size:14px;}
-</style><style>#vpBreak{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9997;width:min(430px,calc(100vw - 32px));padding:18px;box-sizing:border-box;border:1px solid var(--hairline);border-radius:18px;background:var(--card);color:var(--ink);box-shadow:0 16px 50px #0005;text-align:center}#vpBreak h3{margin:0 0 8px}#vpBreak p{margin:0 0 12px}#vpBreak .row{justify-content:center;gap:8px;flex-wrap:wrap}</style><style>#vpDrop[hidden]{display:none}#vpDrop{position:fixed;inset:0;z-index:9996;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:#080a1288;pointer-events:none}#vpDrop p{padding:40px 28px;border:2px dashed var(--teal);border-radius:22px;background:var(--card);color:var(--ink);font-size:18px;text-align:center;max-width:460px}</style></head>
+</style><style>#vpBreak{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9997;width:min(430px,calc(100vw - 32px));padding:18px;box-sizing:border-box;border:1px solid var(--hairline);border-radius:18px;background:var(--card);color:var(--ink);box-shadow:0 16px 50px #0005;text-align:center}#vpBreak h3{margin:0 0 8px}#vpBreak p{margin:0 0 12px}#vpBreak .row{justify-content:center;gap:8px;flex-wrap:wrap}</style><style>#vpDrop[hidden]{display:none}#vpDrop{position:fixed;inset:0;z-index:9996;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:#080a1288;pointer-events:none}#vpDrop p{padding:40px 28px;border:2px dashed var(--teal);border-radius:22px;background:var(--card);color:var(--ink);font-size:18px;text-align:center;max-width:460px}</style><style>.vp-pal-tools{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--hairline);font-size:13px}</style></head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
 <div class="wrap">
@@ -6489,7 +6489,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
 (function () {
   "use strict";
   var T = window.T || function (s) { return s; };
-  var ov = null, input = null, list = null, items = [], shown = [], act = 0, prevFocus = null;
+  var ov = null, input = null, list = null, items = [], shown = [], act = 0, prevFocus = null, oldOverflow = "";
 
   function buildItems() {
     var out = [];
@@ -6504,7 +6504,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     out.push({ label: T("Collapse or expand all sections"), group: "Actions", run: click("secAllBtn") });
     var inst = document.getElementById("installBtn");
     if (inst && !inst.hidden) out.push({ label: "Install app", group: "Actions", run: click("installBtn") });
-    out.push({ label: T("Back to top"), group: "Actions", run: function () { window.scrollTo({ top: 0, behavior: "smooth" }); } });
+    out.push({ label: T("Back to top"), group: "Actions", run: function () { window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); } });
     return out;
   }
 
@@ -6512,7 +6512,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     Array.prototype.forEach.call(list.querySelectorAll(".vp-pal-item"), function (d, i) {
       d.classList.toggle("is-act", i === act);
       d.setAttribute("aria-selected", i === act ? "true" : "false");
-      if (i === act) { list.setAttribute("aria-activedescendant", d.id); d.scrollIntoView({ block: "nearest" }); }
+      if (i === act) { input.setAttribute("aria-activedescendant", d.id); d.scrollIntoView({ block: "nearest" }); }
     });
   }
 
@@ -6523,6 +6523,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     if (act < 0) act = 0;
     list.innerHTML = "";
     if (!shown.length) {
+      input.removeAttribute("aria-activedescendant");
       var em = document.createElement("div");
       em.className = "vp-pal-empty";
       em.textContent = T("No matches.");
@@ -6556,17 +6557,21 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   }
 
   function relabel() {
-    if (input) input.setAttribute("placeholder", T("Type to filter. Enter opens, Esc closes."));
+    if (input) { input.setAttribute("placeholder", T("Type to filter. Enter opens, Esc closes.")); input.setAttribute("aria-label",T("Search everything: sections and actions")); }
+    if(ov){ov.querySelector("#vpPalTitle").textContent=T("Search");ov.querySelector("#vpPalClose").textContent=T("Close");}
     if (ov) ov.querySelector(".vp-pal-card").setAttribute("aria-label", T("Search"));
   }
 
   function open() {
     if (ov) { input.focus(); return; }
-    prevFocus = document.activeElement;
+    if(document.querySelector("[aria-modal=true]")) return;
+    prevFocus = document.activeElement; oldOverflow=document.body.style.overflow; document.body.style.overflow="hidden";
     ov = document.createElement("div");
     ov.id = "vpPal";
-    ov.innerHTML = '<div class="vp-pal-card" role="dialog" aria-modal="true"><input id="vpPalIn" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="vpPalList"><div class="vp-pal-list" id="vpPalList" role="listbox"></div></div>';
+    ov.innerHTML = '<div class="vp-pal-card" role="dialog" aria-modal="true"><div class="vp-pal-tools"><span id="vpPalTitle"></span><button class="chip" id="vpPalClose" type="button"></button></div><input id="vpPalIn" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="vpPalList"><div class="vp-pal-list" id="vpPalList" role="listbox"></div></div>';
     document.body.appendChild(ov);
+    ov.querySelector("#vpPalClose").onclick=close;
+    ov.addEventListener("keydown",function(e){if(e.key==="Escape"){e.preventDefault();e.stopPropagation();close();}else if(e.key==="Tab"){e.preventDefault();(document.activeElement===input?ov.querySelector("#vpPalClose"):input).focus();}});
     input = ov.querySelector("#vpPalIn");
     list = ov.querySelector("#vpPalList");
     items = buildItems();
@@ -6587,7 +6592,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   function close() {
     if (!ov) return;
     if (ov.parentNode) ov.parentNode.removeChild(ov);
-    ov = null; input = null; list = null;
+    ov = null; input = null; list = null; document.body.style.overflow=oldOverflow;
     if (prevFocus && prevFocus.focus) { try { prevFocus.focus(); } catch (e) {} }
     prevFocus = null;
   }
