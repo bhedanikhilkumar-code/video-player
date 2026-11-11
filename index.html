@@ -1606,6 +1606,7 @@ setTimeout(done,3000);})();
           <div class="look-row" id="lookRow" role="group" aria-label="Picture look"><span class="label" id="lookLab">Picture look</span><span class="look-chips" id="lookChips"></span></div>
           <div class="flip-row" id="flipRow" role="group" aria-label="Flip the picture"><span class="label" id="flipLab">Flip picture</span><button class="chip flip-chip" type="button" id="flipH" aria-pressed="false"><span id="flipHT">Mirror</span> &#8596;</button><button class="chip flip-chip" type="button" id="flipV" aria-pressed="false"><span id="flipVT">Upside down</span> &#8597;</button></div>
           <div class="zoom-row" id="zoomRow" role="group" aria-label="Zoom the picture"><span class="label" id="zoomLab">Picture zoom</span><button class="chip zoom-chip" type="button" data-z="1" aria-pressed="true">100%</button><button class="chip zoom-chip" type="button" data-z="1.15" aria-pressed="false">115%</button><button class="chip zoom-chip" type="button" data-z="1.3" aria-pressed="false">130%</button></div>
+          <div class="grid-row" id="gridRow" role="group" aria-label="Grid lines on the picture"><span class="label" id="gridLab">Grid lines</span><button class="chip grid-chip" type="button" data-g="off" aria-pressed="true">Off</button><button class="chip grid-chip" type="button" data-g="thirds" aria-pressed="false">Thirds</button><button class="chip grid-chip" type="button" data-g="cross" aria-pressed="false">Centre cross</button><button class="chip grid-chip" type="button" data-g="fine" aria-pressed="false">Fine grid</button></div>
           <div class="ab-strip" id="abStrip" hidden aria-hidden="true"></div>
           <div class="seek-tip" id="seekTip" hidden></div>
           <div class="seek-marks" id="seekMarks" hidden></div>
@@ -2101,6 +2102,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Picture zoom": ["पिक्चर ज़ूम", "પિક્ચર ઝૂમ"],
    "Picture zoom: crop the edges of the video to fill the frame": ["पिक्चर ज़ूम: किनारे काटकर वीडियो फ्रेम भरें", "પિક્ચર ઝૂમ: કિનારા કાપીને વિડિઓ ફ્રેમ ભરો"],
    "Zoom ": ["ज़ूम ", "ઝૂમ "],
+   "Grid lines": ["ग्रिड लाइनें", "ગ્રિડ લાઇન"],
+   "Grid lines on the picture": ["वीडियो पर ग्रिड लाइनें", "વિડિઓ પર ગ્રિડ લાઇન"],
+   "Thirds": ["तिहाई", "ત્રીજા ભાગ"],
+   "Centre cross": ["बीच का क्रॉस", "વચ્ચેનો ક્રોસ"],
+   "Fine grid": ["बारीक ग्रिड", "બારીક ગ્રિડ"],
+   "Grid: ": ["ग्रिड: ", "ગ્રિડ: "],
    "Clear link": ["लिंक हटाएं", "લિંક કાઢો"],
    "Clean link": ["लिंक साफ़ करें", "લિંક સાફ કરો"],
    "Your rating": ["आपकी रेटिंग", "તમારું રેટિંગ"],
@@ -9744,6 +9751,49 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
       cur = parseFloat(b.dataset.z); try { localStorage.setItem(KEY, String(cur)); } catch (e) {}
       paint();
       if (typeof window.toast === "function") window.toast(T("Zoom ") + b.textContent);
+    });
+  });
+  (window.__relang = window.__relang || []).push(paint);
+  paint();
+})();
+</script>
+<script>
+/* Grid lines (round 64): thin glass guide lines over the YouTube picture - Thirds, Centre cross or
+   Fine grid. Handy to copy a drawing, a dance pose or a camera framing. The lines never take clicks
+   and also show in full screen. Off by default, remembered on the device. */
+(function () {
+  "use strict";
+  var T = window.T || function (x) { return x; };
+  var row = document.getElementById("gridRow"), lab = document.getElementById("gridLab"), box = document.getElementById("frameBox");
+  if (!row || !box) return;
+  var chips = Array.prototype.slice.call(row.querySelectorAll(".grid-chip"));
+  var LINE = "rgba(255,255,255,.55)";
+  function lines(c) { return "linear-gradient(to right,transparent calc(" + c + " - .5px)," + LINE + " calc(" + c + " - .5px)," + LINE + " calc(" + c + " + .5px),transparent calc(" + c + " + .5px))"; }
+  var IMG = {
+    thirds: "linear-gradient(to right,transparent calc(33.333% - .5px)," + LINE + " calc(33.333% - .5px)," + LINE + " calc(33.333% + .5px),transparent calc(33.333% + .5px),transparent calc(66.666% - .5px)," + LINE + " calc(66.666% - .5px)," + LINE + " calc(66.666% + .5px),transparent calc(66.666% + .5px)),linear-gradient(to bottom,transparent calc(33.333% - .5px)," + LINE + " calc(33.333% - .5px)," + LINE + " calc(33.333% + .5px),transparent calc(33.333% + .5px),transparent calc(66.666% - .5px)," + LINE + " calc(66.666% - .5px)," + LINE + " calc(66.666% + .5px),transparent calc(66.666% + .5px))",
+    cross: lines("50%") + "," + lines("50%").replace("to right", "to bottom")
+  };
+  var st = document.createElement("style");
+  st.textContent = ".grid-row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}.grid-chip{padding:5px 11px;font-size:13px}.grid-chip.active{outline:2px solid rgba(10,132,255,.75);outline-offset:1px;font-weight:700}.vp-gridlines{position:absolute;inset:0;z-index:6;pointer-events:none;border-radius:inherit;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}.vp-gridlines[hidden]{display:none}.vp-gridlines.fine{background-image:linear-gradient(to right,rgba(255,255,255,.45) 1px,transparent 1px),linear-gradient(to bottom,rgba(255,255,255,.45) 1px,transparent 1px);background-size:12.5% 100%,100% 12.5%}";
+  document.head.appendChild(st);
+  var ov = document.createElement("div"); ov.className = "vp-gridlines"; ov.id = "vpGridLines"; ov.setAttribute("aria-hidden", "true"); ov.hidden = true;
+  box.appendChild(ov);
+  var KEY = "vp-grid.v1", cur = "off";
+  try { var sv = localStorage.getItem(KEY); if (sv === "thirds" || sv === "cross" || sv === "fine") cur = sv; } catch (e) {}
+  function paint() {
+    ov.hidden = cur === "off"; ov.classList.toggle("fine", cur === "fine");
+    ov.style.backgroundImage = IMG[cur] || "";
+    ov.dataset.mode = cur;
+    lab.textContent = T("Grid lines");
+    row.setAttribute("aria-label", T("Grid lines on the picture"));
+    var names = { off: "Off", thirds: "Thirds", cross: "Centre cross", fine: "Fine grid" };
+    chips.forEach(function (b) { b.textContent = T(names[b.dataset.g]); var on = b.dataset.g === cur; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
+  }
+  chips.forEach(function (b) {
+    b.addEventListener("click", function () {
+      cur = b.dataset.g; try { localStorage.setItem(KEY, cur); } catch (e) {}
+      paint();
+      if (typeof window.toast === "function") window.toast(T("Grid: ") + b.textContent);
     });
   });
   (window.__relang = window.__relang || []).push(paint);

@@ -1,5 +1,5 @@
 // Offline app shell is saved during install, before the first lost connection.
-var CACHE = "vp-shell-v7";
+var CACHE = "vp-shell-v8";
 var SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
 self.addEventListener("install", function(e) {
   e.waitUntil(caches.open(CACHE).then(function(cache) { return cache.addAll(SHELL); }).then(function() { return self.skipWaiting(); }));
