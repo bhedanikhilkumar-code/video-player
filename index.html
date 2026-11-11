@@ -1603,6 +1603,7 @@ setTimeout(done,3000);})();
           </div>
           <div class="pct-row" id="pctRow" role="group" aria-label="Jump to a part of the video"><span class="label" id="pctLab">Jump to:</span><button class="chip pct-chip" type="button" data-p="0">0%</button><button class="chip pct-chip" type="button" data-p="25">25%</button><button class="chip pct-chip" type="button" data-p="50">50%</button><button class="chip pct-chip" type="button" data-p="75">75%</button></div>
           <div class="dim-row" id="dimRow"><label class="label" for="dimRange" id="dimLab">Screen dimmer</label><input class="slider" id="dimRange" type="range" min="0" max="70" step="5" value="0" aria-label="Screen dimmer"><span class="dim-val" id="dimVal" role="status">Off</span></div>
+          <div class="look-row" id="lookRow" role="group" aria-label="Picture look"><span class="label" id="lookLab">Picture look</span><span class="look-chips" id="lookChips"></span></div>
           <div class="ab-strip" id="abStrip" hidden aria-hidden="true"></div>
           <div class="seek-tip" id="seekTip" hidden></div>
           <div class="seek-marks" id="seekMarks" hidden></div>
@@ -2078,6 +2079,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "That is not a YouTube link. The Downloader below can save videos from other sites.": ["यह YouTube लिंक नहीं है. नीचे का डाउनलोडर दूसरी साइटों के वीडियो संभाल सकता है.", "આ YouTube લિંક નથી. નીચેનો ડાઉનલોડર બીજી સાઇટના વીડિયો સંભાળી શકે છે."],
    "Link moved to the Downloader.": ["लिंक डाउनलोडर में भेज दिया गया.", "લિંક ડાઉનલોડરમાં મોકલાઈ ગઈ."],
    "This video is taking too long to load. Check your internet, or tap Try again.": ["यह वीडियो लोड होने में काफी समय ले रहा है. इंटरनेट जांचें, या 'फिर कोशिश करें' दबाएं.", "આ વીડિયો લોડ થવામાં ઘણો સમય લઈ રહ્યો છે. ઇન્ટરનેટ તપાસો, અથવા 'ફરી પ્રયાસ કરો' દબાવો."],
+   "Picture look": ["पिक्चर लुक", "પિક્ચર લુક"],
+   "Picture look: change the colours of the video": ["पिक्चर लुक: वीडियो के रंग बदलें", "પિક્ચર લુક: વિડિઓના રંગ બદલો"],
+   "Normal": ["सामान्य", "સામાન્ય"],
+   "Vivid": ["चटकीला", "ચટકદાર"],
+   "Warm": ["गर्म", "ગરમ"],
+   "Cool": ["ठंडा", "ઠંડું"],
+   "Black & white": ["श्वेत-श्याम", "કાળો-સફેદ"],
+   "Cinema": ["सिनेमा", "સિનેમા"],
+   "Look: ": ["लुक: ", "લુક: "],
    "Clear link": ["लिंक हटाएं", "લિંક કાઢો"],
    "Clean link": ["लिंक साफ़ करें", "લિંક સાફ કરો"],
    "Your rating": ["आपकी रेटिंग", "તમારું રેટિંગ"],
@@ -9615,6 +9625,53 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   window.addEventListener("vp-rate-changed", function () {
     if (typeof window.renderLib === "function") window.renderLib();
   });
+})();
+</script>
+<script>
+/* Picture look (round 63): colour presets for the video picture - Normal, Vivid, Warm, Cool,
+   Black & white, Cinema. A CSS filter on the YouTube frame and the local-file player only; the
+   video itself is not touched. Remembered on the device. */
+(function () {
+  "use strict";
+  var T = window.T || function (x) { return x; };
+  var chipsEl = document.getElementById("lookChips"), lab = document.getElementById("lookLab"), row = document.getElementById("lookRow");
+  if (!chipsEl) return;
+  var LOOKS = [
+    ["normal", "Normal", "none"],
+    ["vivid", "Vivid", "saturate(1.55) contrast(1.08)"],
+    ["warm", "Warm", "sepia(.35) saturate(1.15) hue-rotate(-8deg)"],
+    ["cool", "Cool", "saturate(1.05) hue-rotate(14deg) brightness(1.02)"],
+    ["bw", "Black & white", "grayscale(1) contrast(1.1)"],
+    ["cinema", "Cinema", "contrast(1.18) saturate(.88) brightness(.96)"]
+  ];
+  var st = document.createElement("style");
+  st.textContent = ".look-row{display:flex;align-items:center;gap:10px;margin:6px 0;flex-wrap:wrap}.look-chips{display:flex;gap:6px;flex-wrap:wrap}.look-chips .chip{padding:5px 11px;font-size:13px}.look-chips .chip.active{outline:2px solid rgba(10,132,255,.75);outline-offset:1px;font-weight:700}.look-chips .chip i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px;background:linear-gradient(135deg,#ff5e62,#ffd36e 40%,#4fd1c5 70%,#5a7dff)}#frameBox iframe,#lpVideo{filter:var(--vp-look,none)}";
+  document.head.appendChild(st);
+  var KEY = "vp-look.v1", cur = "normal";
+  try { var sv = localStorage.getItem(KEY); if (LOOKS.some(function (l) { return l[0] === sv; })) cur = sv; } catch (e) {}
+  LOOKS.forEach(function (l) {
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.id = l[0];
+    b.innerHTML = '<i style="filter:' + (l[2] === "none" ? "none" : l[2]) + '"></i><span></span>';
+    b.addEventListener("click", function () {
+      cur = l[0]; try { localStorage.setItem(KEY, cur); } catch (e) {}
+      paint();
+      if (typeof window.toast === "function") window.toast(T("Look: ") + T(l[1]));
+    });
+    chipsEl.appendChild(b);
+  });
+  function paint() {
+    var f = "none";
+    LOOKS.forEach(function (l) { if (l[0] === cur) f = l[2]; });
+    document.documentElement.style.setProperty("--vp-look", f);
+    lab.textContent = T("Picture look");
+    row.setAttribute("aria-label", T("Picture look: change the colours of the video"));
+    Array.prototype.forEach.call(chipsEl.children, function (b, i) {
+      b.querySelector("span").textContent = T(LOOKS[i][1]);
+      var on = b.dataset.id === cur; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+  (window.__relang = window.__relang || []).push(paint);
+  paint();
 })();
 </script>
 </body>
