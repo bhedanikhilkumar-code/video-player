@@ -3071,8 +3071,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
     thumbSet(img, item.id, "mqdefault.jpg");
     var span = document.createElement("span"); span.textContent = (isCurrent ? "▶ " : "") + (item.title || ("Video " + item.id)) + (item.t >= 5 ? " · Resume " + fmt(item.t) : "");
-    open.appendChild(img); open.appendChild(span);
-    if (item.done) { var wb = document.createElement("i"); wb.className = "watched-badge"; wb.textContent = "\u2713 " + T("Watched"); open.appendChild(wb); }
+    // Round 75: every list row shows how much of the video you have watched, using
+    // the saved position from Recently watched, plus the Watched pill on every list.
+    var hst = findIn(lib.hist, item.id), hInfo = hst >= 0 ? lib.hist[hst] : null;
+    var box = document.createElement("span"); box.appendChild(span);
+    if (hInfo && hInfo.dur > 0 && hInfo.t >= 5 && !hInfo.done && hInfo.t < hInfo.dur - 5) {
+      var pbar = document.createElement("span"); pbar.className = "cont-prog";
+      var pfill = document.createElement("i"); pfill.style.width = Math.min(100, Math.round(hInfo.t / hInfo.dur * 100)) + "%";
+      pbar.appendChild(pfill); box.appendChild(pbar);
+    }
+    open.appendChild(img); open.appendChild(box);
+    if (item.done || (hInfo && hInfo.done)) { var wb = document.createElement("i"); wb.className = "watched-badge"; wb.textContent = "\u2713 " + T("Watched"); open.appendChild(wb); }
     var rr = vpRateOf(item.id);
     if (rr > 0) { var rb = document.createElement("i"); rb.className = "rate-badge"; rb.textContent = "\u2605 " + rr; rb.title = T("Your rating") + ": " + rr + "/5"; open.appendChild(rb); }
     open.addEventListener("click", function () {
