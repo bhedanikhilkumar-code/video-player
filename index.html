@@ -2037,7 +2037,7 @@ setTimeout(done,3000);})();
       <ul class="lib-list" id="queueList"></ul>
       </div>
       <p class="hint" id="libListMsg" role="status"></p>
-      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button></span></div>
       <ul class="lib-list" id="favList"></ul>
@@ -2272,6 +2272,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Pick a speed between 0.25 and 2.": ["0.25 से 2 के बीच स्पीड चुनें.", "0.25 અને 2 વચ્ચે સ્પીડ પસંદ કરો."],
    "Speed set to": ["स्पीड सेट हुई", "સ્પીડ સેટ થઈ"],
    "Clear watched": ["देखे हुए हटाएं", "જોયેલા કાઢો"],
+   "Auto-remove watched": ["देखा हुआ अपने-आप हटाएं", "જોયેલું આપોઆપ કાઢો"],
+   "Finished videos will leave Watch later on their own.": ["देखे हुए वीडियो Watch later से अपने-आप हट जाएंगे.", "જોયેલા વીડિયો Watch later માંથી આપોઆપ કઢાઈ જશે."],
+   "Finished videos stay in Watch later.": ["देखे हुए वीडियो Watch later में रहेंगे.", "જોયેલા વીડિયો Watch later માં રહેશે."],
+   "Removed from Watch later - you finished it": ["Watch later से हटाया - आपने इसे देख लिया", "Watch later માંથી કઢ્યું - તમે તે જોઈ લીધો"],
+   "Watch later restored": ["Watch later वापस आया", "Watch later પાછું આવ્યું"],
    "No watched videos before the current one.": ["मौजूदा वीडियो से पहले कोई देखा हुआ वीडियो नहीं.", "હાલના વીડિયો પહેલાં કોઈ જોયેલો વીડિયો નથી."],
    "1 watched video removed": ["1 देखा हुआ वीडियो हटाया", "1 જોયેલો વીડિયો કઢ્યો"],
    "watched videos removed": ["देखे हुए वीडियो हटाए", "જોયેલા વીડિયો કઢ્યા"],
@@ -3253,6 +3258,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     shareMsg.textContent = findIn(lib.later, curId) >= 0 ? T("Saved to Watch later.") : T("Removed from Watch later.");
   });
   if (laterClearBtn) laterClearBtn.addEventListener("click", function () { var snap = lib.later.slice(); lib.later = []; saveLib(); renderLib(); if (snap.length) toastUndo(T("Watch later list cleared"), function () { lib.later = snap; saveLib(); renderLib(); }, T("Watch later list restored")); });
+  // Watch later: optional auto-remove of finished videos (round 75). Off by default,
+  // remembered on this device; finishing a video drops it from the list with an undo.
+  var laterAutoBtn = $("laterAutoBtn"), laterAuto = false;
+  try { laterAuto = localStorage.getItem("vp-later-auto.v1") === "1"; } catch (e) {}
+  function laterAutoRender() {
+    if (!laterAutoBtn) return;
+    laterAutoBtn.setAttribute("aria-pressed", String(laterAuto));
+    laterAutoBtn.classList.toggle("active", laterAuto);
+    laterAutoBtn.textContent = T("Auto-remove watched") + ": " + T(laterAuto ? "on" : "off");
+  }
+  if (laterAutoBtn) laterAutoBtn.addEventListener("click", function () {
+    laterAuto = !laterAuto;
+    try { localStorage.setItem("vp-later-auto.v1", laterAuto ? "1" : "0"); } catch (e) {}
+    laterAutoRender();
+    toast(laterAuto ? T("Finished videos will leave Watch later on their own.") : T("Finished videos stay in Watch later."));
+  });
+  (window.__relang = window.__relang || []).push(laterAutoRender);
+  laterAutoRender();
   clearHistBtn.addEventListener("click", function () {
     var snap = lib.hist.slice(), res = null;
     try { res = localStorage.getItem("vp-resume.v1"); } catch (e) {}
@@ -3662,6 +3685,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var hi = findIn(lib.hist, curId);
       var finished = duration > 0 && curTime >= duration - 5;
       if (hi >= 0) { lib.hist[hi].t = finished ? 0 : Math.floor(curTime); lib.hist[hi].dur = duration; if (finished) lib.hist[hi].done = true; saveLib(); }
+      if (finished && typeof laterAuto !== "undefined" && laterAuto) {
+        var laIdx = findIn(lib.later, curId);
+        if (laIdx >= 0) { var laItem = lib.later.splice(laIdx, 1)[0]; saveLib(); renderLib(); toastUndo(T("Removed from Watch later - you finished it"), function () { lib.later.splice(Math.min(laIdx, lib.later.length), 0, laItem); saveLib(); renderLib(); }, T("Watch later restored")); }
+      }
       if (finished) { localStorage.removeItem(RK); return; }
       if (curTime >= 5) localStorage.setItem(RK, JSON.stringify({ id: curId, t: Math.floor(curTime), title: infoTitle.textContent || "", ts: now }));
     } catch (e) {}
@@ -9173,6 +9200,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Up next queue", "queue next upnext order", "#lhQueue"],
       ["Shuffle, repeat and auto-next", "shuffle repeat auto-next mix", "#shuffleQueueBtn"],
       ["Watch later", "later save", "#lhLater"],
+      ["Watch later auto-remove", "later auto remove finished clean", "#laterAutoBtn"],
       ["Favourites and Surprise me", "favourite favorite surprise random", "#lhFavs"],
       ["Recently watched history", "history recent watched", "#lhHist"],
       ["Continue watching", "continue resume left off", "#lhContinue"],
