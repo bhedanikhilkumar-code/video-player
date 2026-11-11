@@ -1218,6 +1218,11 @@ html.mini-on #toTop { opacity: 0; pointer-events: none; transform: translateY(12
 html.mini-left #playerDock.is-mini { inset: auto auto 16px 16px; }
 @media(max-width:480px) { html.mini-left #playerDock.is-mini { inset: auto auto 8px 8px; } }
 </style>
+<style id="r61-mini-undo">
+/* Mini player: Undo jump pill on the video */
+#miniUndo { display: none; }
+#playerDock.is-mini #miniUndo:not([hidden]) { display: inline-flex; align-items: center; position: absolute; top: 8px; left: 8px; z-index: 5; min-height: 36px; padding: 0 12px; font-weight: 700; border-radius: 999px; backdrop-filter: blur(14px) saturate(1.5); -webkit-backdrop-filter: blur(14px) saturate(1.5); background: rgba(20,20,30,.55); color: #fff; border: 1px solid rgba(255,255,255,.35); box-shadow: 0 4px 16px #0006; animation: r34MiniIn .25s cubic-bezier(.2,.9,.3,1.2); }
+</style>
 <style id="r35-mini-seek">
 /* Mini player: tap or drag the progress line to seek */
 #playerDock.is-mini #miniBar { position: relative; height: 5px; touch-action: none; cursor: pointer; }
@@ -3635,9 +3640,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (undoSeekTimer) clearTimeout(undoSeekTimer);
     undoSeekTimer = 0;
     var w = $("undoSeekWrap"); if (w) w.hidden = true;
+    var mu = $("miniUndo"); if (mu) mu.hidden = true;
+  }
+  // Mini player: the main Undo button is scrolled out of view, so a small glass pill sits on the video.
+  function miniUndoPill() {
+    var mu = $("miniUndo");
+    if (!mu && typeof playerDock !== "undefined" && playerDock) {
+      mu = document.createElement("button"); mu.id = "miniUndo"; mu.type = "button"; mu.className = "chip"; mu.hidden = true;
+      mu.addEventListener("click", function () { $("undoSeekBtn").click(); });
+      playerDock.appendChild(mu);
+    }
+    return mu;
   }
   function renderUndoSeek() {
     if (!undoSeekState) return;
+    var mu = miniUndoPill();
+    if (mu) { mu.textContent = "\u21b6 " + fmt(undoSeekState.time); mu.setAttribute("aria-label", T("Undo jump") + " " + T("Back to") + " " + fmt(undoSeekState.time)); mu.hidden = false; }
     $("undoSeekBtn").textContent = "↶ " + T("Undo jump") + " · " + T("Back to") + " " + fmt(undoSeekState.time);
     $("undoSeekHint").textContent = T("Available for 12 seconds");
   }
