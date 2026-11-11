@@ -1680,6 +1680,7 @@ setTimeout(done,3000);})();
           <span class="label" id="sleepLabel" role="status">Off</span>
           <div class="row" style="margin-top:10px"><button class="chip" id="sleepEndBtn" type="button" aria-pressed="false">Stop at end of video</button></div>
           <div class="row" style="margin-top:10px" id="sleepVidsRow"><span class="label" id="sleepVidsLab">Stop after videos:</span><span class="chips" id="sleepVidsChips"></span></div>
+          <div class="row" style="margin-top:10px" id="sleepAtRow"><label class="label" for="sleepAtTime" id="sleepAtLab">Stop at clock time:</label><input id="sleepAtTime" type="time" value="23:00" style="width:120px"><button class="chip" id="sleepAtBtn" type="button">Set</button></div>
           <div class="row" style="margin-top:10px"><label for="sleepMinutes" id="sleepMinLab">Custom minutes</label><input id="sleepMinutes" type="number" min="1" max="720" value="20" style="width:90px"><button class="chip" id="sleepStart" type="button">Start timer</button></div>
           <div class="row" style="margin-top:10px"><button class="chip" id="sleepExtend" type="button" hidden>+10 min</button></div>
           <label class="dl-chk"><input type="checkbox" id="sleepFade"> <span id="sleepFadeT">Fade the sound out in the last minute</span></label>
@@ -2257,6 +2258,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Sleep timer finished - paused. Press Play to continue.": ["स्लीप टाइमर पूरा - रोक दिया. जारी रखने के लिए Play दबाएं.", "સ્લીપ ટાઈમર પૂરો - રોકાયું. ચાલુ રાખવા Play દબાવો."],
    "Choose 1 to 720 whole minutes.": ["1 से 720 के बीच पूरे मिनट चुनें.", "1 થી 720 વચ્ચે આખા મિનિટ પસંદ કરો."],
    "Stopped at the end of the video (sleep timer).": ["वीडियो के अंत में रोका गया (स्लीप टाइमर).", "વીડિયોના અંતે રોકાયું (સ્લીપ ટાઈમર)."],
+   "Stop at clock time:": ["इस समय पर रुकें:", "આ સમયે રોકાઓ:"],
+   "Sleep timer: until ": ["स्लीप टाइमर: इस समय तक ", "સ્લીપ ટાઈમર: આ સમય સુધી "],
+   "Pick a time first.": ["पहले समय चुनें.", "પહેલા સમય પસંદ કરો."],
    "Stop after videos:": ["इतने वीडियो के बाद रुकें:", "આટલા વીડિયો પછી રોકાઓ:"],
    "Will stop after": ["इतने के बाद रुकेगा:", "આટલા પછી રોકાશે:"],
    "more video": ["और वीडियो", "વધુ વીડિયો"],
@@ -3862,9 +3866,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (iframe && ready) send("setVolume", [fv0]);
     vol.value = fv0; prefs.volume = fv0; volLabel.textContent = fv0 + "%";
   }
+  var sleepClockTxt = "";
   function sleepRender() {
     var left = Math.max(0, Math.ceil((sleepEnd - Date.now()) / 1000));
-    sleepLabel.textContent = sleepEnd ? T("Pauses in ") + fmt(left) : T("Off");
+    sleepLabel.textContent = sleepEnd ? T("Pauses in ") + fmt(left) + (sleepClockTxt ? " (" + sleepClockTxt + ")" : "") : T("Off");
     if (sleepExtend) sleepExtend.hidden = !sleepEnd;
   }
   function checkSleep() {
@@ -3885,13 +3890,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     sleepFadeRestore();
     markActive(sleepChips, "0"); sleepLabel.textContent = T("Sleep timer finished - paused. Press Play to continue.");
   }
-  function sleepSet(mins) {
+  function sleepSet(mins, endMs) {
     if (sleepTick) clearInterval(sleepTick);
     sleepFadeRestore();
-    sleepEnd = mins ? Date.now() + mins * 60000 : 0; sleepPaused = false;
+    sleepClockTxt = "";
+    sleepEnd = endMs ? endMs : (mins ? Date.now() + mins * 60000 : 0); sleepPaused = false;
+    if (endMs) { mins = 1; sleepClockTxt = new Date(endMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
     try { if (sleepEnd) localStorage.setItem("vp-sleep-end.v1", String(sleepEnd)); else localStorage.removeItem("vp-sleep-end.v1"); } catch(e) {}
     markActive(sleepChips, String(mins)); sleepRender();
-    toast(mins ? T("Sleep timer: ") + mins + " " + T("min") : T("Sleep timer off"));
+    toast(endMs ? T("Sleep timer: until ") + sleepClockTxt : mins ? T("Sleep timer: ") + mins + " " + T("min") : T("Sleep timer off"));
     sleepTick = mins ? setInterval(checkSleep, 1000) : null;
   }
   [[0, "Off"], [10, "10 min"], [15, "15 min"], [30, "30 min"], [45, "45 min"], [60, "60 min"]].forEach(function(o) {
@@ -3916,6 +3923,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!Number.isInteger(n) || n < 1 || n > 720) { sleepLabel.textContent = T("Choose 1 to 720 whole minutes."); return; }
     sleepSet(n);
   });
+  var sleepAtBtn = $("sleepAtBtn"), sleepAtIn = $("sleepAtTime");
+  if (sleepAtBtn) sleepAtBtn.addEventListener("click", function () {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(sleepAtIn.value || "");
+    if (!m) { sleepLabel.textContent = T("Pick a time first."); return; }
+    var d = new Date(); d.setHours(Number(m[1]), Number(m[2]), 0, 0);
+    if (d.getTime() <= Date.now() + 30000) d.setDate(d.getDate() + 1);
+    sleepSet(0, d.getTime());
+    try { localStorage.setItem("vp-sleep-clock.v1", JSON.stringify({ end: d.getTime(), txt: sleepClockTxt })); } catch (e) {}
+  });
+  try { var scs = JSON.parse(localStorage.getItem("vp-sleep-clock.v1") || "null"); if (scs && scs.end === Number(localStorage.getItem("vp-sleep-end.v1"))) sleepClockTxt = scs.txt; } catch (e) {}
   markActive(sleepChips, "0");
   try { sleepEnd = Number(localStorage.getItem("vp-sleep-end.v1")) || 0; } catch(e) {}
   if (sleepEnd) { checkSleep(); if (sleepEnd) sleepTick = setInterval(checkSleep, 1000); }
@@ -5927,7 +5944,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Re-render dynamic labels when the UI language changes.
   window.__relang = window.__relang || [];
   window.__relang.push(function () {
-    sleepVidsRender(); updateFavBtn(); updateLaterBtn(); renderQueueModes(); ccRender(); sleepEndRender(); updateAB();
+    sleepVidsRender(); (function () { var l = $("sleepAtLab"), b = $("sleepAtBtn"); if (l) l.textContent = T("Stop at clock time:"); if (b) b.textContent = T("Set"); })(); updateFavBtn(); updateLaterBtn(); renderQueueModes(); ccRender(); sleepEndRender(); updateAB();
     playBtn.textContent = playing ? T("\u23f8 Pause") : T("\u25b6 Play");
     muteBtn.textContent = muted ? T("\ud83d\udd07 Unmute") : T("\ud83d\udd0a Mute");
     loopBtn.textContent = prefs.loop ? T("\ud83d\udd01 Loop on") : T("\ud83d\udd01 Loop off");
