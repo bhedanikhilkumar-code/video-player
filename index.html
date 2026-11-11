@@ -7660,5 +7660,56 @@ html.low-fx :focus-visible { box-shadow: none !important; }
 })();
 </script>
 
+<script>
+/* Watch insights (round 39): one short line under Watch stats - average per active day, best day
+   and most replayed video. Reads the same on-device stats; nothing is sent anywhere. */
+(function () {
+  var tot = document.getElementById("statsTotal"); if (!tot) return;
+  var TR = {
+    "Average per active day": ["सक्रिय दिन का औसत", "સક્રિય દિવસની સરેરાશ"],
+    "Best day": ["सबसे अच्छा दिन", "શ્રેષ્ઠ દિવસ"],
+    "Most replayed": ["सबसे ज़्यादा दोबारा देखा", "સૌથી વધુ ફરી જોયું"],
+    "Last 14 days": ["पिछले 14 दिन", "છેલ્લા 14 દિવસ"]
+  };
+  function t(s) { var l = document.documentElement.lang, r = TR[s]; return (r && (l === "hi" || l === "gu")) ? r[l === "hi" ? 0 : 1] : s; }
+  function fmt(s) {
+    s = Math.floor(s); if (s < 60) return s + " s";
+    var h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); if (m === 60) { h++; m = 0; }
+    return h ? h + " h " + m + " m" : m + " m";
+  }
+  var el = document.createElement("p"); el.className = "hint"; el.id = "statsInsight"; el.setAttribute("role", "status"); el.hidden = true;
+  var anchor = document.getElementById("statsDays"); if (!anchor || !anchor.parentNode) return;
+  anchor.parentNode.insertBefore(el, anchor.nextSibling);
+  var busy = false;
+  function update() {
+    if (busy) return; busy = true;
+    try {
+      var s = JSON.parse(localStorage.getItem("vp-stats.v1") || "null"), parts = [];
+      if (s && s.days) {
+        var keys = Object.keys(s.days).filter(function (k) { return s.days[k] >= 30; });
+        if (keys.length) {
+          var sum = 0, best = keys[0];
+          keys.forEach(function (k) { sum += s.days[k]; if (s.days[k] > s.days[best]) best = k; });
+          parts.push(t("Average per active day") + ": " + fmt(sum / keys.length));
+          var d = new Date(best + "T12:00:00"), lg = document.documentElement.lang;
+          var loc = lg === "hi" ? "hi-IN" : lg === "gu" ? "gu-IN" : "en-US";
+          parts.push(t("Best day") + ": " + d.toLocaleDateString(loc, { weekday: "short", day: "numeric", month: "short" }) + " (" + fmt(s.days[best]) + ")");
+        }
+      }
+      if (s && s.videos) {
+        var top = null;
+        Object.keys(s.videos).forEach(function (id) { var v = s.videos[id]; if ((v.plays || 0) >= 2 && (!top || v.plays > top.plays)) top = { plays: v.plays, title: v.title || "" }; });
+        if (top && top.title) parts.push(t("Most replayed") + ": " + top.title.slice(0, 40) + " (" + top.plays + "x)");
+      }
+      el.textContent = parts.join(" \u00b7 ");
+      el.hidden = !parts.length;
+    } catch (e) { el.hidden = true; }
+    busy = false;
+  }
+  new MutationObserver(update).observe(tot, { childList: true, characterData: true, subtree: true });
+  update();
+})();
+</script>
+
 </body>
           </html>
