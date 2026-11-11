@@ -1831,6 +1831,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Queue cleared": ["कतार साफ़ हुई", "કતાર સાફ થઈ"],
    "Undo": ["पूर्ववत करें", "પૂર્વવત કરો"],
    "Queue restored": ["कतार वापस आई", "કતાર પાછી આવી"],
+   "Play next": ["अगले में चलाएं", "આગળ ચલાવો"],
+   "Will play next": ["अगले नंबर पर चलेगा", "આગળના નંબરે ચાલશે"],
+   "Already playing": ["यह पहले से चल रहा है", "આ પહેલેથી ચાલે છે"],
    "Watch later list cleared": ["वॉच लेटर सूची साफ़ हुई", "વોચ લેટર યાદી સાફ થઈ"],
    "Watch later list restored": ["वॉच लेटर सूची वापस आई", "વોચ લેટર યાદી પાછી આવી"],
    "History cleared": ["इतिहास साफ़ हुआ", "ઇતિહાસ સાફ થયો"],
@@ -2490,13 +2493,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     linkInput.value = lib.queue[i].id;
     loadVideo(null, null, i, true);
   }
+  // Move a queued video to right after the one playing now (or to the top when nothing is playing).
+  function queuePlayNext(item) {
+    var idx = lib.queue.indexOf(item);
+    if (idx < 0) return;
+    if (idx === qPos) { toast(T("Already playing")); return; }
+    lib.queue.splice(idx, 1);
+    if (idx < qPos) qPos--;
+    lib.queue.splice(qPos + 1, 0, item);
+    resetShuffle();
+    saveLib(); renderLib();
+    toast(T("Will play next"));
+  }
   function renderLib() {
     renderContinue();
     fillList(queueList, lib.queue, T("Queue is empty. Add links with Add to queue."), T("Remove"), function (item, idx) {
       lib.queue.splice(idx, 1);
       if (idx < qPos) qPos--; else if (idx === qPos) qPos = -1;
       saveLib(); renderLib();
-    }, function (item, idx) { playQueueAt(idx); }, null, "queue");
+    }, function (item, idx) { playQueueAt(idx); }, { label: T("Play next"), fn: function (item) { queuePlayNext(item); } }, "queue");
     fillList(laterList, laterView(), T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) { toggleLater(item.id); }, null, null, "later");
     fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) { toggleFav(item.id); }, null, null, "fav");
     fillList(histList, histView(), T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, { label: T("Remove"), fn: function (item) {
