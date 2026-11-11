@@ -9080,6 +9080,160 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Lyrics sync restored: ": ["\u0932\u093f\u0930\u093f\u0915\u094d\u0938 \u0938\u093f\u0902\u0915 \u0935\u093e\u092a\u0938 \u0906\u092f\u093e: ", "\u0ab2\u0abf\u0ab0\u0abf\u0a95\u0acd\u0ab8 \u0ab8\u0abf\u0a82\u0a95 \u0aaa\u0abe\u0a9a\u0ac1\u0a82 \u0ab2\u0abe\u0ab5\u0acd\u0aaf\u0ac1\u0a82: "]
   });
 
+  // Auto lyrics (round 101): one tap looks the song up in the free LRCLIB library
+  // (lrclib.net) by the video's title and channel. Synced (karaoke) lines land in the same
+  // per-video stores as pasted lyrics and tap-to-sync, so Show on video, Big line,
+  // jump-to-line and the backup all keep working with them. Sync nudge shifts every line by
+  // half a second when the words sit a little early or late. Translated in Hindi and
+  // Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "✨ Auto lyrics": ["✨ अपने-आप लिरिक्स", "✨ ઓટો લિરિક્સ"],
+    "Auto lyrics": ["ऑटो लिरिक्स", "ઓટો લિરિક્સ"],
+    "Fetch this song's lyrics from the free LRCLIB library": ["इस गाने के बोल मुफ़्त LRCLIB लाइब्रेरी से लाएं", "આ ગીતના બોલ મફત LRCLIB લાઇબ્રેરીથી લાવો"],
+    "Looking for lyrics...": ["लिरिक्स खोजे जा रहे हैं...", "લિરિક્સ શોધાય રહ્યા છે..."],
+    "No lyrics found for this song in the free library.": ["इस गाने के बोल मुफ़्त लाइब्रेरी में नहीं मिले.", "આ ગીતના બોલ મફત લાઇબ્રેરીમાં ન મળ્યા."],
+    "Could not reach the lyrics library. Check the internet and try again.": ["लिरिक्स लाइब्रेरी तक नहीं पहुँच सके. इंटरनेट जाँचें और फिर कोशिश करें.", "લિરિક્સ લાઇબ્રેરી સુધી પહોંચી શકાયું નહીં. ઇન્ટરનેટ તપાસો અને ફરી પ્રયાસ કરો."],
+    "Lyrics found - exact timing included.": ["लिरिक्स मिल गए - सटीक टाइमिंग के साथ.", "લિરિક્સ મળી ગયા - ચોક્કસ ટાઇમિંગ સાથે."],
+    "Lyrics found - tap Sync lines for exact timing.": ["लिरिक्स मिल गए - सटीक टाइमिंग के लिए Sync lines दबाएं.", "લિરિક્સ મળી ગયા - ચોક્કસ ટાઇમિંગ માટે Sync lines દબાવો."],
+    "Replace the lyrics saved for this video?": ["इस वीडियो के सेव किए लिरिक्स बदल दें?", "આ વીડિયોના સાચવેલા લિરિક્સ બદલી દેવા?"],
+    "Replace": ["बदलें", "બદલો"],
+    "Load a video first, then tap Auto lyrics.": ["पहले वीडियो चलाएं, फिर Auto lyrics दबाएं.", "પહેલા વીડિયો ચલાવો, પછી Auto lyrics દબાવો."],
+    "Lines earlier": ["लाइनें थोड़ा पहले", "લાઇનો થોડી પહેલા"],
+    "Lines later": ["लाइनें थोड़ा बाद", "લાઇનો થોડી પછી"],
+    "Shift every lyric line by half a second": ["हर लाइन आधा सेकंड आगे-पीछे करें", "દરેક લાઇન અડધી સેકન્ડ આગળ-પાછળ કરો"],
+    "Lines moved half a second earlier.": ["लाइनें आधा सेकंड पहले हो गईं.", "લાઇનો અડધી સેકન્ડ પહેલા થઈ ગઈ."],
+    "Lines moved half a second later.": ["लाइनें आधा सेकंड बाद हो गईं.", "લાઇનો અડધી સેકન્ડ પછી થઈ ગઈ."],
+    "Sync the lyrics first (Auto lyrics or Sync lines).": ["पहले लिरिक्स सिंक करें (Auto lyrics या Sync lines).", "પહેલા લિરિક્સ સિંક કરો (Auto lyrics કે Sync lines)."],
+    "Sync nudge": ["सिंक आगे-पीछे", "સિંક આગળ-પાછળ"]
+  });
+  var lyrAutoBusy = false, lyrAutoB = null, lyrNudgeBackB = null, lyrNudgeFwdB = null;
+  function lyrStatus(m) { var s = $("lyricsStatus"); if (s) s.textContent = m; }
+  // Turns a YouTube title like "Coldplay - Yellow (Official Video)" into artist + track,
+  // using the channel name when the title has no "Artist - Track" split.
+  function lyrGuess(title, author) {
+    var t = String(title || "").replace(/\s+/g, " ").trim();
+    t = t.replace(/[\(\[][^\)\]]*(official|video|lyrics?|audio|hd|hq|4k|8k|visuali[sz]er|remaster(?:ed)?|explicit|clean|version|edit|mix|cover|karaoke|live|full\s*song|status|lyrical|animated|colour?\s*coded|ost|teaser|trailer|reaction|dance|performance)[^\)\]]*[\)\]]/ig, " ");
+    t = t.replace(/[\(\[]\s*[\)\]]/g, " ").replace(/\s*[|•·].*$/, "").replace(/\s+#\w.*$/, "").replace(/\s{2,}/g, " ").trim();
+    var artist = String(author || "").replace(/\s+/g, " ").trim().replace(/(\s*VEVO|\s*-\s*Topic)$/i, "").trim();
+    var track = t;
+    var m = /^([^-–—:]{1,80}?)\s*[-–—:]\s*(.+)$/.exec(t);
+    if (m) { artist = m[1].trim(); track = m[2].trim(); }
+    track = track.replace(/\s*[\(\[]\s*(?:ft\.?|feat\.?|featuring)\s+[^\)\]]+[\)\]]\s*$/i, "").replace(/\s+(?:ft\.?|feat\.?|featuring)\s+.+$/i, "").trim() || t;
+    return { artist: artist, track: track };
+  }
+  // Parses LRC text ([mm:ss.xx] line). Empty beat lines are dropped with their times, so
+  // lines and times stay aligned with the plain-text store's own line splitting.
+  function lrcParse(lrc) {
+    var times = [], lines = [];
+    String(lrc || "").split(/\r?\n/).forEach(function (row) {
+      var m = /^\[(\d{1,2}):(\d{2})(?:[.:](\d{1,3}))?\]\s?(.*)$/.exec(row);
+      if (!m) return;
+      var txt = m[4].trim();
+      if (!txt) return;
+      var frac = m[3] ? Number("0." + m[3]) : 0;
+      times.push(Math.round((Number(m[1]) * 60 + Number(m[2]) + frac) * 10) / 10);
+      lines.push(txt);
+    });
+    return (times.length && times.length === lines.length) ? { times: times, lines: lines } : null;
+  }
+  function lyrAutoPaint() {
+    if (lyrAutoB) {
+      lyrAutoB.disabled = !curId || lyrAutoBusy || !window.fetch;
+      lyrAutoB.textContent = T("✨ Auto lyrics");
+      lyrAutoB.setAttribute("aria-label", T("Fetch this song's lyrics from the free LRCLIB library"));
+    }
+    var ok = lyrSyncValid(curId);
+    if (lyrNudgeBackB) { lyrNudgeBackB.disabled = !ok; lyrNudgeBackB.textContent = "⏪ −0.5s"; lyrNudgeBackB.setAttribute("aria-label", T("Lines earlier") + " - " + T("Shift every lyric line by half a second")); lyrNudgeBackB.title = T("Lines earlier"); }
+    if (lyrNudgeFwdB) { lyrNudgeFwdB.disabled = !ok; lyrNudgeFwdB.textContent = "+0.5s ⏩"; lyrNudgeFwdB.setAttribute("aria-label", T("Lines later") + " - " + T("Shift every lyric line by half a second")); lyrNudgeFwdB.title = T("Lines later"); }
+  }
+  function lyrNudge(dir) {
+    if (!lyrSyncValid(curId)) { toast(T("Sync the lyrics first (Auto lyrics or Sync lines).")); return; }
+    lyrSync[curId] = lyrSync[curId].map(function (t) { return Math.max(0, Math.round((t + dir * 0.5) * 10) / 10); });
+    lyrSyncSave();
+    lyrForId = null; lyricsPaintOv();
+    toast(dir < 0 ? T("Lines moved half a second earlier.") : T("Lines moved half a second later."));
+  }
+  function lyrAutoFetch() {
+    if (!curId || lyrAutoBusy) return;
+    if (!window.fetch) { lyrStatus(T("Could not reach the lyrics library. Check the internet and try again.")); return; }
+    var id = curId;
+    var meta = (typeof infoCache === "object" && infoCache[id]) || {};
+    var g = lyrGuess(meta.title || titleFor(id), meta.author || "");
+    if (!g.track) { lyrStatus(T("Load a video first, then tap Auto lyrics.")); return; }
+    lyrAutoBusy = true; lyrAutoPaint();
+    lyrStatus(T("Looking for lyrics...") + " " + g.track + (g.artist ? " · " + g.artist : ""));
+    lyrAutoQuery(id, "https://lrclib.net/api/search?track_name=" + encodeURIComponent(g.track) + (g.artist ? "&artist_name=" + encodeURIComponent(g.artist) : ""), g, 0);
+  }
+  function lyrAutoQuery(id, url, g, step) {
+    fetch(url).then(function (r) { if (!r.ok) throw new Error("http"); return r.json(); }).then(function (list) {
+      if (!Array.isArray(list) || !list.length) {
+        if (step === 0) return lyrAutoQuery(id, "https://lrclib.net/api/search?q=" + encodeURIComponent((g.artist ? g.artist + " " : "") + g.track), g, 1);
+        if (step === 1) return lyrAutoQuery(id, "https://lrclib.net/api/search?q=" + encodeURIComponent(g.track), g, 2);
+        lyrAutoBusy = false; lyrAutoPaint(); lyrStatus(T("No lyrics found for this song in the free library."));
+        return;
+      }
+      lyrAutoApply(id, lyrAutoBest(list));
+    }).catch(function () {
+      lyrAutoBusy = false; lyrAutoPaint();
+      lyrStatus(T("Could not reach the lyrics library. Check the internet and try again."));
+    });
+  }
+  function lyrAutoBest(list) {
+    var dur = duration > 0 ? duration : 0, best = null, bestScore = -1e9;
+    list.slice(0, 12).forEach(function (r) {
+      if (!r || r.instrumental || (!r.syncedLyrics && !r.plainLyrics)) return;
+      var s = r.syncedLyrics ? 100 : 10;
+      if (dur && typeof r.duration === "number") s -= Math.min(45, Math.abs(r.duration - dur));
+      if (s > bestScore) { bestScore = s; best = r; }
+    });
+    return best;
+  }
+  function lyrAutoApply(id, rec) {
+    if (!rec) { lyrAutoBusy = false; lyrAutoPaint(); lyrStatus(T("No lyrics found for this song in the free library.")); return; }
+    var parsed = rec.syncedLyrics ? lrcParse(rec.syncedLyrics) : null;
+    var lines = parsed ? parsed.lines : String(rec.plainLyrics || "").split(/\r?\n/).map(function (s) { return s.trim(); }).filter(function (s) { return s; });
+    var times = parsed ? parsed.times : null;
+    var text = lines.join("\n");
+    while (text.length > 4000 && lines.length > 1) { lines.pop(); if (times) times.pop(); text = lines.join("\n"); }
+    if (!lines.length) { lyrAutoBusy = false; lyrAutoPaint(); lyrStatus(T("No lyrics found for this song in the free library.")); return; }
+    var applyIt = function () {
+      if (lyricsTimer) { clearTimeout(lyricsTimer); lyricsTimer = null; }
+      lyrics[id] = text; lyricsSave();
+      if (times && times.length === lines.length) lyrSync[id] = times; else delete lyrSync[id];
+      lyrSyncSave();
+      if (curId === id) {
+        if (!lyricsUi.show) { lyricsUi.show = true; lyricsUiSave(); }
+        lyrForId = null; renderLyrics();
+      }
+      lyrAutoBusy = false; lyrAutoPaint();
+      lyrStatus((times ? T("Lyrics found - exact timing included.") : T("Lyrics found - tap Sync lines for exact timing.")) + " (LRCLIB: " + String(rec.trackName || "") + (rec.artistName ? " - " + rec.artistName : "") + ")");
+      toast(T("✨ Auto lyrics") + ": " + String(rec.trackName || titleFor(id) || id));
+    };
+    if (typeof lyrics[id] === "string" && lyrics[id].trim() && lyrics[id].trim() !== text.trim() && typeof window.vpConfirm === "function") {
+      window.vpConfirm(T("Replace the lyrics saved for this video?"), T("Replace")).then(function (ok) {
+        if (ok) applyIt(); else { lyrAutoBusy = false; lyrAutoPaint(); lyrStatus(""); }
+      });
+    } else applyIt();
+  }
+  (function () {
+    var row = $("lyricsClearBtn") && $("lyricsClearBtn").parentNode;
+    if (!row || !row.parentNode) return;
+    lyrAutoB = document.createElement("button"); lyrAutoB.type = "button"; lyrAutoB.className = "chip"; lyrAutoB.id = "lyricsAutoBtn";
+    lyrNudgeBackB = document.createElement("button"); lyrNudgeBackB.type = "button"; lyrNudgeBackB.className = "chip"; lyrNudgeBackB.id = "lyrNudgeBack";
+    lyrNudgeFwdB = document.createElement("button"); lyrNudgeFwdB.type = "button"; lyrNudgeFwdB.className = "chip"; lyrNudgeFwdB.id = "lyrNudgeFwd";
+    var r2 = document.createElement("div"); r2.className = "row"; r2.style.marginTop = "6px"; r2.id = "lyrAutoRow";
+    r2.appendChild(lyrAutoB); r2.appendChild(lyrNudgeBackB); r2.appendChild(lyrNudgeFwdB);
+    var hint = $("lyricsSyncHint");
+    row.parentNode.insertBefore(r2, hint || row.nextSibling);
+    lyrAutoB.addEventListener("click", lyrAutoFetch);
+    lyrNudgeBackB.addEventListener("click", function () { lyrNudge(-1); });
+    lyrNudgeFwdB.addEventListener("click", function () { lyrNudge(1); });
+  })();
+  var lyrPaintPrev = lyricsPaintBtns;
+  lyricsPaintBtns = function () { lyrPaintPrev(); lyrAutoPaint(); };
+  (window.__relang = window.__relang || []).push(lyrAutoPaint);
+  lyrAutoPaint();
+
   // What's new (round 93): a glass card at the top of Help listing the latest additions.
   // Tapping one jumps to that feature and flashes it, exactly like the feature finder.
   Object.assign(TR_MSG, {
@@ -9113,6 +9267,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"]
   });
   var WNEW = [
+    ["Auto lyrics", "#lyricsAutoBtn"],
+    ["Sync nudge", "#lyrNudgeBack"],
     ["Play flash", "#playFlashBtn"],
     ["Player tilt", "#tiltBtn"],
     ["Watch map", "#wmapBtn"],
@@ -9121,8 +9277,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Big sing-along line", "#lyricsBigBtn"],
     ["Night sound", "#lpNightBtn"],
     ["Left-right balance", "#lpBal"],
-    ["Milestone cheers", "#mileBtn"],
-    ["Music visualizer", "#lpVizBtn"]
+    ["Milestone cheers", "#mileBtn"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -11317,7 +11472,9 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Night sound", "night sound compressor loud quiet even soft late listening volume local file", "#lpNightBtn"],
       ["Left-right balance", "balance left right ear pan stereo earphone louder sound", "#lpBal"],
       ["Play flash", "play flash pause icon ripple pop video centre confirm glass", "#playFlashBtn"],
-      ["Player tilt", "tilt 3d lean pointer mouse glass shine perspective move frame", "#tiltBtn"]
+      ["Player tilt", "tilt 3d lean pointer mouse glass shine perspective move frame", "#tiltBtn"],
+      ["Auto lyrics", "auto lyrics fetch find online lrclib song words karaoke internet sing along", "#lyricsAutoBtn"],
+      ["Sync nudge", "lyrics timing shift earlier later offset nudge half second fix sync", "#lyrNudgeBack"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
