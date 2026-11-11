@@ -1677,6 +1677,8 @@ setTimeout(done,3000);})();
             <label class="label" for="vol"><span id="volLabT">Volume: </span><span id="volLabel">80%</span></label>
           </div>
           <input class="slider" id="vol" type="range" min="0" max="100" step="1" value="80">
+          <div class="row" id="nightVolRow" style="margin-top:8px"><span class="label" id="nightVolLab">Night volume</span><span class="chips" id="nightVolChips"></span></div>
+          <p class="hint" id="nightVolHint">Between 10 pm and 7 am the volume is capped at the level you pick. Your normal volume stays saved for the day.</p>
         </div>
 
         <div class="ctl-card" id="ctl-speed">
@@ -2108,10 +2110,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
-  var prefs = { reduceMotion: false, volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false, timeLeft: false, ambGlow: true, cardTheme: "midnight" };
+  var prefs = { reduceMotion: false, volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false, timeLeft: false, ambGlow: true, nightVol: 0, cardTheme: "midnight" };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight" || saved.theme === "midnight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.reduceMotion === true) prefs.reduceMotion = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; if (saved.timeLeft === true) prefs.timeLeft = true; if (saved.ambGlow === false) prefs.ambGlow = false; ["cc", "ccLang", "accent", "lang", "accentCustom", "cardTheme"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; if ([0, 15, 30, 60].indexOf(saved.goalMin) >= 0) prefs.goalMin = saved.goalMin; }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight" || saved.theme === "midnight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.reduceMotion === true) prefs.reduceMotion = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; if (saved.timeLeft === true) prefs.timeLeft = true; if (saved.ambGlow === false) prefs.ambGlow = false; ["cc", "ccLang", "accent", "lang", "accentCustom", "cardTheme"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; if ([0, 15, 30, 60].indexOf(saved.goalMin) >= 0) prefs.goalMin = saved.goalMin; if ([0, 30, 40, 50, 60].indexOf(saved.nightVol) >= 0) prefs.nightVol = saved.nightVol; }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
@@ -2882,6 +2884,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "no stats from last week yet": ["पिछले हफ़्ते के आंकड़े अभी नहीं", "ગયા અઠવાડિયાના આંકડા હજી નથી"],
   };
   Object.assign(TR_MSG, {"Calm motion: on": ["शांत गति: चालू", "શાંત ગતિ: ચાલુ"], "Calm motion: off": ["शांत गति: बंद", "શાંત ગતિ: બંધ"], "Calm motion (keep glass, stop animations)": ["शांत गति (ग्लास रखें, एनिमेशन रोकें)", "શાંત ગતિ (ગ્લાસ રાખો, એનિમેશન રોકો)"], "Keep glass, stop app motion. Device reduced motion always takes priority.": ["ग्लास रखें, ऐप की गति रोकें. डिवाइस की कम गति सेटिंग हमेशा पहले आती है.", "ગ્લાસ રાખો, એપની ગતિ રોકો. ડિવાઇસની ઓછી ગતિ સેટિંગ હંમેશા પહેલા આવે છે."], "Stops app animations, ripples, smooth scrolling and vibration. Video playback is unchanged. Your device's reduced-motion setting always takes priority.": ["ऐप के एनिमेशन, लहरें, स्मूथ स्क्रॉल और कंपन रोकता है. वीडियो पहले जैसा चलता है. डिवाइस की कम गति सेटिंग हमेशा पहले आती है.", "એપના એનિમેશન, તરંગો, સ્મૂથ સ્ક્રોલ અને વાઇબ્રેશન રોકે છે. વિડિયો પહેલાં જેવો ચાલે છે. ડિવાઇસની ઓછી ગતિ સેટિંગ હંમેશા પહેલા આવે છે."]});
+  Object.assign(TR_MSG, {"Night volume": ["रात की आवाज़", "રાતની અવાજ"], "night cap": ["रात की सीमा", "રાતની મર્યાદા"], "Between 10 pm and 7 am the volume is capped at the level you pick. Your normal volume stays saved for the day.": ["रात 10 बजे से सुबह 7 बजे तक आवाज़ आपकी चुनी सीमा तक ही रहती है. दिन की आवाज़ सेव रहती है.", "રાત્રે 10 થી સવારે 7 સુધી અવાજ તમારી પસંદ કરેલી મર્યાદા સુધી જ રહે છે. દિવસનો અવાજ સાચવેલો રહે છે."], "Night volume is on - volume capped at {n}% until 7 am.": ["रात की आवाज़ चालू - सुबह 7 बजे तक आवाज़ {n}% तक सीमित.", "રાતની અવાજ ચાલુ - સવારે 7 સુધી અવાજ {n}% સુધી મર્યાદિત."], "Night volume is off - back to your normal volume.": ["रात की आवाज़ बंद - आवाज़ वापस सामान्य.", "રાતની અવાજ બંધ - અવાજ ફરી સામાન્ય."], "Night volume off.": ["रात की आवाज़ बंद.", "રાતની અવાજ બંધ."], "Night volume set to {n}% between 10 pm and 7 am.": ["रात की आवाज़ रात 10 बजे से सुबह 7 बजे तक {n}% पर सेट.", "રાતની અવાજ રાત્રે 10 થી સવારે 7 સુધી {n}% પર સેટ."]});
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
   /* Toast feedback: one short note at the bottom for actions that used to be silent or
@@ -3505,7 +3508,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       ready = true; playBtn.disabled = false;
       skelShow(false);
       clearTimeout(loadWatchdog); showPlayerRetry(false); playerError.hidden = true;
-      send("setVolume", [prefs.volume]);
+      send("setVolume", [effVol()]);
       ccApply();
       if (prefs.speed !== 1) send("setPlaybackRate", [prefs.speed]);
       vmemApply();
@@ -3859,10 +3862,51 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   muteBtn.addEventListener("click", function () { send(muted ? "unMute" : "mute"); });
   vol.addEventListener("input", function () {
     var v = Number(vol.value);
-    prefs.volume = v; savePrefs(); volLabel.textContent = v + "%";
-    send("setVolume", [v]);
+    prefs.volume = v; savePrefs(); paintVolLabel();
+    send("setVolume", [effVol()]);
     if (v > 0 && muted) send("unMute");
   });
+
+  /* Night volume: between 10 pm and 7 am the sound is capped at the level picked here.
+     The cap only limits what reaches the player, so the daytime volume stays saved. */
+  function nightOn() { var h = new Date().getHours(); return h >= 22 || h < 7; }
+  function effVol() { return (prefs.nightVol > 0 && nightOn()) ? Math.min(prefs.volume, prefs.nightVol) : prefs.volume; }
+  function paintVolLabel() {
+    var capped = prefs.nightVol > 0 && nightOn() && prefs.volume > prefs.nightVol;
+    volLabel.textContent = (capped ? effVol() : prefs.volume) + "%" + (capped ? " (" + T("night cap") + ")" : "");
+  }
+  var nvLast = null;
+  function nightTick() {
+    var on = nightOn();
+    if (nvLast === null) { nvLast = on; paintVolLabel(); return; }
+    if (on === nvLast) return;
+    nvLast = on;
+    if (prefs.nightVol > 0 && ready && iframe) send("setVolume", [effVol()]);
+    paintVolLabel();
+    if (prefs.nightVol > 0) toast(on ? T("Night volume is on - volume capped at {n}% until 7 am.").replace("{n}", prefs.nightVol) : T("Night volume is off - back to your normal volume."));
+  }
+  setInterval(nightTick, 30000);
+  var nvChips = $("nightVolChips");
+  function renderNightVol() {
+    if (!nvChips) return;
+    nvChips.innerHTML = "";
+    [0, 30, 40, 50, 60].forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip" + (prefs.nightVol === c ? " active" : "");
+      b.dataset.value = String(c); b.setAttribute("aria-pressed", String(prefs.nightVol === c));
+      b.textContent = c === 0 ? T("Off") : c + "%";
+      b.addEventListener("click", function () {
+        prefs.nightVol = c; savePrefs(); renderNightVol();
+        if (ready && iframe) send("setVolume", [effVol()]);
+        paintVolLabel();
+        toast(c === 0 ? T("Night volume off.") : T("Night volume set to {n}% between 10 pm and 7 am.").replace("{n}", c));
+      });
+      nvChips.appendChild(b);
+    });
+    var h = $("nightVolHint"); if (h) h.textContent = T("Between 10 pm and 7 am the volume is capped at the level you pick. Your normal volume stays saved for the day.");
+    var l = $("nightVolLab"); if (l) l.textContent = T("Night volume");
+  }
+  (window.__relang = window.__relang || []).push(renderNightVol); renderNightVol(); nightTick();
   // Keep one deliberate app seek, never automatic loop seeks or YouTube's controls.
   var undoSeekState = null, undoSeekTimer = 0, scrubOrigin = null;
   function clearUndoSeek() {
@@ -4239,8 +4283,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function sleepFadeRestore() {
     if (fadeBase == null) return;
     var fv0 = fadeBase; fadeBase = null;
-    if (iframe && ready) send("setVolume", [fv0]);
-    vol.value = fv0; prefs.volume = fv0; volLabel.textContent = fv0 + "%";
+    vol.value = fv0; prefs.volume = fv0;
+    if (iframe && ready) send("setVolume", [effVol()]);
+    paintVolLabel();
   }
   var sleepClockTxt = "";
   function sleepRender() {
@@ -4254,7 +4299,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (leftMs > 0) {
       sleepRender();
       if (fadeOn && iframe && ready && playing && leftMs <= 60000) {
-        if (fadeBase == null) fadeBase = prefs.volume;
+        if (fadeBase == null) fadeBase = effVol();
         var fvol = Math.max(5, Math.round(fadeBase * leftMs / 60000));
         send("setVolume", [fvol]); vol.value = fvol; volLabel.textContent = fvol + "%";
       }
@@ -4389,8 +4434,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   function volBy(d) {
     var v = Math.max(0, Math.min(100, prefs.volume + d));
-    prefs.volume = v; savePrefs(); vol.value = v; volLabel.textContent = v + "%";
-    send("setVolume", [v]);
+    prefs.volume = v; savePrefs(); vol.value = v; paintVolLabel();
+    send("setVolume", [effVol()]);
     if (v > 0 && muted) send("unMute");
   }
   document.addEventListener("keydown", function (e) {
@@ -8753,6 +8798,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     out.push({ label: T("Change theme"), group: "Actions", run: click("themeBtn") });
     out.push({ label: T("Switch language"), group: "Actions", run: click("langBtn") });
     out.push({ label: T("Cinema mode on / off"), group: "Actions", run: click("cinemaBtn") });
+    out.push({ label: T("Night volume"), group: "Player", run: jump("#nightVolRow") });
     out.push({ label: T("Collapse or expand all sections"), group: "Actions", run: click("secAllBtn") });
     var inst = document.getElementById("installBtn");
     if (inst && !inst.hidden) out.push({ label: "Install app", group: "Actions", run: click("installBtn") });
