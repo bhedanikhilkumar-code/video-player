@@ -3020,6 +3020,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Actions": ["एक्शन", "ક્રિયાઓ"],
    "No matches.": ["कुछ नहीं मिला.", "કંઈ મળ્યું નહીં."],
    "Sleep picture fade": ["स्लीप पर तस्वीर धीमी", "સ્લીપ પર ચિત્ર ઝાંખું"],
+   "Search subtitles": ["सबटाइटल खोजें", "સબટાઇટલ શોધો"],
+   "Type a word from the subtitles": ["सबटाइटल का कोई शब्द लिखें", "સબટાઇટલનો કોઈ શબ્દ લખો"],
+   "Load a subtitle file first, then search.": ["पहले सबटाइटल फ़ाइल लोड करें, फिर खोजें.", "પહેલા સબટાઇટલ ફાઇલ લોડ કરો, પછી શોધો."],
+   " matches": [" मेल", " મેળ"],
    "Change theme": ["थीम बदलें", "થીમ બદલો"],
    "Switch language": ["भाषा बदलें", "ભાષા બદલો"],
    "Cinema mode on / off": ["सिनेमा मोड चालू / बंद", "સિનેમા મોડ ચાલુ / બંધ"],
@@ -9604,6 +9608,95 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
 })();
 </script>
+<style id="subtitle-search">
+#lpSubSearchQ{width:100%;min-height:44px;font-size:16px;box-sizing:border-box;padding:8px 12px;border-radius:12px;border:1px solid var(--hairline);background:var(--card);color:var(--ink);outline:none}
+#lpSubSearchQ:focus{border-color:var(--teal)}
+#lpSubSearchList{max-height:230px;overflow:auto}
+#lpSubSearchList:empty{display:none}
+#lpSubSearchList .ch-go{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+</style>
+<script>
+/* Subtitle search (round 92): find a word in the loaded .srt/.vtt and jump straight to that
+   line in the file. The file is parsed on this device only; nothing is uploaded anywhere. */
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var T = window.T || function (x) { return x; };
+  var vid = $("lpVideo"), anchor = $("lpSubSyncMsg") || $("lpSubSizes");
+  if (!vid || !anchor) return;
+
+  var lab = document.createElement("span"); lab.className = "label"; lab.id = "lpSubSearchLab";
+  var inp = document.createElement("input"); inp.id = "lpSubSearchQ"; inp.type = "search"; inp.maxLength = 60; inp.autocomplete = "off";
+  var listBox = document.createElement("ul"); listBox.className = "ch-list"; listBox.id = "lpSubSearchList";
+  var msg = document.createElement("p"); msg.className = "hint"; msg.id = "lpSubSearchMsg"; msg.setAttribute("role", "status");
+  var parent = anchor.parentNode;
+  parent.insertBefore(msg, anchor.nextSibling);
+  parent.insertBefore(listBox, msg);
+  parent.insertBefore(inp, listBox);
+  parent.insertBefore(lab, inp);
+
+  var cues = [];
+  function track() { return vid.querySelector("track"); }
+  function vttToSec(s) { var p = s.replace(",", ".").split(":"), n = p.length; if (n < 2) return null; return (+p[n - 3] || 0) * 3600 + (+p[n - 2] || 0) * 60 + (parseFloat(p[n - 1]) || 0); }
+  function parseCues(txt) {
+    var out = [];
+    String(txt || "").replace(/^\uFEFF/, "").replace(/\r\n?/g, "\n").split(/\n\n+/).forEach(function (b) {
+      var lines = b.split("\n"), ti = -1;
+      for (var i = 0; i < lines.length; i++) { if (lines[i].indexOf("-->") >= 0) { ti = i; break; } }
+      if (ti < 0) return;
+      var t = vttToSec(lines[ti].split("-->")[0].trim());
+      if (t == null) return;
+      var text = lines.slice(ti + 1).join(" ").replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+      if (text) out.push({ t: t, text: text });
+    });
+    return out;
+  }
+  function fmtT(t) { t = Math.max(0, Math.floor(t)); var m = Math.floor(t / 60), s = t % 60, h = Math.floor(m / 60); m = m % 60; return h > 0 ? h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s : m + ":" + (s < 10 ? "0" : "") + s; }
+
+  function searchRender() {
+    var q = (inp.value || "").trim().toLowerCase();
+    listBox.textContent = "";
+    if (!cues.length) { msg.textContent = T("Load a subtitle file first, then search."); return; }
+    if (!q) { msg.textContent = ""; return; }
+    var hits = [];
+    for (var i = 0; i < cues.length && hits.length < 12; i++) { if (cues[i].text.toLowerCase().indexOf(q) >= 0) hits.push(cues[i]); }
+    var total = 0;
+    for (var j = 0; j < cues.length; j++) { if (cues[j].text.toLowerCase().indexOf(q) >= 0) total++; }
+    msg.textContent = total ? String(total) + T(" matches") : T("No matches.");
+    hits.forEach(function (c) {
+      var li = document.createElement("li"); li.className = "ch-item";
+      var go = document.createElement("button"); go.type = "button"; go.className = "chip ch-go";
+      go.textContent = fmtT(c.t) + " \u00b7 " + c.text;
+      go.addEventListener("click", function () { try { vid.currentTime = c.t; } catch (e) {} var p = vid.play(); if (p && p.catch) p.catch(function () {}); });
+      li.appendChild(go);
+      listBox.appendChild(li);
+    });
+  }
+  inp.addEventListener("input", searchRender);
+
+  function grab() {
+    var tr = track();
+    if (!tr) { if (cues.length) { cues = []; searchRender(); } return; }
+    if (!tr.src || tr.src.indexOf("blob:") !== 0) return;
+    fetch(tr.src).then(function (r) { return r.text(); }).then(function (txt) {
+      if (track() !== tr) return;
+      cues = parseCues(txt);
+      searchRender();
+    }).catch(function () {});
+  }
+  new MutationObserver(grab).observe(vid, { childList: true, attributes: true, attributeFilter: ["src"], subtree: true });
+  vid.addEventListener("loadstart", function () { cues = []; searchRender(); });
+
+  function relang() {
+    lab.textContent = T("Search subtitles");
+    inp.setAttribute("placeholder", T("Type a word from the subtitles"));
+    inp.setAttribute("aria-label", T("Search subtitles"));
+    if (!cues.length) msg.textContent = T("Load a subtitle file first, then search.");
+  }
+  (window.__relang = window.__relang || []).push(relang);
+  relang();
+})();
+</script>
 <style id="view-tools">
 #lpViewWrap{position:relative;width:100%;margin-top:12px;border-radius:12px;background:#000;overflow:hidden}
 #lpVideo.lp-view{display:block;margin-top:0;border-radius:0}
@@ -10349,6 +10442,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Play a local file, volume boost", "local file boost 300 play", "#lp"],
       ["Equalizer", "equalizer eq bass treble", "#lpEqH"],
       ["Local file subtitles", "srt sub file local", "#lpSubH"],
+      ["Search subtitles", "search find subtitle srt vtt word line jump text", "#lpSubSearchQ"],
       ["Frame step and jump to time", "frame step precise jump", "#lpPrecise"],
       ["Local practice loop", "practice loop local ab", "#lpLoopBox"],
       ["Local file chapters", "chapters local", "#lpChH"],
