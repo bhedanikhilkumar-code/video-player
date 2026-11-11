@@ -1241,6 +1241,14 @@ html.theme-xfade .lib-item, html.theme-xfade .pl-item, html.theme-xfade input, h
 @media (prefers-reduced-motion: reduce) { section::after { content: none !important; } }
 html.low-fx section::after, html.high-contrast section::after { content: none !important; }
 </style>
+<style id="r86-fit-time">
+.fit-time-form { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.fit-time-form > label { display: block; margin-bottom: 8px; }
+.fit-time-form .row { align-items: stretch; }
+#fitTimeMin { width: 76px; min-width: 0; border-radius: 14px; padding: 10px; background: var(--soft); color: var(--ink); border: 1px solid var(--line); font: inherit; }
+#fitTimeGo { flex: 1 1 145px; white-space: normal; }
+#fitTimeMsg:empty { display: none; }
+</style>
 <style id="r86-phone-install">
 /* A passive install offer must not sit behind the floating video on phones.
    Keep it for when the user returns to the full player, without dismissing it. */
@@ -1765,6 +1773,12 @@ setTimeout(done,3000);})();
             <button class="chip" id="speedCustomGo" type="button">Set</button>
           </div>
           <span class="label" id="speedCustomMsg" role="status"></span>
+          <form id="fitTimeForm" class="fit-time-form">
+            <label class="label" for="fitTimeMin" id="fitTimeLab">Finish within (minutes)</label>
+            <div class="row"><input id="fitTimeMin" type="number" min="1" max="600" step="1" value="5" inputmode="numeric" required><button class="chip" type="submit" id="fitTimeGo">Fit remaining video</button></div>
+          </form>
+          <p class="hint" id="fitTimeHint">Picks a speed from 1x to 2x for the part left to watch. An estimate for recorded videos; pauses, loops and ads can add time.</p>
+          <p class="hint" id="fitTimeMsg" role="status" aria-live="polite"></p>
         </div>
 
         <div class="ctl-card wide" id="ctl-quality">
@@ -4101,6 +4115,58 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     go.addEventListener("click", applyCustomSpeed);
     inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); applyCustomSpeed(); } });
   })();
+  // Round 86: fit the remaining recorded video into a time budget. A one-shot
+  // action, not a timer. No load hook: shared links can initialize safely before this.
+  Object.assign(TR_MSG, {
+    "Finish within (minutes)": ["इतने मिनट में खत्म करें", "આટલી મિનિટમાં પૂરું કરો"],
+    "Fit remaining video": ["बचे वीडियो की स्पीड चुनें", "બાકી વીડિયોની સ્પીડ પસંદ કરો"],
+    "Picks a speed from 1x to 2x for the part left to watch. An estimate for recorded videos; pauses, loops and ads can add time.": ["बचे हुए वीडियो के लिए 1x से 2x तक स्पीड चुनता है. रिकॉर्ड किए वीडियो का अनुमान है; विराम, लूप और विज्ञापन से समय बढ़ सकता है.", "બાકી વીડિયો માટે 1x થી 2x સુધી સ્પીડ પસંદ કરે છે. રેકોર્ડ કરેલા વીડિયોનો અંદાજ છે; વિરામ, લૂપ અને જાહેરાતોથી સમય વધી શકે છે."],
+    "Load a video and wait for its length first.": ["पहले वीडियो लोड करें और उसकी लंबाई आने दें.", "પહેલાં વીડિયો લોડ કરો અને તેની લંબાઈ આવવા દો."],
+    "Enter whole minutes from 1 to 600.": ["1 से 600 तक पूरे मिनट लिखें.", "1 થી 600 સુધી આખી મિનિટ લખો."],
+    "This video has already reached the end.": ["यह वीडियो खत्म हो चुका है.", "આ વીડિયો પૂરો થઈ ગયો છે."],
+    "Not enough time at 2x. Allow at least {n} minutes or skip a part. Speed unchanged.": ["2x पर भी समय कम है. कम से कम {n} मिनट दें या कुछ हिस्सा छोड़ें. स्पीड नहीं बदली.", "2x પર પણ સમય ઓછો છે. ઓછામાં ઓછી {n} મિનિટ આપો અથવા થોડો ભાગ છોડો. સ્પીડ બદલાઈ નથી."],
+    "Speed {s}x requested. About {t} left if applied. YouTube may limit available speeds.": ["{s}x स्पीड मांगी गई. लागू होने पर लगभग {t} बाकी. YouTube उपलब्ध स्पीड सीमित कर सकता है.", "{s}x સ્પીડની વિનંતી કરી. લાગુ થાય તો આશરે {t} બાકી. YouTube ઉપલબ્ધ સ્પીડ મર્યાદિત કરી શકે છે."]
+  });
+  function fitBudget(remaining, minutes) {
+    if (!(remaining > 0) || !isFinite(remaining) || !(minutes >= 1 && minutes <= 600) || Math.floor(minutes) !== minutes) return null;
+    var needed = remaining / (minutes * 60);
+    if (needed > 2) return { minimum: Math.ceil(remaining / 120) };
+    var rate = SPEEDS.filter(function (r) { return r >= 1 && r + 0.000001 >= needed; })[0];
+    return { rate: rate, seconds: Math.ceil(remaining / rate) };
+  }
+  (function () {
+    var form = $("fitTimeForm"), inp = $("fitTimeMin"), msg = $("fitTimeMsg");
+    if (!form || !inp || !msg) return;
+    var messageKey = "", messageArgs = {};
+    function renderFit() {
+      $("fitTimeLab").textContent = T("Finish within (minutes)");
+      $("fitTimeGo").textContent = T("Fit remaining video");
+      $("fitTimeHint").textContent = T("Picks a speed from 1x to 2x for the part left to watch. An estimate for recorded videos; pauses, loops and ads can add time.");
+      var text = messageKey ? T(messageKey) : "";
+      Object.keys(messageArgs).forEach(function (key) { text = text.replace("{" + key + "}", messageArgs[key]); });
+      msg.textContent = text;
+    }
+    function say(key, args) { messageKey = key; messageArgs = args || {}; renderFit(); }
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var minutes = Number(inp.value);
+      if (!Number.isInteger(minutes) || minutes < 1 || minutes > 600) { say("Enter whole minutes from 1 to 600."); return; }
+      if (!ready || !iframe || !curId || !(duration > 0)) { say("Load a video and wait for its length first."); return; }
+      var left = Math.max(0, duration - (seeking ? Number(seek.value) : curTime || 0));
+      if (left <= 0.5) { say("This video has already reached the end."); return; }
+      var fit = fitBudget(left, minutes);
+      if (!fit) { say("Load a video and wait for its length first."); return; }
+      if (!fit.rate) { say("Not enough time at 2x. Allow at least {n} minutes or skip a part. Speed unchanged.", {n: fit.minimum}); return; }
+      prefs.speed = fit.rate; savePrefs(); send("setPlaybackRate", [fit.rate]);
+      markActive(speedChips, String(fit.rate)); $("speedCustom").value = fit.rate;
+      paintEndsAt(curTime || 0);
+      say("Speed {s}x requested. About {t} left if applied. YouTube may limit available speeds.", {s: fit.rate, t: fmt(fit.seconds)});
+    });
+    // A result describes the instant of the request, not a countdown or a promise.
+    // Clear it when a new video loads so it cannot describe the wrong video.
+    document.addEventListener("vp-video-loaded", function () { say(""); });
+    (window.__relang = window.__relang || []).push(renderFit); renderFit();
+  })();
   markActive(qualityChips, "auto");
   vol.value = prefs.volume; volLabel.textContent = prefs.volume + "%";
   if (prefs.loop) { loopBtn.classList.add("active"); loopBtn.textContent = T("🔁 Loop on"); }
@@ -4192,6 +4258,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var rb = document.getElementById("resumeBox"); if (rb) rb.hidden = true;
     addHistory(id);
     showInfo(id);
+    document.dispatchEvent(new Event("vp-video-loaded"));
     ready = false; playing = false; document.documentElement.classList.remove("vp-playing"); duration = 0; playBtn.disabled = true; playBtn.textContent = T("▶ Play");
     if (typeof sleepFadeRestore === "function") sleepFadeRestore();
     timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1; seekBuffered = 0; if (typeof paintSeekFill === "function") paintSeekFill();
@@ -9951,6 +10018,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Rewind after a pause", "rewind pause back seconds break podcast", "#rwPauseRow"],
       ["Often used controls", "often used frequent quick bar controls top shortcuts", "#favCtlBar"],
       ["Playback speed", "speed tez slow fast 2x", "#ctl-speed"],
+      ["Finish within (minutes)", "finish fit budget minutes time speed lecture", "#fitTimeForm"],
       ["Video quality", "quality hd 1080 720 4k", "#ctl-quality"],
       ["Data and battery saver", "saver data battery low", "#ctl-saver"],
       ["Subtitles (CC)", "subtitle cc captions", "#ctl-subs"],
