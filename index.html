@@ -1692,7 +1692,7 @@ setTimeout(done,3000);})();
         <div class="info-text">
           <span class="np-pill" id="npPill"><span class="np-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="npPillT">Now playing</span></span>
           <div class="info-title" id="infoTitle"></div>
-          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><span id="infoDur"></span><span class="vmem-note" id="vmemNote" hidden></span></div>
+          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><span id="infoDur"></span><span class="vmem-note" id="vmemNote" hidden></span><span class="vmem-note" id="npWatched" hidden></span></div>
         </div>
       </div>
 
@@ -2263,6 +2263,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Watch from ": ["यहाँ से देखें ", "અહીંથી જુઓ "],
     "Opening WhatsApp with this video at ": ["इस समय से वीडियो के साथ व्हाट्सऐप खुल रहा है ", "આ સમયથી વીડિયો સાથે WhatsApp ખુલી રહ્યું છે "],
     "Nothing is sent until you tap send there.": ["व्हाट्सऐप में send दबाने तक कुछ नहीं भेजा जाता.", "WhatsApp માં send દબાવો ત્યાં સુધી કંઈ મોકલાતું નથી."],
+    "Played {n} times": ["{n} बार चलाया", "{n} વાર ચલાવ્યું"],
+    "First time playing": ["पहली बार चल रहा है", "પહેલી વાર ચાલે છે"],
     "Saved practice loops": ["सेव किए अभ्यास लूप", "સાચવેલા પ્રેક્ટિસ લૂપ"],
     "Loop name": ["लूप का नाम", "લૂપનું નામ"],
     "Save current A-B": ["मौजूदा A-B सेव करें", "હાલનું A-B સાચવો"],
@@ -3194,6 +3196,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     infoChannel.textContent = c.author || "";
     if (c.authorUrl && /^https:\/\/(www\.)?youtube\.com\//.test(c.authorUrl)) infoChannel.href = c.authorUrl; else infoChannel.removeAttribute("href");
     infoDur.textContent = c.dur ? "Length " + fmt(c.dur) : "";
+    if (typeof updateNpWatched === "function") updateNpWatched();
     if (!c.title) fetchMeta(id, function () { if (curId === id) showInfo(id); });
   }
   function addHistory(id) {
@@ -6366,6 +6369,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!v) v = stats.videos[id] = { secs: 0, plays: 0, title: titleFor(id) || "" };
     return v;
   }
+  // Now playing play-count (round 89): a small line under the video info says how many times
+  // this device has played the loaded video ("First time playing" on the first), from the
+  // on-device stats. It refreshes with the stats, on every video load and on language change.
+  function updateNpWatched() {
+    var n = $("npWatched"); if (!n) return;
+    var rec = curId && stats.videos ? stats.videos[curId] : null, p = rec && rec.plays ? rec.plays : 0;
+    if (!curId || !p) { n.hidden = true; n.textContent = ""; return; }
+    n.textContent = p > 1 ? T("Played {n} times").replace("{n}", p) : T("First time playing");
+    n.hidden = false;
+  }
+  (window.__relang = window.__relang || []).push(updateNpWatched);
   function fmtWatch(s) {
     s = Math.floor(s);
     if (s < 60) return s + " " + T("sec");
@@ -6518,6 +6532,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         open.addEventListener("click", function () { linkInput.value = "https://youtu.be/" + v.id; loadVideo(null, null, undefined, true); });
         li.appendChild(open); ul.appendChild(li);
       });
+    updateNpWatched();
     if (typeof goalRender === "function") goalRender();
   }
 
@@ -10115,6 +10130,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Queue total time", "queue total time how long length duration", "#queueTime"],
       ["Queue finish clock time", "queue finish ends clock time done when over", "#queueTime"],
       ["Share on WhatsApp", "whatsapp share send chat forward wa message", "#waBtn"],
+      ["Played count on Now playing", "played times count watched before how many repeat", "#infoCard"],
       ["Up-next countdown length", "up next countdown seconds length off 3 5 10 auto next wait", "#upnextSecsRow"],
       ["Shuffle, repeat and auto-next", "shuffle repeat auto-next mix", "#shuffleQueueBtn"],
       ["Watch later", "later save", "#lhLater"],
