@@ -2138,6 +2138,7 @@ setTimeout(done,3000);})();
         <button class="chip" id="autoNextBtn" type="button" aria-pressed="true">Auto-next: on</button>
         <button class="chip" id="stopAfterBtn" type="button" aria-pressed="false">Stop after this track: off</button>
       </div>
+      <div class="row" style="margin-top:10px" id="upnextSecsRow"><span class="label" id="upnextSecsLab">Up-next countdown:</span><span class="chips" id="upnextSecsChips"></span></div>
       <p class="hint" id="queueModeMsg" role="status">Auto-next is on. Video repeat and A-B repeat take priority.</p>
       <ul class="lib-list" id="queueList"></ul>
       <p class="hint" id="queueTime" role="status"></p>
@@ -2688,6 +2689,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "about ": ["लगभग ", "લગભગ "],
    "at current speed": ["मौजूदा स्पीड पर", "હાલની સ્પીડ પર"],
    "lengths known": ["लंबाइयां ज्ञात", "લંબાઈ ખબર"],
+   "Up-next countdown:": ["अप-नेक्स्ट काउंटडाउन:", "અપ-નેક્સ્ટ કાઉન્ટડાઉન:"],
+   "Up-next countdown set to ": ["अप-नेक्स्ट काउंटडाउन ", "અપ-નેક્સ્ટ કાઉન્ટડાઉન "],
+   "Up-next countdown off. The next video starts at once.": ["अप-नेक्स्ट काउंटडाउन बंद. अगला वीडियो तुरंत शुरू होगा.", "અપ-નેક્સ્ટ કાઉન્ટડાઉન બંધ. આગળનો વીડિયો તરત શરૂ થશે."],
    "hr": ["घं", "કલા"],
    "Load a video first, then add chapters.": ["पहले एक वीडियो लोड करें, फिर अध्याय जोड़ें.", "પહેલા વીડિયો લોડ કરો, પછી ચેપ્ટર ઉમેરો."],
    "Added ": ["जोड़े गए ", "ઉમેરાયા "],
@@ -7970,7 +7974,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var fin = function () { var qm = $("queueModeMsg"); if (qm) qm.textContent = T("Queue finished. Tap a video to play again."); };
     if (peek === -2) { if (!playNext()) fin(); return; }
     var bar = $("upnextBar"); if (!bar) { if (!playNext()) fin(); return; }
-    upnextToken++; var tk = upnextToken; upnextLeft = 5;
+    var uSecs = prefs.upnextSecs == null ? 5 : prefs.upnextSecs;
+    if (!(uSecs > 0)) { if (!playNext()) fin(); return; }
+    upnextToken++; var tk = upnextToken; upnextLeft = uSecs;
     var label = function () {
       var name = peek >= 0 && lib.queue[peek] ? (lib.queue[peek].title || (T("Video ") + lib.queue[peek].id)) : T("a shuffled pick");
       $("upnextT").textContent = T("Next in ") + upnextLeft + "s: " + name;
@@ -7991,6 +7997,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (goB) goB.addEventListener("click", function () { upnextToken++; upnextHide(); if (!playNext()) { var qm = $("queueModeMsg"); if (qm) qm.textContent = T("Queue finished. Tap a video to play again."); } });
     if (cxB) cxB.addEventListener("click", function () { upnextCancel(false); });
   })();
+
+  // Up-next countdown length: 3s, 5s, 10s or Off (Off starts the next video at once). Saved in prefs, rides in the backup.
+  var upnextSecsChips = $("upnextSecsChips");
+  function upnextSecsRender() {
+    var lab = $("upnextSecsLab"); if (lab) lab.textContent = T("Up-next countdown:");
+    if (!upnextSecsChips) return;
+    var cur = prefs.upnextSecs == null ? 5 : prefs.upnextSecs;
+    [].forEach.call(upnextSecsChips.children, function (c) {
+      var v = Number(c.dataset.v), on = v === cur;
+      c.textContent = v > 0 ? v + "s" : T("Off");
+      c.classList.toggle("active", on); c.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+  if (upnextSecsChips) {
+    [3, 5, 10, 0].forEach(function (n) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.v = n; b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () {
+        prefs.upnextSecs = n; savePrefs(); upnextSecsRender();
+        var qm = $("queueModeMsg"); if (qm) qm.textContent = n > 0 ? T("Up-next countdown set to ") + n + "s." : T("Up-next countdown off. The next video starts at once.");
+      });
+      upnextSecsChips.appendChild(b);
+    });
+    upnextSecsRender();
+  }
+  (window.__relang = window.__relang || []).push(upnextSecsRender);
 
   // Auto-pause: optionally pause when the tab is hidden, and resume on return. YouTube and local files.
   var tabAutoPaused = false;
@@ -10064,6 +10095,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Play Music (saved music queue)", "play music saved", "#playMusicBtn"],
       ["Up next queue", "queue next upnext order", "#lhQueue"],
       ["Queue total time", "queue total time how long length duration", "#queueTime"],
+      ["Up-next countdown length", "up next countdown seconds length off 3 5 10 auto next wait", "#upnextSecsRow"],
       ["Shuffle, repeat and auto-next", "shuffle repeat auto-next mix", "#shuffleQueueBtn"],
       ["Watch later", "later save", "#lhLater"],
       ["Watch later auto-remove", "later auto remove finished clean", "#laterAutoBtn"],
