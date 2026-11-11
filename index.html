@@ -2010,6 +2010,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Arrow keys work here too.": ["तीर कुंजियाँ यहाँ भी काम करती हैं.", "એરો કીઝ અહીં પણ કામ કરે છે."],
    "Moment saved": ["पल सेव हुआ", "ક્ષણ સેવ થઈ"],
    "Moment removed": ["पल हटाया गया", "ક્ષણ હટાઈ"],
+   "Moments restored: ": ["पल वापस आए: ", "ક્ષણો પાછી આવી: "],
    "Name this moment": ["इस पल को नाम दें", "આ ક્ષણને નામ આપો"],
    "This video already has that moment.": ["यह पल इस वीडियो में पहले से है.", "આ ક્ષણ આ વીડિયોમાં પહેલેથી છે."],
    "Moment list is full (30).": ["पलों की सूची भरी है (30).", "ક્ષણોની યાદી ભરાઈ છે (30)."],
@@ -3547,6 +3548,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "" }; }),
       later: lib.later.map(function (x) { return { id: x.id, title: x.title || "" }; }),
       playlists: playlists.map(function (p) { return { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; }),
+      moments: (function () { var o = {}; Object.keys(marks).forEach(function (id) { if (Array.isArray(marks[id]) && marks[id].length) o[id] = marks[id].map(function (m) { return { t: m.t, name: m.name || "" }; }); }); return o; })(),
       settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
     ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
@@ -3582,6 +3584,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         });
         var ln = 0;
         (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { lib.later.push({ id: x.id, title: typeof x.title === "string" ? x.title : "" }); ln++; } });
+        var mn = 0;
+        if (d.moments && typeof d.moments === "object" && !Array.isArray(d.moments)) {
+          Object.keys(d.moments).forEach(function (id) {
+            if (!/^[a-zA-Z0-9_-]{11}$/.test(id) || !Array.isArray(d.moments[id])) return;
+            if (!marks[id] && Object.keys(marks).length >= 200) return;
+            var arr = marks[id] = marks[id] || [];
+            d.moments[id].forEach(function (m) {
+              if (!m || typeof m.t !== "number" || !isFinite(m.t) || m.t < 0 || arr.length >= 30) return;
+              var tt = Math.floor(m.t);
+              if (arr.some(function (x) { return x.t === tt; })) return;
+              arr.push({ t: tt, name: typeof m.name === "string" ? m.name.slice(0, 40) : "" }); mn++;
+            });
+            if (!arr.length) delete marks[id];
+          });
+          if (mn) { marksSave(); renderMarks(); }
+        }
         var s = d.settings && typeof d.settings === "object" ? d.settings : null, gotSettings = false;
         if (s) {
           if (s.prefs && typeof s.prefs === "object") { Object.keys(s.prefs).forEach(function (k) { if (k in prefs && typeof s.prefs[k] === typeof prefs[k]) prefs[k] = s.prefs[k]; }); if ([5, 10, 15, 30].indexOf(prefs.seekStep) < 0) prefs.seekStep = 10; savePrefs(); gotSettings = true; }
@@ -3591,9 +3609,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
         }
-        if (!qn && !fn && !pn && !ln && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
+        if (!qn && !fn && !pn && !ln && !mn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
         saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
         libBackupMsg.textContent = T("Imported ") + qn + T(" queued, ") + fn + " " + (fn === 1 ? T("favourite") : T("favourites")) + T(" and ") + pn + " " + (pn === 1 ? T("playlist") : T("playlists")) + ".";
+        if (mn) libBackupMsg.textContent += " " + T("Moments restored: ") + mn + ".";
         if (gotSettings) { libBackupMsg.textContent += " " + T("Settings restored. Reloading to apply\u2026"); setTimeout(function () { location.reload(); }, 1200); }
       } catch (e) { libBackupMsg.textContent = T("That file could not be read. Use a backup file made by this app."); }
     };
