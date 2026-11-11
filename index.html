@@ -2089,6 +2089,7 @@ setTimeout(done,3000);})();
       </div>
       <p class="hint" id="queueModeMsg" role="status">Auto-next is on. Video repeat and A-B repeat take priority.</p>
       <ul class="lib-list" id="queueList"></ul>
+      <p class="hint" id="queueTime" role="status"></p>
       </div>
       <p class="hint" id="libListMsg" role="status"></p>
       <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
@@ -2620,6 +2621,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "No lyrics saved for this video yet.": ["इस वीडियो के लिए अभी बोल सेव नहीं हैं.", "આ વીડિયો માટે હજુ બોલ સેવ નથી."],
    "Lyrics included: ": ["बोल शामिल: ", "બોલ સામેલ: "],
    "Lyrics restored: ": ["बोल वापस आए: ", "બોલ પાછા આવ્યા: "],
+   "videos in queue": ["कतार में वीडियो", "કતારમાં વીડિયો"],
+   "about ": ["लगभग ", "લગભગ "],
+   "at current speed": ["मौजूदा स्पीड पर", "હાલની સ્પીડ પર"],
+   "lengths known": ["लंबाइयां ज्ञात", "લંબાઈ ખબર"],
+   "hr": ["घं", "કલા"],
+   "min": ["मिनट", "મિનટ"],
    "Load a video first, then add chapters.": ["पहले एक वीडियो लोड करें, फिर अध्याय जोड़ें.", "પહેલા વીડિયો લોડ કરો, પછી ચેપ્ટર ઉમેરો."],
    "Added ": ["जोड़े गए ", "ઉમેરાયા "],
    " moment.": [" पल.", " ક્ષણ."],
@@ -3276,6 +3283,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     saveLib(); renderLib();
     toast(T("Will play next"));
   }
+  // Queue total time (round 82): how long the whole queue runs, from the lengths the app
+  // has learned for videos you played; unknown lengths are said so honestly.
+  function updateQueueTime() {
+    var el = $("queueTime"); if (!el) return;
+    if (!lib.queue.length) { el.textContent = ""; return; }
+    var known = 0, secs = 0;
+    lib.queue.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { known++; secs += d; } });
+    var sp = prefs.speed > 0 ? prefs.speed : 1;
+    var txt = lib.queue.length + " " + T("videos in queue");
+    if (known) {
+      var t = Math.round(secs / sp), h = Math.floor(t / 3600), m = h ? Math.round((t % 3600) / 60) : Math.max(1, Math.round(t / 60));
+      txt += " · " + T("about ") + (h ? h + " " + T("hr") + " " + m + " " + T("min") : m + " " + T("min"));
+      if (sp !== 1) txt += " " + T("at current speed");
+      if (known < lib.queue.length) txt += " · " + known + "/" + lib.queue.length + " " + T("lengths known");
+    }
+    el.textContent = txt;
+  }
+  (window.__relang = window.__relang || []).push(updateQueueTime);
+
   function renderLib() {
     renderContinue();
     fillList(queueList, lib.queue, T("Queue is empty. Add links with Add to queue."), T("Remove"), function (item, idx) {
@@ -3295,6 +3321,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (i >= 0) { var snapH = lib.hist.slice(); lib.hist.splice(i, 1); saveLib(); renderLib(); if (typeof libSay === "function") libSay(T("Removed from history.")); toastUndo(T("Removed from history."), function () { lib.hist = snapH; saveLib(); renderLib(); }, T("History restored")); }
     } }, "hist");
     updateFavBtn(); updateLaterBtn();
+    updateQueueTime();
   }
   function updateLaterBtn() {
     var lb2 = $("laterBtn"); if (!lb2) return;
@@ -3762,7 +3789,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         duration = i.duration; seek.max = duration;
         if (window.__vpSeekMarks) window.__vpSeekMarks();
         if (window.__vpABBand) window.__vpABBand(abA, abB);
-        if (curId) { infoCache[curId] = infoCache[curId] || {}; infoCache[curId].dur = duration; infoDur.textContent = "Length " + fmt(duration); }
+        if (curId) { infoCache[curId] = infoCache[curId] || {}; infoCache[curId].dur = duration; infoDur.textContent = "Length " + fmt(duration); if (typeof updateQueueTime === "function") updateQueueTime(); }
       }
       if (typeof i.videoLoadedFraction === "number" && Math.abs(i.videoLoadedFraction - (seekBuffered || 0)) > 0.005) { seekBuffered = i.videoLoadedFraction; if (typeof paintSeekFill === "function") paintSeekFill(); }
       if (typeof i.volume === "number") {
@@ -9664,6 +9691,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Saved playlists", "playlist saved study", "#lhPlaylists"],
       ["Play Music (saved music queue)", "play music saved", "#playMusicBtn"],
       ["Up next queue", "queue next upnext order", "#lhQueue"],
+      ["Queue total time", "queue total time how long length duration", "#queueTime"],
       ["Shuffle, repeat and auto-next", "shuffle repeat auto-next mix", "#shuffleQueueBtn"],
       ["Watch later", "later save", "#lhLater"],
       ["Watch later auto-remove", "later auto remove finished clean", "#laterAutoBtn"],
