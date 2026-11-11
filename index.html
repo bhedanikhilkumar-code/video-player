@@ -1456,6 +1456,10 @@ html .shortcuts, html .note, html .faq, html .help-card, html .pl-item, html .mu
         <span id="resumeText"></span>
         <span class="row" style="gap:8px;flex:none"><button class="chip" id="resumeGo" type="button">Continue</button><button class="chip" id="resumeX" type="button" aria-label="Dismiss">x</button></span>
       </div>
+      <div class="resume" id="laterNudge" hidden>
+        <span id="laterNudgeText"></span>
+        <span class="row" style="gap:8px;flex:none"><button class="chip" id="laterNudgeGo" type="button">Play oldest</button><button class="chip" id="laterNudgeX" type="button" aria-label="Hide for today">x</button></span>
+      </div>
       <details class="tips">
         <summary id="tipsSum">Tips: queue and time links</summary>
         <p id="tipsP1">To queue several videos, paste their links separated by spaces and tap Add to queue. They play one after another.</p>
@@ -2403,6 +2407,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Moments copied": ["पल कॉपी हुए", "ક્ષણો કૉપી થઈ"],
    "Copy link to moment": ["इस पल का लिंक कॉपी करें", "આ ક્ષણની લિંક કૉપી કરો"],
    "Moment link copied": ["पल का लिंक कॉपी हुआ", "ક્ષણની લિંક કૉપી થઈ"],
+   "Waiting in Watch later: ": ["बाद में देखें में इंतज़ार: ", "પછી જુઓમાં રાહ જોઈ રહ્યું: "],
+   "day": ["दिन", "દિવસ"],
+   "days": ["दिन", "દિવસ"],
+   "Reminder hidden until tomorrow": ["रिमाइंडर कल तक छिपा", "રિમાઇન્ડર કાલ સુધી છુપાવ્યું"],
    "Share card for moment": ["पल का शेयर कार्ड", "ક્ષણનું શેર કાર્ડ"],
    "Scan to open at this time": ["इस समय पर खोलने के लिए स्कैन करें", "આ સમયે ખોલવા સ્કેન કરો"],
    "Could not make the share card.": ["शेयर कार्ड नहीं बन सका.", "શેર કાર્ડ બની શક્યું નહીં."],
@@ -2571,7 +2579,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   function toggleLater(id) {
     var i = findIn(lib.later, id);
-    if (i >= 0) lib.later.splice(i, 1); else lib.later.unshift({ id: id, title: titleFor(id) });
+    if (i >= 0) lib.later.splice(i, 1); else lib.later.unshift({ id: id, title: titleFor(id), ts: Date.now() });
     saveLib(); renderLib(); if (i < 0) fetchTitle(id);
     vpPop(laterBtn);
     toast(i >= 0 ? T("Removed from Watch later.") : T("Saved to Watch later."));
@@ -4812,6 +4820,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#dlVideoBtn", "Download video", "वीडियो डाउनलोड"],
     ["#dlMp3Btn", "Download MP3", "MP3 डाउनलोड"],
     ["#resumeGo", "Continue", "जारी रखें"],
+    ["#laterNudgeGo", "Play oldest", "सबसे पुराना चलाएं"],
     ["#sleepStart", "Start timer", "टाइमर शुरू"],
     ["#reportMail", "Send by email", "ईमेल से भेजें"],
     ["#reportCopy", "Copy report", "रिपोर्ट कॉपी"],
@@ -5026,6 +5035,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#dlVideoBtn": "વીડિયો ડાઉનલોડ",
  "#dlMp3Btn": "MP3 ડાઉનલોડ",
  "#resumeGo": "ચાલુ રાખો",
+ "#laterNudgeGo": "સૌથી જૂનું ચલાવો",
  "#sleepStart": "ટાઈમર શરૂ કરો",
  "#reportMail": "ઈમેલથી મોકલો",
  "#reportCopy": "રિપોર્ટ કોપી કરો",
@@ -5407,6 +5417,32 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       }, "image/png");
     } catch (e) { toast(T("Could not make the share card.")); }
   }
+  // Watch later reminder: once a day, if something has waited in Watch later for 24 hours or more, a small card offers to play it.
+  (function () {
+    var box = $("laterNudge"); if (!box) return;
+    var KEY = "vp-later-nudge.v1";
+    function today() { var d = new Date(); return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
+    function hide() { box.hidden = true; }
+    function oldest() {
+      var best = null;
+      lib.later.forEach(function (it) { if (it && typeof it.ts === "number" && Date.now() - it.ts >= 864e5 && (!best || it.ts < best.ts)) best = it; });
+      return best;
+    }
+    function show() {
+      try { if (localStorage.getItem(KEY) === today()) return; } catch (e) {}
+      var o = oldest(); if (!o || curId) return;
+      var days = Math.max(1, Math.floor((Date.now() - o.ts) / 864e5));
+      $("laterNudgeText").textContent = "\ud83d\udd52 " + T("Waiting in Watch later: ") + (o.title || o.id) + " (" + days + " " + T(days === 1 ? "day" : "days") + ")";
+      box._id = o.id; box.hidden = false;
+    }
+    $("laterNudgeX").addEventListener("click", function () { try { localStorage.setItem(KEY, today()); } catch (e) {} hide(); toast(T("Reminder hidden until tomorrow")); });
+    $("laterNudgeGo").addEventListener("click", function () {
+      try { localStorage.setItem(KEY, today()); } catch (e) {}
+      hide(); linkInput.value = "https://youtu.be/" + box._id; loadVideo();
+    });
+    document.addEventListener("vp-youtube-selected", hide);
+    setTimeout(show, 1800);
+  })();
   function sortedMarks() { var a = (curId && marks[curId]) ? marks[curId].slice() : []; a.sort(function (x, y) { return x.t - y.t; }); return a; }
   (function () {
     function hop(dir) {
