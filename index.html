@@ -1670,7 +1670,7 @@ html.low-fx section::after, html.high-contrast section::after { content: none !i
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
       <div id="musicQueue">
-      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <div class="row music-controls" aria-label="Queue playback options">
         <button class="chip" id="prevQueueBtn" type="button">Previous</button>
         <button class="chip" id="shuffleQueueBtn" type="button" aria-pressed="false">Shuffle: off</button>
@@ -1784,6 +1784,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Set": ["सेट", "સેટ"],
    "Pick a speed between 0.25 and 2.": ["0.25 से 2 के बीच स्पीड चुनें.", "0.25 અને 2 વચ્ચે સ્પીડ પસંદ કરો."],
    "Speed set to": ["स्पीड सेट हुई", "સ્પીડ સેટ થઈ"],
+   "Clear watched": ["देखे हुए हटाएं", "જોયેલા કાઢો"],
+   "No watched videos before the current one.": ["मौजूदा वीडियो से पहले कोई देखा हुआ वीडियो नहीं.", "હાલના વીડિયો પહેલાં કોઈ જોયેલો વીડિયો નથી."],
+   "1 watched video removed": ["1 देखा हुआ वीडियो हटाया", "1 જોયેલો વીડિયો કઢ્યો"],
+   "watched videos removed": ["देखे हुए वीडियो हटाए", "જોયેલા વીડિયો કઢ્યા"],
    "Need at least 2 more videos after the current one to mix.": ["मिलाने के लिए मौजूदा वीडियो के बाद कम से कम 2 और वीडियो चाहिए.", "મિક્સ કરવા માટે હાલના વીડિયો પછી ઓછામાં ઓછા 2 વધુ વીડિયો જોઈએ."],
    "left": ["बाकी", "બાકી"],
    "Showing time left": ["बाकी समय दिख रहा है", "બાકીનો સમય દેખાય છે"],
@@ -2575,6 +2579,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     lib.queue = nq; qPos = nqPos; saveLib(); renderLib(); showLibErr("");
     toastUndo(removed === 1 ? T("1 duplicate removed") : removed + " " + T("duplicates removed"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
   });
+  var clearPlayedBtn = $("clearPlayedBtn");
+  if (clearPlayedBtn) clearPlayedBtn.addEventListener("click", function () {
+    // Watched = everything before the queue position of the video playing now.
+    if (!(qPos > 0)) { showLibErr(T("No watched videos before the current one.")); return; }
+    var snap = lib.queue.slice(), sp = qPos, n = qPos;
+    lib.queue = lib.queue.slice(qPos); qPos = 0; saveLib(); renderLib(); showLibErr("");
+    toastUndo(n === 1 ? T("1 watched video removed") : n + " " + T("watched videos removed"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+  });
+  (window.__relang = window.__relang || []).push(function () { if (clearPlayedBtn) clearPlayedBtn.textContent = T("Clear watched"); });
+  if (clearPlayedBtn) clearPlayedBtn.textContent = T("Clear watched");
   var mixQueueBtn = $("mixQueueBtn");
   if (mixQueueBtn) mixQueueBtn.addEventListener("click", function () {
     // Re-orders only the videos after the current one, so what is playing stays put.
