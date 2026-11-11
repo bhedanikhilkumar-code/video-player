@@ -2078,6 +2078,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
+    "Saved practice loops": ["सेव किए अभ्यास लूप", "સાચવેલા પ્રેક્ટિસ લૂપ"],
+    "Loop name": ["लूप का नाम", "લૂપનું નામ"],
+    "Save current A-B": ["मौजूदा A-B सेव करें", "હાલનું A-B સાચવો"],
+    "Set A and B first, then save your practice loop.": ["पहले A और B सेट करें, फिर अभ्यास लूप सेव करें.", "પહેલા A અને B સેટ કરો, પછી પ્રેક્ટિસ લૂપ સાચવો."],
+    "Saved on this device for this video. Up to 12 loops. Included in backup.": ["इस वीडियो के लिए इस डिवाइस पर सेव. अधिकतम 12 लूप. बैकअप में शामिल.", "આ વીડિયો માટે આ ઉપકરણ પર સાચવાય છે. વધુમાં વધુ 12 લૂપ. બેકઅપમાં સામેલ."],
+    "No saved loops for this video yet.": ["इस वीडियो के लिए अभी कोई लूप सेव नहीं है.", "આ વીડિયો માટે હજી કોઈ લૂપ સાચવેલો નથી."],
+    "Name your loop first.": ["पहले लूप का नाम लिखें.", "પહેલા લૂપનું નામ લખો."],
+    "This loop is already saved.": ["यह लूप पहले से सेव है.", "આ લૂપ પહેલેથી સાચવેલો છે."],
+    "You can save 12 loops per video. Remove one first.": ["हर वीडियो में 12 लूप सेव कर सकते हैं. पहले एक हटाएं.", "દરેક વીડિયોમાં 12 લૂપ સાચવી શકો છો. પહેલા એક દૂર કરો."],
+    "Practice loop saved": ["अभ्यास लूप सेव हुआ", "પ્રેક્ટિસ લૂપ સાચવ્યો"],
+    "Practice loop removed": ["अभ्यास लूप हटाया", "પ્રેક્ટિસ લૂપ દૂર કર્યો"],
+    "This range is outside the current video.": ["यह हिस्सा मौजूदा वीडियो से बाहर है.", "આ ભાગ હાલના વીડિયોની બહાર છે."],
+    "Could not save. Device storage may be full.": ["सेव नहीं हो सका. डिवाइस स्टोरेज भर सकता है.", "સાચવી શકાયું નહીં. ઉપકરણનું સ્ટોરેજ ભરેલું હોઈ શકે છે."],
+    "Practice loops included: ": ["अभ्यास लूप शामिल: ", "પ્રેક્ટિસ લૂપ સામેલ: "],
+
     "Replay recent section": ["हाल का हिस्सा दोहराएं", "તાજેતરનો ભાગ ફરી ચલાવો"],
     "Replay last": ["पिछले हिस्से को दोहराएं", "છેલ્લો ભાગ ફરી ચલાવો"],
     "Loops the last seconds you watched. Clear A-B to stop.": ["अभी देखे गए सेकंड दोहराता है. रोकने के लिए A-B साफ करें.", "હમણાં જોયેલી સેકન્ડ ફરી ચલાવે છે. બંધ કરવા A-B સાફ કરો."],
@@ -3665,7 +3680,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var previous = findIn(lib.hist, id);
     if (startSec == null && previous >= 0 && lib.hist[previous].t >= 5) startSec = lib.hist[previous].t;
     document.dispatchEvent(new Event("vp-youtube-selected"));
-    curId = id; curTime = startSec || 0; lastResumeSave = 0; clearAB(); if (typeof vmemNote === "function") vmemNote("");
+    curId = id; curTime = startSec || 0; lastResumeSave = 0; clearAB(); if (typeof renderPracticeLoops === "function") { $("practiceName").value = ""; renderPracticeLoops(); } if (typeof vmemNote === "function") vmemNote("");
     dsAppliedFor = null;
     if (typeof renderMarks === "function") renderMarks();
     if (typeof renderNotes === "function") renderNotes();
@@ -3931,6 +3946,79 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   }
   (window.__relang = window.__relang || []).push(renderRecentReplay); renderRecentReplay();
+  // Round 65: named A-B ranges, isolated by video and included in library backups.
+  var practiceLoops = Object.create(null), PRACTICE_KEY = "vp-practice-loops.v1";
+  function validPracticeLoop(x) {
+    return x && typeof x.name === "string" && x.name.trim() && typeof x.a === "number" && typeof x.b === "number" && isFinite(x.a) && isFinite(x.b) && x.a >= 0 && x.b > x.a && x.b <= 604800;
+  }
+  function mergePracticeLoops(data) {
+    var added = 0;
+    if (!data || typeof data !== "object" || Array.isArray(data)) return added;
+    Object.keys(data).slice(0, 200).forEach(function (id) {
+      if (!/^[a-zA-Z0-9_-]{11}$/.test(id) || !Array.isArray(data[id])) return;
+      if (!practiceLoops[id] && Object.keys(practiceLoops).length >= 200) return;
+      var arr = practiceLoops[id] || [];
+      data[id].slice(0, 12).forEach(function (x) {
+        if (!validPracticeLoop(x) || arr.length >= 12 || arr.some(function (y) { return y.a === x.a && y.b === x.b; })) return;
+        arr.push({ name: x.name.trim().slice(0, 40), a: x.a, b: x.b }); added++;
+      });
+      if (arr.length) practiceLoops[id] = arr;
+    });
+    return added;
+  }
+  try { mergePracticeLoops(JSON.parse(localStorage.getItem(PRACTICE_KEY) || "{}")); } catch (e) {}
+  function savePracticeLoops() {
+    try { localStorage.setItem(PRACTICE_KEY, JSON.stringify(practiceLoops)); return true; }
+    catch (e) { toast(T("Could not save. Device storage may be full.")); return false; }
+  }
+  var savedPractice = document.createElement("div"); savedPractice.id = "savedPractice";
+  savedPractice.innerHTML = '<h4 id="practiceHeading"></h4><form id="practiceForm" class="row"><input id="practiceName" maxlength="40" autocomplete="off" style="width:100%;max-width:240px;min-width:0;font-size:16px"><button type="submit" class="chip" id="practiceSave"></button></form><p class="hint" id="practiceHint"></p><div id="practiceList"></div><p class="hint" id="practiceEmpty"></p>';
+  abLabel.parentNode.appendChild(savedPractice);
+  function renderPracticeLoops() {
+    if (!$("practiceList")) return;
+    $("practiceHeading").textContent = T("Saved practice loops");
+    $("practiceName").placeholder = T("Loop name"); $("practiceName").setAttribute("aria-label", T("Loop name"));
+    $("practiceSave").textContent = T("Save current A-B");
+    $("practiceHint").textContent = T("Saved on this device for this video. Up to 12 loops. Included in backup.");
+    var list = $("practiceList"); list.textContent = "";
+    var arr = practiceLoops[curId] || [];
+    $("practiceEmpty").hidden = !!arr.length; $("practiceEmpty").textContent = T("No saved loops for this video yet.");
+    arr.forEach(function (x, i) {
+      var row = document.createElement("div"); row.className = "row"; row.style.marginTop = "8px";
+      var play = document.createElement("button"); play.type = "button"; play.className = "chip";
+      play.style.cssText = "white-space:normal;overflow-wrap:anywhere;text-align:left;max-width:100%";
+      play.textContent = "↻ " + x.name + " · " + fmt(x.a) + " - " + fmt(x.b);
+      play.setAttribute("aria-label", T("Play") + ": " + x.name + " " + fmt(x.a) + " " + fmt(x.b));
+      play.addEventListener("click", function () {
+        if (!ready || !(duration > 0)) { toast(T("Play a little first, then replay a section.")); return; }
+        if (x.b > duration) { toast(T("This range is outside the current video.")); return; }
+        abA = x.a; abB = x.b; abEnabled = true; updateAB(); manualSeek(abA); send("playVideo");
+      });
+      var del = document.createElement("button"); del.type = "button"; del.className = "chip";
+      del.textContent = T("Remove"); del.setAttribute("aria-label", T("Remove") + ": " + x.name);
+      del.addEventListener("click", function () {
+        var id = curId, old = (practiceLoops[id] || []).slice();
+        practiceLoops[id].splice(i, 1); if (!practiceLoops[id].length) delete practiceLoops[id];
+        if (!savePracticeLoops()) { practiceLoops[id] = old; return; }
+        renderPracticeLoops();
+        toastUndo(T("Practice loop removed"), function () { practiceLoops[id] = old; savePracticeLoops(); renderPracticeLoops(); });
+      });
+      row.appendChild(play); row.appendChild(del); list.appendChild(row);
+    });
+  }
+  $("practiceForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (!curId || abA == null || abB == null || abB <= abA || !(duration > 0) || abB > duration) { toast(T("Set A and B first, then save your practice loop.")); return; }
+    var name = $("practiceName").value.trim().slice(0, 40);
+    if (!name) { toast(T("Name your loop first.")); $("practiceName").focus(); return; }
+    var arr = practiceLoops[curId] || [];
+    if (arr.some(function (x) { return x.a === abA && x.b === abB; })) { toast(T("This loop is already saved.")); return; }
+    if (arr.length >= 12 || (!practiceLoops[curId] && Object.keys(practiceLoops).length >= 200)) { toast(T("You can save 12 loops per video. Remove one first.")); return; }
+    var next = arr.concat([{ name: name, a: abA, b: abB }]); practiceLoops[curId] = next;
+    if (!savePracticeLoops()) { if (arr.length) practiceLoops[curId] = arr; else delete practiceLoops[curId]; return; }
+    $("practiceName").value = ""; renderPracticeLoops(); toast(T("Practice loop saved"));
+  });
+  (window.__relang = window.__relang || []).push(renderPracticeLoops); renderPracticeLoops();
   loopBtn.setAttribute("aria-pressed", String(prefs.loop));
   function updateAB() {
     if (abToggle) { abToggle.textContent = T("Repeat A-B") + ": " + (abEnabled ? T("on") : T("off")); abToggle.setAttribute("aria-pressed", String(abEnabled)); }
@@ -4923,6 +5011,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       playlists: playlists.map(function (p) { return { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; }),
       moments: (function () { var o = {}; Object.keys(marks).forEach(function (id) { if (Array.isArray(marks[id]) && marks[id].length) o[id] = marks[id].map(function (m) { return { t: m.t, name: m.name || "" }; }); }); return o; })(),
       notes: (function () { var o = {}; if (typeof notes === "object" && notes) Object.keys(notes).forEach(function (id) { if (typeof notes[id] === "string" && notes[id].trim()) o[id] = notes[id]; }); return o; })(),
+      practiceLoops: practiceLoops,
       settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
     ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
@@ -4934,6 +5023,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
     libBackupMsg.textContent = T("Backup saved") + " (" + data.queue.length + T(" queued, ") + data.favourites.length + T(" favourites, ") + data.playlists.length + T(" playlists).");
+    var nLoops = Object.keys(practiceLoops).reduce(function (n, id) { return n + practiceLoops[id].length; }, 0);
+    if (nLoops) libBackupMsg.textContent += " " + T("Practice loops included: ") + nLoops + ".";
     var nNotes = Object.keys(data.notes).length;
     if (nNotes) libBackupMsg.textContent += " " + T("Notes included: ") + nNotes + ".";
   });
@@ -4947,6 +5038,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var d = JSON.parse(rd.result);
         var q = Array.isArray(d.queue) ? d.queue : [];
         var fv = Array.isArray(d.favourites) ? d.favourites : (Array.isArray(d.favs) ? d.favs : []);
+        if (mergePracticeLoops(d.practiceLoops)) { savePracticeLoops(); renderPracticeLoops(); }
         var qn = 0, fn = 0;
         q.forEach(function (x) { if (validItem(x) && findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: typeof x.title === "string" ? x.title : "" }); qn++; } });
         fv.forEach(function (x) { if (validItem(x) && findIn(lib.favs, x.id) < 0) { lib.favs.push({ id: x.id, title: typeof x.title === "string" ? x.title : "" }); fn++; } });
