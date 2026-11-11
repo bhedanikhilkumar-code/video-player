@@ -1125,7 +1125,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 .vp-pal-item{padding:10px 12px;border-radius:12px;cursor:pointer;font-size:15px;}
 .vp-pal-item.is-act{background:var(--teal,#0a8);color:#fff;}
 .vp-pal-empty{padding:18px;text-align:center;color:var(--ink2,#666);font-size:14px;}
-</style></head>
+</style><style>#vpBreak{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9997;width:min(430px,calc(100vw - 32px));padding:18px;box-sizing:border-box;border:1px solid var(--hairline);border-radius:18px;background:var(--card);color:var(--ink);box-shadow:0 16px 50px #0005;text-align:center}#vpBreak h3{margin:0 0 8px}#vpBreak p{margin:0 0 12px}#vpBreak .row{justify-content:center;gap:8px;flex-wrap:wrap}</style></head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
 <div class="wrap">
@@ -2091,6 +2091,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Cinema mode on / off": ["सिनेमा मोड चालू / बंद", "સિનેમા મોડ ચાલુ / બંધ"],
    "Collapse or expand all sections": ["सारे सेक्शन समेटें या खोलें", "બધા વિભાગ સમેટો કે ખોલો"],
    "search everything": ["सब कुछ खोजें", "બધું શોધો"],
+   "Break reminder": ["ब्रेक रिमाइंडर", "બ્રેક રિમાઇન્ડર"],
+   "Suggests a rest after this much active watching.": ["इतनी देर देखने पर आराम की याद दिलाता है.", "આટલું જોયા પછી આરામની યાદ અપાવે છે."],
+   "Time for a short break?": ["थोड़ा ब्रेक लें?", "થોડો વિરામ લેશો?"],
+   "Rest your eyes for a minute.": ["आंखों को एक मिनट आराम दें.", "આંખોને એક મિનિટ આરામ આપો."],
+   "Pause for a break": ["ब्रेक के लिए रोकें", "વિરામ માટે રોકો"],
+   "Keep watching": ["देखते रहें", "જોતા રહો"],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
@@ -2131,6 +2137,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toastEl.appendChild(b);
   }
   window.T = T;
+  window.__vpIsPlaying = function () { return !!(playing && iframe && ready); };
+  window.__vpPauseForBreak = function () { if (iframe && ready) send("pauseVideo"); };
 
   // Recent videos and favourites, saved in this browser only.
   var LIB_KEY = "vp-library.v1", HIST_MAX = 20;
@@ -6616,6 +6624,30 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     paintLi();
   }
   window.__vpPalette = { open: open, close: close };
+})();
+</script>
+<script>
+/* Optional foreground active-watching break reminder. No background playback. */
+(function(){
+ "use strict";
+ var T=window.T, choices=[0,15,30,45,60], key="vp-break.v1", minutes=0, elapsed=0, last=Date.now(), card=null;
+ try { var saved=Number(localStorage.getItem(key)); if(choices.indexOf(saved)>=0) minutes=saved; }catch(e){}
+ var host=document.querySelector("#ctl-sleep p.hint");if(!host)return;
+ var wrap=document.createElement("div"),label=document.createElement("p"),chips=document.createElement("div"),hint=document.createElement("p");
+ wrap.style.marginTop="16px";label.id="brkLabel";label.className="label";chips.id="brkChips";chips.className="chips";chips.setAttribute("role","group");chips.setAttribute("aria-labelledby","brkLabel");hint.className="hint";
+ wrap.append(label,chips,hint);host.before(wrap);
+ function dismiss(){elapsed=0;if(card)card.remove();card=null;}
+ function show(){
+  if(card)return;elapsed=0;card=document.createElement("section");card.id="vpBreak";card.setAttribute("aria-labelledby","vpBreakT");
+  card.innerHTML='<h3 id="vpBreakT" role="status"></h3><p></p><div class="row"><button class="chip" type="button" id="vpBreakPause"></button><button class="chip" type="button" id="vpBreakGo"></button></div>';
+  card.querySelector("h3").textContent=T("Time for a short break?");card.querySelector("p").textContent=T("Rest your eyes for a minute.");
+  card.querySelector("#vpBreakPause").textContent=T("Pause for a break");card.querySelector("#vpBreakGo").textContent=T("Keep watching");
+  card.querySelector("#vpBreakPause").onclick=function(){if(window.__vpPauseForBreak)window.__vpPauseForBreak();var v=document.getElementById("lpVideo");if(v&&!v.paused)v.pause();dismiss();};
+  card.querySelector("#vpBreakGo").onclick=dismiss;document.body.append(card);
+ }
+ function render(){label.textContent=T("Break reminder");hint.textContent=T("Suggests a rest after this much active watching.");chips.textContent="";choices.forEach(function(n){var b=document.createElement("button");b.type="button";b.className="chip"+(n===minutes?" active":"");b.setAttribute("aria-pressed",String(n===minutes));b.textContent=n?n+" "+T("min"):T("Off");b.onclick=function(){minutes=n;dismiss();last=Date.now();try{localStorage.setItem(key,String(n));}catch(e){}render();};chips.append(b);});}
+ setInterval(function(){var now=Date.now(),delta=Math.min(5,Math.max(0,(now-last)/1000));last=now;if(!minutes||card||document.hidden)return;var v=document.getElementById("lpVideo"),active=(window.__vpIsPlaying&&window.__vpIsPlaying())||(v&&!v.hidden&&!v.paused&&!v.ended&&v.readyState>=2);if(active){elapsed+=delta;if(elapsed>=minutes*60)show();}},5000);
+ (window.__relang=window.__relang||[]).push(function(){render();if(card){dismiss();}});render();
 })();
 </script>
 </body>
