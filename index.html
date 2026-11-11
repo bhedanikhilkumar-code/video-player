@@ -2078,6 +2078,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "This video is taking too long to load. Check your internet, or tap Try again.": ["यह वीडियो लोड होने में काफी समय ले रहा है. इंटरनेट जांचें, या 'फिर कोशिश करें' दबाएं.", "આ વીડિયો લોડ થવામાં ઘણો સમય લઈ રહ્યો છે. ઇન્ટરનેટ તપાસો, અથવા 'ફરી પ્રયાસ કરો' દબાવો."],
    "Clear link": ["लिंक हटाएं", "લિંક કાઢો"],
    "Clean link": ["लिंक साफ़ करें", "લિંક સાફ કરો"],
+   "Your rating": ["आपकी रेटिंग", "તમારું રેટિંગ"],
+   "Rate this video": ["इस वीडियो को रेट करें", "આ વિડિઓને રેટ કરો"],
+   "star": ["स्टार", "સ્ટાર"],
+   "stars": ["स्टार", "સ્ટાર"],
+   "Rating saved: ": ["रेटिंग सेव: ", "રેટિંગ સેવ: "],
+   "Rating removed": ["रेटिंग हटाई गई", "રેટિંગ કાઢી નાખ્યું"],
    "Screen dimmer": ["स्क्रीन डिमर", "સ્ક્રીન ડિમર"],
    "Screen dimmer: darken the video, 0 to 70 percent": ["स्क्रीन डिमर: वीडियो को 0 से 70 प्रतिशत तक गहरा करें", "સ્ક્રીન ડિમર: વિડિઓને 0 થી 70 ટકા સુધી ઘેરો કરો"],
    "Off": ["बंद", "બંધ"],
@@ -9537,6 +9543,54 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   rng.addEventListener("dblclick", function () { v = 0; paint(true); });
   (window.__relang = window.__relang || []).push(function () { paint(false); });
   paint(false);
+})();
+</script>
+<script>
+/* Star rating (round 61): five tappable stars on the Now playing card. Your rating is kept
+   on the device per video (tap the same star again to remove it). */
+(function () {
+  "use strict";
+  var T = window.T || function (x) { return x; };
+  var card = document.getElementById("infoCard"), thumb = document.getElementById("infoThumb");
+  var meta = card && card.querySelector(".info-text");
+  if (!meta || !thumb) return;
+  var st = document.createElement("style");
+  st.textContent = ".rate-row{display:flex;align-items:center;gap:2px;margin-top:6px;flex-wrap:wrap}.rate-star{background:none;border:0;padding:2px 3px;font-size:24px;line-height:1;cursor:pointer;color:rgba(128,128,140,.55);transition:transform .15s ease,color .15s ease,text-shadow .15s ease;-webkit-tap-highlight-color:transparent}.rate-star.on{color:#ffb524;text-shadow:0 0 10px rgba(255,181,36,.55)}.rate-star:active{transform:scale(1.25)}.rate-txt{font-size:12px;opacity:.8;margin-left:8px}";
+  document.head.appendChild(st);
+  var row = document.createElement("div"); row.className = "rate-row"; row.id = "rateRow"; row.setAttribute("role", "group");
+  var stars = [];
+  for (var i = 1; i <= 5; i++) (function (n) {
+    var b = document.createElement("button"); b.type = "button"; b.className = "rate-star"; b.textContent = "\u2605"; b.dataset.n = String(n);
+    b.addEventListener("click", function () { set(n); }); row.appendChild(b); stars.push(b);
+  })(i);
+  var txt = document.createElement("span"); txt.className = "rate-txt"; txt.id = "rateTxt"; txt.setAttribute("role", "status"); row.appendChild(txt);
+  meta.appendChild(row);
+  var KEY = "vp-rate.v1", map = {};
+  try { map = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { map = {}; }
+  var id = null;
+  function curId() { var m = (thumb.getAttribute("src") || "").match(/\/vi\/([\w-]{11})\//); return m ? m[1] : null; }
+  function paint() {
+    var r = id ? (map[id] || 0) : 0;
+    row.setAttribute("aria-label", T("Rate this video"));
+    stars.forEach(function (b, k) {
+      b.classList.toggle("on", k < r);
+      b.setAttribute("aria-pressed", k < r ? "true" : "false");
+      b.setAttribute("aria-label", (k + 1) + " " + T(k ? "stars" : "star"));
+    });
+    txt.textContent = r ? T("Your rating") + ": " + r + "/5" : T("Rate this video");
+  }
+  function set(n) {
+    if (!id) return;
+    if (map[id] === n) { delete map[id]; if (typeof window.toast === "function") window.toast(T("Rating removed")); }
+    else { map[id] = n; if (typeof window.toast === "function") window.toast(T("Rating saved: ") + n + "/5"); }
+    try { localStorage.setItem(KEY, JSON.stringify(map)); } catch (e) {}
+    paint();
+  }
+  function sync() { var n = curId(); if (n !== id) { id = n; paint(); } }
+  new MutationObserver(sync).observe(thumb, { attributes: true, attributeFilter: ["src"] });
+  setInterval(sync, 1500);
+  (window.__relang = window.__relang || []).push(paint);
+  sync(); paint();
 })();
 </script>
 </body>
