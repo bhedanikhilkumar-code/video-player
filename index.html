@@ -2101,6 +2101,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Stops the screen from dimming while a video plays. Not every browser supports this.": ["वीडियो चलते समय स्क्रीन को मंद होने से रोकता है. हर ब्राउज़र में काम नहीं करता.", "વિડિયો ચાલતો હોય ત્યારે સ્ક્રીન ઝાંખી થતી અટકાવે છે. દરેક બ્રાઉઝરમાં કામ કરતું નથી."],
    "Not supported in this browser.": ["यह ब्राउज़र इसे सपोर्ट नहीं करता.", "આ બ્રાઉઝર આને સપોર્ટ કરતું નથી."],
    "On": ["चालू", "ચાલુ"],
+   "Speed {n}x": ["स्पीड {n}x", "સ્પીડ {n}x"],
+   "Muted": ["म्यूट", "મ્યૂટ"],
+   "Sound on": ["आवाज़ चालू", "અવાજ ચાલુ"],
    "Drop a video or audio file to open it": ["वीडियो या ऑडियो फ़ाइल यहां छोड़ें", "વિડિયો કે ઓડિયો ફાઇલ અહીં છોડો"],
    "That file cannot be played here.": ["यह फ़ाइल यहां नहीं चल सकती.", "આ ફાઇલ અહીં ચાલી શકતી નથી."],
   };
@@ -6689,6 +6692,27 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   [[true,T("On")],[false,T("Off")]].forEach(function(o){var b=document.createElement("button");b.type="button";b.className="chip"+(o[0]===on?" active":"");b.setAttribute("aria-pressed",String(o[0]===on));b.textContent=o[1];b.disabled=!supported;b.onclick=function(){on=o[0];try{localStorage.setItem(key,on?"1":"0");}catch(e){}if(!on)release();render();sync();};chips.append(b);});}
  setInterval(sync,3000);document.addEventListener("visibilitychange",function(){if(document.hidden)release();else sync();});
  (window.__relang=window.__relang||[]).push(render);render();
+})();
+
+</script>
+<script>
+/* Local video keyboard shortcuts: < > speed, J/L 10 s, M mute, F fullscreen. Only when a local file is open and no YouTube video is playing. */
+(function(){"use strict";var T=window.T,steps=[0.5,0.75,1,1.25,1.5,2,2.5,3];
+ function typing(t){if(!t)return false;var n=t.tagName;return t.isContentEditable||n==="TEXTAREA"||n==="SELECT"||n==="BUTTON"||n==="A"||n==="SUMMARY"||(n==="INPUT"&&t.type!=="range");}
+ document.addEventListener("keydown",function(e){
+  if(e.ctrlKey||e.metaKey||e.altKey||e.defaultPrevented)return;
+  var v=document.getElementById("lpVideo");if(!v||v.hidden||!v.src)return;
+  if(window.__vpIsPlaying&&window.__vpIsPlaying())return;
+  if(typing(e.target)||Array.prototype.some.call(document.querySelectorAll("[role=dialog]"),function(d){return d.getClientRects().length>0;}))return;
+  var k=e.key,done=true;
+  if(k==="<"||k===">"){var i=0,d=Infinity;steps.forEach(function(s,n){var x=Math.abs(s-v.playbackRate);if(x<d){d=x;i=n;}});i=Math.max(0,Math.min(steps.length-1,i+(k===">"?1:-1)));var chips=document.querySelectorAll("#lpSpeeds .chip");if(chips[i])chips[i].click();else v.playbackRate=steps[i];window.toast(T("Speed {n}x").replace("{n}",steps[i]),1200);}
+  else if(k==="j"||k==="J")v.currentTime=Math.max(0,v.currentTime-10);
+  else if(k==="l"||k==="L")v.currentTime=Math.min(v.duration||1e9,v.currentTime+10);
+  else if(k==="m"||k==="M"){v.muted=!v.muted;window.toast(T(v.muted?"Muted":"Sound on"),1000);}
+  else if(k==="f"||k==="F"){if(document.fullscreenElement)document.exitFullscreen();else if(v.requestFullscreen)v.requestFullscreen();}
+  else done=false;
+  if(done)e.preventDefault();
+ });
 })();
 
 </script>
