@@ -3762,6 +3762,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
   }
 
+  var rateHudSkipUntil = 0;
   window.addEventListener("message", function (e) {
     if (!iframe || e.source !== iframe.contentWindow) return;
     if (e.origin !== YT_ORIGIN && e.origin !== "https://www.youtube.com") return;
@@ -3779,6 +3780,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     if (data.event === "onStateChange" && typeof data.info === "number") {
       if (sleepPaused && data.info === 1) { send("pauseVideo"); return; }
+      if (data.info === 5) rateHudSkipUntil = Date.now() + 2500;
       playing = data.info === 1; document.documentElement.classList.toggle("vp-playing", playing); if (playing) failedQueueCount = 0; if (playing && typeof tabAutoPaused !== "undefined") tabAutoPaused = false;
       if (window.__vpStateFx) window.__vpStateFx(data.info);
       try { fadeInState(data.info); } catch (e) {}
@@ -3811,7 +3813,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (data.info === 0 && prefs.fsExitEnd && !prefs.loop && !(abEnabled && abA != null && abB != null) && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
     }
     if (data.event === "onPlaybackQualityChange" && typeof data.info === "string") markActive(qualityChips, data.info);
-    if (data.event === "onPlaybackRateChange" && typeof data.info === "number") { prefs.speed = data.info; savePrefs(); markActive(speedChips, String(data.info)); if (curId) vmemRec({ speed: data.info }); }
+    if (data.event === "onPlaybackRateChange" && typeof data.info === "number") { prefs.speed = data.info; savePrefs(); markActive(speedChips, String(data.info)); if (curId) vmemRec({ speed: data.info }); if (window.__vpSpeedHud && Date.now() > rateHudSkipUntil) window.__vpSpeedHud(data.info); }
     if (data.event === "onError") {
       var ec = data.info;
       clearTimeout(loadWatchdog);
@@ -8439,7 +8441,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   vid.addEventListener("play", ensureAudio);
   [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3].forEach(function (r) {
     var b = document.createElement("button"); b.className = "chip" + (r === lp.rate ? " active" : ""); b.type = "button"; b.textContent = r + "x";
-    b.addEventListener("click", function () { vid.playbackRate = r; lp.rate = r; saveLp(); [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c === b); }); });
+    b.addEventListener("click", function () { vid.playbackRate = r; lp.rate = r; saveLp(); [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c === b); }); if (window.__vpSpeedHud) window.__vpSpeedHud(r); });
     sp.appendChild(b);
   });
   function show(url, local) {
@@ -10018,6 +10020,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Rewind after a pause", "rewind pause back seconds break podcast", "#rwPauseRow"],
       ["Often used controls", "often used frequent quick bar controls top shortcuts", "#favCtlBar"],
       ["Playback speed", "speed tez slow fast 2x", "#ctl-speed"],
+      ["Speed change pill", "speed pill popup confirm rate change 2x", "#ctl-speed"],
       ["Finish within (minutes)", "finish fit budget minutes time speed lecture", "#fitTimeForm"],
       ["Video quality", "quality hd 1080 720 4k", "#ctl-quality"],
       ["Data and battery saver", "saver data battery low", "#ctl-saver"],
@@ -10337,6 +10340,21 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     new MutationObserver(show).observe(volLabel, { childList: true, characterData: true, subtree: true });
     new MutationObserver(show).observe(muteBtn, { childList: true, characterData: true, subtree: true });
   }
+  // Speed: the same pill confirms a playback-rate change (speed chips, custom speed, Fit-time,
+  // hold-for-2x and the local file speed chips all route here). The bar shows the rate on a
+  // 0.25x to 3x scale; video-load rate restores are filtered out by the caller.
+  window.__vpSpeedHud = function (rate) {
+    if (!armed || typeof rate !== "number" || !(rate > 0)) return;
+    placeHud();
+    var key = "s" + rate;
+    if (key === lastKey) return; lastKey = key;
+    ico.textContent = "⏩";
+    var pos = (Math.log(rate) - Math.log(0.25)) / (Math.log(3) - Math.log(0.25));
+    fill.style.width = Math.round(Math.max(0, Math.min(1, pos)) * 100) + "%";
+    pct.textContent = rate + "×";
+    hud.classList.add("on");
+    clearTimeout(hideT); hideT = setTimeout(function () { hud.classList.remove("on"); }, 1100);
+  };
 })();
 </script>
 <script id="r36-mini-title-js">
