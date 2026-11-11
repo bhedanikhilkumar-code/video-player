@@ -9332,6 +9332,12 @@ html.low-fx :focus-visible { box-shadow: none !important; }
 </script>
 
 <style id="r40-sleep-pill">
+#sleepPillGo{display:flex;align-items:center;gap:8px;background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;font-weight:600;cursor:pointer}
+#sleepPillPlus{border:1px solid var(--hairline);background:rgba(127,127,127,.14);color:inherit;font:inherit;font-size:12px;font-weight:700;border-radius:99px;padding:5px 11px;cursor:pointer;white-space:nowrap}
+#sleepPillPlus:hover{background:rgba(127,127,127,.22)}
+#sleepPillPlus:active{transform:scale(.94)}
+html.low-fx #sleepPillPlus:active{transform:none}
+@media (prefers-reduced-motion:reduce){#sleepPillPlus:active{transform:none}}
 /* Sleep timer pill (round 40): while a timer runs, a small glass pill floats at the bottom
    so the countdown stays visible from anywhere on the page. Tap it to jump to the timer.
    It moves above the mini player when that floats, and hides in cinema mode. */
@@ -9348,11 +9354,16 @@ html.low-fx #sleepPill .sp-dot{animation:none}
 (function () {
   var label = document.getElementById("sleepLabel"), extend = document.getElementById("sleepExtend"), card = document.getElementById("ctl-sleep");
   if (!label || !extend || !card) return;
-  var pill = document.createElement("button");
-  pill.type = "button"; pill.id = "sleepPill"; pill.setAttribute("aria-live", "polite");
+  var pill = document.createElement("div");
+  pill.id = "sleepPill"; pill.setAttribute("role", "group");
+  var go = document.createElement("button");
+  go.type = "button"; go.id = "sleepPillGo"; go.setAttribute("aria-live", "polite");
   var dot = document.createElement("span"); dot.className = "sp-dot"; dot.setAttribute("aria-hidden", "true");
   var txt = document.createElement("span");
-  pill.appendChild(dot); pill.appendChild(txt); document.body.appendChild(pill);
+  go.appendChild(dot); go.appendChild(txt);
+  var plus = document.createElement("button");
+  plus.type = "button"; plus.id = "sleepPillPlus";
+  pill.appendChild(go); pill.appendChild(plus); document.body.appendChild(pill);
   var dock = document.getElementById("playerDock");
   function place() {
     if (dock && dock.classList.contains("is-mini")) pill.style.bottom = Math.round(dock.getBoundingClientRect().height + 24) + "px";
@@ -9361,17 +9372,20 @@ html.low-fx #sleepPill .sp-dot{animation:none}
   function update() {
     var on = !extend.hidden && /:/.test(label.textContent || "");
     txt.textContent = on ? label.textContent : "";
+    plus.textContent = extend.textContent || "+10 min";
+    plus.setAttribute("aria-label", (extend.textContent || "+10 min") + " - " + (label.textContent || ""));
     pill.classList.toggle("show", on);
     if (on) place();
   }
   new MutationObserver(update).observe(label, { childList: true, characterData: true, subtree: true });
-  new MutationObserver(update).observe(extend, { attributes: true, attributeFilter: ["hidden"] });
+  new MutationObserver(update).observe(extend, { attributes: true, attributeFilter: ["hidden"], childList: true, characterData: true, subtree: true });
   if (dock) new MutationObserver(place).observe(dock, { attributes: true, attributeFilter: ["class"] });
   window.addEventListener("resize", place, { passive: true });
-  pill.addEventListener("click", function () {
+  go.addEventListener("click", function () {
     var r = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     card.scrollIntoView({ behavior: r ? "auto" : "smooth", block: "center" });
   });
+  plus.addEventListener("click", function () { extend.click(); });
   update();
 })();
 </script>
