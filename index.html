@@ -1718,7 +1718,7 @@ setTimeout(done,3000);})();
         <div class="info-text">
           <span class="np-pill" id="npPill"><span class="np-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="npPillT">Now playing</span></span>
           <div class="info-title" id="infoTitle"></div>
-          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><span id="infoDur"></span><span class="vmem-note" id="vmemNote" hidden></span><span class="vmem-note" id="npWatched" hidden></span></div>
+          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><button class="chip chan-star" id="chanStarBtn" type="button" aria-pressed="false" aria-label="Save channel" hidden>☆</button><span id="infoDur"></span><span class="vmem-note" id="vmemNote" hidden></span><span class="vmem-note" id="npWatched" hidden></span></div>
         </div>
       </div>
 
@@ -2192,6 +2192,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button></span></div>
+      <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
       <div class="lib-head"><h3 id="lhHist">Recently watched</h3><button class="chip" id="clearHistBtn">Clear</button></div>
       <ul class="lib-list" id="histList"></ul>
@@ -6900,6 +6901,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       lyrics: (function () { var o = {}; if (typeof lyrics === "object" && lyrics) Object.keys(lyrics).forEach(function (id) { if (typeof lyrics[id] === "string" && lyrics[id].trim()) o[id] = lyrics[id]; }); return o; })(),
       lyricSync: (function () { var o = {}; if (typeof lyrSync === "object" && lyrSync) Object.keys(lyrSync).forEach(function (id) { var a = lyrSync[id]; if (Array.isArray(a) && a.length) o[id] = a.map(function (x) { return Math.round(x * 10) / 10; }); }); return o; })(),
       practiceLoops: practiceLoops,
+      channels: vpChans.map(function (c) { return { n: c.n, u: c.u }; }),
       settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
     ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
@@ -6919,6 +6921,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (nLyrics) libBackupMsg.textContent += " " + T("Lyrics included: ") + nLyrics + ".";
     var nLyrSyn = Object.keys(data.lyricSync || {}).length;
     if (nLyrSyn) libBackupMsg.textContent += " " + T("Lyrics sync included: ") + nLyrSyn + ".";
+    if (data.channels.length) libBackupMsg.textContent += " " + T("Channels included: ") + data.channels.length + ".";
     bkMark();
   });
   $("libImport").addEventListener("click", function () { $("libImportFile").click(); });
@@ -6945,6 +6948,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         });
         var ln = 0;
         (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { lib.later.push({ id: x.id, title: typeof x.title === "string" ? x.title : "", ts: typeof x.ts === "number" ? x.ts : 0 }); ln++; } });
+        var cn = 0;
+        if (Array.isArray(d.channels) && typeof vpChans !== "undefined") {
+          d.channels.forEach(function (c) {
+            if (!c || typeof c.n !== "string" || !c.n.trim() || typeof c.u !== "string") return;
+            if (vpChans.length >= 30) return;
+            if (chanFind(c.n.trim().slice(0, 60)) >= 0) return;
+            vpChans.push({ n: c.n.trim().slice(0, 60), u: /^https:\/\/(www\.)?youtube\.com\//.test(c.u) ? c.u : "" }); cn++;
+          });
+          if (cn) { vpChansSave(); chanRowRender(); chanStarRender(); }
+        }
         var mn = 0;
         if (d.moments && typeof d.moments === "object" && !Array.isArray(d.moments)) {
           Object.keys(d.moments).forEach(function (id) {
@@ -7004,7 +7017,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
         }
-        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
+        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !cn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
         saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
         bkMark();
         libBackupMsg.textContent = T("Imported ") + qn + T(" queued, ") + fn + " " + (fn === 1 ? T("favourite") : T("favourites")) + T(" and ") + pn + " " + (pn === 1 ? T("playlist") : T("playlists")) + ".";
@@ -7012,6 +7025,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (nn) libBackupMsg.textContent += " " + T("Notes restored: ") + nn + ".";
         if (nl) libBackupMsg.textContent += " " + T("Lyrics restored: ") + nl + ".";
         if (nSyn) libBackupMsg.textContent += " " + T("Lyrics sync restored: ") + nSyn + ".";
+        if (cn) libBackupMsg.textContent += " " + T("Channels restored: ") + cn + ".";
         if (gotSettings) { libBackupMsg.textContent += " " + T("Settings restored. Reloading to apply\u2026"); setTimeout(function () { location.reload(); }, 1200); }
       } catch (e) { libBackupMsg.textContent = T("That file could not be read. Use a backup file made by this app."); }
     };
@@ -7652,6 +7666,88 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   };
   (window.__relang = window.__relang || []).push(ccMuteRender);
   ccMuteRender();
+
+  // Favourite channels (round 104): a star beside the channel name in the info card saves the
+  // channel of the video playing now; saved channels sit as chips at the top of Favourites -
+  // tap one to open it on YouTube, tap the x to remove it (with Undo). Saved on this device
+  // and riding the backup, translated in Hindi and Gujarati, in the feature finder and
+  // What's new.
+  Object.assign(TR_MSG, {
+    "Save channel": ["\u091A\u0948\u0928\u0932 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902", "\u0A9A\u0AC7\u0AA8\u0AB2 \u0AB8\u0AC7\u0AB5 \u0A95\u0AB0\u0ACB"],
+    "Channel saved": ["\u091A\u0948\u0928\u0932 \u0938\u0947\u0935 \u0939\u094B \u0917\u092F\u093E", "\u0A9A\u0AC7\u0AA8\u0AB2 \u0AB8\u0AC7\u0AB5 \u0AA5\u0A88 \u0A97\u0A88"],
+    "Channel removed": ["\u091A\u0948\u0928\u0932 \u0939\u091F\u093E \u0926\u093F\u092F\u093E \u0917\u092F\u093E", "\u0A9A\u0AC7\u0AA8\u0AB2 \u0AB9\u0A9F\u0ABE\u0AB5\u0AC0 \u0AA6\u0AC7\u0AB5\u0ABE\u0A88"],
+    "Channel restored": ["\u091A\u0948\u0928\u0932 \u0935\u093E\u092A\u0938 \u0906 \u0917\u092F\u093E", "\u0A9A\u0AC7\u0AA8\u0AB2 \u0AAA\u0ABE\u0A9B\u0AC0 \u0A86\u0AB5\u0AC0"],
+    "Remove channel": ["\u091A\u0948\u0928\u0932 \u0939\u091F\u093E\u090F\u0902", "\u0A9A\u0AC7\u0AA8\u0AB2 \u0AB9\u0A9F\u0ABE\u0AB5\u0ACB"],
+    "Open channel on YouTube": ["YouTube \u092A\u0930 \u091A\u0948\u0928\u0932 \u0916\u094B\u0932\u0947\u0902", "YouTube \u0AAA\u0AB0 \u0A9A\u0AC7\u0AA8\u0AB2 \u0A96\u0ACB\u0AB2\u0ACB"],
+    "Saved channels": ["\u0938\u0947\u0935 \u0915\u093F\u090F \u0917\u090F \u091A\u0948\u0928\u0932", "\u0AB8\u0AC7\u0AB5 \u0A95\u0AB0\u0AC7\u0AB2\u0AC0 \u0A9A\u0AC7\u0AA8\u0AB2\u0ACB"],
+    "Favourite channels": ["\u092A\u0938\u0902\u0926\u0940\u0926\u093E \u091A\u0948\u0928\u0932", "\u0AAE\u0AA8\u0AAA\u0AB8\u0A82\u0AA6 \u0A9A\u0AC7\u0AA8\u0AB2\u0ACB"],
+    "Load a video to save its channel": ["\u091A\u0948\u0928\u0932 \u0938\u0947\u0935 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u092A\u0939\u0932\u0947 \u0935\u0940\u0921\u093F\u092F\u094B \u091A\u0932\u093E\u090F\u0902", "\u0A9A\u0AC7\u0AA8\u0AB2 \u0AB8\u0AC7\u0AB5 \u0A95\u0AB0\u0AB5\u0ABE \u0AAA\u0AB9\u0AC7\u0AB2\u0ABE\u0A82 \u0AB5\u0AC0\u0AA1\u0ABF\u0AAF\u0ACB \u0A9A\u0AB2\u0ABE\u0AB5\u0ACB"],
+    "You can keep up to 30 channels. Remove one first.": ["\u0906\u092A 30 \u0924\u0915 \u091A\u0948\u0928\u0932 \u0930\u0916 \u0938\u0915\u0924\u0947 \u0939\u0948\u0902. \u092A\u0939\u0932\u0947 \u090F\u0915 \u0939\u091F\u093E\u090F\u0902.", "\u0AA4\u0AAE\u0AC7 30 \u0AB8\u0AC1\u0AA7\u0AC0\u0AA8\u0AC0 \u0A9A\u0AC7\u0AA8\u0AB2\u0ACB \u0AB0\u0ABE\u0A96\u0AC0 \u0AB6\u0A95\u0ACB \u0A9B\u0ACB. \u0AAA\u0AB9\u0AC7\u0AB2\u0ABE\u0A82 \u0A8F\u0A95 \u0AB9\u0A9F\u0ABE\u0AB5\u0ACB."],
+    "Channels included: ": ["\u091A\u0948\u0928\u0932 \u0936\u093E\u092E\u093F\u0932: ", "\u0A9A\u0AC7\u0AA8\u0AB2\u0ACB \u0AB8\u0ABE\u0AAE\u0AC7\u0AB2: "],
+    "Channels restored: ": ["\u091A\u0948\u0928\u0932 \u0935\u093E\u092A\u0938 \u092E\u093F\u0932\u0947: ", "\u0A9A\u0AC7\u0AA8\u0AB2\u0ACB \u0AAA\u0ABE\u0A9A\u0AC0 \u0AAE\u0AB3\u0AC0: "]
+  });
+  var chansSt = document.createElement("style");
+  chansSt.textContent = ".chan-star{padding:2px 8px;margin:-2px 0;font-size:13px;line-height:1.4}"
+    + ".chan-star.active{color:var(--teal)}"
+    + ".chan-row{margin:2px 0 8px;align-items:center}"
+    + ".chan-chip-x{margin-left:2px;padding:2px 7px}";
+  document.head.appendChild(chansSt);
+  var CHANS_KEY = "vp-chans.v1", vpChans = [];
+  try {
+    var _vc = JSON.parse(localStorage.getItem(CHANS_KEY) || "[]");
+    if (Array.isArray(_vc)) vpChans = _vc.filter(function (c) { return c && typeof c.n === "string" && c.n.trim() && typeof c.u === "string"; }).slice(0, 30);
+  } catch (e) {}
+  function vpChansSave() { try { localStorage.setItem(CHANS_KEY, JSON.stringify(vpChans.slice(0, 30))); } catch (e) {} }
+  function chanCur() {
+    if (!infoChannel || !curId) return null;
+    var n = (infoChannel.textContent || "").replace(/\s+/g, " ").trim();
+    if (!n) return null;
+    var u = infoChannel.href && /^https:\/\/(www\.)?youtube\.com\//.test(infoChannel.href) ? infoChannel.href : "";
+    return { n: n.slice(0, 60), u: u };
+  }
+  function chanFind(n) { n = n.toLowerCase(); for (var i = 0; i < vpChans.length; i++) if (vpChans[i].n.toLowerCase() === n) return i; return -1; }
+  var chanStarBtn = $("chanStarBtn"), chanRow = $("chanRow"), chanChips = $("chanChips"), chanRowLab = $("chanRowLab");
+  function chanStarRender() {
+    if (!chanStarBtn) return;
+    var c = chanCur(), saved = !!c && chanFind(c.n) >= 0;
+    chanStarBtn.hidden = !c;
+    chanStarBtn.textContent = saved ? "\u2605" : "\u2606";
+    chanStarBtn.classList.toggle("active", saved);
+    chanStarBtn.setAttribute("aria-pressed", String(saved));
+    chanStarBtn.setAttribute("aria-label", T(saved ? "Channel saved" : "Save channel"));
+    chanStarBtn.title = T(saved ? "Channel saved" : "Save channel");
+  }
+  function chanRowRender() {
+    if (chanRowLab) chanRowLab.textContent = T("Saved channels");
+    if (!chanRow || !chanChips) return;
+    chanChips.textContent = "";
+    chanRow.hidden = vpChans.length === 0;
+    vpChans.forEach(function (c) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip";
+      b.textContent = c.n; b.setAttribute("aria-label", T("Open channel on YouTube") + ": " + c.n);
+      b.addEventListener("click", function () { window.open(c.u || ("https://www.youtube.com/results?search_query=" + encodeURIComponent(c.n)), "_blank", "noopener"); });
+      var x = document.createElement("button"); x.type = "button"; x.className = "chip chan-chip-x";
+      x.textContent = "\u2715"; x.setAttribute("aria-label", T("Remove channel") + ": " + c.n);
+      x.addEventListener("click", function () {
+        var i = chanFind(c.n); if (i < 0) return;
+        var gone = vpChans.splice(i, 1)[0]; vpChansSave(); chanRowRender(); chanStarRender();
+        toastUndo(T("Channel removed"), function () { if (chanFind(gone.n) < 0 && vpChans.length < 30) { vpChans.push(gone); vpChansSave(); chanRowRender(); chanStarRender(); } }, T("Channel restored"));
+      });
+      chanChips.appendChild(b); chanChips.appendChild(x);
+    });
+  }
+  if (chanStarBtn) chanStarBtn.addEventListener("click", function () {
+    var c = chanCur(); if (!c) { toast(T("Load a video to save its channel")); return; }
+    var i = chanFind(c.n);
+    if (i >= 0) { vpChans.splice(i, 1); vpChansSave(); chanStarRender(); chanRowRender(); toast(T("Channel removed")); }
+    else {
+      if (vpChans.length >= 30) { toast(T("You can keep up to 30 channels. Remove one first.")); return; }
+      vpChans.push(c); vpChansSave(); chanStarRender(); chanRowRender(); toast(T("Channel saved"));
+    }
+  });
+  if (infoChannel) new MutationObserver(function () { chanStarRender(); }).observe(infoChannel, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["href"] });
+  (window.__relang = window.__relang || []).push(function () { chanStarRender(); chanRowRender(); });
+  chanStarRender(); chanRowRender();
 
   // App color: accent presets plus a custom colour picker, on top of the light/dark theme.
   var ACCENTS = [["default", "#3a8a77"], ["blue", "#2f6fd0"], ["purple", "#7a4fd0"], ["orange", "#c96a1f"], ["pink", "#d02f7a"]];
@@ -9538,6 +9634,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   var WNEW = [
     ["Captions when muted", "#ccMuteBtn"],
+    ["Favourite channels", "#chanRow"],
     ["Skip watched in queue", "#qSkipWBtn"],
     ["Daily watch limit", "#dlimChips"],
     ["Progress line", "#progLineBtn"],
@@ -9545,8 +9642,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Auto lyrics", "#lyricsAutoBtn"],
     ["Sync nudge", "#lyrNudgeBack"],
     ["Play flash", "#playFlashBtn"],
-    ["Player tilt", "#tiltBtn"],
-    ["Tap-to-sync lyrics", "#lyricsSyncBtn"]
+    ["Player tilt", "#tiltBtn"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -11748,7 +11844,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Progress line", "progress line bar bottom video fills watched mini player glance", "#progLineBtn"],
       ["Daily watch limit", "daily limit cap stop total watch time today enough rest pause sleep", "#dlimChips"],
       ["Skip watched in queue", "skip watched finished seen queue next auto-next backlog left unwatched", "#qSkipWBtn"],
-      ["Captions when muted", "captions cc subtitles auto mute muted sound off read quiet night", "#ccMuteBtn"]
+      ["Captions when muted", "captions cc subtitles auto mute muted sound off read quiet night", "#ccMuteBtn"],
+      ["Favourite channels", "channel channels save star favourite creator subscribe open youtube", "#chanRow"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
