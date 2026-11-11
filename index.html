@@ -1745,6 +1745,8 @@ setTimeout(done,3000);})();
           <p class="hint" id="nightVolHint">Between 10 pm and 7 am the volume is capped at the level you pick. Your normal volume stays saved for the day.</p>
           <div class="row" style="margin-top:8px"><button class="chip" id="pvVolBtn" type="button" aria-pressed="false">Per-video volume: off</button></div>
           <p class="hint" id="pvVolHint">When on, the volume you pick is remembered for each video and comes back the next time you play it. Songs can stay loud and lectures quiet.</p>
+          <div class="row" id="fadeInRow" style="margin-top:8px"><span class="label" id="fadeInLab">Fade in</span><span class="chips" id="fadeInChips"></span></div>
+          <p class="hint" id="fadeInHint">When a video starts or you press Play, the sound rises slowly from silence to your volume. Gentle on the ears, especially at night.</p>
         </div>
 
         <div class="ctl-card" id="ctl-speed">
@@ -3758,6 +3760,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (sleepPaused && data.info === 1) { send("pauseVideo"); return; }
       playing = data.info === 1; document.documentElement.classList.toggle("vp-playing", playing); if (playing) failedQueueCount = 0; if (playing && typeof tabAutoPaused !== "undefined") tabAutoPaused = false;
       if (window.__vpStateFx) window.__vpStateFx(data.info);
+      try { fadeInState(data.info); } catch (e) {}
       if (data.info === 2) rwPausedAt = Date.now();
       else if (data.info === 1 && rwPausedAt) {
         var rwGap = Date.now() - rwPausedAt; rwPausedAt = 0;
@@ -3830,7 +3833,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (typeof i.volume === "number") {
         var volIn = Math.round(i.volume);
         // While the night cap holds the player low, its echo must not drag the saved daytime volume down with it.
-        if (!(prefs.nightVol > 0 && nightOn() && volIn <= prefs.nightVol && prefs.volume > prefs.nightVol)) { prefs.volume = volIn; vol.value = volIn; }
+        if (!fadeActive && !(prefs.nightVol > 0 && nightOn() && volIn <= prefs.nightVol && prefs.volume > prefs.nightVol)) { prefs.volume = volIn; vol.value = volIn; }
         paintVolLabel();
       }
       if (typeof i.muted === "boolean") { muted = i.muted; muteBtn.textContent = muted ? T("🔇 Unmute") : T("🔊 Mute"); }
@@ -4263,6 +4266,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   vol.addEventListener("input", function () {
     var v = Number(vol.value);
     prefs.volume = v; savePrefs(); paintVolLabel();
+    if (fadeActive) fadeStop(false);
     send("setVolume", [effVol()]);
     if (v > 0 && muted) send("unMute");
     pvVolRec();
@@ -4335,6 +4339,60 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toast(prefs.pvVol ? T("Per-video volume on - each video keeps its own volume on this device.") : T("Per-video volume off - one volume for every video."));
   });
   (window.__relang = window.__relang || []).push(pvVolRender); pvVolRender();
+
+  /* Fade in (round 85): when a video starts or Play is pressed after a pause, the volume
+     rises from silence to the chosen volume over 2, 4 or 8 seconds. Seeking and buffering
+     do not trigger it. Touching the volume slider or pausing ends the fade at once. The
+     setting lives in its own key on this device (not in the backup file). */
+  var fadeSec = 0, fadeActive = false, fadeTimer = null, fadeLast = -2;
+  try { var fsv = Number(localStorage.getItem("vp-fadein.v1")); if (fsv === 2 || fsv === 4 || fsv === 8) fadeSec = fsv; } catch (e) {}
+  function fadeStop(restore) {
+    if (fadeTimer) { clearInterval(fadeTimer); fadeTimer = null; }
+    var was = fadeActive; fadeActive = false;
+    if (was && restore !== false && ready && iframe) send("setVolume", [effVol()]);
+  }
+  function fadeInState(info) {
+    if (info === 3) return;
+    var prev = fadeLast; fadeLast = info;
+    if (info !== 1) { if (fadeActive) fadeStop(true); return; }
+    if (prev === 1 || !fadeSec || !ready || !iframe || muted) return;
+    fadeStop(false);
+    fadeActive = true;
+    var steps = fadeSec * 5, k = 0;
+    send("setVolume", [0]);
+    fadeTimer = setInterval(function () {
+      k += 1;
+      if (k >= steps) { fadeStop(true); return; }
+      send("setVolume", [Math.round(effVol() * k / steps)]);
+    }, 200);
+  }
+  Object.assign(TR_MSG, {
+    "Fade in": ["धीरे-धीरे आवाज़ (फ़ेड इन)", "ધીમે ધીમે અવાજ (ફેડ ઇન)"],
+    "When a video starts or you press Play, the sound rises slowly from silence to your volume. Gentle on the ears, especially at night.": ["वीडियो शुरू होने या Play दबाने पर आवाज़ शांति से धीरे-धीरे आपकी आवाज़ तक बढ़ती है. कानों के लिए आरामदायक, खासकर रात में.", "વીડિયો શરૂ થાય કે Play દબાવો ત્યારે અવાજ શાંતિથી ધીમે ધીમે તમારા અવાજ સુધી વધે છે. કાન માટે આરામદાયક, ખાસ કરીને રાતે."],
+    "Fade in off.": ["फ़ेड इन बंद.", "ફેડ ઇન બંધ."],
+    "Fade in set to {n} seconds.": ["फ़ेड इन {n} सेकंड पर सेट.", "ફેડ ઇન {n} સેકંડ પર સેટ."]
+  });
+  var fadeChips = $("fadeInChips");
+  function renderFadeIn() {
+    if (!fadeChips) return;
+    fadeChips.innerHTML = "";
+    [0, 2, 4, 8].forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip" + (fadeSec === c ? " active" : "");
+      b.dataset.value = String(c); b.setAttribute("aria-pressed", String(fadeSec === c));
+      b.textContent = c === 0 ? T("Off") : c + "s";
+      b.addEventListener("click", function () {
+        fadeSec = c; try { localStorage.setItem("vp-fadein.v1", String(c)); } catch (e) {}
+        if (!c) fadeStop(true);
+        renderFadeIn();
+        toast(c === 0 ? T("Fade in off.") : T("Fade in set to {n} seconds.").replace("{n}", c));
+      });
+      fadeChips.appendChild(b);
+    });
+    var h = $("fadeInHint"); if (h) h.textContent = T("When a video starts or you press Play, the sound rises slowly from silence to your volume. Gentle on the ears, especially at night.");
+    var l = $("fadeInLab"); if (l) l.textContent = T("Fade in");
+  }
+  (window.__relang = window.__relang || []).push(renderFadeIn); renderFadeIn();
 
   /* Rewind after a pause (round 78): like a podcast app - when a pause lasts 30 seconds or
      more, pressing Play first jumps back a few seconds so the thread of the video comes back.
@@ -9857,6 +9915,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     out.push({ label: T("Night volume"), group: "Player", run: jump("#nightVolRow") });
     out.push({ label: T("Leave full screen when the video ends"), group: "Player", run: click("fsExitBtn") });
     out.push({ label: T("Per-video volume"), group: "Player", run: click("pvVolBtn") });
+    out.push({ label: T("Fade in"), group: "Player", run: jump("#fadeInRow") });
     out.push({ label: T("Collapse or expand all sections"), group: "Actions", run: click("secAllBtn") });
     var inst = document.getElementById("installBtn");
     if (inst && !inst.hidden) out.push({ label: "Install app", group: "Actions", run: click("installBtn") });
@@ -9880,6 +9939,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var FEATS = [
       ["Volume and sound", "volume sound awaaz mute loud louder", "#ctl-sound"],
       ["Per-video volume", "per video volume remember own loud quiet", "#pvVolBtn"],
+      ["Fade in", "fade in soft start volume rise gentle slowly night", "#fadeInRow"],
       ["Simple mode", "simple clean easy less clutter hide advanced long page", "#simpleModeBtn"],
       ["Rewind after a pause", "rewind pause back seconds break podcast", "#rwPauseRow"],
       ["Often used controls", "often used frequent quick bar controls top shortcuts", "#favCtlBar"],
