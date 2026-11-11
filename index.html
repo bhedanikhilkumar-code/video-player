@@ -3943,6 +3943,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (ready && iframe) send("setVolume", [effVol()]);
       paintVolLabel();
     }
+    vmemNoteRender();
+    if (typeof introPaint === "function") introPaint();
+  }
+  // The note line is built apart from vmemApply so a language switch can redraw it
+  // without re-applying speed/CC/volume. Registered below in __relang: before this fix the
+  // line kept the language it was first rendered in until the next video load.
+  function vmemNoteRender() {
+    var vm = curId && vmem[curId];
+    if (!vm) { vmemNote(""); return; }
     var bits = [];
     if (typeof vm.speed === "number" && vm.speed !== 1) bits.push(vm.speed + "x");
     if (vm.cc) bits.push(T("CC on"));
@@ -3950,8 +3959,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (typeof vm.intro === "number" && vm.intro >= 1) bits.push(T("skip to ") + fmt(vm.intro));
     if (typeof vm.outro === "number" && vm.outro >= 1) bits.push(T("outro from ") + fmt(vm.outro));
     vmemNote(bits.length ? T("Remembered for this video: ") + bits.join(" \u00b7 ") : "");
-    if (typeof introPaint === "function") introPaint();
   }
+  (window.__relang = window.__relang || []).push(vmemNoteRender);
   // ---- Skip intro (round 74): mark where a video's intro ends once, and a glass Skip chip
   // on the video jumps straight past it on every watch, Netflix style. Kept per video in the
   // per-video memory on this device, so it is included in the backup with speed and CC choices.
