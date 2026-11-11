@@ -1612,7 +1612,7 @@ setTimeout(done,3000);})();
           <div class="row">
             <button class="btn" id="playBtn" disabled>▶ Play</button>
             <span class="time" id="timeLabel">0:00 / 0:00</span> <span class="ends-at" id="endsAt" hidden></span>
-            <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button> <button class="chip" id="lockBtn" type="button" aria-pressed="false">🔒 Lock touch</button> <button class="chip" id="fsRotBtn" type="button" aria-pressed="true">🔄 Auto-rotate</button>
+            <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button> <button class="chip" id="lockBtn" type="button" aria-pressed="false">🔒 Lock touch</button> <button class="chip" id="fsRotBtn" type="button" aria-pressed="true">🔄 Auto-rotate</button> <button class="chip" id="statsBtn" type="button" aria-pressed="false">📊 Stats</button>
           </div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
@@ -2200,6 +2200,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Watch later restored": ["बाद के लिए सूची वापस आ गई", "પછી માટેની યાદી પાછી આવી"],
    "Queue order mixed": ["कतार का क्रम मिला दिया", "ક્યૂનો ક્રમ મિક્સ થયો"],
    "Ends at": ["खत्म होगा", "પૂરું થશે"],
+   "📊 Stats": ["📊 आंकड़े", "📊 આંકડા"],
+   "Live video stats": ["लाइव वीडियो आंकड़े", "લાઇવ વિડિયો આંકડા"],
+   "Quality": ["क्वालिटी", "ક્વાલિટી"],
+   "Speed": ["स्पीड", "સ્પીડ"],
+   "Volume": ["आवाज़", "અવાજ"],
+   "Buffered": ["बफ़र", "બફર"],
+   "Time": ["समय", "સમય"],
+   "Stats shown": ["आंकड़े दिख रहे हैं", "આંકડા દેખાય છે"],
+   "Stats hidden": ["आंकड़े छिपे", "આંકડા છુપાયા"],
    "Custom speed": ["अपनी स्पीड", "પોતાની સ્પીડ"],
    "Set": ["सेट", "સેટ"],
    "Pick a speed between 0.25 and 2.": ["0.25 से 2 के बीच स्पीड चुनें.", "0.25 અને 2 વચ્ચે સ્પીડ પસંદ કરો."],
@@ -10250,6 +10259,85 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   document.getElementById("langOfferHi").addEventListener("click", function () { setLang("hi"); done(); });
   document.getElementById("langOfferGu").addEventListener("click", function () { setLang("gu"); done(); });
   document.getElementById("langOfferEn").addEventListener("click", done);
+})();
+</script>
+<script>
+/* Live stats overlay (round 70): a small glass panel on the video corner shows what the
+   YouTube player is doing right now - quality, speed, volume, buffered share and time.
+   Toggled with the Stats chip, off by default, remembered on the device, hidden in the
+   mini player, translated in Hindi and Gujarati. */
+(function () {
+  "use strict";
+  var T = window.T || function (x) { return x; };
+  var btn = document.getElementById("statsBtn"), box = document.getElementById("frameBox");
+  if (!btn || !box) return;
+  var st = document.createElement("style");
+  st.textContent = ".vp-statsov{position:absolute;top:8px;right:8px;z-index:6;pointer-events:none;min-width:132px;padding:9px 12px;border-radius:12px;background:rgba(20,20,30,.62);color:#fff;border:1px solid rgba(255,255,255,.28);box-shadow:0 4px 16px #0006;backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);font-size:12px;line-height:1.65;font-variant-numeric:tabular-nums}"
+    + ".vp-statsov[hidden]{display:none}"
+    + ".vp-statsov .so-r{display:flex;justify-content:space-between;gap:14px}"
+    + ".vp-statsov .so-l{opacity:.75}"
+    + ".vp-statsov .so-v{font-weight:700}"
+    + "#playerDock.is-mini .vp-statsov{display:none}";
+  document.head.appendChild(st);
+  var ov = document.createElement("div");
+  ov.className = "vp-statsov"; ov.id = "vpStatsOv"; ov.setAttribute("aria-hidden", "true"); ov.hidden = true;
+  box.appendChild(ov);
+  var KEY = "vp-stats-ov.v1", on = false, info = null;
+  try { on = localStorage.getItem(KEY) === "1"; } catch (e) {}
+  function fmtT(s) {
+    if (!isFinite(s) || s < 0) return "0:00";
+    s = Math.floor(s);
+    var h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
+    var mm = h > 0 ? String(m).padStart(2, "0") : String(m);
+    return (h > 0 ? h + ":" : "") + mm + ":" + String(sec).padStart(2, "0");
+  }
+  function qName(q) {
+    return { tiny: "144p", small: "240p", medium: "360p", large: "480p", hd720: "720p", hd1080: "1080p", hd1440: "1440p", hd2160: "4K", highres: "4K" }[q] || "Auto";
+  }
+  function row(l, v) { return '<div class="so-r"><span class="so-l"></span><span class="so-v"></span></div>'; }
+  function paint() {
+    btn.textContent = T("📊 Stats");
+    btn.classList.toggle("active", on); btn.setAttribute("aria-pressed", on ? "true" : "false");
+    btn.setAttribute("aria-label", T("Live video stats"));
+    var show = on && !!info;
+    ov.hidden = !show;
+    if (!show) return;
+    var i = info;
+    var vol = (typeof i.muted === "boolean" && i.muted) ? "0%" : (typeof i.volume === "number" ? Math.round(i.volume) + "%" : "-");
+    var buf = typeof i.videoLoadedFraction === "number" ? Math.round(i.videoLoadedFraction * 100) + "%" : "-";
+    var qual = i.playbackQuality ? qName(i.playbackQuality) : "Auto";
+    var spd = typeof i.playbackRate === "number" ? i.playbackRate + "x" : "1x";
+    var tim = (typeof i.currentTime === "number" ? fmtT(i.currentTime) : "0:00") + (typeof i.duration === "number" && i.duration > 0 ? " / " + fmtT(i.duration) : "");
+    ov.innerHTML = row() + row() + row() + row() + row();
+    var rows = ov.children, vals = [[T("Quality"), qual], [T("Speed"), spd], [T("Volume"), vol], [T("Buffered"), buf], [T("Time"), tim]];
+    for (var k = 0; k < rows.length; k++) { rows[k].firstChild.textContent = vals[k][0]; rows[k].lastChild.textContent = vals[k][1]; }
+  }
+  window.addEventListener("message", function (e) {
+    if (e.origin !== "https://www.youtube-nocookie.com" && e.origin !== "https://www.youtube.com") return;
+    var d; try { d = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch (err) { return; }
+    if (!d || (d.event !== "infoDelivery" && d.event !== "initialDelivery") || !d.info) return;
+    var first = !info; info = d.info;
+    if (!ov.hidden || (on && first)) paint();
+    else if (on) {
+      // Refresh the numbers live, but only the cheap text fields.
+      var rows = ov.children;
+      if (rows.length === 5) {
+        var i = info;
+        rows[0].lastChild.textContent = i.playbackQuality ? qName(i.playbackQuality) : "Auto";
+        rows[1].lastChild.textContent = typeof i.playbackRate === "number" ? i.playbackRate + "x" : "1x";
+        rows[2].lastChild.textContent = (typeof i.muted === "boolean" && i.muted) ? "0%" : (typeof i.volume === "number" ? Math.round(i.volume) + "%" : "-");
+        rows[3].lastChild.textContent = typeof i.videoLoadedFraction === "number" ? Math.round(i.videoLoadedFraction * 100) + "%" : "-";
+        rows[4].lastChild.textContent = (typeof i.currentTime === "number" ? fmtT(i.currentTime) : "0:00") + (typeof i.duration === "number" && i.duration > 0 ? " / " + fmtT(i.duration) : "");
+      }
+    }
+  });
+  btn.addEventListener("click", function () {
+    on = !on; try { localStorage.setItem(KEY, on ? "1" : "0"); } catch (e) {}
+    paint();
+    if (typeof window.toast === "function") window.toast(on ? T("Stats shown") : T("Stats hidden"));
+  });
+  (window.__relang = window.__relang || []).push(paint);
+  paint();
 })();
 </script>
 </body>
