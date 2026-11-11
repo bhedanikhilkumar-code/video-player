@@ -2403,6 +2403,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Moments copied": ["पल कॉपी हुए", "ક્ષણો કૉપી થઈ"],
    "Copy link to moment": ["इस पल का लिंक कॉपी करें", "આ ક્ષણની લિંક કૉપી કરો"],
    "Moment link copied": ["पल का लिंक कॉपी हुआ", "ક્ષણની લિંક કૉપી થઈ"],
+   "Share card for moment": ["पल का शेयर कार्ड", "ક્ષણનું શેર કાર્ડ"],
+   "Scan to open at this time": ["इस समय पर खोलने के लिए स्कैन करें", "આ સમયે ખોલવા સ્કેન કરો"],
+   "Could not make the share card.": ["शेयर कार्ड नहीं बन सका.", "શેર કાર્ડ બની શક્યું નહીં."],
+   "Share card saved as an image": ["शेयर कार्ड इमेज के रूप में सेव हुआ", "શેર કાર્ડ ઇમેજ તરીકે સેવ થયું"],
    "No earlier moment": ["इससे पहले कोई पल नहीं", "આની પહેલાં કોઈ ક્ષણ નથી"],
    "No later moment": ["इसके बाद कोई पल नहीं", "આના પછી કોઈ ક્ષણ નથી"],
    "No moments to copy yet.": ["कॉपी करने के लिए अभी कोई पल नहीं.", "કૉપી કરવા હજી કોઈ ક્ષણ નથી."],
@@ -5284,6 +5288,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var sh = document.createElement("button"); sh.type = "button"; sh.className = "chip mark-x"; sh.textContent = "🔗";
       sh.setAttribute("aria-label", T("Copy link to moment") + " " + fmt(m.t));
       sh.addEventListener("click", function () { momentLinkCopy(m); });
+      var cardB = document.createElement("button"); cardB.type = "button"; cardB.className = "chip mark-x"; cardB.textContent = "\ud83d\uddbc";
+      cardB.setAttribute("aria-label", T("Share card for moment") + " " + fmt(m.t));
+      cardB.addEventListener("click", function () { momentCard(m); });
       var del = document.createElement("button"); del.type = "button"; del.className = "chip mark-x"; del.textContent = "\u2715";
       del.setAttribute("aria-label", T("Delete moment") + " " + fmt(m.t));
       del.addEventListener("click", function () {
@@ -5291,7 +5298,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         marks[curId] = arr.filter(function (x) { return x.t !== m.t; });
         marksSave(); renderMarks(); toast(T("Moment removed"));
       });
-      list.appendChild(go); list.appendChild(sh); list.appendChild(del);
+      list.appendChild(go); list.appendChild(sh); list.appendChild(cardB); list.appendChild(del);
     });
   }
   (function () {
@@ -5340,6 +5347,65 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       try { var ta = document.createElement("textarea"); ta.value = link; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var done = document.execCommand("copy"); ta.remove(); if (done) ok(); else toast(T("Could not copy. Try again.")); } catch (e) { toast(T("Could not copy. Try again.")); }
     }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok, fallback); else fallback();
+  }
+  // Share card: a picture of one saved moment (title, time, QR code) made on this device, shared or saved as a PNG.
+  function momentCard(m) {
+    if (!curId) return;
+    var link = location.origin + location.pathname + "?v=" + curId + "&from=" + m.t;
+    try {
+      if (typeof qrcode !== "function") { var qs = document.getElementById("qrLibSrc"); if (qs) (0, eval)(qs.textContent); }
+      var qr = qrcode(0, "M"); qr.addData(link); qr.make();
+      var W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+      var c = cv.getContext("2d");
+      var g = c.createLinearGradient(0, 0, W, H); g.addColorStop(0, "#1b2340"); g.addColorStop(.55, "#3b2a63"); g.addColorStop(1, "#0f6154");
+      c.fillStyle = g; c.fillRect(0, 0, W, H);
+      [[180, 220, 360, "rgba(127,210,191,.28)"], [900, 1100, 420, "rgba(255,170,120,.18)"], [940, 160, 260, "rgba(150,140,255,.25)"]].forEach(function (b) {
+        var rg = c.createRadialGradient(b[0], b[1], 0, b[0], b[1], b[2]); rg.addColorStop(0, b[3]); rg.addColorStop(1, "rgba(0,0,0,0)");
+        c.fillStyle = rg; c.fillRect(0, 0, W, H);
+      });
+      function rr(x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+      rr(70, 70, W - 140, H - 140, 64); c.fillStyle = "rgba(255,255,255,.10)"; c.fill(); c.lineWidth = 3; c.strokeStyle = "rgba(255,255,255,.28)"; c.stroke();
+      var FF = '-apple-system, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+      // logo tile
+      rr(130, 130, 96, 96, 26); c.fillStyle = "#fff"; c.fill();
+      var lg = c.createLinearGradient(160, 150, 205, 210); lg.addColorStop(0, "#ff6a88"); lg.addColorStop(1, "#6a5cff");
+      c.fillStyle = lg; c.beginPath(); c.moveTo(165, 154); c.lineTo(205, 178); c.lineTo(165, 202); c.closePath(); c.fill();
+      c.fillStyle = "rgba(255,255,255,.85)"; c.font = "600 40px " + FF; c.textBaseline = "middle"; c.fillText("HD Video Player", 252, 178);
+      c.textBaseline = "alphabetic";
+      c.fillStyle = "#7fd2bf"; c.font = "700 34px " + FF; c.fillText("SAVED MOMENT", 130, 330);
+      // title
+      var hi = typeof findIn === "function" ? findIn(lib.hist, curId) : -1;
+      var title = (hi >= 0 && lib.hist[hi].title) ? String(lib.hist[hi].title) : "YouTube video";
+      c.fillStyle = "#fff"; c.font = "700 60px " + FF;
+      var words = title.split(/\s+/), lines = [], cur = "";
+      words.forEach(function (w) { var t = cur ? cur + " " + w : w; if (c.measureText(t).width > W - 260 && cur) { lines.push(cur); cur = w; } else cur = t; });
+      if (cur) lines.push(cur);
+      if (lines.length > 3) { lines = lines.slice(0, 3); lines[2] = lines[2].replace(/.{0,2}$/, "") + "\u2026"; }
+      lines.forEach(function (ln, i) { c.fillText(ln, 130, 410 + i * 76); });
+      var y = 410 + lines.length * 76 + 40;
+      if (m.name && m.name !== fmt(m.t)) { c.fillStyle = "rgba(255,255,255,.8)"; c.font = "500 44px " + FF; c.fillText("\u201c" + m.name + "\u201d", 130, y); y += 60; }
+      // time
+      c.fillStyle = "#fff"; c.font = "800 170px " + FF; c.fillText("\u25b6 " + fmt(m.t), 130, Math.max(y + 160, 760));
+      // QR tile
+      var qs2 = 380, qx = 130, qy = H - 130 - qs2 - 30;
+      rr(qx - 24, qy - 24, qs2 + 48, qs2 + 48, 36); c.fillStyle = "#fff"; c.fill();
+      var n = qr.getModuleCount(), cell = qs2 / n; c.fillStyle = "#111";
+      for (var r = 0; r < n; r++) for (var q = 0; q < n; q++) if (qr.isDark(r, q)) c.fillRect(qx + q * cell, qy + r * cell, Math.ceil(cell), Math.ceil(cell));
+      c.fillStyle = "#fff"; c.font = "700 42px " + FF; c.fillText(T("Scan to open at this time"), 590, qy + 150);
+      c.fillStyle = "rgba(255,255,255,.7)"; c.font = "500 32px " + FF; c.fillText(location.host, 590, qy + 205);
+      cv.toBlob(function (blob) {
+        if (!blob) { toast(T("Could not make the share card.")); return; }
+        var file = null; try { file = new File([blob], "moment-" + curId + "-" + m.t + "s.png", { type: "image/png" }); } catch (e) {}
+        function save() {
+          var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "moment-" + curId + "-" + m.t + "s.png";
+          document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+          toast(T("Share card saved as an image"));
+        }
+        if (file && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+          navigator.share({ files: [file], text: link }).catch(function (e) { if (e && e.name !== "AbortError") save(); });
+        } else save();
+      }, "image/png");
+    } catch (e) { toast(T("Could not make the share card.")); }
   }
   function sortedMarks() { var a = (curId && marks[curId]) ? marks[curId].slice() : []; a.sort(function (x, y) { return x.t - y.t; }); return a; }
   (function () {
