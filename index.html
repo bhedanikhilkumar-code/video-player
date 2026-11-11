@@ -1318,7 +1318,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 
         <div class="ctl-card wide" id="ctl-marks">
           <h3 id="marksH">Saved moments</h3>
-          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button></div>
+          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button> <button class="chip" id="markCopyBtn" type="button" disabled>📋 Copy list</button></div>
           <div class="marks-list" id="markList"></div>
           <p class="hint" id="marksHint">Keep your favourite spots in this video. Tap one to jump to it. Saved on this device, for each video.</p>
         </div>
@@ -2010,6 +2010,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Arrow keys work here too.": ["तीर कुंजियाँ यहाँ भी काम करती हैं.", "એરો કીઝ અહીં પણ કામ કરે છે."],
    "Moment saved": ["पल सेव हुआ", "ક્ષણ સેવ થઈ"],
    "Moment removed": ["पल हटाया गया", "ક્ષણ હટાઈ"],
+   "Moments copied": ["पल कॉपी हुए", "ક્ષણો કૉપી થઈ"],
+   "No moments to copy yet.": ["कॉपी करने के लिए अभी कोई पल नहीं.", "કૉપી કરવા હજી કોઈ ક્ષણ નથી."],
+   "Could not copy. Try again.": ["कॉपी नहीं हो सका. फिर कोशिश करें.", "કૉપી થઈ શક્યું નહીં. ફરી પ્રયત્ન કરો."],
    "Moments restored: ": ["पल वापस आए: ", "ક્ષણો પાછી આવી: "],
    "Name this moment": ["इस पल को नाम दें", "આ ક્ષણને નામ આપો"],
    "This video already has that moment.": ["यह पल इस वीडियो में पहले से है.", "આ ક્ષણ આ વીડિયોમાં પહેલેથી છે."],
@@ -4067,6 +4070,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#aboutNoteText", "Quality is a request - YouTube chooses the closest option based on your network. Volume in the official player goes up to 100% (YouTube's limit); raise your phone volume if you need it louder. This app adds no ads, banners, or pop-ups of its own. YouTube may still show its own ads inside videos; those are controlled by YouTube and cannot be turned off here.", "क्वालिटी एक रिक्वेस्ट है - YouTube आपके नेटवर्क के हिसाब से सबसे करीबी विकल्प चुनता है. ऑफिशियल प्लेयर में वॉल्यूम 100% तक ही जाता है (YouTube की सीमा); और तेज़ चाहिए तो फोन का वॉल्यूम बढ़ाएं. यह ऐप अपनी तरफ से कोई विज्ञापन, बैनर या पॉप-अप नहीं दिखाता. वीडियो के अंदर YouTube अपने विज्ञापन दिखा सकता है; वे YouTube के नियंत्रण में हैं और यहां से बंद नहीं हो सकते."],
     ["#marksH", "Saved moments", "सेव किए पल"],
     ["#markAddBtn", "🔖 Save this moment", "🔖 यह पल सेव करें"],
+    ["#markCopyBtn", "📋 Copy list", "📋 सूची कॉपी करें"],
     ["#marksHint", "Keep your favourite spots in this video. Tap one to jump to it. Saved on this device, for each video.", "इस वीडियो के अपने पसंदीदा हिस्से सेव करें. किसी पर टैप करके वहां पहुंचें. हर वीडियो के लिए इसी डिवाइस पर सेव रहता है."],
     [".feat-nav a[href=\"#ctl-marks\"]", "Moments", "पल"],
     ["#upnextGo", "Play now", "अभी चलाएं"],
@@ -4163,6 +4167,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#a11yH": "સુલભતા",
  "#marksH": "સેવ કરેલી ક્ષણો",
  "#markAddBtn": "🔖 આ ક્ષણ સેવ કરો",
+ "#markCopyBtn": "📋 યાદી કૉપી કરો",
  "#marksHint": "આ વીડિયોના તમારા પસંદીદા ભાગ સેવ કરો. કોઈ પર ટૅપ કરીને ત્યાં જાઓ. દરેક વીડિયો માટે આ ડિવાઇસ પર સેવ રહે છે.",
  ".feat-nav a[href=\"#ctl-marks\"]": "ક્ષણો",
  "#upnextGo": "અત્યારે ચલાવો",
@@ -4388,6 +4393,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     list.innerHTML = "";
     var items = (curId && marks[curId]) ? marks[curId].slice() : [];
     items.sort(function (a, b) { return a.t - b.t; });
+    setMarkBtns(items.length);
     if (!items.length) {
       var empty = document.createElement("span"); empty.className = "hint";
       empty.textContent = curId ? T("No moments saved for this video yet.") : T("Load a video first, then save a moment.");
@@ -4419,6 +4425,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (name === null) return;
       arr.push({ t: t, name: name.trim().slice(0, 40) });
       marksSave(); renderMarks(); toast(T("Moment saved"));
+    });
+  })();
+  function setMarkBtns(n) { ["markCopyBtn", "markPrevBtn", "markNextBtn"].forEach(function (id) { var b = $(id); if (b) b.disabled = !n; }); }
+  function sortedMarks() { var a = (curId && marks[curId]) ? marks[curId].slice() : []; a.sort(function (x, y) { return x.t - y.t; }); return a; }
+  (function () {
+    var cb = $("markCopyBtn");
+    if (!cb) return;
+    cb.addEventListener("click", function () {
+      var items = sortedMarks();
+      if (!items.length) { toast(T("No moments to copy yet.")); return; }
+      var text = items.map(function (m) { var f = fmt(m.t); return f + (m.name && m.name !== f ? " " + m.name : ""); }).join("\n");
+      function ok() { toast(T("Moments copied")); }
+      function fallback() {
+        try { var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var done = document.execCommand("copy"); ta.remove(); if (done) ok(); else toast(T("Could not copy. Try again.")); } catch (e) { toast(T("Could not copy. Try again.")); }
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok, fallback); else fallback();
     });
   })();
   (window.__relang = window.__relang || []).push(renderMarks);
