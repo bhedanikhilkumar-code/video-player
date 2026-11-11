@@ -1620,6 +1620,7 @@ html.low-fx section::after, html.high-contrast section::after { content: none !i
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="statsClear" type="button">Clear</button></div>
       <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><div class="stats-days" id="statsDays"></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><ul class="lib-list" id="statsList"></ul>
       <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
+      <div class="goal-row" id="storRow"><p class="hint" id="storInfo" role="status"></p><button class="chip" id="storBtn" type="button">Refresh</button></div>
     </section>
 
     <section id="about">
@@ -1707,6 +1708,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "No duplicates in the queue.": ["कतार में कोई डुप्लिकेट नहीं है.", "કતારમાં કોઈ ડુપ્લિકેટ નથી."],
    "1 duplicate removed": ["1 डुप्लिकेट हटाया गया", "1 ડુપ્લિકેટ કાઢ્યું"],
    "duplicates removed": ["डुप्लिकेट हटाए गए", "ડુપ્લિકેટ કાઢ્યા"],
+   "Refresh": ["ताज़ा करें", "રિફ્રેશ"],
+   "Saved on this device:": ["इस डिवाइस पर सेव:", "આ ડિવાઇસ પર સેવ:"],
+   "settings, queue, playlists, history": ["सेटिंग, कतार, प्लेलिस्ट, हिस्ट्री", "સેટિંગ, કતાર, પ્લેલિસ્ટ, હિસ્ટરી"],
+   "Browser total:": ["ब्राउज़र कुल:", "બ્રાઉઝર કુલ:"],
+   "Storage updated": ["स्टोरेज अपडेट हुआ", "સ્ટોરેજ અપડેટ થયું"],
    "Daily goal:": ["दैनिक लक्ष्य:", "દૈનિક લક્ષ્ય:"],
    "Goal off. Pick 15, 30 or 60 minutes to start a daily goal.": ["लक्ष्य बंद है. दैनिक लक्ष्य शुरू करने के लिए 15, 30 या 60 मिनट चुनें.", "લક્ષ્ય બંધ છે. દૈનિક લક્ષ્ય શરૂ કરવા 15, 30 કે 60 મિનિટ પસંદ કરો."],
    "Goal reached!": ["लक्ष्य पूरा!", "લક્ષ્ય પૂરું!"],
@@ -4124,6 +4130,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
     (window.__relang = window.__relang || []).push(goalRender);
     goalRender();
+  })();
+  // Storage meter: how much this app keeps on this device.
+  function storFmt(n) { return n < 1024 ? n + " B" : n < 1048576 ? (n / 1024).toFixed(1) + " KB" : (n / 1048576).toFixed(1) + " MB"; }
+  function storRender() {
+    var out = $("storInfo"), btn = $("storBtn"); if (!out) return;
+    if (btn) btn.textContent = T("Refresh");
+    var n = 0;
+    try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); n += (k.length + (localStorage.getItem(k) || "").length) * 2; } } catch (e) {}
+    var base = T("Saved on this device:") + " " + storFmt(n) + " (" + T("settings, queue, playlists, history") + ")";
+    out.textContent = base;
+    if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(function (est) {
+      if (est && est.usage) out.textContent = base + " \u00b7 " + T("Browser total:") + " " + storFmt(est.usage);
+    }).catch(function () {});
+  }
+  (function () {
+    var btn = $("storBtn"); if (!btn) return;
+    btn.addEventListener("click", function () { storRender(); if (typeof toast === "function") toast(T("Storage updated")); });
+    (window.__relang = window.__relang || []).push(storRender);
+    storRender();
   })();
   function statsTick() {
     if (!curId || !playing) { lastStatT = -1; return; }
