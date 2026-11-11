@@ -1116,6 +1116,15 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 }
 @keyframes resume-sheen { to { left: 130%; } }
 :root[data-theme="dark"] .resume::after { background: linear-gradient(105deg, transparent, rgba(255,255,255,.22), transparent); }
+</style><style id="r22-palette">
+#vpPal{position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-start;justify-content:center;background:rgba(8,10,18,.55);padding:12vh 16px 16px;box-sizing:border-box;}
+.vp-pal-card{width:100%;max-width:520px;background:var(--card,#fff);color:var(--ink,#111);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,.45);border:1px solid var(--hairline,rgba(0,0,0,.08));overflow:hidden;}
+#vpPalIn{width:100%;box-sizing:border-box;padding:14px 16px;font:inherit;font-size:16px;border:0;border-bottom:1px solid var(--hairline,rgba(0,0,0,.12));background:transparent;color:inherit;outline:none;}
+.vp-pal-list{max-height:46vh;overflow:auto;padding:6px;}
+.vp-pal-grp{padding:8px 12px 2px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2,#666);}
+.vp-pal-item{padding:10px 12px;border-radius:12px;cursor:pointer;font-size:15px;}
+.vp-pal-item.is-act{background:var(--teal,#0a8);color:#fff;}
+.vp-pal-empty{padding:18px;text-align:center;color:var(--ink2,#666);font-size:14px;}
 </style></head>
 <body>
 <a class="skip" href="#player">Skip to player</a>
@@ -2071,6 +2080,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "a shuffled pick": ["शफ़ल से कोई भी", "શફલથી કોઈ પણ"],
    "Auto-next stopped. Tap Next when you're ready.": ["ऑटो-अगला रुक गया. तैयार हों तो Next दबाएं.", "ઓટો-આગળ અટક્યું. તૈયાર હો ત્યારે Next દબાવો."],
    "Repeat one": ["एक दोहराएं", "એક દોહરાવો"],
+   "Search": ["खोजें", "શોધો"],
+   "Search everything: sections and actions": ["सब कुछ खोजें: सेक्शन और एक्शन", "બધું શોધો: વિભાગો અને ક્રિયાઓ"],
+   "Type to filter. Enter opens, Esc closes.": ["फ़िल्टर के लिए टाइप करें. Enter खोलता है, Esc बंद करता है.", "ફિલ્ટર માટે ટાઇપ કરો. Enter ખોલે છે, Esc બંધ કરે છે."],
+   "Sections": ["सेक्शन", "વિભાગો"],
+   "Actions": ["एक्शन", "ક્રિયાઓ"],
+   "No matches.": ["कुछ नहीं मिला.", "કંઈ મળ્યું નહીં."],
+   "Change theme": ["थीम बदलें", "થીમ બદલો"],
+   "Switch language": ["भाषा बदलें", "ભાષા બદલો"],
+   "Cinema mode on / off": ["सिनेमा मोड चालू / बंद", "સિનેમા મોડ ચાલુ / બંધ"],
+   "Collapse or expand all sections": ["सारे सेक्शन समेटें या खोलें", "બધા વિભાગ સમેટો કે ખોલો"],
+   "search everything": ["सब कुछ खोजें", "બધું શોધો"],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
@@ -6453,5 +6473,150 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   (window.__relang = window.__relang || []).push(function () { DEFS.forEach(function (d) { label(d[0]); }); if (window.__vpSecRefresh) window.__vpSecRefresh(); });
 })();
 </script>
+<script>
+/* Search everything box (round 22): press Ctrl+K or tap the Search chip to jump to
+   any section or run a common action from one place. */
+(function () {
+  "use strict";
+  var T = window.T || function (s) { return s; };
+  var ov = null, input = null, list = null, items = [], shown = [], act = 0, prevFocus = null;
+
+  function buildItems() {
+    var out = [];
+    document.querySelectorAll(".feat-nav a.feat").forEach(function (a) {
+      var label = (a.textContent || "").replace(/\s+/g, " ").trim();
+      if (label) out.push({ label: label, group: "Sections", run: function () { a.click(); } });
+    });
+    function click(id) { return function () { var b = document.getElementById(id); if (b) b.click(); }; }
+    out.push({ label: T("Change theme"), group: "Actions", run: click("themeBtn") });
+    out.push({ label: T("Switch language"), group: "Actions", run: click("langBtn") });
+    out.push({ label: T("Cinema mode on / off"), group: "Actions", run: click("cinemaBtn") });
+    out.push({ label: T("Collapse or expand all sections"), group: "Actions", run: click("secAllBtn") });
+    var inst = document.getElementById("installBtn");
+    if (inst && !inst.hidden) out.push({ label: "Install app", group: "Actions", run: click("installBtn") });
+    out.push({ label: T("Back to top"), group: "Actions", run: function () { window.scrollTo({ top: 0, behavior: "smooth" }); } });
+    return out;
+  }
+
+  function paint() {
+    Array.prototype.forEach.call(list.querySelectorAll(".vp-pal-item"), function (d, i) {
+      d.classList.toggle("is-act", i === act);
+      d.setAttribute("aria-selected", i === act ? "true" : "false");
+      if (i === act) { list.setAttribute("aria-activedescendant", d.id); d.scrollIntoView({ block: "nearest" }); }
+    });
+  }
+
+  function render() {
+    var q = (input.value || "").trim().toLowerCase();
+    shown = items.filter(function (it) { return !q || it.label.toLowerCase().indexOf(q) >= 0; });
+    if (act > shown.length - 1) act = shown.length - 1;
+    if (act < 0) act = 0;
+    list.innerHTML = "";
+    if (!shown.length) {
+      var em = document.createElement("div");
+      em.className = "vp-pal-empty";
+      em.textContent = T("No matches.");
+      list.appendChild(em);
+      return;
+    }
+    var lastGroup = null;
+    shown.forEach(function (it, i) {
+      if (it.group !== lastGroup) {
+        lastGroup = it.group;
+        var g = document.createElement("div");
+        g.className = "vp-pal-grp";
+        g.textContent = T(it.group);
+        list.appendChild(g);
+      }
+      var d = document.createElement("div");
+      d.className = "vp-pal-item";
+      d.id = "vpPalItem" + i;
+      d.setAttribute("role", "option");
+      d.textContent = it.label;
+      d.addEventListener("click", function () { pick(i); });
+      list.appendChild(d);
+    });
+    paint();
+  }
+
+  function pick(i) {
+    var it = shown[i]; if (!it) return;
+    close();
+    try { it.run(); } catch (e) {}
+  }
+
+  function relabel() {
+    if (input) input.setAttribute("placeholder", T("Type to filter. Enter opens, Esc closes."));
+    if (ov) ov.querySelector(".vp-pal-card").setAttribute("aria-label", T("Search"));
+  }
+
+  function open() {
+    if (ov) { input.focus(); return; }
+    prevFocus = document.activeElement;
+    ov = document.createElement("div");
+    ov.id = "vpPal";
+    ov.innerHTML = '<div class="vp-pal-card" role="dialog" aria-modal="true"><input id="vpPalIn" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="vpPalList"><div class="vp-pal-list" id="vpPalList" role="listbox"></div></div>';
+    document.body.appendChild(ov);
+    input = ov.querySelector("#vpPalIn");
+    list = ov.querySelector("#vpPalList");
+    items = buildItems();
+    act = 0;
+    relabel();
+    render();
+    input.addEventListener("input", function () { act = 0; render(); });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown") { e.preventDefault(); e.stopPropagation(); if (act < shown.length - 1) { act++; paint(); } }
+      else if (e.key === "ArrowUp") { e.preventDefault(); e.stopPropagation(); if (act > 0) { act--; paint(); } }
+      else if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); pick(act); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
+    });
+    ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
+    input.focus();
+  }
+
+  function close() {
+    if (!ov) return;
+    if (ov.parentNode) ov.parentNode.removeChild(ov);
+    ov = null; input = null; list = null;
+    if (prevFocus && prevFocus.focus) { try { prevFocus.focus(); } catch (e) {} }
+    prevFocus = null;
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
+      e.preventDefault();
+      if (ov) close(); else open();
+    }
+  });
+
+  var head = document.querySelector(".head-actions");
+  var btn = null;
+  if (head) {
+    btn = document.createElement("button");
+    btn.type = "button"; btn.className = "chip"; btn.id = "palBtn";
+    head.insertBefore(btn, head.firstChild);
+    btn.addEventListener("click", open);
+  }
+  function relabelBtn() {
+    if (btn) {
+      btn.textContent = T("Search");
+      btn.setAttribute("aria-label", T("Search everything: sections and actions"));
+    }
+    relabel();
+  }
+  (window.__relang = window.__relang || []).push(relabelBtn);
+  relabelBtn();
+
+  var scUl = document.querySelector("#scBox ul");
+  if (scUl) {
+    var li = document.createElement("li");
+    scUl.appendChild(li);
+    var paintLi = function () { li.innerHTML = "<b>Ctrl+K</b>: " + T("search everything"); };
+    (window.__relang = window.__relang || []).push(paintLi);
+    paintLi();
+  }
+  window.__vpPalette = { open: open, close: close };
+})();
+</script>
 </body>
-  </html>
+          </html>
