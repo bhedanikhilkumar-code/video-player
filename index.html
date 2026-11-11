@@ -1342,6 +1342,15 @@ html .shortcuts, html .note, html .faq, html .help-card, html .pl-item, html .mu
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
 }
 </style>
+<style>
+.quick-seek-row{display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0 6px;flex-wrap:wrap}
+.quick-seek.chip{position:relative;overflow:hidden;min-height:44px;min-width:82px;border-radius:18px;font-weight:700;font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:center;gap:9px}
+.quick-seek>span[aria-hidden]{font-size:24px;line-height:1}
+.quick-seek-hint{font-size:12px;color:var(--muted)}
+.quick-seek.seek-pulse::after{content:"";position:absolute;inset:0;border-radius:inherit;background:radial-gradient(circle,var(--teal),transparent 70%);animation:seek-chip-ripple .6s ease-out both;pointer-events:none}
+@keyframes seek-chip-ripple{from{transform:scale(.25);opacity:.5}to{transform:scale(2);opacity:0}}
+@media(prefers-reduced-motion:reduce){.quick-seek.seek-pulse::after{animation:none}}
+</style>
 </head>
 <body>
 <style id="launch-splash">
@@ -1560,6 +1569,11 @@ setTimeout(done,3000);})();
           </div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
+          <div class="quick-seek-row" role="group" aria-label="Quick seek" id="quickSeekRow">
+            <button class="chip quick-seek" id="quickSeekBack" type="button"><span aria-hidden="true">↶</span> <span id="quickSeekBackText">10s</span></button>
+            <span class="quick-seek-hint" id="quickSeekHint">Tap to skip</span>
+            <button class="chip quick-seek" id="quickSeekForward" type="button"><span id="quickSeekForwardText">10s</span> <span aria-hidden="true">↷</span></button>
+          </div>
           <div class="ab-strip" id="abStrip" hidden aria-hidden="true"></div>
           <div class="seek-tip" id="seekTip" hidden></div>
           <div class="seek-marks" id="seekMarks" hidden></div>
@@ -2097,6 +2111,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Added to queue": ["कतार में जोड़ा गया", "કતારમાં ઉમેરાયું"],
    "videos added to queue": ["वीडियो कतार में जोड़े गए", "વિડિયો કતારમાં ઉમેરાયા"],
    "Queue cleared": ["कतार साफ़ हुई", "કતાર સાફ થઈ"],
+   "Tap to skip": ["टैप करके आगे-पीछे जाएं", "ટૅપ કરીને આગળ-પાછળ જાઓ"],
+   "Quick seek": ["जल्दी आगे-पीछे जाएं", "ઝડપથી આગળ-પાછળ જાઓ"],
    "Undo": ["पूर्ववत करें", "પૂર્વવત કરો"],
    "Removed from queue": ["कतार से हटाया गया", "કતારમાંથી દૂર કર્યું"],
    "Queue restored": ["कतार वापस आई", "કતાર પાછી આવી"],
@@ -3937,6 +3953,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function dtStep() { return [5, 10, 15, 30].indexOf(prefs.seekStep) >= 0 ? prefs.seekStep : 10; }
   function dtRender() {
     var st = dtStep();
+    var qb = $("quickSeekBack"), qf = $("quickSeekForward");
+    if (qb && qf) {
+      $("quickSeekBackText").textContent = st + "s";
+      $("quickSeekForwardText").textContent = st + "s";
+      qb.setAttribute("aria-label", T("Back") + " " + st + " " + T("seconds"));
+      qf.setAttribute("aria-label", T("Forward") + " " + st + " " + T("seconds"));
+      $("quickSeekHint").textContent = T("Tap to skip");
+      $("quickSeekRow").setAttribute("aria-label", T("Quick seek"));
+    }
     var gl = $("gpLeft"), gr = $("gpRight");
     if (gl) gl.innerHTML = T("Double-tap") + "<br>-" + st + "s";
     if (gr) gr.innerHTML = T("Double-tap") + "<br>+" + st + "s";
@@ -3956,6 +3981,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   dtRender();
   (window.__relang = window.__relang || []).push(dtRender);
+
+  [ ["quickSeekBack", -1], ["quickSeekForward", 1] ].forEach(function (item) {
+    var b = $(item[0]);
+    b.addEventListener("click", function () {
+      if (!ready || !iframe || !(duration > 0)) return;
+      seekBy(item[1] * dtStep()); paintSeekFill();
+      b.classList.remove("seek-pulse"); void b.offsetWidth; b.classList.add("seek-pulse");
+      setTimeout(function () { b.classList.remove("seek-pulse"); }, 650);
+    });
+  });
 
   // ---- Gesture pad: double-tap to skip, swipe up/down for volume ----
   // The video area is the official YouTube player (cross-origin), so gestures live
