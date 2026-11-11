@@ -28,8 +28,9 @@
   try {
     var p = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null"), t = p && p.theme;
     var hr = new Date().getHours(), night = hr >= 19 || hr < 7;
-    var dark = t === "dark" || (t === "daynight" ? night : ((t !== "light") && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches));
+    var dark = t === "dark" || t === "midnight" || (t === "daynight" ? night : ((t !== "light") && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches));
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    if (t === "midnight") document.documentElement.classList.add("oled");
   } catch (e) {}
 })();
 </script>
@@ -46,6 +47,13 @@
     --red: #ff7a83; --chipbg: #2a2427; --notebg: #2b2620; --soft: #1b2623;
     --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
   }
+  :root[data-theme="dark"].oled {
+    --ink: #f4f0f2; --ink2: #a8a1a5; --hairline: #262122; --page: #000000; --card: #0d0b0c;
+    --chipbg: #161314; --notebg: #131010; --soft: #0d1412;
+    --shadow: 0 1px 2px rgba(0,0,0,.7), 0 8px 24px rgba(0,0,0,.6);
+  }
+  :root[data-theme="dark"].oled body::before { opacity: .5; }
+  :root[data-theme="dark"].oled section, :root[data-theme="dark"].oled .ctl-card { border: 1px solid rgba(255,255,255,.06); }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
@@ -1893,7 +1901,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false, timeLeft: false, ambGlow: true };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; if (saved.timeLeft === true) prefs.timeLeft = true; if (saved.ambGlow === false) prefs.ambGlow = false; ["cc", "ccLang", "accent", "lang", "accentCustom"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight" || saved.theme === "midnight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; if (saved.bgMotion === true) prefs.bgMotion = true; if (saved.timeLeft === true) prefs.timeLeft = true; if (saved.ambGlow === false) prefs.ambGlow = false; ["cc", "ccLang", "accent", "lang", "accentCustom"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if (!/^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) prefs.accentCustom = "#3a8a77"; if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
@@ -1995,6 +2003,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Theme: Auto": ["थीम: ऑटो", "થીમ: ઓટો"],
    "Theme: Day/Night": ["थीम: दिन/रात", "થીમ: દિવસ/રાત"],
    "Theme: Dark": ["थीम: डार्क", "થીમ: ડાર્ક"],
+   "Theme: Midnight": ["थीम: मिडनाइट", "થીમ: મિડનાઇટ"],
+   "Midnight": ["मिडनाइट", "મિડનાઇટ"],
    "Theme: Light": ["थीम: लाइट", "થીમ: લાઇટ"],
    "Colour updated": ["रंग बदल गया", "રંગ બદલાયો"],
    "Playlist saved": ["प्लेलिस्ट सेव हुई", "પ્લેલિસ્ટ સેવ થઈ"],
@@ -2918,28 +2928,29 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
   function applyTheme() {
     var hr2 = new Date().getHours(), night2 = hr2 >= 19 || hr2 < 7;
-    var dark = prefs.theme === "dark" || (prefs.theme === "auto" && darkQuery && darkQuery.matches) || (prefs.theme === "daynight" && night2);
+    var dark = prefs.theme === "dark" || prefs.theme === "midnight" || (prefs.theme === "auto" && darkQuery && darkQuery.matches) || (prefs.theme === "daynight" && night2);
     var prevTheme = document.documentElement.getAttribute("data-theme");
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    document.documentElement.classList.toggle("oled", prefs.theme === "midnight");
     if (prevTheme && prevTheme !== (dark ? "dark" : "light") && !(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches)) {
       document.documentElement.classList.add("theme-xfade");
       clearTimeout(window.__xfadeT);
       window.__xfadeT = setTimeout(function () { document.documentElement.classList.remove("theme-xfade"); }, 480);
     }
-    var themeLabel = prefs.theme === "auto" ? "Auto" : prefs.theme === "daynight" ? "Day/Night" : prefs.theme === "dark" ? "Dark" : "Light";
-    var ico = prefs.theme === "auto" ? "\u25D0" : prefs.theme === "daynight" ? "\u263C" : prefs.theme === "dark" ? "\u263E" : "\u2600";
+    var themeLabel = prefs.theme === "auto" ? "Auto" : prefs.theme === "daynight" ? "Day/Night" : prefs.theme === "dark" ? "Dark" : prefs.theme === "midnight" ? T("Midnight") : "Light";
+    var ico = prefs.theme === "auto" ? "\u25D0" : prefs.theme === "daynight" ? "\u263C" : prefs.theme === "dark" ? "\u263E" : prefs.theme === "midnight" ? "\u2737" : "\u2600";
     themeBtn.innerHTML = '<span class="theme-ico" aria-hidden="true">' + ico + '</span><span class="theme-prefix">Theme: </span><span>' + themeLabel + '</span>';
     var metas = document.querySelectorAll('meta[name="theme-color"]');
     for (var mi = 0; mi < metas.length; mi++) {
       if (!metas[mi].hasAttribute("data-orig")) metas[mi].setAttribute("data-orig", metas[mi].getAttribute("content"));
-      metas[mi].setAttribute("content", prefs.theme === "auto" ? metas[mi].getAttribute("data-orig") : (dark ? "#131012" : accentHex()));
+      metas[mi].setAttribute("content", prefs.theme === "auto" ? metas[mi].getAttribute("data-orig") : (dark ? (prefs.theme === "midnight" ? "#000000" : "#131012") : accentHex()));
     }
     themeBtn.setAttribute("aria-label", "Theme: " + themeLabel + ". Activate to change theme.");
   }
   themeBtn.addEventListener("click", function () {
-    prefs.theme = prefs.theme === "auto" ? "daynight" : prefs.theme === "daynight" ? "light" : prefs.theme === "light" ? "dark" : "auto";
+    prefs.theme = prefs.theme === "auto" ? "daynight" : prefs.theme === "daynight" ? "light" : prefs.theme === "light" ? "dark" : prefs.theme === "dark" ? "midnight" : "auto";
     savePrefs(); applyTheme();
-    toast(prefs.theme === "auto" ? T("Theme: Auto") : prefs.theme === "daynight" ? T("Theme: Day/Night") : prefs.theme === "dark" ? T("Theme: Dark") : T("Theme: Light"));
+    toast(prefs.theme === "auto" ? T("Theme: Auto") : prefs.theme === "daynight" ? T("Theme: Day/Night") : prefs.theme === "dark" ? T("Theme: Dark") : prefs.theme === "midnight" ? T("Theme: Midnight") : T("Theme: Light"));
   });
   if (darkQuery && darkQuery.addEventListener) darkQuery.addEventListener("change", function () { if (prefs.theme === "auto") applyTheme(); });
   setInterval(function () { if (prefs.theme === "daynight") applyTheme(); }, 60000);
