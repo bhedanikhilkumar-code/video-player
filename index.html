@@ -2438,6 +2438,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Queue order updated.": ["कतार का क्रम बदल गया.", "કતારનો ક્રમ બદલાઈ ગયો."],
    "Double-tap": ["डबल-टैप", "ડબલ-ટૅપ"],
    "Double-tap skip": ["डबल-टैप स्किप", "ડબલ-ટૅપ સ્કિપ"],
+   "Buffering": ["बफ़र हो रहा है", "બફર થઈ રહ્યું છે"],
    "seconds": ["सेकंड", "સેકંડ"],
    " seconds, now at ": [" सेकंड, अब ", " સેકંડ, હવે "],
    "Gesture pad. Double-tap the left side to go back ": ["जेस्चर पैड. बाईं ओर डबल-टैप से ", "જેસ્ચર પૅડ. ડાબી બાજુ ડબલ-ટૅપથી "],
@@ -3180,6 +3181,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (data.event === "onStateChange" && typeof data.info === "number") {
       if (sleepPaused && data.info === 1) { send("pauseVideo"); return; }
       playing = data.info === 1; document.documentElement.classList.toggle("vp-playing", playing); if (playing) failedQueueCount = 0; if (playing && typeof tabAutoPaused !== "undefined") tabAutoPaused = false;
+      if (window.__vpStateFx) window.__vpStateFx(data.info);
       if (playing && prefs.dataSaver && curId && dsAppliedFor !== curId) { dsAppliedFor = curId; send("setPlaybackQuality", ["large"]); markActive(qualityChips, "large"); }
       if (playing && curId && lastPlayId !== curId) { lastPlayId = curId; stats.plays += 1; statsRec(curId).plays += 1; saveStats(); renderStats(); }
       if (!playing && statsDirty) { statsDirty = false; saveStats(); renderStats(); }
@@ -8471,6 +8473,55 @@ html.low-fx main.main.lang-swap { animation: none; }
   function close(remember) { el.classList.remove("show"); if (remember) { try { localStorage.setItem(KEY, "1"); } catch (e) {} } setTimeout(function () { el.remove(); }, 400); }
   el.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest("button"); if (b) close(true); });
   setTimeout(function () { document.body.appendChild(el); requestAnimationFrame(function () { requestAnimationFrame(function () { el.classList.add("show"); }); }); }, force ? 800 : 8000);
+})();
+</script>
+<style id="r49-statefx">
+/* Round 49: play/pause flash + buffering ring over the video. */
+#vpStateFx { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none; z-index:5; }
+#vpStateFx .fx-icon {
+  width:76px; height:76px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:rgba(20,16,18,.55); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  color:#fff; font-size:28px; line-height:1; padding-left:3px; box-shadow:0 10px 34px rgba(0,0,0,.4);
+  opacity:0; transform:scale(.72);
+}
+#vpStateFx .fx-icon.pop { animation:vpFxPop .7s cubic-bezier(.2,.9,.3,1) both; }
+@keyframes vpFxPop { 0%{opacity:0;transform:scale(.72);} 18%{opacity:1;transform:scale(1.06);} 34%{transform:scale(1);} 100%{opacity:0;transform:scale(1.12);} }
+#vpStateFx .fx-buf {
+  position:absolute; top:12px; right:12px; width:34px; height:34px; border-radius:50%;
+  background:rgba(20,16,18,.5); -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+  display:none; align-items:center; justify-content:center;
+}
+#vpStateFx.buffering .fx-buf { display:flex; }
+#vpStateFx .fx-buf i { width:16px; height:16px; border-radius:50%; border:2.5px solid rgba(255,255,255,.35); border-top-color:#fff; animation:vpFxSpin .8s linear infinite; }
+@keyframes vpFxSpin { to { transform:rotate(360deg); } }
+html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
+@keyframes vpFxPopStill { 0%{opacity:0;transform:scale(1);} 25%{opacity:1;transform:scale(1);} 100%{opacity:0;transform:scale(1);} }
+@media (prefers-reduced-motion:reduce){ #vpStateFx .fx-icon.pop{animation:vpFxPopStill .5s ease both;} #vpStateFx .fx-buf i{animation:none;} }
+</style>
+<script>
+/* Round 49: playback feedback you can see on the video itself - a glass play/pause icon
+   pops in the middle whenever the video starts or pauses, and a small spinning ring sits
+   in the top-right corner while the video buffers. It never blocks YouTube's own controls. */
+(function () {
+  var T = window.T || function (s) { return s; };
+  var fx = document.createElement("div"); fx.id = "vpStateFx"; fx.setAttribute("aria-hidden", "true");
+  fx.innerHTML = '<div class="fx-icon"></div><div class="fx-buf" title=""><i></i></div>';
+  var icon = fx.querySelector(".fx-icon"), bufBox = fx.querySelector(".fx-buf"), lastSt = -1;
+  function mount() { var fb = document.getElementById("frameBox"); if (fb && fx.parentNode !== fb) fb.appendChild(fx); }
+  mount();
+  function paintBufTitle() { bufBox.title = T("Buffering"); }
+  paintBufTitle(); (window.__relang = window.__relang || []).push(paintBufTitle);
+  window.__vpStateFx = function (st) {
+    mount();
+    if (st === 3) { fx.classList.add("buffering"); lastSt = st; return; }
+    fx.classList.remove("buffering");
+    if ((st === 1 || st === 2) && st !== lastSt) {
+      icon.textContent = st === 1 ? "\u25B6" : "\u23F8";
+      icon.classList.remove("pop"); void icon.offsetWidth; icon.classList.add("pop");
+      if (window.__vpBuzz) window.__vpBuzz(4);
+    }
+    lastSt = st;
+  };
 })();
 </script>
 </body>
