@@ -1612,7 +1612,7 @@ setTimeout(done,3000);})();
           <div class="row">
             <button class="btn" id="playBtn" disabled>▶ Play</button>
             <span class="time" id="timeLabel">0:00 / 0:00</span> <span class="ends-at" id="endsAt" hidden></span>
-            <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button> <button class="chip" id="lockBtn" type="button" aria-pressed="false">🔒 Lock touch</button>
+            <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button> <button class="chip" id="lockBtn" type="button" aria-pressed="false">🔒 Lock touch</button> <button class="chip" id="fsRotBtn" type="button" aria-pressed="true">🔄 Auto-rotate</button>
           </div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
@@ -2794,6 +2794,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Hide tips for today": ["आज के लिए टिप्स छिपाएं", "આજ માટે ટિપ્સ છુપાવો"],
    "Tips hidden for today": ["आज के लिए टिप्स छिपा दीं", "આજ માટે ટિપ્સ છુપાવી દીધી"],
    "Started 10 seconds early to jog your memory": ["याद दिलाने के लिए 10 सेकंड पीछे से शुरू किया", "યાદ કરાવવા 10 સેકન્ડ પાછળથી શરૂ કર્યું"],
+   "Auto-rotate on": ["ऑटो-रोटेट चालू", "ઓટો-રોટેટ ચાલુ"],
+   "Auto-rotate off": ["ऑटो-रोटेट बंद", "ઓટો-રોટેટ બંદ"],
    "Loop any part of a song: tap Set A, then Set B on the Repeat line.": ["गाने का कोई भी हिस्सा लूप करें: Repeat लाइन पर पहले Set A, फिर Set B दबाएं.", "ગીતનો કોઈપણ ભાગ લૂપ કરો: Repeat લાઇન પર પહેલા Set A, પછી Set B દબાવો."],
    "Fall asleep watching - the sleep timer pauses the video for you.": ["देखते-देखते सो जाएं - स्लीप टाइमर वीडियो खुद रोक देगा.", "જોતાં જોતાં ઊંઘી જાઓ - સ્લીપ ટાઇમર વીડિયો પોતે રોકી દેશે."],
    "Type in the Search box at the top to jump straight to any of the 40+ features.": ["ऊपर Search बॉक्स में टाइप करें और सीधे किसी भी 40+ फ़ीचर पर पहुंचें.", "ઉપર Search બોક્સમાં ટાઇપ કરો અને સીધા કોઈપણ 40+ ફીચર પર પહોંચો."],
@@ -5750,6 +5752,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#cinemaBtn", "🎬 Cinema", "🎬 सिनेमा"],
     ["#ambGlowBtn", "✨ Ambient light", "✨ एम्बिएंट लाइट"],
     ["#lockBtn", "🔒 Lock touch", "🔒 टच लॉक"],
+    ["#fsRotBtn", "🔄 Auto-rotate", "🔄 ऑटो-रोटेट"],
     ["#npPillT", "Now playing", "अब चल रहा है"],
     ["#qrBtn", "QR code", "QR कोड"],
     ["#nextBtn", "Next ⏭", "अगला ⏭"],
@@ -5987,7 +5990,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#plBtn": "પ્લેલિસ્ટ કતારમાં ઉમેરો",
  "#fsBtn": "⛶ ફુલ સ્ક્રીન",
  "#shareBtn": "🔗 આ સમયથી શેર કરો",
- "#cinemaBtn": "🎬 સિનેમા", "#ambGlowBtn": "✨ એમ્બિયન્ટ લાઇટ", "#lockBtn": "🔒 ટચ લૉક", "#npPillT": "હવે ચાલે છે",
+ "#cinemaBtn": "🎬 સિનેમા", "#ambGlowBtn": "✨ એમ્બિયન્ટ લાઇટ", "#lockBtn": "🔒 ટચ લૉક", "#fsRotBtn": "🔄 ઓટો-રોટેટ", "#npPillT": "હવે ચાલે છે",
  "#qrBtn": "QR કોડ",
  "#nextBtn": "આગળનો ⏭",
  "#clearQueueBtn": "સાફ કરો",
@@ -10142,6 +10145,43 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
 .lang-offer-btns{display:flex;gap:8px;flex:none;flex-wrap:wrap;justify-content:flex-end}
 @media (max-width:560px){.lang-offer{flex-direction:column;align-items:stretch}.lang-offer-btns{justify-content:flex-start}}
 </style>
+<script>
+/* Auto-rotate (round 68): on phones, entering full screen turns the video landscape and
+   leaving full screen frees the orientation again. On by default, remembered on this
+   device. Where the browser cannot lock orientation (older Safari), it quietly no-ops. */
+(function () {
+  "use strict";
+  var T = window.T || function (x) { return x; };
+  var btn = document.getElementById("fsRotBtn"), fsBtn = document.getElementById("fsBtn");
+  if (!btn || !fsBtn) return;
+  var KEY = "vp-fs-rotate.v1", on = true;
+  try { on = localStorage.getItem(KEY) !== "0"; } catch (e) {}
+  var coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  function supported() { try { return !!(screen.orientation && screen.orientation.lock); } catch (e) { return false; } }
+  function inFs() { return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+  function paint() { btn.setAttribute("aria-pressed", on ? "true" : "false"); btn.classList.toggle("active", on); }
+  btn.addEventListener("click", function () {
+    on = !on;
+    try { localStorage.setItem(KEY, on ? "1" : "0"); } catch (e) {}
+    paint();
+    if (window.toast) window.toast(on ? T("Auto-rotate on") : T("Auto-rotate off"));
+  });
+  fsBtn.addEventListener("click", function () {
+    if (!on || !coarse || !supported()) return;
+    setTimeout(function () {
+      if (!inFs()) return;
+      try { var p = screen.orientation.lock("landscape"); if (p && p.catch) p.catch(function () {}); } catch (e) {}
+    }, 80);
+  });
+  function freed() {
+    if (inFs() || !supported()) return;
+    try { if (screen.orientation.unlock) screen.orientation.unlock(); } catch (e) {}
+  }
+  document.addEventListener("fullscreenchange", freed);
+  document.addEventListener("webkitfullscreenchange", freed);
+  paint();
+})();
+</script>
 <script>
 /* Language offer (round 67): on a first visit, when the browser language is Hindi or
    Gujarati and no app language was ever chosen, offer the switch once. Whatever the
