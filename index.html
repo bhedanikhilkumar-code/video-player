@@ -1658,7 +1658,7 @@ setTimeout(done,3000);})();
 
         <div class="ctl-card wide" id="ctl-marks">
           <h3 id="marksH">Saved moments</h3>
-          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button> <button class="chip" id="markPrevBtn" type="button" disabled>⏮ Previous</button> <button class="chip" id="markNextBtn" type="button" disabled>Next ⏭</button> <button class="chip" id="markCopyBtn" type="button" disabled>📋 Copy list</button></div>
+          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button> <button class="chip" id="markPrevBtn" type="button" disabled>⏮ Previous</button> <button class="chip" id="markNextBtn" type="button" disabled>Next ⏭</button> <button class="chip" id="markCopyBtn" type="button" disabled>📋 Copy list</button> <button class="chip" id="markTxtBtn" type="button">Save all as text file</button></div>
           <details class="mark-paste" id="markPasteBox">
             <summary id="markPasteSum">Add chapters from a typed list</summary>
             <textarea class="note-box" id="markPasteText" rows="4" maxlength="2000" placeholder="0:00 Intro&#10;1:23 Chorus" aria-label="Chapter list"></textarea>
@@ -2516,6 +2516,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    " to the queue.": [" कतार में.", " કતારમાં."],
    " skipped (not a YouTube link, already queued, or queue full).": [" छोड़े गए (YouTube लिंक नहीं, पहले से कतार में, या कतार भरी).", " છોડ્યા (YouTube લિંક નથી, પહેલેથી કતારમાં, અથવા કતાર ભરાઈ)."],
    "Moment saved": ["पल सेव हुआ", "ક્ષણ સેવ થઈ"],
+   "No moments saved yet.": ["अभी कोई पल सेव नहीं है.", "હજી કોઈ ક્ષણ સેવ નથી."],
+   "All moments saved as a text file": ["सारे पल टेक्स्ट फ़ाइल में सेव हुए", "બધા ક્ષણો ટેક્સ્ટ ફાઇલમાં સચવાયા"],
    "Moment removed": ["पल हटाया गया", "ક્ષણ હટાઈ"],
    "Moments copied": ["पल कॉपी हुए", "ક્ષણો કૉપી થઈ"],
    "Copy link to moment": ["इस पल का लिंक कॉपी करें", "આ ક્ષણની લિંક કૉપી કરો"],
@@ -5120,6 +5122,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     [".feat-nav a[href=\"#ctl-notes\"]", "Notes", "नोट्स"],
     ["#markAddBtn", "🔖 Save this moment", "🔖 यह पल सेव करें"],
     ["#markCopyBtn", "📋 Copy list", "📋 सूची कॉपी करें"],
+    ["#markTxtBtn", "Save all as text file", "सब टेक्स्ट फ़ाइल में सेव करें"],
     ["#markPrevBtn", "⏮ Previous", "⏮ पिछला"],
     ["#markNextBtn", "Next ⏭", "अगला ⏭"],
     ["#marksHint", "Keep your favourite spots in this video. Tap one to jump to it. Saved on this device, for each video.", "इस वीडियो के अपने पसंदीदा हिस्से सेव करें. किसी पर टैप करके वहां पहुंचें. हर वीडियो के लिए इसी डिवाइस पर सेव रहता है."],
@@ -5247,6 +5250,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  ".feat-nav a[href=\"#ctl-notes\"]": "નોંધો",
  "#markAddBtn": "🔖 આ ક્ષણ સેવ કરો",
  "#markCopyBtn": "📋 યાદી કૉપી કરો",
+ "#markTxtBtn": "બધું ટેક્સ્ટ ફાઇલમાં સેવ કરો",
  "#markPrevBtn": "⏮ પાછલી",
  "#markNextBtn": "આગલી ⏭",
  "#marksHint": "આ વીડિયોના તમારા પસંદીદા ભાગ સેવ કરો. કોઈ પર ટૅપ કરીને ત્યાં જાઓ. દરેક વીડિયો માટે આ ડિવાઇસ પર સેવ રહે છે.",
@@ -5545,6 +5549,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
   function setMarkBtns(n) { ["markCopyBtn", "markPrevBtn", "markNextBtn"].forEach(function (id) { var b = $(id); if (b) b.disabled = !n; }); renderSeekMarks(); }
+  // Save every saved moment (all videos) as a plain .txt file made on this device: title, link, then time + name lines.
+  (function () {
+    var b = $("markTxtBtn"); if (!b) return;
+    b.addEventListener("click", function () {
+      var ids = Object.keys(marks).filter(function (k) { return marks[k] && marks[k].length; });
+      if (!ids.length) { toast(T("No moments saved yet.")); return; }
+      function titleFor(id) {
+        var lists = [lib.hist, lib.favs, lib.queue, lib.later];
+        for (var i = 0; i < lists.length; i++) {
+          var f = (lists[i] || []).filter(function (x) { return x && x.id === id && x.title; })[0];
+          if (f) return f.title;
+        }
+        return id;
+      }
+      var text = ids.map(function (id) {
+        var lines = marks[id].slice().sort(function (a, b2) { return a.t - b2.t; }).map(function (m) { return fmt(m.t) + (m.name ? " " + m.name : ""); });
+        return titleFor(id) + "\nhttps://youtu.be/" + id + "\n" + lines.join("\n");
+      }).join("\n\n") + "\n";
+      try {
+        var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" })); a.download = "video-player-moments.txt";
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        toast(T("All moments saved as a text file"));
+      } catch (e) { toast(T("Could not copy. Try again.")); }
+    });
+  })();
   // Saved moments also appear as dots under the seek bar, so favourite spots are visible while watching.
   function renderSeekMarks() {
     var box = $("seekMarks"); if (!box) return;
