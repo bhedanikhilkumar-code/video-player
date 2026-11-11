@@ -1663,7 +1663,7 @@ html.low-fx section::after, html.high-contrast section::after { content: none !i
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
       <div id="musicQueue">
-      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <div class="row music-controls" aria-label="Queue playback options">
         <button class="chip" id="prevQueueBtn" type="button">Previous</button>
         <button class="chip" id="shuffleQueueBtn" type="button" aria-pressed="false">Shuffle: off</button>
@@ -1770,6 +1770,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Clipboard is empty.": ["क्लिपबोर्ड खाली है.", "ક્લિપબોર્ડ ખાલી છે."],
    "Clipboard has no YouTube link.": ["क्लिपबोर्ड में YouTube लिंक नहीं है.", "ક્લિપબોર્ડમાં YouTube લિંક નથી."],
    "Remove duplicates": ["डुप्लिकेट हटाएं", "ડુપ્લિકેટ કાઢો"],
+   "Mix order": ["क्रम मिलाएं", "ક્રમ મિક્સ કરો"],
+   "Queue order mixed": ["कतार का क्रम मिला दिया", "ક્યૂનો ક્રમ મિક્સ થયો"],
+   "Need at least 2 more videos after the current one to mix.": ["मिलाने के लिए मौजूदा वीडियो के बाद कम से कम 2 और वीडियो चाहिए.", "મિક્સ કરવા માટે હાલના વીડિયો પછી ઓછામાં ઓછા 2 વધુ વીડિયો જોઈએ."],
    "left": ["बाकी", "બાકી"],
    "Showing time left": ["बाकी समय दिख रहा है", "બાકીનો સમય દેખાય છે"],
    "Showing elapsed time": ["बीता हुआ समय दिख रहा है", "પસાર થયેલો સમય દેખાય છે"],
@@ -2560,6 +2563,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     lib.queue = nq; qPos = nqPos; saveLib(); renderLib(); showLibErr("");
     toastUndo(removed === 1 ? T("1 duplicate removed") : removed + " " + T("duplicates removed"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
   });
+  var mixQueueBtn = $("mixQueueBtn");
+  if (mixQueueBtn) mixQueueBtn.addEventListener("click", function () {
+    // Re-orders only the videos after the current one, so what is playing stays put.
+    var snap = lib.queue.slice(), sp = qPos, start = qPos + 1;
+    if (lib.queue.length - start < 2) { showLibErr(T("Need at least 2 more videos after the current one to mix.")); return; }
+    var tail = lib.queue.slice(start);
+    for (var i = tail.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = tail[i]; tail[i] = tail[j]; tail[j] = t; }
+    lib.queue = lib.queue.slice(0, start).concat(tail); saveLib(); renderLib(); showLibErr("");
+    toastUndo(T("Queue order mixed"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+  });
+  (window.__relang = window.__relang || []).push(function () { if (mixQueueBtn) mixQueueBtn.textContent = T("Mix order"); });
+  if (mixQueueBtn) mixQueueBtn.textContent = T("Mix order");
   (window.__relang = window.__relang || []).push(function () { if (dedupeQueueBtn) dedupeQueueBtn.textContent = T("Remove duplicates"); });
   if (dedupeQueueBtn) dedupeQueueBtn.textContent = T("Remove duplicates");
   renderLib();
