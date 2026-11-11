@@ -1166,6 +1166,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 @keyframes vpFindPulse{0%,100%{box-shadow:0 0 0 0 rgba(0,0,0,0);}12%,60%{box-shadow:0 0 0 3px var(--teal,#0a8),0 0 26px 4px var(--teal,#0a8);}}
 html.low-fx .vp-find-flash{animation:none;box-shadow:0 0 0 3px var(--teal,#0a8);}
 @media (prefers-reduced-motion: reduce){.vp-find-flash{animation:none;box-shadow:0 0 0 3px var(--teal,#0a8);}}
+.today-chip{font-size:11px;font-weight:600;min-height:30px;padding:4px 12px;flex:none;}
 </style><style>#vpBreak{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9997;width:min(430px,calc(100vw - 32px));padding:18px;box-sizing:border-box;border:1px solid var(--hairline);border-radius:18px;background:var(--card);color:var(--ink);box-shadow:0 16px 50px #0005;text-align:center}#vpBreak h3{margin:0 0 8px}#vpBreak p{margin:0 0 12px}#vpBreak .row{justify-content:center;gap:8px;flex-wrap:wrap}</style><style>#vpDrop[hidden]{display:none}#vpDrop{position:fixed;inset:0;z-index:9996;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;background:#080a1288;pointer-events:none}#vpDrop p{padding:40px 28px;border:2px dashed var(--teal);border-radius:22px;background:var(--card);color:var(--ink);font-size:18px;text-align:center;max-width:460px}</style><style>.vp-pal-tools{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;border-bottom:1px solid var(--hairline);font-size:13px}</style><style id="round25-polish">
 /* Round 25: custom app colour picker + visual polish. */
 .accent-custom { background: conic-gradient(from 0deg, #e0533d, #e0b53d, #3aa86a, #3a6fd0, #8a4fd0, #e0533d); }
@@ -2616,6 +2617,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Replay welcome tour": ["वेलकम टूर फिर देखें", "વેલકમ ટૂર ફરી જુઓ"],
    "Report a problem": ["समस्या की रिपोर्ट करें", "સમસ્યાની રિપોર્ટ કરો"],
    "Listening help (screen off)": ["सुनने की मदद (स्क्रीन बंद)", "સાંભળવા માટે મદદ (સ્ક્રીન બંધ)"],
+   "Watch time today. Tap to open watch stats.": ["आज का देखने का समय. आंकड़े खोलने के लिए टैप करें.", "આજનો જોવાનો સમય. આંકડા ખોલવા ટેપ કરો."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
@@ -8763,6 +8765,58 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   }
   paintGreet(); paintClr();
   (window.__relang = window.__relang || []).push(function () { paintGreet(); paintClr(); });
+})();
+</script>
+<script>
+/* Today chip (round 52): today's watch time always visible in the header.
+   Tap it to jump to Watch stats. Reads the same on-device stats the Library shows. */
+(function () {
+  "use strict";
+  var T = window.T || function (x) { return x; };
+  var KEY = "vp-stats.v1";
+  var head = document.querySelector(".head-actions");
+  if (!head) return;
+  var chip = document.createElement("button");
+  chip.type = "button"; chip.className = "chip today-chip"; chip.id = "todayChip"; chip.hidden = true;
+  head.appendChild(chip);
+  function todaySecs() {
+    try {
+      var s = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (!s || !s.days) return 0;
+      var d = new Date();
+      var k = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      return Math.floor(s.days[k] || 0);
+    } catch (e) { return 0; }
+  }
+  function fmt(s) {
+    s = Math.floor(s);
+    if (s < 60) return s + " " + T("sec");
+    var h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60);
+    if (m === 60) { h += 1; m = 0; }
+    return h > 0 ? h + " " + T("hr") + " " + m + " " + T("min") : m + " " + T("min");
+  }
+  function render() {
+    var secs = todaySecs();
+    chip.hidden = secs <= 0;
+    if (chip.hidden) return;
+    chip.textContent = T("Today") + ": " + fmt(secs);
+    chip.setAttribute("aria-label", T("Today") + ": " + fmt(secs) + ". " + T("Watch time today. Tap to open watch stats."));
+  }
+  chip.addEventListener("click", function () {
+    var sec = document.getElementById("library");
+    if (sec && sec.classList.contains("sec-collapsed") && window.vpExpandSection) window.vpExpandSection("library");
+    var el = document.getElementById("statsBox") || document.getElementById("lhStats");
+    if (!el) return;
+    setTimeout(function () {
+      try { el.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" }); } catch (e) { el.scrollIntoView(); }
+      el.classList.remove("vp-find-flash"); void el.offsetWidth; el.classList.add("vp-find-flash");
+      setTimeout(function () { el.classList.remove("vp-find-flash"); }, 2400);
+    }, 80);
+  });
+  setInterval(render, 15000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) render(); });
+  (window.__relang = window.__relang || []).push(render);
+  render();
 })();
 </script>
 </body>
