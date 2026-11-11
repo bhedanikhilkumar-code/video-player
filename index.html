@@ -893,6 +893,10 @@ html.high-contrast section::before, html.high-contrast .btn::before { content: n
 /* Saved moments: the viewer's marked times for the current video, shown as tappable chips. */
 #ctl-marks .marks-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center;}
 .mark-x{padding:4px 10px;}
+/* Up-next countdown: a small glass bar offers the next queue video for a few seconds, with cancel. */
+.upnext-bar{position:fixed;left:50%;bottom:calc(64px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:min(94vw,520px);display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:16px;border:1px solid var(--hairline);background:var(--card);color:var(--ink);box-shadow:0 12px 32px rgba(0,0,0,.22);font-size:14px;line-height:1.35;z-index:9400;}
+.upnext-bar .row{margin:0;flex:none;}
+.upnext-bar[hidden]{display:none;}
 </style>
 <style id="ux-totop">
 /* Back to top: the page is very long on a phone, so after one screen of scrolling
@@ -1187,6 +1191,10 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
       <div id="musicBar" class="music-bar">
         <div><strong id="musicBarT">Make room for your music</strong><p class="hint" id="musicBarP">A compact video, big controls and your queue together. Keep YouTube visible and your screen on.</p></div>
         <button class="btn" id="musicModeBtn" type="button" aria-pressed="false">Music mode: off</button>
+      </div>
+      <div id="upnextBar" class="upnext-bar" hidden>
+        <span id="upnextT" role="status"></span>
+        <span class="row"><button class="chip" id="upnextGo" type="button">Play now</button><button class="chip" id="upnextCancel" type="button">Cancel</button></span>
       </div>
       <div class="frame" id="frameBox">
         <div class="placeholder" id="placeholder">
@@ -2005,6 +2013,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "No moments saved for this video yet.": ["इस वीडियो के लिए अभी कोई पल सेव नहीं है.", "આ વીડિયો માટે હજુ કોઈ ક્ષણ સેવ નથી."],
    "Load a video first, then save a moment.": ["पहले वीडियो चलाएं, फिर पल सेव करें.", "પહેલા વીડિયો ચલાવો, પછી ક્ષણ સેવ કરો."],
    "Delete moment": ["पल हटाएं", "ક્ષણ હટાવો"],
+   "Next in ": ["अगला ", "આગળ "],
+   "a shuffled pick": ["शफ़ल से कोई भी", "શફલથી કોઈ પણ"],
+   "Auto-next stopped. Tap Next when you're ready.": ["ऑटो-अगला रुक गया. तैयार हों तो Next दबाएं.", "ઓટો-આગળ અટક્યું. તૈયાર હો ત્યારે Next દબાવો."],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
@@ -2197,6 +2208,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     b.setAttribute("aria-pressed", String(stopAfter)); b.classList.toggle("active", stopAfter);
   }
   function playQueueAt(i, advancing) {
+    if (typeof upnextCancel === "function") upnextCancel(true);
     if (i < 0 || i >= lib.queue.length) return;
     if (advancing === true) pushQHistory(qPos);
     if (!advancing && stopAfter) { stopAfter = false; renderStopAfter(); }
@@ -2466,7 +2478,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       else if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); }
       else if (data.info === 0 && stopAfter) { stopAfter = false; renderStopAfter(); $("queueModeMsg").textContent = T("Stopped after this track, as you asked."); }
       else if (data.info === 0 && lib.queue.length && queueModes.auto) {
-        if (qPos < 0) playQueueAt(0); else if (!playNext()) $("queueModeMsg").textContent = T("Queue finished. Tap a video to play again.");
+        if (typeof upnextBegin === "function") { upnextBegin(); } else if (qPos < 0) playQueueAt(0); else if (!playNext()) $("queueModeMsg").textContent = T("Queue finished. Tap a video to play again.");
       }
     }
     if (data.event === "onPlaybackQualityChange" && typeof data.info === "string") markActive(qualityChips, data.info);
@@ -2651,6 +2663,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
 
   function loadVideo(startSec, endSec, queueIndex, autoplay) {
+    if (typeof upnextCancel === "function") upnextCancel(true);
     var id = parseVideoId(linkInput.value);
     if (id) qPos = typeof queueIndex === "number" ? queueIndex : -1;
     if (!id) {
@@ -4033,6 +4046,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#markAddBtn", "🔖 Save this moment", "🔖 यह पल सेव करें"],
     ["#marksHint", "Keep your favourite spots in this video. Tap one to jump to it. Saved on this device, for each video.", "इस वीडियो के अपने पसंदीदा हिस्से सेव करें. किसी पर टैप करके वहां पहुंचें. हर वीडियो के लिए इसी डिवाइस पर सेव रहता है."],
     [".feat-nav a[href=\"#ctl-marks\"]", "Moments", "पल"],
+    ["#upnextGo", "Play now", "अभी चलाएं"],
+    ["#upnextCancel", "Cancel", "रद्द करें"],
   ];
   var I18N_PH = [
     ["#libSearch", "Search your videos", "अपने वीडियो खोजें"],
@@ -4124,6 +4139,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#markAddBtn": "🔖 આ ક્ષણ સેવ કરો",
  "#marksHint": "આ વીડિયોના તમારા પસંદીદા ભાગ સેવ કરો. કોઈ પર ટૅપ કરીને ત્યાં જાઓ. દરેક વીડિયો માટે આ ડિવાઇસ પર સેવ રહે છે.",
  ".feat-nav a[href=\"#ctl-marks\"]": "ક્ષણો",
+ "#upnextGo": "અત્યારે ચલાવો",
+ "#upnextCancel": "રદ કરો",
  "#settingsH": "સેટિંગ",
  "#settingsHint": "એપ જે યાદ રાખે છે તે ફક્ત આ ડિવાઇસ પર જ રહે છે: વોલ્યુમ, સ્પીડ, થીમ, ભાષા, કતાર મોડ, સ્લીપ ટાઇમર અને સેવર પસંદગી.",
  "#a11yBigT": "મોટું અક્ષર",
@@ -4377,6 +4394,45 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   })();
   (window.__relang = window.__relang || []).push(renderMarks);
   renderMarks();
+
+  // Up-next countdown: when a queue video ends, a short cancellable countdown plays the next one.
+  var upnextTimer = 0, upnextLeft = 0, upnextToken = 0;
+  function upnextHide() { var b = $("upnextBar"); if (b) b.hidden = true; if (upnextTimer) { clearInterval(upnextTimer); upnextTimer = 0; } }
+  function upnextCancel(silent) {
+    upnextToken++; upnextHide();
+    if (!silent) { var qm = $("queueModeMsg"); if (qm) qm.textContent = T("Auto-next stopped. Tap Next when you're ready."); }
+  }
+  function upnextPeek() {
+    if (!lib.queue.length) return -2;
+    if (queueModes.shuffle) return -1;
+    var n = qPos + 1; if (n >= lib.queue.length) { if (!queueModes.repeat) return -2; n = 0; }
+    return n;
+  }
+  function upnextBegin() {
+    if (qPos < 0) { playQueueAt(0); return; }
+    var peek = upnextPeek();
+    var fin = function () { var qm = $("queueModeMsg"); if (qm) qm.textContent = T("Queue finished. Tap a video to play again."); };
+    if (peek === -2) { if (!playNext()) fin(); return; }
+    var bar = $("upnextBar"); if (!bar) { if (!playNext()) fin(); return; }
+    upnextToken++; var tk = upnextToken; upnextLeft = 5;
+    var label = function () {
+      var name = peek >= 0 && lib.queue[peek] ? (lib.queue[peek].title || (T("Video ") + lib.queue[peek].id)) : T("a shuffled pick");
+      $("upnextT").textContent = T("Next in ") + upnextLeft + "s: " + name;
+    };
+    label(); bar.hidden = false;
+    clearInterval(upnextTimer);
+    upnextTimer = setInterval(function () {
+      if (tk !== upnextToken) { clearInterval(upnextTimer); upnextTimer = 0; return; }
+      upnextLeft--;
+      if (upnextLeft <= 0) { upnextHide(); if (!playNext()) fin(); }
+      else label();
+    }, 1000);
+  }
+  (function () {
+    var goB = $("upnextGo"), cxB = $("upnextCancel");
+    if (goB) goB.addEventListener("click", function () { upnextToken++; upnextHide(); if (!playNext()) { var qm = $("queueModeMsg"); if (qm) qm.textContent = T("Queue finished. Tap a video to play again."); } });
+    if (cxB) cxB.addEventListener("click", function () { upnextCancel(false); });
+  })();
 })();
 </script>
 <script>
