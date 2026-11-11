@@ -1074,6 +1074,11 @@ details.faq[open] > p, details.tips[open] > p, details.shortcuts[open] > ul { an
 /* Per-video memory note inside the info card. */
 .vmem-note { display: block; flex-basis: 100%; color: var(--teal); font-size: 12px; margin-top: 2px; font-weight: 600; }
 :root[data-theme="dark"] .vmem-note { color: #7fd2bf; }
+/* Skip intro (round 74): glass chip on the video corner, Netflix style. */
+.vp-skip-intro { position:absolute; right:10px; bottom:12px; z-index:6; padding:9px 18px; border-radius:999px; background:rgba(20,20,30,.78); color:#fff; border:1px solid rgba(255,255,255,.34); box-shadow:0 6px 22px #0008; backdrop-filter:blur(14px) saturate(1.5); -webkit-backdrop-filter:blur(14px) saturate(1.5); font-size:14px; font-weight:800; letter-spacing:.01em; cursor:pointer; animation:mp-pop .35s cubic-bezier(.34,1.56,.5,1) both; }
+.vp-skip-intro[hidden] { display:none; }
+.vp-skip-intro:active { transform:scale(.96); }
+#playerDock.is-mini .vp-skip-intro { display:none; }
 </style>
 <style id="local-workflow">
 .lp-filequeue{list-style:none;padding:0;max-height:240px;overflow:auto;overscroll-behavior:contain;display:grid;gap:8px}
@@ -1635,7 +1640,7 @@ setTimeout(done,3000);})();
             <button class="btn" id="playBtn" disabled>▶ Play</button>
             <span class="time" id="timeLabel">0:00 / 0:00</span> <span class="ends-at" id="endsAt" hidden></span>
             <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button> <button class="chip" id="lockBtn" type="button" aria-pressed="false">🔒 Lock touch</button> <button class="chip" id="fsRotBtn" type="button" aria-pressed="true">🔄 Auto-rotate</button> <button class="chip" id="statsBtn" type="button" aria-pressed="false">📊 Stats</button> <button class="chip" id="clockOvBtn" type="button" aria-pressed="false">🕐 Clock</button>
-      <button class="chip" id="calmMotionBtn" type="button" aria-pressed="false">Calm motion: off</button> <button class="chip" id="fsExitBtn" type="button" aria-pressed="false">Exit at end: off</button>
+      <button class="chip" id="calmMotionBtn" type="button" aria-pressed="false">Calm motion: off</button> <button class="chip" id="fsExitBtn" type="button" aria-pressed="false">Exit at end: off</button> <button class="chip" id="introBtn" type="button" aria-pressed="false">⏭ Skip intro</button>
           </div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
@@ -3627,6 +3632,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var t = (seeking ? Number(seek.value) : i.currentTime) || 0;
       paintTime(t);
       if (window.__vpHeroProg) window.__vpHeroProg(t);
+      introOvTick();
       statsTick();
       saveResume();
     }
@@ -3677,8 +3683,69 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var bits = [];
     if (typeof vm.speed === "number" && vm.speed !== 1) bits.push(vm.speed + "x");
     if (vm.cc) bits.push(T("CC on"));
+    if (typeof vm.intro === "number" && vm.intro >= 1) bits.push(T("skip to ") + fmt(vm.intro));
     vmemNote(bits.length ? T("Remembered for this video: ") + bits.join(" \u00b7 ") : "");
+    if (typeof introPaint === "function") introPaint();
   }
+  // ---- Skip intro (round 74): mark where a video's intro ends once, and a glass Skip chip
+  // on the video jumps straight past it on every watch, Netflix style. Kept per video in the
+  // per-video memory on this device, so it is included in the backup with speed and CC choices.
+  Object.assign(TR_MSG, {
+    "⏭ Skip intro": ["⏭ इंट्रो छोड़ें", "⏭ ઇન્ટ્રો સ્કિપ કરો"],
+    "Skip intro ▶": ["इंट्रो छोड़ें ▶", "ઇન્ટ્રો સ્કિપ કરો ▶"],
+    "⏭ Intro ends ": ["⏭ इंट्रो खत्म ", "⏭ ઇન્ટ્રો પૂરો "],
+    "Mark the intro end at the time playing now": ["अभी चल रहे समय को इंट्रो के खत्म होने की जगह चुनें", "હમણાં ચાલી રહેલા સમયને ઇન્ટ્રો પૂરા થવાની જગ્યા પસંદ કરો"],
+    "Tap to clear this video's intro end": ["इस वीडियो का इंट्रो एंड हटाने के लिए टैप करें", "આ વીડિયોનો ઇન્ટ્રો એન્ડ હટાવવા ટૅપ કરો"],
+    "Skipped the intro.": ["इंट्रो छोड़ दिया.", "ઇન્ટ્રો સ્કિપ કરી દીધું."],
+    "Play a YouTube video first, then mark its intro.": ["पहले कोई YouTube वीडियो चलाएं, फिर उसका इंट्रो चुनें.", "પહેલા કોઈ YouTube વીડિયો ચલાવો, પછી તેનો ઇન્ટ્રો પસંદ કરો."],
+    "Play to the moment the intro ends, then tap this.": ["इंट्रो जहां खत्म होता है वहां तक चलाएं, फिर इसे टैप करें.", "ઇન્ટ્રો જ્યાં પૂરો થાય ત્યાં સુધી ચલાવો, પછી આને ટૅપ કરો."],
+    "Intro end saved at ": ["इंट्रो एंड सेव हुआ ", "ઇન્ટ્રો એન્ડ સેવ થયો "],
+    " - the Skip chip shows at the start of this video.": [" - इस वीडियो की शुरुआत में Skip चिप दिखेगी.", " - આ વીડિયોની શરૂઆતમાં Skip ચિપ દેખાશે."],
+    "Intro end cleared for this video.": ["इस वीडियो का इंट्रो एंड हट गया.", "આ વીડિયોનો ઇન્ટ્રો એન્ડ હટી ગયો."],
+    "skip to ": ["सीधे ", "સીધું "]
+  });
+  var introBtn = $("introBtn"), introOv = null;
+  function introEndFor() { var v = curId && vmem[curId]; return v && typeof v.intro === "number" && v.intro >= 1 ? v.intro : null; }
+  function introEnsureOv() {
+    if (introOv || !frameBox) return;
+    introOv = document.createElement("button");
+    introOv.type = "button"; introOv.id = "vpSkipIntro"; introOv.className = "vp-skip-intro"; introOv.hidden = true;
+    introOv.addEventListener("click", function () {
+      var end = introEndFor(); if (end == null) { introPaint(); return; }
+      send("seekTo", [end, true]); curTime = end; seek.value = end; paintTime(end); if (typeof paintSeekFill === "function") paintSeekFill();
+      introPaint(); toast(T("Skipped the intro."));
+    });
+    frameBox.appendChild(introOv);
+  }
+  function introPaint() {
+    var end = introEndFor();
+    if (introBtn) {
+      introBtn.classList.toggle("active", end != null);
+      introBtn.setAttribute("aria-pressed", end != null ? "true" : "false");
+      introBtn.textContent = end != null ? T("⏭ Intro ends ") + fmt(end) : T("⏭ Skip intro");
+      introBtn.title = end != null ? T("Tap to clear this video's intro end") : T("Mark the intro end at the time playing now");
+    }
+    introEnsureOv();
+    if (introOv) {
+      var show = end != null && curTime < end - 1.5 && controls && !controls.hidden;
+      introOv.hidden = !show;
+      if (show) introOv.textContent = T("Skip intro ▶");
+    }
+  }
+  function introOvTick() {
+    var end = introEndFor(); if (end == null) return;
+    introEnsureOv(); if (!introOv) return;
+    var show = curTime < end - 1.5 && controls && !controls.hidden;
+    if (show !== !introOv.hidden) introPaint();
+  }
+  if (introBtn) introBtn.addEventListener("click", function () {
+    if (!curId) { toast(T("Play a YouTube video first, then mark its intro.")); return; }
+    var end = introEndFor();
+    if (end != null) { vmemRec({ intro: null }); introPaint(); vmemApply(); toast(T("Intro end cleared for this video.")); return; }
+    if (curTime < 5 || (duration > 0 && curTime >= duration - 3)) { toast(T("Play to the moment the intro ends, then tap this.")); return; }
+    vmemRec({ intro: Math.floor(curTime) }); introPaint(); vmemApply(); toast(T("Intro end saved at ") + fmt(Math.floor(curTime)) + T(" - the Skip chip shows at the start of this video."));
+  });
+  (window.__relang = window.__relang || []).push(introPaint);
   var resumeRec = null;
   function resumeRender() {
     if (!resumeRec) return;
@@ -3832,6 +3899,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (typeof paintEndsAt === "function") paintEndsAt(0);
     if (window.__vpSeekMarks) window.__vpSeekMarks();
     if (window.__vpABBand) window.__vpABBand(abA, abB);
+    introPaint();
     if (iframe) { iframe.remove(); iframe = null; }
     iframe = document.createElement("iframe");
     var clip = "";
@@ -8989,6 +9057,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Notes for this video", "note notes write", "#ctl-notes"],
       ["Music mode", "music audio songs", "#musicModeBtn"],
       ["Cinema mode", "cinema dark theatre theater", "#cinemaBtn"],
+      ["Skip intro", "skip intro opening start netflix", "#introBtn"],
       ["Touch lock", "lock touch child freeze pocket tap", "#lockBtn"],
       ["Downloader (non-YouTube sites)", "download downloader mp3 trim save video", "#dl"],
       ["Play a local file, volume boost", "local file boost 300 play", "#lp"],
