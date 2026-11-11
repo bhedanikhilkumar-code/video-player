@@ -1778,7 +1778,7 @@ setTimeout(done,3000);})();
 
         <div class="ctl-card wide" id="ctl-marks">
           <h3 id="marksH">Saved moments</h3>
-          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button> <button class="chip" id="markPrevBtn" type="button" disabled>⏮ Previous</button> <button class="chip" id="markNextBtn" type="button" disabled>Next ⏭</button> <button class="chip" id="markCopyBtn" type="button" disabled>📋 Copy list</button> <button class="chip" id="markTxtBtn" type="button">Save all as text file</button></div>
+          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button> <button class="chip" id="markPrevBtn" type="button" disabled>⏮ Previous</button> <button class="chip" id="markNextBtn" type="button" disabled>Next ⏭</button> <button class="chip" id="markCopyBtn" type="button" disabled>📋 Copy list</button> <button class="chip" id="markTxtBtn" type="button">Save all as text file</button> <button class="chip" id="markPauseBtn" type="button" aria-pressed="false">⏸ Pause at moments: off</button></div>
           <details class="mark-paste" id="markPasteBox">
             <summary id="markPasteSum">Add chapters from a typed list</summary>
             <textarea class="note-box" id="markPasteText" rows="4" maxlength="2000" placeholder="0:00 Intro&#10;1:23 Chorus" aria-label="Chapter list"></textarea>
@@ -2270,6 +2270,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Custom speed": ["अपनी स्पीड", "પોતાની સ્પીડ"],
    "Set": ["सेट", "સેટ"],
    "Pick a speed between 0.25 and 2.": ["0.25 से 2 के बीच स्पीड चुनें.", "0.25 અને 2 વચ્ચે સ્પીડ પસંદ કરો."],
+   "⏸ Pause at moments: on": ["⏸ पलों पर रुकें: चालू", "⏸ ક્ષણો પર રોકો: ચાલુ"],
+   "⏸ Pause at moments: off": ["⏸ पलों पर रुकें: बंद", "⏸ ક્ષણો પર રોકો: બંદ"],
+   "The video will pause at each saved moment.": ["वीडियो हर सेव किए पल पर अपने-आप रुकेगा.", "વીડિયો દરેક સેવ કરેલા ક્ષણ પર આપોઆપ રોકાશે."],
+   "Pause at moments off.": ["पलों पर रुकना बंद.", "ક્ષણો પર રોકવું બંદ."],
+   "Paused at moment ": ["पल पर रोका गया ", "ક્ષણ પર રોકાયું "],
+   "Pause at each saved moment": ["हर सेव किए पल पर रुकें", "દરેક સેવ કરેલા ક્ષણ પર રોકો"],
    "Speed set to": ["स्पीड सेट हुई", "સ્પીડ સેટ થઈ"],
    "Clear watched": ["देखे हुए हटाएं", "જોયેલા કાઢો"],
    "Auto-remove watched": ["देखा हुआ अपने-आप हटाएं", "જોયેલું આપોઆપ કાઢો"],
@@ -6817,6 +6823,47 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       marksSave(); renderMarks(); toast(T("Moment saved"));
     });
   })();
+  // Pause at each saved moment (round 76): while this is on, playback pauses by itself the
+  // moment the video reaches one of your saved spots - handy for taking notes while studying.
+  // It only fires when you play through a moment, never when you jump straight to it, and it
+  // stays quiet while an A-B loop is running. Off by default, remembered on this device.
+  var PM_KEY = "vp-pausemarks.v1", pauseMarks = false, pmPrev = -1, pmHold = -1;
+  try { pauseMarks = localStorage.getItem(PM_KEY) === "1"; } catch (e) {}
+  var pmBtn = $("markPauseBtn");
+  function pmRender() {
+    if (!pmBtn) return;
+    pmBtn.textContent = pauseMarks ? T("⏸ Pause at moments: on") : T("⏸ Pause at moments: off");
+    pmBtn.classList.toggle("active", pauseMarks);
+    pmBtn.setAttribute("aria-pressed", pauseMarks ? "true" : "false");
+  }
+  if (pmBtn) pmBtn.addEventListener("click", function () {
+    pauseMarks = !pauseMarks; pmPrev = -1; pmHold = -1;
+    try { localStorage.setItem(PM_KEY, pauseMarks ? "1" : "0"); } catch (e) {}
+    if (typeof vpPop === "function") vpPop(pmBtn);
+    pmRender();
+    toast(pauseMarks ? T("The video will pause at each saved moment.") : T("Pause at moments off."));
+  });
+  pmRender();
+  (window.__relang = window.__relang || []).push(pmRender);
+  setInterval(function () {
+    if (!pauseMarks || !playing || !curId || seeking) { pmPrev = (typeof curTime === "number" && curTime >= 0) ? curTime : -1; return; }
+    if (abEnabled && abA != null && abB != null) { pmPrev = curTime; return; }
+    var now = curTime || 0, prev = pmPrev; pmPrev = now;
+    if (prev < 0) return;
+    if (pmHold >= 0 && Math.abs(now - pmHold) < 1.6) return;
+    pmHold = -1;
+    var items = (marks && marks[curId]) ? marks[curId] : [];
+    for (var k = 0; k < items.length; k++) {
+      var mt = items[k] && items[k].t;
+      if (typeof mt !== "number") continue;
+      if (prev < mt && now >= mt && now - prev < 2.5 && mt - prev < 3) {
+        pmHold = mt;
+        send("pauseVideo");
+        toast(T("Paused at moment ") + fmt(mt) + (items[k].name ? " - " + items[k].name : ""));
+        break;
+      }
+    }
+  }, 500);
   (function () {
     var addB = $("markPasteAdd"), ta = $("markPasteText"), msg = $("markPasteMsg");
     if (!addB || !ta || !msg) return;
@@ -9183,6 +9230,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Music mode", "music audio songs", "#musicModeBtn"],
       ["Cinema mode", "cinema dark theatre theater", "#cinemaBtn"],
       ["Skip intro", "skip intro opening start netflix", "#introBtn"],
+      ["Pause at each saved moment", "pause moment auto stop note study", "#ctl-marks"],
       ["Still watching? check", "still watching auto pause netflix ask", "#stillRow"],
       ["Touch lock", "lock touch child freeze pocket tap", "#lockBtn"],
       ["Downloader (non-YouTube sites)", "download downloader mp3 trim save video", "#dl"],
