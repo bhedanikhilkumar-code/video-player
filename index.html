@@ -1170,6 +1170,71 @@ html.low-fx section::after, html.high-contrast section::after { content: none !i
 </style>
 </head>
 <body>
+<style>
+/* In-app glass dialog: replaces blocking browser prompt()/confirm() pop-ups. */
+#vpAskBg{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(10,8,12,.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);padding:20px;box-sizing:border-box;}
+#vpAskBg .vp-ask-card{width:100%;max-width:340px;background:var(--card,#fff);color:var(--ink,#222);border:1px solid var(--hairline,#e6e2e3);border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,.25);padding:18px;box-sizing:border-box;}
+#vpAskBg .vp-ask-msg{margin:0 0 12px;font-size:15px;line-height:1.45;word-break:break-word;}
+#vpAskBg .vp-ask-in{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:10px 12px;border-radius:12px;border:1px solid var(--hairline,#e6e2e3);background:transparent;color:inherit;margin:0 0 14px;outline:none;}
+#vpAskBg .vp-ask-in:focus{border-color:var(--teal,#3a8a77);}
+#vpAskBg .vp-ask-row{display:flex;gap:10px;justify-content:flex-end;}
+#vpAskBg .vp-ask-row .chip{min-width:84px;text-align:center;}
+@media (prefers-reduced-motion:no-preference){#vpAskBg .vp-ask-card{animation:vpAskIn .18s ease-out}@keyframes vpAskIn{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}}
+</style>
+<script>
+/* In-app glass dialog (vpAsk/vpConfirm): replaces blocking browser prompt()/confirm() pop-ups,
+   so naming a moment, renaming a playlist or confirming a reset feels like part of the app. */
+(function () {
+  "use strict";
+  function t(s) { return (window.T || function (x) { return x; })(s); }
+  function dialog(opts) {
+    return new Promise(function (resolve) {
+      var prev = document.activeElement;
+      var bg = document.createElement("div");
+      bg.id = "vpAskBg"; bg.setAttribute("role", "presentation");
+      var card = document.createElement("div");
+      card.className = "vp-ask-card"; card.setAttribute("role", "dialog"); card.setAttribute("aria-modal", "true");
+      var msg = document.createElement("p"); msg.className = "vp-ask-msg"; msg.textContent = opts.message;
+      card.appendChild(msg);
+      var input = null;
+      if (opts.withInput) {
+        input = document.createElement("input");
+        input.className = "vp-ask-in"; input.type = "text"; input.value = opts.def || "";
+        if (opts.readonly) input.readOnly = true;
+        card.appendChild(input);
+      }
+      var row = document.createElement("div"); row.className = "vp-ask-row";
+      var cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "chip"; cancel.textContent = t("Cancel");
+      var ok = document.createElement("button"); ok.type = "button"; ok.className = "chip"; ok.textContent = opts.okLabel || t("Save");
+      row.appendChild(cancel); row.appendChild(ok); card.appendChild(row); bg.appendChild(card);
+      function done(val) {
+        document.removeEventListener("keydown", onKey, true);
+        if (bg.parentNode) bg.parentNode.removeChild(bg);
+        if (prev && prev.focus) { try { prev.focus(); } catch (e) {} }
+        resolve(val);
+      }
+      function onKey(e) {
+        if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); done(null); }
+        else if (e.key === "Enter" && (!opts.withInput || e.target === input)) { e.preventDefault(); e.stopPropagation(); done(opts.withInput ? input.value : true); }
+        else if (e.key === "Tab") { e.preventDefault(); e.stopPropagation(); var els = opts.withInput ? [input, cancel, ok] : [cancel, ok]; var i = els.indexOf(document.activeElement); var n = els[(i + (e.shiftKey ? els.length - 1 : 1)) % els.length]; if (n) n.focus(); }
+      }
+      cancel.addEventListener("click", function () { done(null); });
+      ok.addEventListener("click", function () { done(opts.withInput ? input.value : true); });
+      bg.addEventListener("click", function (e) { if (e.target === bg) done(null); });
+      document.addEventListener("keydown", onKey, true);
+      document.body.appendChild(bg);
+      if (input) { input.focus(); if (opts.select !== false) input.select(); } else ok.focus();
+    });
+  }
+  window.vpAsk = function (message, def, opts) {
+    opts = opts || {};
+    return dialog({ message: message, def: def, withInput: true, readonly: !!opts.readonly, okLabel: opts.okLabel });
+  };
+  window.vpConfirm = function (message, okLabel) {
+    return dialog({ message: message, withInput: false, okLabel: okLabel || t("OK") });
+  };
+})();
+</script>
 <a class="skip" href="#player">Skip to player</a>
 <div class="wrap">
   <header class="site-head">
@@ -3734,9 +3799,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var n = 0; pl.items.forEach(function (x) { if (findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: x.title }); n++; } });
         saveLib(); renderLib(); plSay(n ? T("Added ") + n + " " + (n === 1 ? T("video") : T("videos")) + T(" to the queue.") : T("Those videos are already in the queue (or the queue is full at 50)."));
       });
-      btn(T("Update"), "", function () {
+      btn(T("Update"), "", async function () {
         if (!lib.queue.length) { plSay(T("The queue is empty, so there is nothing to save.")); return; }
-        if (!window.confirm(T("Replace the videos in") + " \"" + pl.name + "\"" + T(" with the current queue?"))) return;
+        if (!await vpConfirm(T("Replace the videos in") + " \"" + pl.name + "\"" + T(" with the current queue?"), T("Replace"))) return;
         pl.items = lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }); savePlaylists(); renderPlaylists(); plSay(T("Updated") + " \"" + pl.name + "\".");
       });
       btn(T("Add queue"), "", function () {
@@ -3751,8 +3816,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         playlists.splice(idx + 1, 0, { name: nm.slice(0, 40), items: pl.items.map(function (x) { return { id: x.id, title: x.title }; }) });
         savePlaylists(); renderPlaylists(); plSay(T("Duplicated as") + " \"" + nm.slice(0, 40) + "\".");
       });
-      btn(T("Rename"), "", function () {
-        var nv = cleanName(window.prompt(T("New name for this playlist"), pl.name)); if (!nv || nv === pl.name) return;
+      btn(T("Rename"), "", async function () {
+        var nv = cleanName(await vpAsk(T("New name for this playlist"), pl.name)); if (!nv || nv === pl.name) return;
         var f = plFind(nv); if (f >= 0 && f !== idx) { plSay(T("You already have a playlist named") + " \"" + nv + "\"."); return; }
         pl.name = nv; savePlaylists(); renderPlaylists(); plSay(T("Renamed."));
       });
@@ -3767,20 +3832,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
         plSay(T("Playlist saved as a file.") + " " + T("Share it or keep it as a backup."));
       });
-      btn(T("Delete"), "pl-del", function () {
-        if (!window.confirm(T("Delete the playlist") + " \"" + pl.name + "\"? " + T("Your queue stays as it is."))) return;
+      btn(T("Delete"), "pl-del", async function () {
+        if (!await vpConfirm(T("Delete the playlist") + " \"" + pl.name + "\"? " + T("Your queue stays as it is."), T("Delete"))) return;
         playlists.splice(idx, 1); savePlaylists(); renderPlaylists(); plSay(T("Deleted."));
       });
       li.appendChild(top); li.appendChild(acts); plList.appendChild(li);
     });
   }
-  $("plSaveBtn").addEventListener("click", function () {
+  $("plSaveBtn").addEventListener("click", async function () {
     var name = cleanName(plName.value);
     if (!name) { plSay(T("Type a name first, for example Study.")); plName.focus(); return; }
     if (!lib.queue.length) { plSay(T("The queue is empty. Add some videos to the queue first.")); return; }
     var f = plFind(name);
     if (f >= 0) {
-      if (!window.confirm(T("A playlist named") + " \"" + playlists[f].name + "\"" + T(" already exists. Replace it with the current queue?"))) return;
+      if (!await vpConfirm(T("A playlist named") + " \"" + playlists[f].name + "\"" + T(" already exists. Replace it with the current queue?"), T("Replace"))) return;
       playlists[f].items = lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; });
     } else {
       if (playlists.length >= PL_MAX) { plSay(T("You can keep up to ") + PL_MAX + T(" playlists. Delete one first.")); return; }
@@ -3822,10 +3887,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     plSay(T("Playing Music. Your saved list is now in the queue.")); $("musicBar").scrollIntoView({block:"start",behavior:"smooth"});
   }
   $("playMusicBtn").addEventListener("click",function(){var i=plFind("Music");playMusicList(i>=0?playlists[i]:null);});
-  $("saveMusicBtn").addEventListener("click",function(){
+  $("saveMusicBtn").addEventListener("click",async function(){
     if (!lib.queue.length) {plSay(T("Add some videos to your queue first, then save Music."));return;}
     var i=plFind("Music");
-    if(i>=0 && !window.confirm(T("Replace your saved Music playlist with the current queue?")))return;
+    if(i>=0 && !await vpConfirm(T("Replace your saved Music playlist with the current queue?"),T("Replace")))return;
     if(i<0 && playlists.length>=PL_MAX){plSay(T("Your saved playlists are full. Delete one first."));return;}
     var p={name:"Music",items:lib.queue.map(function(x){return {id:x.id,title:x.title||""};})};
     if(i>=0)playlists[i]=p;else playlists.push(p);savePlaylists();renderPlaylists();plSay(T("Music saved. Tap Play Music any time."));
@@ -4820,13 +4885,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   (function () {
     var addB = $("markAddBtn");
-    if (addB) addB.addEventListener("click", function () {
+    if (addB) addB.addEventListener("click", async function () {
       if (!curId) { toast(T("Load a video first, then save a moment.")); return; }
       var t = Math.floor(curTime || 0);
       var arr = marks[curId] = marks[curId] || [];
       if (arr.some(function (x) { return x.t === t; })) { toast(T("This video already has that moment.")); return; }
       if (arr.length >= 30) { toast(T("Moment list is full (30).")); return; }
-      var name = window.prompt(T("Name this moment"), fmt(t));
+      var name = await vpAsk(T("Name this moment"), fmt(t));
       if (name === null) return;
       arr.push({ t: t, name: name.trim().slice(0, 40) });
       marksSave(); renderMarks(); toast(T("Moment saved"));
@@ -5569,7 +5634,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       go.addEventListener("click", function () { vid.currentTime = ch.t; localPlay(); });
       var rn = document.createElement("button"); rn.type = "button"; rn.className = "chip ch-mini"; rn.textContent = "\u270e";
       rn.setAttribute("aria-label", T("Rename chapter") + " " + chFmt(ch.t));
-      rn.addEventListener("click", function () { var nv = window.prompt(T("Chapter name"), ch.n || ""); if (nv !== null) { ch.n = nv.trim().slice(0, 40); chSave(); chRender(); } });
+      rn.addEventListener("click", async function () { var nv = await vpAsk(T("Chapter name"), ch.n || ""); if (nv !== null) { ch.n = nv.trim().slice(0, 40); chSave(); chRender(); } });
       var del = document.createElement("button"); del.type = "button"; del.className = "chip ch-mini"; del.textContent = "\u2715";
       del.setAttribute("aria-label", T("Delete chapter") + " " + chFmt(ch.t));
       del.addEventListener("click", function () { list.splice(list.indexOf(ch), 1); chSave(); chRender(); });
@@ -6035,8 +6100,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (!btn) return;
   var T = window.T || function (s) { return s; };
   var KEYS = ["vp-prefs.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1"];
-  btn.addEventListener("click", function () {
-    if (!window.confirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices and downloader choices. Your queue, favourites, playlists, history and stats are kept."))) return;
+  btn.addEventListener("click", async function () {
+    if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices and downloader choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
     location.reload();
   });
@@ -6336,7 +6401,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           if (plMsg) plMsg.textContent = ok
             ? T("Share link copied for") + " \"" + pl.name + "\". " + T("Anyone who opens it can add this playlist.")
             : T("Could not copy. The link is shown - copy it yourself.");
-          if (!ok) window.prompt(T("Copy this link"), url);
+          if (!ok) vpAsk(T("Copy this link"), url, { readonly: true, okLabel: T("Done") });
         });
       });
       acts.appendChild(b);
