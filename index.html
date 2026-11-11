@@ -1002,6 +1002,9 @@ video::cue { background: rgba(0,0,0,.55); color: #fff; text-shadow: 0 1px 2px rg
 .feat { transition: transform .18s cubic-bezier(.34,1.56,.5,1), background-color .2s ease, color .2s ease; }
 .feat:active { transform: scale(.95); }
 .slider { transition: opacity .2s ease; }
+.seek-marks { position: relative; height: 12px; margin: 0 10px; }
+.seek-mark { position: absolute; top: 2px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; background: var(--teal); box-shadow: 0 0 0 2px var(--page), 0 1px 4px rgba(0,0,0,.35); transition: transform .15s ease; }
+.seek-mark:hover, .seek-mark:focus-visible { transform: scale(1.6); }
 input[type="range"]::-webkit-slider-thumb { transition: transform .15s cubic-bezier(.34,1.56,.5,1); }
 input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.25); }
 input[type="range"]::-moz-range-thumb { transition: transform .15s cubic-bezier(.34,1.56,.5,1); }
@@ -1234,6 +1237,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
           <div class="seek-tip" id="seekTip" hidden></div>
+          <div class="seek-marks" id="seekMarks" hidden></div>
         </div>
 
         <div class="ctl-card wide" id="ctl-gestures">
@@ -1660,6 +1664,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Link copied": ["लिंक कॉपी हुआ", "લિંક કોપી થઈ"],
    "2x speed while held.": ["दबाए रखने पर 2x स्पीड.", "દબાવી રાખવાથી 2x સ્પીડ."],
    "Speed back to ": ["स्पीड वापस ", "સ્પીડ પાછળ "],
+   "Saved moments on the seek bar": ["सीक बार पर सेव किए पल", "સીક બાર પર સેવ કરેલી ક્ષણો"],
+   "Jump to moment": ["पल पर जाएं", "ક્ષણ પર જાઓ"],
    "Theme: Auto": ["थीम: ऑटो", "થીમ: ઓટો"],
    "Theme: Day/Night": ["थीम: दिन/रात", "થીમ: દિવસ/રાત"],
    "Theme: Dark": ["थीम: डार्क", "થીમ: ડાર્ક"],
@@ -2582,6 +2588,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (typeof i.currentTime === "number" && !seeking) seek.value = i.currentTime;
       if (typeof i.duration === "number" && i.duration > 0) {
         duration = i.duration; seek.max = duration;
+        if (window.__vpSeekMarks) window.__vpSeekMarks();
         if (curId) { infoCache[curId] = infoCache[curId] || {}; infoCache[curId].dur = duration; infoDur.textContent = "Length " + fmt(duration); }
       }
       if (typeof i.volume === "number") { prefs.volume = Math.round(i.volume); vol.value = prefs.volume; volLabel.textContent = prefs.volume + "%"; }
@@ -2764,6 +2771,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ready = false; playing = false; duration = 0; playBtn.disabled = true; playBtn.textContent = T("▶ Play");
     if (typeof sleepFadeRestore === "function") sleepFadeRestore();
     timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1;
+    if (window.__vpSeekMarks) window.__vpSeekMarks();
     if (iframe) { iframe.remove(); iframe = null; }
     iframe = document.createElement("iframe");
     var clip = "";
@@ -4549,7 +4557,29 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       marksSave(); renderMarks(); toast(T("Moment saved"));
     });
   })();
-  function setMarkBtns(n) { ["markCopyBtn", "markPrevBtn", "markNextBtn"].forEach(function (id) { var b = $(id); if (b) b.disabled = !n; }); }
+  function setMarkBtns(n) { ["markCopyBtn", "markPrevBtn", "markNextBtn"].forEach(function (id) { var b = $(id); if (b) b.disabled = !n; }); renderSeekMarks(); }
+  // Saved moments also appear as dots under the seek bar, so favourite spots are visible while watching.
+  function renderSeekMarks() {
+    var box = $("seekMarks"); if (!box) return;
+    box.innerHTML = "";
+    var items = (curId && marks && marks[curId]) ? marks[curId].slice() : [];
+    if (!items.length || !(duration > 0)) { box.hidden = true; return; }
+    box.setAttribute("aria-label", T("Saved moments on the seek bar"));
+    items.sort(function (a, b) { return a.t - b.t; });
+    items.forEach(function (m) {
+      if (!(m.t >= 0) || m.t > duration) return;
+      var d = document.createElement("button");
+      d.type = "button"; d.className = "seek-mark";
+      d.style.left = (m.t / duration * 100).toFixed(2) + "%";
+      var lab = fmt(m.t) + (m.name ? " " + m.name : "");
+      d.title = lab;
+      d.setAttribute("aria-label", T("Jump to moment") + " " + lab);
+      d.addEventListener("click", function () { send("seekTo", [m.t, true]); send("playVideo"); });
+      box.appendChild(d);
+    });
+    box.hidden = !box.children.length;
+  }
+  window.__vpSeekMarks = renderSeekMarks;
   // Copy a link that opens this video right at one saved moment.
   function momentLinkCopy(m) {
     if (!curId) return;
@@ -6365,4 +6395,4 @@ if (window.__vpApplyLang) window.__vpApplyLang();
 })();
 </script>
 </body>
-            </html>
+  </html>
