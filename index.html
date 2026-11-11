@@ -1677,6 +1677,7 @@ setTimeout(done,3000);})();
             <input id="noteFindIn" type="search" autocomplete="off" spellcheck="false" placeholder="Search every saved note..." aria-label="Search every saved note">
             <div class="marks-list" id="noteFindOut"></div>
           </details>
+          <div class="row" style="margin-top:10px"><button class="chip" id="noteTxtBtn" type="button">Save all notes as text file</button></div>
         </div>
 
         <details class="shortcuts wide" id="scBox">
@@ -2069,6 +2070,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Copy list": ["लिस्ट कॉपी करें", "યાદી કોપી કરો"],
    "That file is too big. Use a text file under 200 KB.": ["फ़ाइल बहुत बड़ी है। 200 KB से छोटी टेक्स्ट फ़ाइल चुनें।", "ફાઇલ ઘણી મોટી છે. 200 KB થી નાની ટેક્સ્ટ ફાઇલ પસંદ કરો."],
    "Watch later saved as a text file": ["बाद में देखें लिस्ट टेक्स्ट फ़ाइल में सेव हुई", "પછી જોવાની યાદી ટેક્સ્ટ ફાઇલમાં સચવાઈ"],
+   "Notes saved as a text file": ["नोट्स टेक्स्ट फ़ाइल में सेव हुए", "નોંધો ટેક્સ્ટ ફાઇલમાં સચવાઈ"],
+   "No notes saved yet.": ["अभी कोई नोट सेव नहीं है।", "હજી કોઈ નોંધ સચવાઈ નથી."],
+   "Save all notes as text file": ["सभी नोट्स टेक्स्ट फ़ाइल में सेव करें", "બધી નોંધો ટેક્સ્ટ ફાઇલમાં સાચવો"],
    "Nothing in Watch later yet.": ["बाद में देखें में अभी कुछ नहीं है।", "પછી જોવામાં હજી કંઈ નથી."],
    "Queue saved as a text file": ["कतार टेक्स्ट फ़ाइल में सेव हुई", "કતાર ટેક્સ્ટ ફાઇલમાં સચવાઈ"],
    "Queue copied as a list": ["कतार लिस्ट कॉपी हुई", "કતાર યાદી કોપી થઈ"],
@@ -5072,6 +5076,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#marksH", "Saved moments", "सेव किए पल"],
     ["#plPasteBtn", "Paste a list of links", "लिंक की सूची पेस्ट करें"],
     ["#laterTxtBtn", "Save as text file", "टेक्स्ट फ़ाइल में सेव करें"],
+    ["#noteTxtBtn", "Save all notes as text file", "सभी नोट्स टेक्स्ट फ़ाइल में सेव करें"],
     ["#queueTxtBtn", "Save queue as text file", "कतार को टेक्स्ट फ़ाइल में सेव करें"],
     ["#queueTxtImportBtn", "Add links from a text file", "टेक्स्ट फ़ाइल से लिंक जोड़ें"],
     ["#plPasteAdd", "Add to queue", "कतार में जोड़ें"],
@@ -5196,6 +5201,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#marksH": "સેવ કરેલી ક્ષણો",
  "#plPasteBtn": "લિંકની યાદી પેસ્ટ કરો",
  "#laterTxtBtn": "ટેક્સ્ટ ફાઇલમાં સાચવો",
+ "#noteTxtBtn": "બધી નોંધો ટેક્સ્ટ ફાઇલમાં સાચવો",
  "#queueTxtBtn": "કતારને ટેક્સ્ટ ફાઇલમાં સાચવો",
  "#queueTxtImportBtn": "ટેક્સ્ટ ફાઇલમાંથી લિંક ઉમેરો",
  "#plPasteAdd": "કતારમાં ઉમેરો",
@@ -5803,6 +5809,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       out.appendChild(st);
     }
     inp.addEventListener("input", function () { if (deb) clearTimeout(deb); deb = setTimeout(run, 250); });
+  })();
+
+  // Notes and Favourites as text files, plus Surprise me (random pick from saved videos).
+  (function () {
+    function dl(text, name, okMsg) {
+      try {
+        var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" })); a.download = name;
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        toast(T(okMsg));
+      } catch (e) { toast(T("Could not copy. Try again.")); }
+    }
+    var nb = $("noteTxtBtn");
+    if (nb) nb.addEventListener("click", function () {
+      var ids = Object.keys(notes).filter(function (id) { return typeof notes[id] === "string" && notes[id].trim(); });
+      if (!ids.length) { toast(T("No notes saved yet.")); return; }
+      dl(ids.map(function (id) { return (titleFor(id) || id) + "\nhttps://youtu.be/" + id + "\n" + notes[id].trim(); }).join("\n\n----\n\n") + "\n", "video-player-notes.txt", "Notes saved as a text file");
+    });
   })();
 
   // Up-next countdown: when a queue video ends, a short cancellable countdown plays the next one.
