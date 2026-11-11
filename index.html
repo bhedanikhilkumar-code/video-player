@@ -2414,6 +2414,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Clock on video": ["वीडियो पर घड़ी", "વિડિઓ પર ઘડી"],
    "Clock shown": ["घड़ी दिख रही है", "ઘડી દેખાય છે"],
    "Clock hidden": ["घड़ी छिपी", "ઘડી છુપાઈ"],
+   "Sleep timer on the video": ["वीडियो पर स्लीप टाइमर", "વીડિયો પર સ્લીપ ટાઇમર"],
+   "Sleep countdown on the video": ["वीडियो पर स्लीप उल्टी गिनती", "વીડિયો પર સ્લીપ ઉલટી ગણતરી"],
    "Only unwatched": ["सिर्फ़ न देखे", "ફક્ત ન જોયેલા"],
    "Only unwatched in Watch later": ["बाद में देखें में सिर्फ़ न देखे", "પછી જુઓમાં ફક્ત ન જોયેલા"],
    "Showing only unwatched videos.": ["सिर्फ़ न देखे वीडियो दिख रहे हैं.", "ફક્ત ન જોયેલા વિડિઓ દેખાય છે."],
@@ -8606,6 +8608,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Added": ["जोड़ा गया", "ઉમેર્યું"]
   });
   var WNEW = [
+    ["Sleep countdown on the video", "#ctl-sleep"],
     ["Only unwatched in Watch later", "#laterUnwBtn"],
     ["Pin favourites to the top", "#lhFavs"],
     ["Pause when headphones disconnect", "#unplugChk"],
@@ -8614,8 +8617,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Watch next card", "#playerHeading"],
     ["Match video colour", "#accentRow"],
     ["Mark as watched chip", "#watchedBtn"],
-    ["Played count", "#infoCard"],
-    ["Share on WhatsApp", "#waBtn"]
+    ["Played count", "#infoCard"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -10671,7 +10673,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later added date", "watch later added date when saved how old days ago", "#lhLater"],
       ["Pin favourites to the top", "pin favourite top keep important first p pinned", "#lhFavs"],
       ["Pause when headphones disconnect", "pause headphones unplug disconnect bluetooth earphones wire out", "#unplugChk"],
-      ["Only unwatched in Watch later", "watch later unwatched filter hide watched backlog left to watch", "#laterUnwBtn"]
+      ["Only unwatched in Watch later", "watch later unwatched filter hide watched backlog left to watch", "#laterUnwBtn"],
+      ["Sleep countdown on the video", "sleep timer countdown pill video pause time left clock", "#ctl-sleep"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
@@ -12435,6 +12438,54 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
   // The controls row appears when a video loads; notice it and start or stop the clock.
   if (ctl && window.MutationObserver) new MutationObserver(paint).observe(ctl, { attributes: true, attributeFilter: ["hidden"] });
   if (ends && window.MutationObserver) new MutationObserver(function () { if (!ov.hidden) paint(); }).observe(ends, { attributes: true, attributeFilter: ["hidden"], childList: true, characterData: true, subtree: true });
+})();
+</script>
+<script>
+/* Sleep countdown on the video (round 95): while a sleep timer runs, a small glass pill on the
+   video's top corner counts down, so the time left is visible without opening the Sleep card.
+   It mirrors the Sleep card's own label every second, needs no setting of its own, hides in the
+   mini player, and tapping it jumps to the Sleep card. Same message table as the rest of the app. */
+(function () {
+  "use strict";
+  var T = window.T || function (x) { return x; };
+  var box = document.getElementById("frameBox"), lab = document.getElementById("sleepLabel"),
+    ext = document.getElementById("sleepExtend"), ctl = document.getElementById("controls"),
+    card = document.getElementById("ctl-sleep");
+  if (!box || !lab || !card) return;
+  var st = document.createElement("style");
+  st.textContent = ".vp-sleepov{position:absolute;top:8px;right:8px;z-index:6;padding:6px 12px;border-radius:999px;background:rgba(20,20,30,.62);color:#fff;border:1px solid rgba(255,255,255,.28);box-shadow:0 4px 16px #0006;backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.3;cursor:pointer}"
+    + ".vp-sleepov[hidden]{display:none}"
+    + "#playerDock.is-mini .vp-sleepov{display:none}";
+  document.head.appendChild(st);
+  var pill = document.createElement("button");
+  pill.type = "button"; pill.className = "vp-sleepov"; pill.id = "vpSleepOv"; pill.hidden = true;
+  box.appendChild(pill);
+  function paint() {
+    var txt = (lab.textContent || "").trim();
+    var prefix = T("Pauses in ");
+    var on = !!(ctl && !ctl.hidden) && !!(ext && !ext.hidden) && txt.indexOf(prefix) === 0;
+    pill.hidden = !on;
+    if (on) {
+      pill.textContent = "😴 " + txt.slice(prefix.length);
+      pill.setAttribute("aria-label", T("Sleep timer on the video") + ": " + txt);
+    }
+  }
+  pill.addEventListener("click", function () {
+    var sec = card.closest ? card.closest("section.sec-collapsed") : null;
+    if (sec && window.vpExpandSection) window.vpExpandSection(sec.id);
+    setTimeout(function () {
+      try { card.scrollIntoView({ behavior: (window.vpReducedMotion && window.vpReducedMotion()) ? "auto" : "smooth", block: "center" }); } catch (e) { card.scrollIntoView(); }
+      card.classList.remove("vp-find-flash"); void card.offsetWidth; card.classList.add("vp-find-flash");
+      setTimeout(function () { card.classList.remove("vp-find-flash"); }, 2400);
+    }, 80);
+  });
+  (window.__relang = window.__relang || []).push(paint);
+  paint();
+  if (window.MutationObserver) {
+    new MutationObserver(paint).observe(lab, { childList: true, characterData: true, subtree: true });
+    if (ext) new MutationObserver(paint).observe(ext, { attributes: true, attributeFilter: ["hidden"] });
+    if (ctl) new MutationObserver(paint).observe(ctl, { attributes: true, attributeFilter: ["hidden"] });
+  }
 })();
 </script>
 </body>
