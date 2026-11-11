@@ -2001,7 +2001,7 @@ setTimeout(done,3000);})();
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsClear" type="button">Clear</button></div>
-      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><div class="stats-days" id="statsDays"></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><ul class="lib-list" id="statsList"></ul>
+      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsWeek" role="status"></p><div class="stats-days" id="statsDays"></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><ul class="lib-list" id="statsList"></ul>
       <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
       <div class="goal-row" id="storRow"><p class="hint" id="storInfo" role="status"></p><button class="chip" id="storBtn" type="button">Refresh</button></div>
     </section>
@@ -2845,6 +2845,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Report a problem": ["समस्या की रिपोर्ट करें", "સમસ્યાની રિપોર્ટ કરો"],
    "Listening help (screen off)": ["सुनने की मदद (स्क्रीन बंद)", "સાંભળવા માટે મદદ (સ્ક્રીન બંધ)"],
    "Watch time today. Tap to open watch stats.": ["आज का देखने का समय. आंकड़े खोलने के लिए टैप करें.", "આજનો જોવાનો સમય. આંકડા ખોલવા ટેપ કરો."],
+   "This week": ["इस हफ़्ते", "આ અઠવાડિયે"],
+   "more than last week": ["पिछले हफ़्ते से ज़्यादा", "ગયા અઠવાડિયા કરતાં વધુ"],
+   "less than last week": ["पिछले हफ़्ते से कम", "ગયા અઠવાડિયા કરતાં ઓછું"],
+   "same as last week": ["पिछले हफ़्ते जितना ही", "ગયા અઠવાડિયા જેટલું જ"],
+   "no stats from last week yet": ["पिछले हफ़्ते के आंकड़े अभी नहीं", "ગયા અઠવાડિયાના આંકડા હજી નથી"],
   };
   function T(s) { var lg = prefs.lang; if (lg !== "hi" && lg !== "gu") return s; var row = (typeof TR_MSG !== "undefined") ? TR_MSG[s] : null; return row ? row[lg === "hi" ? 0 : 1] : s; }
 
@@ -5396,6 +5401,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         });
         daysEl.setAttribute("role", "img");
         daysEl.setAttribute("aria-label", T("Watch time, last 7 days: ") + arr.map(function (x) { return x.full + " " + fmtWatch(x.secs); }).join(", "));
+      }
+    }
+    var weekEl = $("statsWeek");
+    if (weekEl) {
+      weekEl.hidden = !hasAny;
+      if (hasAny) {
+        var twSecs = 0, lwSecs = 0;
+        for (var wi = 0; wi < 7; wi++) twSecs += Math.floor(stats.days[dayKey(new Date(Date.now() - wi * 86400000))] || 0);
+        for (var wj = 7; wj < 14; wj++) lwSecs += Math.floor(stats.days[dayKey(new Date(Date.now() - wj * 86400000))] || 0);
+        var cmp;
+        if (lwSecs <= 0) cmp = T("no stats from last week yet");
+        else if (Math.abs(twSecs - lwSecs) < 60) cmp = T("same as last week");
+        else cmp = Math.abs(Math.round((twSecs - lwSecs) / lwSecs * 100)) + "% " + T(twSecs > lwSecs ? "more than last week" : "less than last week");
+        weekEl.textContent = T("This week") + ": " + fmtWatch(twSecs) + " \u00b7 " + cmp;
       }
     }
     var calWrap = $("statsCalWrap"), calEl = $("statsCal");
