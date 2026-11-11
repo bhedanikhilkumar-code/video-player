@@ -670,6 +670,10 @@ body{overflow-x:clip}
 .pl-count{color:var(--ink2);font-size:13px}
 .pl-acts{display:flex;gap:6px;flex-wrap:wrap}
 .pl-acts .chip{min-height:44px;padding:6px 12px;font-size:14px}
+.pl-cover{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;overflow:hidden;border-radius:12px;border:1px solid var(--hairline);padding:0;background:var(--soft);cursor:pointer;width:100%;max-width:260px;-webkit-tap-highlight-color:transparent}
+.pl-cover img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}
+.pl-cover img:last-child:nth-child(odd){grid-column:1 / -1}
+.pl-len{color:var(--ink2);font-size:12.5px}
 .pl-acts .pl-del{color:var(--red)}
 #themeBtn .theme-ico{margin-right:4px}
 /* Music mode keeps the complete official video visible, with no audio-only player. */
@@ -5685,15 +5689,39 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var nm = document.createElement("span"); nm.className = "pl-name"; nm.textContent = pl.name;
       var ct = document.createElement("span"); ct.className = "pl-count"; ct.textContent = pl.items.length + " " + (pl.items.length === 1 ? T("video") : T("videos"));
       top.appendChild(nm); top.appendChild(ct);
-      var acts = document.createElement("div"); acts.className = "pl-acts";
-      function btn(label, cls, fn) { var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (cls ? " " + cls : ""); b.textContent = label; b.setAttribute("aria-label", label + ": " + pl.name); b.addEventListener("click", fn); acts.appendChild(b); }
-      btn(T("Play"), "", function () {
+      function playPl() {
         if (!pl.items.length) return;
         lib.queue = pl.items.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1;
         saveLib(); renderLib(); showLibErr(""); plSay(T("Playing") + " \"" + pl.name + "\". " + T("The queue now holds its") + " " + pl.items.length + " " + T("videos") + ".");
         playQueueAt(0);
         if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
-      });
+      }
+      // Round 83: playlist cover - a 2x2 mosaic of the first videos (tap it to play), and a
+      // total-length line from the lengths the app has learned, like the queue total time.
+      if (pl.items.length && !prefs.dataSaver) {
+        var cover = document.createElement("button");
+        cover.type = "button"; cover.className = "pl-cover";
+        cover.setAttribute("aria-label", T("Play") + ": " + pl.name);
+        cover.title = T("Play");
+        pl.items.slice(0, 4).forEach(function (x) {
+          var im = document.createElement("img"); im.alt = ""; im.loading = "lazy"; im.decoding = "async";
+          thumbSet(im, x.id, "mqdefault.jpg");
+          cover.appendChild(im);
+        });
+        cover.addEventListener("click", playPl);
+        li.appendChild(cover);
+      }
+      var plKnown = 0, plSecs = 0;
+      pl.items.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { plKnown++; plSecs += d; } });
+      if (plKnown) {
+        var ln = document.createElement("span"); ln.className = "pl-len";
+        var pt = Math.round(plSecs), ph = Math.floor(pt / 3600), pm = ph ? Math.round((pt % 3600) / 60) : Math.max(1, Math.round(pt / 60));
+        ln.textContent = "~ " + (ph ? ph + " " + T("hr") + " " + pm + " " + T("min") : pm + " " + T("min")) + (plKnown < pl.items.length ? " · " + plKnown + "/" + pl.items.length + " " + T("lengths known") : "");
+        top.appendChild(ln);
+      }
+      var acts = document.createElement("div"); acts.className = "pl-acts";
+      function btn(label, cls, fn) { var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (cls ? " " + cls : ""); b.textContent = label; b.setAttribute("aria-label", label + ": " + pl.name); b.addEventListener("click", fn); acts.appendChild(b); }
+      btn(T("Play"), "", playPl);
       btn(T("Add to queue"), "", function () {
         var n = 0; pl.items.forEach(function (x) { if (findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: x.title }); n++; } });
         saveLib(); renderLib(); plSay(n ? T("Added ") + n + " " + (n === 1 ? T("video") : T("videos")) + T(" to the queue.") : T("Those videos are already in the queue (or the queue is full at 50)."));
