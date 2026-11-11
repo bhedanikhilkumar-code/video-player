@@ -1908,7 +1908,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="libListMsg" role="status"></p>
       <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
-      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="favTxtBtn" type="button">Save as text file</button></span></div>
+      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button></span></div>
       <ul class="lib-list" id="favList"></ul>
       <div class="lib-head"><h3 id="lhHist">Recently watched</h3><button class="chip" id="clearHistBtn">Clear</button></div>
       <ul class="lib-list" id="histList"></ul>
@@ -2074,6 +2074,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "No notes saved yet.": ["अभी कोई नोट सेव नहीं है।", "હજી કોઈ નોંધ સચવાઈ નથી."],
    "Favourites saved as a text file": ["पसंदीदा टेक्स्ट फ़ाइल में सेव हुए", "મનપસંદ ટેક્સ્ટ ફાઇલમાં સચવાયા"],
    "No favourites yet.": ["अभी कोई पसंदीदा नहीं है।", "હજી કોઈ મનપસંદ નથી."],
+   "Save a few videos first (Favourites, Watch later or history), then Surprise me can pick one.": ["पहले कुछ वीडियो सेव करें (पसंदीदा, बाद में देखें या हिस्ट्री), फिर Surprise me चुन सकेगा।", "પહેલા થોડા વીડિયો સાચવો (મનપસંદ, પછી જુઓ કે ઇતિહાસ), પછી Surprise me પસંદ કરી શકશે."],
+   "Surprise! Playing: ": ["सरप्राइज़! चल रहा है: ", "સરપ્રાઇઝ! ચાલે છે: "],
+   "🎲 Surprise me": ["🎲 सरप्राइज़ मी", "🎲 સરપ્રાઇઝ મી"],
    "Save all notes as text file": ["सभी नोट्स टेक्स्ट फ़ाइल में सेव करें", "બધી નોંધો ટેક્સ્ટ ફાઇલમાં સાચવો"],
    "Nothing in Watch later yet.": ["बाद में देखें में अभी कुछ नहीं है।", "પછી જોવામાં હજી કંઈ નથી."],
    "Queue saved as a text file": ["कतार टेक्स्ट फ़ाइल में सेव हुई", "કતાર ટેક્સ્ટ ફાઇલમાં સચવાઈ"],
@@ -5079,6 +5082,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#plPasteBtn", "Paste a list of links", "लिंक की सूची पेस्ट करें"],
     ["#laterTxtBtn", "Save as text file", "टेक्स्ट फ़ाइल में सेव करें"],
     ["#favTxtBtn", "Save as text file", "टेक्स्ट फ़ाइल में सेव करें"],
+    ["#surpriseBtn", "🎲 Surprise me", "🎲 सरप्राइज़ मी"],
     ["#noteTxtBtn", "Save all notes as text file", "सभी नोट्स टेक्स्ट फ़ाइल में सेव करें"],
     ["#queueTxtBtn", "Save queue as text file", "कतार को टेक्स्ट फ़ाइल में सेव करें"],
     ["#queueTxtImportBtn", "Add links from a text file", "टेक्स्ट फ़ाइल से लिंक जोड़ें"],
@@ -5205,6 +5209,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#plPasteBtn": "લિંકની યાદી પેસ્ટ કરો",
  "#laterTxtBtn": "ટેક્સ્ટ ફાઇલમાં સાચવો",
  "#favTxtBtn": "ટેક્સ્ટ ફાઇલમાં સાચવો",
+ "#surpriseBtn": "🎲 સરપ્રાઇઝ મી",
  "#noteTxtBtn": "બધી નોંધો ટેક્સ્ટ ફાઇલમાં સાચવો",
  "#queueTxtBtn": "કતારને ટેક્સ્ટ ફાઇલમાં સાચવો",
  "#queueTxtImportBtn": "ટેક્સ્ટ ફાઇલમાંથી લિંક ઉમેરો",
@@ -5834,6 +5839,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (fb) fb.addEventListener("click", function () {
       if (!lib.favs.length) { toast(T("No favourites yet.")); return; }
       dl(lib.favs.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n\n") + "\n", "video-player-favourites.txt", "Favourites saved as a text file");
+    });
+    var sb = $("surpriseBtn");
+    if (sb) sb.addEventListener("click", function () {
+      var seen = {}, pool = [];
+      lib.favs.concat(lib.later, lib.hist).forEach(function (x) { if (x && x.id && !seen[x.id] && x.id !== curId) { seen[x.id] = 1; pool.push(x); } });
+      if (!pool.length) { toast(T("Save a few videos first (Favourites, Watch later or history), then Surprise me can pick one.")); return; }
+      var pick = pool[Math.floor(Math.random() * pool.length)];
+      linkInput.value = "https://youtu.be/" + pick.id; loadBtn.click();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      toast(T("Surprise! Playing: ") + (pick.title || pick.id));
     });
   })();
 
