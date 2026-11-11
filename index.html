@@ -1672,6 +1672,7 @@ setTimeout(done,3000);})();
       </div>
 
       <div class="controls" id="controls" hidden>
+        <div class="row" id="favCtlBar" role="group" aria-label="Often used controls" style="margin-bottom:8px" hidden><span class="label" id="favCtlLab">Often used</span><span class="chips" id="favCtlChips"></span></div>
         <div class="ctl-card wide transport" id="ctl-transport">
           <div class="row">
             <button class="btn" id="playBtn" disabled>▶ Play</button>
@@ -4175,6 +4176,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     frameBox.appendChild(iframe);
     placeholder.style.display = "none";
     controls.hidden = false;
+    if (typeof favCtlRender === "function") favCtlRender();
     if (rwExact && startSec != null && rwExact > startSec) {
       var exactSpot = rwExact;
       toastUndo(T("Started 10 seconds early to jog your memory"), function () { manualSeek(exactSpot); });
@@ -4329,6 +4331,94 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var l = $("rwPauseLab"); if (l) l.textContent = T("Rewind after a pause");
   }
   (window.__relang = window.__relang || []).push(rwPauseRender); rwPauseRender();
+
+  /* Often used bar (round 83): the control cards you tap most appear as quick chips
+     above the player controls, so a long page needs less scrolling. Taps on the main
+     control cards are counted on this device; a chip jumps to its control with a glow
+     flash. Press and hold (or right-click) a chip to drop it, Clear resets the counts. */
+  Object.assign(TR_MSG, {
+    "Often used": ["अक्सर इस्तेमाल", "ઘણીવાર વપરાયેલ"],
+    "Clear": ["साफ़ करें", "સાફ કરો"],
+    "Jump to this control. Press and hold (or right-click) to drop it from the bar.": ["इस कंट्रोल पर जाएं. बार से हटाने के लिए दबाकर रखें (या राइट-क्लिक करें).", "આ કંટ્રોલ પર જાઓ. બારમાંથી હટાવવા દબાવી રાખો (અથવા રાઇટ-ક્લિક કરો)."],
+    "Dropped from Often used.": ["अक्सर इस्तेमाल से हटा दिया.", "ઘણીવાર વપરાયેલામાંથી હટાવ્યું."],
+    "Often-used controls cleared.": ["अक्सर इस्तेमाल के कंट्रोल साफ़ हुए.", "ઘણીવાર વપરાયેલા કંટ્રોલ સાફ થયા."],
+    "Often-used controls restored.": ["अक्सर इस्तेमाल के कंट्रोल वापस आए.", "ઘણીવાર વપરાયેલા કંટ્રોલ પાછા આવ્યા."]
+  });
+  var FAVCTL_KEY = "vp-ctl-use.v1";
+  var FAVCTL_DEFS = ["#ctl-sound", "#ctl-speed", "#ctl-quality", "#ctl-saver", "#ctl-subs", "#ctl-repeat", "#ctl-sleep", "#ctl-focus", "#ctl-gestures", "#ctl-share", "#ctl-marks", "#ctl-notes", "#ctl-lyrics", "#lhQueue", "#lhPlaylists", "#lhLater", "#lhFavs", "#lhHist", "#lhStats", "#dl", "#lp"].map(function (sel, i) { return { sel: sel, i: i }; });
+  var favCtl = { counts: {}, hidden: [] };
+  try { var fc0 = JSON.parse(localStorage.getItem(FAVCTL_KEY) || "null"); if (fc0 && typeof fc0 === "object") { if (fc0.counts && typeof fc0.counts === "object") favCtl.counts = fc0.counts; if (Array.isArray(fc0.hidden)) favCtl.hidden = fc0.hidden.filter(function (s) { return typeof s === "string"; }); } } catch (e) {}
+  function favCtlSave() { try { localStorage.setItem(FAVCTL_KEY, JSON.stringify(favCtl)); } catch (e) {} }
+  function favCtlLabel(d) {
+    var el = null; try { el = document.querySelector(d.sel); } catch (e) {}
+    if (el) {
+      var h = /^H[23]$/.test(el.tagName) ? el : (el.querySelector ? el.querySelector("h2, h3") : null);
+      if (h && h.textContent.trim()) return h.textContent.trim().replace(/\s*\(\d+\)\s*$/, "");
+      var t = (el.textContent || "").trim();
+      if (t && t.length <= 30) return t;
+    }
+    return d.sel.replace(/^#(ctl-|lh)/, "").replace(/-/g, " ");
+  }
+  function favCtlJump(sel) {
+    var el = null; try { el = document.querySelector(sel); } catch (e) {}
+    if (!el) return;
+    var sec = el.closest ? el.closest("section.sec-collapsed") : null;
+    if (sec && window.vpExpandSection) window.vpExpandSection(sec.id);
+    var det = el.closest ? el.closest("details:not([open])") : null;
+    if (det) det.open = true;
+    setTimeout(function () {
+      try { el.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); } catch (e) { el.scrollIntoView(); }
+      el.classList.remove("vp-find-flash"); void el.offsetWidth; el.classList.add("vp-find-flash");
+      setTimeout(function () { el.classList.remove("vp-find-flash"); }, 2400);
+    }, 80);
+  }
+  function favCtlRender() {
+    var bar = $("favCtlBar"), chips = $("favCtlChips"); if (!bar || !chips) return;
+    var ranked = FAVCTL_DEFS.filter(function (d) { return (favCtl.counts[d.sel] | 0) > 0 && favCtl.hidden.indexOf(d.sel) < 0; });
+    ranked.sort(function (a, b) { return (favCtl.counts[b.sel] | 0) - (favCtl.counts[a.sel] | 0) || a.i - b.i; });
+    ranked = ranked.slice(0, 5).filter(function (d) { var el = null; try { el = document.querySelector(d.sel); } catch (e) {} return el && el.offsetParent !== null; });
+    chips.innerHTML = "";
+    if (!ranked.length) { bar.hidden = true; return; }
+    bar.hidden = false;
+    $("favCtlLab").textContent = T("Often used");
+    ranked.forEach(function (d) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip";
+      b.textContent = favCtlLabel(d);
+      b.title = T("Jump to this control. Press and hold (or right-click) to drop it from the bar.");
+      var lpTimer = 0, lpDone = false;
+      b.addEventListener("click", function () {
+        if (lpDone) { lpDone = false; return; }
+        favCtlJump(d.sel);
+      });
+      function drop() {
+        lpDone = true;
+        favCtl.hidden.push(d.sel); favCtlSave(); favCtlRender();
+        if (typeof toastUndo === "function") toastUndo(T("Dropped from Often used."), function () { favCtl.hidden = favCtl.hidden.filter(function (s) { return s !== d.sel; }); favCtlSave(); favCtlRender(); }, T("Often-used controls restored."));
+      }
+      b.addEventListener("pointerdown", function () { lpDone = false; if (lpTimer) clearTimeout(lpTimer); lpTimer = setTimeout(drop, 600); });
+      ["pointerup", "pointerleave", "pointercancel"].forEach(function (ev) { b.addEventListener(ev, function () { if (lpTimer) clearTimeout(lpTimer); lpTimer = 0; }); });
+      b.addEventListener("contextmenu", function (e) { e.preventDefault(); drop(); });
+      chips.appendChild(b);
+    });
+    var cl = document.createElement("button");
+    cl.type = "button"; cl.className = "chip"; cl.textContent = T("Clear");
+    cl.addEventListener("click", function () {
+      var snap = { counts: favCtl.counts, hidden: favCtl.hidden };
+      favCtl.counts = {}; favCtl.hidden = []; favCtlSave(); favCtlRender();
+      if (typeof toastUndo === "function") toastUndo(T("Often-used controls cleared."), function () { favCtl.counts = snap.counts; favCtl.hidden = snap.hidden; favCtlSave(); favCtlRender(); }, T("Often-used controls restored."));
+    });
+    chips.appendChild(cl);
+  }
+  (window.__relang = window.__relang || []).push(favCtlRender); favCtlRender();
+  document.addEventListener("click", function (e) {
+    var t = e.target; if (!t || !t.closest) return;
+    for (var i = 0; i < FAVCTL_DEFS.length; i++) {
+      var sel = FAVCTL_DEFS[i].sel, hit = null;
+      try { hit = t.closest(sel); } catch (e2) {}
+      if (hit) { favCtl.counts[sel] = (favCtl.counts[sel] | 0) + 1; favCtlSave(); favCtlRender(); break; }
+    }
+  });
   // Keep one deliberate app seek, never automatic loop seeks or YouTube's controls.
   var undoSeekState = null, undoSeekTimer = 0, scrubOrigin = null;
   function clearUndoSeek() {
@@ -5721,7 +5811,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       lyrics: (function () { var o = {}; if (typeof lyrics === "object" && lyrics) Object.keys(lyrics).forEach(function (id) { if (typeof lyrics[id] === "string" && lyrics[id].trim()) o[id] = lyrics[id]; }); return o; })(),
       practiceLoops: practiceLoops,
       settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
-    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1"].forEach(function (k) {
+    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
     });
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -5805,7 +5895,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           if (s.prefs && typeof s.prefs === "object") { Object.keys(s.prefs).forEach(function (k) { if (k in prefs && typeof s.prefs[k] === typeof prefs[k]) prefs[k] = s.prefs[k]; }); if ([5, 10, 15, 30].indexOf(prefs.seekStep) < 0) prefs.seekStep = 10; savePrefs(); gotSettings = true; }
           if (s.queueModes && typeof s.queueModes === "object") { ["shuffle", "repeat", "auto"].forEach(function (k) { if (typeof s.queueModes[k] === "boolean") queueModes[k] = s.queueModes[k]; }); try { localStorage.setItem("vp-queue-modes.v1", JSON.stringify(queueModes)); } catch (e) {} gotSettings = true; }
           if (s.vmem && typeof s.vmem === "object") { Object.keys(s.vmem).forEach(function (k) { vmem[k] = s.vmem[k]; }); vmemSave(); gotSettings = true; }
-          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1"].forEach(function (k) {
+          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1"].forEach(function (k) {
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
         }
@@ -8860,7 +8950,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var btn = document.getElementById("resetAllBtn");
   if (!btn) return;
   var T = window.T || function (s) { return s; };
-  var KEYS = ["vp-prefs.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1", "vp-stillwatch.v1"];
+  var KEYS = ["vp-prefs.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1", "vp-stillwatch.v1", "vp-ctl-use.v1"];
   btn.addEventListener("click", async function () {
     if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices and downloader choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
@@ -9662,6 +9752,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Per-video volume", "per video volume remember own loud quiet", "#pvVolBtn"],
       ["Simple mode", "simple clean easy less clutter hide advanced long page", "#simpleModeBtn"],
       ["Rewind after a pause", "rewind pause back seconds break podcast", "#rwPauseRow"],
+      ["Often used controls", "often used frequent quick bar controls top shortcuts", "#favCtlBar"],
       ["Playback speed", "speed tez slow fast 2x", "#ctl-speed"],
       ["Video quality", "quality hd 1080 720 4k", "#ctl-quality"],
       ["Data and battery saver", "saver data battery low", "#ctl-saver"],
