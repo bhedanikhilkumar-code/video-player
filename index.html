@@ -923,6 +923,10 @@ html.cinema-on .frame{box-shadow:0 24px 90px rgba(0,0,0,.6);}
 #ctl-notes .note-box:focus,#ctl-marks .note-box:focus{border-color:var(--teal,#3a8a77);}
 #ctl-marks .mark-paste{margin-top:10px;}
 #ctl-marks .mark-paste summary{cursor:pointer;font-size:14px;font-weight:600;}
+#ctl-notes .note-find{margin-top:10px;}
+#ctl-notes .note-find summary{cursor:pointer;font-size:14px;font-weight:600;}
+#noteFindBox input{width:100%;box-sizing:border-box;font:inherit;font-size:16px;padding:10px 12px;margin:10px 0 4px;border-radius:14px;border:1px solid var(--hairline,#e6e2e3);background:rgba(255,255,255,.35);color:inherit;outline:none;}
+#noteFindBox input:focus{border-color:var(--teal,#3a8a77);}
 #ctl-notes .note-meta{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--ink2);margin-top:6px;}
 #ctl-marks .marks-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center;}
 .mark-x{padding:4px 10px;}
@@ -1643,6 +1647,11 @@ html .shortcuts, html .note, html .faq, html .help-card, html .pl-item, html .mu
           <div class="marks-list" id="noteTimes"></div>
           <div class="row"><button class="chip" id="noteTimeBtn" type="button" disabled>⏱ Add current time</button> <button class="chip" id="noteCopyBtn" type="button" disabled>📋 Copy note</button> <button class="chip" id="noteClearBtn" type="button" disabled>🗑 Clear note</button></div>
           <p class="hint" id="notesHint">Write what you want to remember. Times like 1:23 in your note become buttons that jump there. Saved on this device, for each video.</p>
+          <details class="note-find" id="noteFindBox">
+            <summary id="noteFindSum">Find in all notes</summary>
+            <input id="noteFindIn" type="search" autocomplete="off" spellcheck="false" placeholder="Search every saved note..." aria-label="Search every saved note">
+            <div class="marks-list" id="noteFindOut"></div>
+          </details>
         </div>
 
         <details class="shortcuts wide" id="scBox">
@@ -2211,6 +2220,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    " moment.": [" पल.", " ક્ષણ."],
    " moments.": [" पल.", " ક્ષણ."],
    "No new times found - write lines like 1:23 Chorus.": ["कोई नया समय नहीं मिला - 1:23 Chorus जैसी लाइनें लिखें.", "કોઈ નવો સમય ન મળ્યો - 1:23 Chorus જેવી લાઇન લખો."],
+   "No notes match.": ["कोई नोट नहीं मिला.", "કોઈ નોંધ ન મળી."],
+   "Video ": ["वीडियो ", "વીડિયો "],
    "Showing ": ["दिख रहे ", "દેખાય છે "],
    "All": ["सब", "બધું"],
    "Queue": ["कतार", "કતાર"],
@@ -5010,6 +5021,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#markPasteSum", "Add chapters from a typed list", "टाइप की लिस्ट से अध्याय जोड़ें"],
     ["#markPasteAdd", "➕ Add as moments", "➕ पलों में जोड़ें"],
     ["#markPasteHint", "One per line: time, then a name - for example 1:23 Chorus. They become tappable moments and seek-bar dots for this video.", "एक लाइन में एक: समय, फिर नाम - जैसे 1:23 Chorus. ये इस वीडियो के टैप करने वाले पल और सीक-बार डॉट बन जाते हैं."],
+    ["#noteFindSum", "Find in all notes", "सभी नोट्स में खोजें"],
     ["#noteTimeBtn", "⏱ Add current time", "⏱ अभी का समय जोड़ें"],
     ["#noteCopyBtn", "📋 Copy note", "📋 नोट कॉपी करें"],
     ["#noteClearBtn", "🗑 Clear note", "🗑 नोट मिटाएं"],
@@ -5130,6 +5142,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#markPasteSum": "ટાઇપ કરેલી યાદીથી ચેપ્ટર ઉમેરો",
  "#markPasteAdd": "➕ ક્ષણોમાં ઉમેરો",
  "#markPasteHint": "એક લાઇનમાં એક: સમય, પછી નામ - જેમ કે 1:23 Chorus. તે આ વીડિયો માટે ટૅપ કરી શકાય એવા ક્ષણો અને સીક-બાર ડૉટ બની જાય છે.",
+ "#noteFindSum": "બધી નોંધોમાં શોધો",
  "#noteTimeBtn": "⏱ અત્યારનો સમય ઉમેરો",
  "#noteCopyBtn": "📋 નોંધ કૉપી કરો",
  "#noteClearBtn": "🗑 નોંધ ભૂંસો",
@@ -5686,6 +5699,36 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   })();
   (window.__relang = window.__relang || []).push(renderNotes);
   renderNotes();
+  // Find in all notes: search every saved note and jump to the matching video.
+  (function () {
+    var inp = $("noteFindIn"), out = $("noteFindOut"); if (!inp || !out) return;
+    var deb = null;
+    function run() {
+      var q = inp.value.trim().toLowerCase(); out.innerHTML = "";
+      if (!q) return;
+      var hits = 0, total = 0;
+      Object.keys(notes).forEach(function (id) {
+        var v = notes[id]; if (typeof v !== "string") return;
+        var i = v.toLowerCase().indexOf(q); if (i < 0) return;
+        total++;
+        if (hits >= 8) return;
+        hits++;
+        var snip = v.slice(Math.max(0, i - 18), i + q.length + 28).replace(/\s+/g, " ").trim();
+        var go = document.createElement("button"); go.type = "button"; go.className = "chip";
+        go.textContent = "\u25b6 " + (titleFor(id) || (T("Video ") + id)) + " - " + snip;
+        go.addEventListener("click", function () {
+          linkInput.value = "https://youtu.be/" + id; loadBtn.click();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+        out.appendChild(go);
+      });
+      if (!total || total <= hits) { if (!total) { var st0 = document.createElement("span"); st0.className = "hint"; st0.textContent = T("No notes match."); out.appendChild(st0); } return; }
+      var st = document.createElement("span"); st.className = "hint";
+      st.textContent = T("Showing ") + hits + T(" of ") + total;
+      out.appendChild(st);
+    }
+    inp.addEventListener("input", function () { if (deb) clearTimeout(deb); deb = setTimeout(run, 250); });
+  })();
 
   // Up-next countdown: when a queue video ends, a short cancellable countdown plays the next one.
   var upnextTimer = 0, upnextLeft = 0, upnextToken = 0;
