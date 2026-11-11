@@ -2041,6 +2041,9 @@ setTimeout(done,3000);})();
         <p class="hint" id="lpVizHint" hidden>Dancing bars follow the sound of your file. YouTube videos cannot drive them (a browser security limit).</p>
         <div class="row"><button class="chip" id="lpNightBtn" type="button" aria-pressed="false">🌙 Night sound: off</button></div>
         <p class="hint" id="lpNightHint" hidden>Loud and quiet parts are evened out, so late-night listening stays soft. Works on files you open here; the YouTube player's sound cannot be changed (a browser security limit).</p>
+        <label class="dl-lab" for="lpBal"><span id="lpBalLab">Balance: </span><b id="lpBalVal">Center</b></label>
+        <input id="lpBal" type="range" min="-100" max="100" step="5" value="0" style="width:100%">
+        <p class="hint" id="lpBalHint">Move the sound towards the left or right ear - handy when one earphone sounds louder. Works on files you open here.</p>
       </div>
       <p class="hint">This plays a file from your device, or the file you just downloaded. The YouTube player's volume cannot go above 100% (a YouTube limit). The PiP button appears where your browser allows it, and works for local files - for YouTube videos use the player's own controls (a site cannot detach YouTube's player).</p>
     </section>
@@ -5695,6 +5698,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Night sound on": ["नाइट साउंड चालू", "નાઇટ સાઉન્ડ ચાલુ"],
     "Night sound off": ["नाइट साउंड बंद", "નાઇટ સાઉન્ડ બંધ"],
     "Loud and quiet parts are evened out, so late-night listening stays soft. Works on files you open here; the YouTube player's sound cannot be changed (a browser security limit).": ["तेज़ और धीमे हिस्सों की आवाज़ बराबर हो जाती है, ताकि देर रात सुनना आरामदायक रहे. यह यहां खोली गई फ़ाइलों पर काम करता है; YouTube प्लेयर की आवाज़ नहीं बदली जा सकती (ब्राउज़र सुरक्षा सीमा).", "મોટા અને ધીમા ભાગોનો અવાજ સરખો થઈ જાય છે, જેથી મોડી રાતે સાંભળવું આરામદાયક રહે. આ અહીં ખોલેલી ફાઇલો પર કામ કરે છે; YouTube પ્લેયરનો અવાજ બદલી શકાય નહીં (બ્રાઉઝર સુરક્ષા મર્યાદા)."],
+    "Balance: ": ["बैलेंस: ", "બૅલેન્સ: "],
+    "Center": ["बीच", "મધ્ય"],
+    "Left": ["बाएं", "ડાબે"],
+    "Right": ["दाएं", "જમણે"],
+    "Not supported here": ["यहां काम नहीं करता", "અહીં કામ કરતું નથી"],
+    "Move the sound towards the left or right ear - handy when one earphone sounds louder. Works on files you open here.": ["आवाज़ को बाएं या दाएं कान की ओर ले जाएं - जब एक ईयरफ़ोन तेज़ लगे तो काम आता है. यहां खोली गई फ़ाइलों पर काम करता है.", "અવાજને ડાબા કે જમણા કાન તરફ લઈ જાઓ - જ્યારે એક ઇયરફોન વધુ સંભળાય ત્યારે ઉપયોગી. અહીં ખોલેલી ફાઇલો પર કામ કરે છે."],
+    "This browser cannot move sound left or right, so Balance stays in the middle.": ["यह ब्राउज़र आवाज़ को बाएं-दाएं नहीं कर सकता, इसलिए बैलेंस बीच में रहता है.", "આ બ્રાઉઝર અવાજને ડાબે-જમણે ખસેડી શકતું નથી, એટલે બૅલેન્સ વચ્ચે જ રહે છે."],
+    "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"]
   });
   var mileBtn = $("mileBtn"), mileFired = {}, mileHideT = 0, mileOv = null;
   var mileSt = document.createElement("style");
@@ -8677,10 +8688,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Paused - headphones disconnected": ["रोका गया - हेडफ़ोन निकल गए", "રોક્યું - હેડફોન નીકળી ગયા"],
     "Added yesterday": ["कल जोड़ा", "ગઈકાલે ઉમેર્યું"],
     "Added": ["जोड़ा गया", "ઉમेર્યું"],
-    "Night sound": ["नाइट साउंड", "નાઇટ સાઉન્ડ"]
+    "Night sound": ["नाइट साउंड", "નાઇટ સાઉન્ડ"],
+    "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"]
   });
   var WNEW = [
     ["Night sound", "#lpNightBtn"],
+    ["Left-right balance", "#lpBal"],
     ["Milestone cheers", "#mileBtn"],
     ["Music visualizer", "#lpVizBtn"],
     ["Sleep countdown on the video", "#ctl-sleep"],
@@ -8982,7 +8995,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var file = $("lpFile"), vid = $("lpVideo"), ctl = $("lpCtl"), gain = $("lpGain"), gv = $("lpGainVal"), warn = $("lpWarn"), sp = $("lpSpeeds");
-  var ctx = null, node = null, curUrl = null, eqNodes = null, nightNode = null;
+  var ctx = null, node = null, curUrl = null, eqNodes = null, nightNode = null, panNode = null;
   function ensureAudio() {
     if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -8993,15 +9006,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     node = ctx.createGain(); node.gain.value = gain.value / 100;
     var comp = ctx.createDynamicsCompressor();
     comp.knee.value = 20; comp.attack.value = 0.003; comp.release.value = 0.25;
-    src.connect(fb); fb.connect(fm); fm.connect(ft); ft.connect(comp); comp.connect(node);
+    var pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    src.connect(fb); fb.connect(fm); fm.connect(ft); ft.connect(comp);
+    if (pan) { comp.connect(pan); pan.connect(node); } else { comp.connect(node); }
     node.connect(ctx.destination);
-    eqNodes = { b: fb, m: fm, t: ft }; nightNode = comp;
+    eqNodes = { b: fb, m: fm, t: ft }; nightNode = comp; panNode = pan;
     if (typeof eqApply === "function") eqApply();
     if (typeof nightBalApply === "function") nightBalApply();
     window.__lpNode = node; window.__lpCtx = ctx;
   }
-  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, night: false, eq: { b: 0, m: 0, t: 0 } };
-  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; } } catch (e) {}
+  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, night: false, bal: 0, eq: { b: 0, m: 0, t: 0 } };
+  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; if (typeof sv.bal === "number" && sv.bal >= -100 && sv.bal <= 100) lp.bal = Math.round(sv.bal); } } catch (e) {}
   gain.value = lp.gain;
   function saveLp() { try { localStorage.setItem(LK, JSON.stringify(lp)); } catch (e) {} }
   function setGain() { var v = Number(gain.value); lp.gain = v; saveLp(); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
@@ -9312,14 +9327,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   (window.__relang = window.__relang || []).push(vizRender);
   vizRender();
 
-  // Night sound (round 97): a gentle compressor in the same on-device audio chain as the
-  // boost and EQ, so loud and quiet parts come closer and late-night listening stays soft.
-  // Off by default, remembered on this device in the local-player store (which rides the
-  // backup export/import), local files only - the YouTube player's sound cannot be changed
-  // (a browser security limit). Translated in Hindi and Gujarati.
-  var nightBtn = $("lpNightBtn"), nightHint = $("lpNightHint");
+  // Night sound and left-right balance (round 97): two small hearing aids in the Equalizer
+  // card for files opened here. Night sound runs a gentle compressor in the same on-device
+  // audio chain as the boost and EQ, so loud and quiet parts come closer and late-night
+  // listening stays soft. Balance slides the sound towards the left or right ear with a
+  // stereo panner - handy when one earphone sounds louder. Both are off / centred by
+  // default, remembered on this device in the local-player store (which rides the backup
+  // export/import), local files only - the YouTube player's sound cannot be changed (a
+  // browser security limit). Translated in Hindi and Gujarati.
+  var nightBtn = $("lpNightBtn"), nightHint = $("lpNightHint"), balIn = $("lpBal"), balVal = $("lpBalVal"), balLab = $("lpBalLab"), balHint = $("lpBalHint");
+  var balSupported = !!(window.AudioContext || window.webkitAudioContext) && !!(window.AudioContext && window.AudioContext.prototype && window.AudioContext.prototype.createStereoPanner);
+  if (!balSupported && window.webkitAudioContext && window.webkitAudioContext.prototype && window.webkitAudioContext.prototype.createStereoPanner) balSupported = true;
+  function balText() {
+    var b = lp.bal || 0;
+    if (b === 0) return T("Center");
+    return (b < 0 ? T("Left") : T("Right")) + " " + Math.abs(b) + "%";
+  }
   function nightBalApply() {
     if (nightNode) { nightNode.threshold.value = lp.night ? -32 : 0; nightNode.ratio.value = lp.night ? 8 : 1; }
+    if (panNode) { try { panNode.pan.value = (lp.bal || 0) / 100; } catch (e) {} }
   }
   function nightBalRender() {
     if (nightBtn) {
@@ -9328,10 +9354,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       nightBtn.classList.toggle("active", !!lp.night);
     }
     if (nightHint) { nightHint.textContent = T("Loud and quiet parts are evened out, so late-night listening stays soft. Works on files you open here; the YouTube player's sound cannot be changed (a browser security limit)."); nightHint.hidden = !lp.night; }
+    if (balLab) balLab.textContent = T("Balance: ");
+    if (balVal) balVal.textContent = balSupported ? balText() : T("Not supported here");
+    if (balHint) balHint.textContent = balSupported ? T("Move the sound towards the left or right ear - handy when one earphone sounds louder. Works on files you open here.") : T("This browser cannot move sound left or right, so Balance stays in the middle.");
+    if (balIn) { balIn.disabled = !balSupported; balIn.value = lp.bal || 0; }
   }
   if (nightBtn) nightBtn.addEventListener("click", function () {
     lp.night = !lp.night; saveLp(); ensureAudio(); nightBalApply(); nightBalRender();
     toast(lp.night ? T("Night sound on") : T("Night sound off"));
+  });
+  if (balIn) balIn.addEventListener("input", function () {
+    lp.bal = Math.max(-100, Math.min(100, Number(balIn.value) || 0)); saveLp(); ensureAudio(); nightBalApply(); nightBalRender();
   });
   (window.__relang = window.__relang || []).push(nightBalRender);
   nightBalRender();
@@ -10856,7 +10889,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Sleep countdown on the video", "sleep timer countdown pill video pause time left clock", "#ctl-sleep"],
       ["Milestone cheers", "milestone progress 25 50 75 percent cheer celebrate halfway done", "#mileBtn"],
       ["Music visualizer", "visualizer dancing bars music sound waves audio animation local file", "#lpVizBtn"],
-      ["Night sound", "night sound compressor loud quiet even soft late listening volume local file", "#lpNightBtn"]
+      ["Night sound", "night sound compressor loud quiet even soft late listening volume local file", "#lpNightBtn"],
+      ["Left-right balance", "balance left right ear pan stereo earphone louder sound", "#lpBal"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
