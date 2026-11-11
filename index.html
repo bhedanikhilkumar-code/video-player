@@ -1856,6 +1856,8 @@ html .shortcuts, html .note, html .faq, html .help-card, html .pl-item, html .mu
         <input id="plImportFile" type="file" accept="application/json,.json" hidden>
         <button class="chip" id="plPasteBtn" type="button" aria-expanded="false">Paste a list of links</button>
         <button class="chip" id="queueTxtBtn" type="button">Save queue as text file</button>
+        <button class="chip" id="queueTxtImportBtn" type="button">Add links from a text file</button>
+        <input id="queueTxtFile" type="file" accept="text/plain,.txt,.text,.md,.csv" hidden>
       </div>
       <div class="pl-paste" id="plPastePanel" hidden>
         <textarea class="note-box" id="plPasteBox" rows="5" maxlength="6000" aria-label="List of YouTube links" placeholder="One YouTube link per line"></textarea>
@@ -2039,6 +2041,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Will play next": ["अगले नंबर पर चलेगा", "આગળના નંબરે ચાલશે"],
    "Already playing": ["यह पहले से चल रहा है", "આ પહેલેથી ચાલે છે"],
    "Copy list": ["लिस्ट कॉपी करें", "યાદી કોપી કરો"],
+   "That file is too big. Use a text file under 200 KB.": ["फ़ाइल बहुत बड़ी है। 200 KB से छोटी टेक्स्ट फ़ाइल चुनें।", "ફાઇલ ઘણી મોટી છે. 200 KB થી નાની ટેક્સ્ટ ફાઇલ પસંદ કરો."],
    "Queue saved as a text file": ["कतार टेक्स्ट फ़ाइल में सेव हुई", "કતાર ટેક્સ્ટ ફાઇલમાં સચવાઈ"],
    "Queue copied as a list": ["कतार लिस्ट कॉपी हुई", "કતાર યાદી કોપી થઈ"],
    "Open in YouTube": ["YouTube में खोलें", "YouTube માં ખોલો"],
@@ -5030,6 +5033,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#marksH", "Saved moments", "सेव किए पल"],
     ["#plPasteBtn", "Paste a list of links", "लिंक की सूची पेस्ट करें"],
     ["#queueTxtBtn", "Save queue as text file", "कतार को टेक्स्ट फ़ाइल में सेव करें"],
+    ["#queueTxtImportBtn", "Add links from a text file", "टेक्स्ट फ़ाइल से लिंक जोड़ें"],
     ["#plPasteAdd", "Add to queue", "कतार में जोड़ें"],
     ["#plPasteCancel", "Close", "बंद करें"],
     ["#notesH", "Notes for this video", "इस वीडियो के नोट्स"],
@@ -5152,6 +5156,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#marksH": "સેવ કરેલી ક્ષણો",
  "#plPasteBtn": "લિંકની યાદી પેસ્ટ કરો",
  "#queueTxtBtn": "કતારને ટેક્સ્ટ ફાઇલમાં સાચવો",
+ "#queueTxtImportBtn": "ટેક્સ્ટ ફાઇલમાંથી લિંક ઉમેરો",
  "#plPasteAdd": "કતારમાં ઉમેરો",
  "#plPasteCancel": "બંધ કરો",
  "#notesH": "આ વીડિયોની નોંધો",
@@ -5632,6 +5637,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (added) { saveLib(); renderLib(); box.value = ""; toast(T("Added ") + added + T(" to the queue.")); }
       msg.textContent = T("Added ") + added + T(" to the queue.") + (skipped ? " " + skipped + T(" skipped (not a YouTube link, already queued, or queue full).") : "");
     });
+    // Same list, but read from a .txt file picked on this device (nothing is uploaded).
+    var fb = $("queueTxtImportBtn"), fi = $("queueTxtFile");
+    if (fb && fi) {
+      fb.addEventListener("click", function () { fi.value = ""; fi.click(); });
+      fi.addEventListener("change", function () {
+        var f = fi.files && fi.files[0]; if (!f) return;
+        if (f.size > 200000) { setOpen(true); msg.textContent = T("That file is too big. Use a text file under 200 KB."); return; }
+        var r = new FileReader();
+        r.onload = function () { setOpen(true); box.value = String(r.result || "").slice(0, 6000); $("plPasteAdd").click(); };
+        r.readAsText(f);
+      });
+    }
   })();
 
   // Notes: one short private note per YouTube video, saved on this device as you type.
