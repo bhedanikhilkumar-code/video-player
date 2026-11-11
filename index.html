@@ -2020,7 +2020,7 @@ setTimeout(done,3000);})();
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsClear" type="button">Clear</button></div>
-      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsWeek" role="status"></p><div class="stats-days" id="statsDays"></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><ul class="lib-list" id="statsList"></ul>
+      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsWeek" role="status"></p><div class="stats-days" id="statsDays"></div><div class="stats-hours-wrap" id="statsHoursWrap" hidden><p class="hint stats-hours-lab" id="statsHoursLab"></p><div class="stats-hours" id="statsHours"></div><p class="hint" id="statsHoursSum" role="status"></p></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><ul class="lib-list" id="statsList"></ul>
       <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
       <div class="goal-row" id="storRow"><p class="hint" id="storInfo" role="status"></p><button class="chip" id="storBtn" type="button">Refresh</button></div>
     </section>
@@ -2062,6 +2062,14 @@ setTimeout(done,3000);})();
 .stats-cal-legend{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--ink2)}
 .stats-cal-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--soft);border:1px solid var(--border)}
 .stats-cal-legend span{margin:0 4px}
+.stats-hours-wrap{margin:10px 0 2px}
+.stats-hours-wrap[hidden]{display:none}
+.stats-hours-lab{margin:0 0 6px;font-weight:600}
+.stats-hours{display:flex;gap:2px;align-items:flex-end;height:54px}
+.stats-hour{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:3px;min-width:0;height:54px}
+.stats-hour i{display:block;width:100%;max-width:16px;border-radius:4px 4px 2px 2px;background:var(--teal);opacity:.55;min-height:3px}
+.stats-hour.hot i{opacity:.95}
+.stats-hour span{font-size:9.5px;line-height:1;color:var(--ink2);white-space:nowrap}
 </style>
 <script type="text/plain" id="qrLibSrc">
 /* QR Code Generator for JavaScript v1.4.4 (c) Kazuhiko Arase, MIT License - used for on-device share QR codes. */
@@ -2544,6 +2552,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Less": ["कम", "ઓછું"],
    "More": ["ज़्यादा", "વધુ"],
    "No watching": ["कुछ नहीं देखा", "કંઈ જોયું નહીં"],
+   "When you watch": ["आप कब देखते हैं", "તમે ક્યારે જુઓ છો"],
+   "Watch time by hour of day": ["दिन के किस घंटे कितना देखा", "દિવસના કયા કલાકે કેટલું જોયું"],
+   "You mostly watch in the morning.": ["आप ज़्यादातर सुबह देखते हैं.", "તમે મોટાભાગે સવારે જુઓ છો."],
+   "You mostly watch in the afternoon.": ["आप ज़्यादातर दोपहर देखते हैं.", "તમે મોટાભાગે બપોરે જુઓ છો."],
+   "You mostly watch in the evening.": ["आप ज़्यादातर शाम को देखते हैं.", "તમે મોટાભાગે સાંજે જુઓ છો."],
+   "You mostly watch at night.": ["आप ज़्यादातर रात को देखते हैं.", "તમે મોટાભાગે રાતે જુઓ છો."],
+   "Hours count from today on - watch a little and your pattern shows up.": ["घंटे आज से गिने जाएंगे - थोड़ा देखें और आपका पैटर्न दिखने लगेगा.", "કલાકો આજથી ગણાશે - થોડું જુઓ અને તમારું વલણ દેખાવા લાગશે."],
    "full square = daily goal": ["पूरा चौकोर = दैनिक लक्ष्य", "ભરેલો ચોરસ = દૈનિક લક્ષ્ય"],
    "Previous video in queue": ["कतार में पिछला वीडियो", "કતારમાં પાછળનો વીડિયો"],
    "Next video in queue": ["कतार में अगला वीडियो", "કતારમાં આગળનો વીડિયો"],
@@ -5465,6 +5480,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var stats = { total: 0, plays: 0, videos: {} };
   try { var sIn = JSON.parse(localStorage.getItem(STATS_KEY) || "null"); if (sIn && typeof sIn.total === "number" && sIn.videos) stats = sIn; } catch (e) {}
   if (!stats.days || typeof stats.days !== "object") stats.days = {};
+  if (!stats.hours || typeof stats.hours !== "object") stats.hours = {};
   function dayKey(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
   function pruneDays() {
     var cut = dayKey(new Date(Date.now() - 100 * 86400000));
@@ -5577,6 +5593,43 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         }
         calEl.setAttribute("role", "img");
         calEl.setAttribute("aria-label", T("Watch calendar, last 14 weeks"));
+      }
+    }
+    var hWrap = $("statsHoursWrap"), hEl = $("statsHours"), hLab = $("statsHoursLab"), hSum = $("statsHoursSum");
+    if (hWrap && hEl && hLab && hSum) {
+      hWrap.hidden = !hasAny;
+      hEl.innerHTML = ""; hSum.textContent = "";
+      if (hasAny) {
+        if (!stats.hours || typeof stats.hours !== "object") stats.hours = {};
+        var hLoc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-US";
+        var hTot = 0, hMax = 1, bk = [0, 0, 0, 0];
+        for (var hh = 0; hh < 24; hh++) {
+          var hv = Math.floor(stats.hours[hh] || 0);
+          hTot += hv; if (hv > hMax) hMax = hv;
+          if (hh >= 5 && hh < 12) bk[0] += hv; else if (hh < 17) bk[1] += hv; else if (hh < 22) bk[2] += hv; else bk[3] += hv;
+        }
+        hLab.textContent = T("When you watch");
+        for (var hh2 = 0; hh2 < 24; hh2++) {
+          var hv2 = Math.floor(stats.hours[hh2] || 0);
+          var col2 = document.createElement("div"); col2.className = "stats-hour" + (hv2 > 0 && hv2 >= hMax ? " hot" : "");
+          var bar2 = document.createElement("i");
+          bar2.style.height = Math.max(3, Math.round(hv2 / hMax * 34)) + "px";
+          var hName = new Date(2000, 0, 1, hh2).toLocaleTimeString(hLoc, { hour: "numeric" });
+          bar2.title = hName + ": " + (hv2 > 0 ? fmtWatch(hv2) : T("No watching"));
+          var lab2 = document.createElement("span");
+          lab2.textContent = (hh2 % 6 === 0) ? hName : "";
+          col2.appendChild(bar2); col2.appendChild(lab2); hEl.appendChild(col2);
+        }
+        hEl.setAttribute("role", "img");
+        hEl.setAttribute("aria-label", T("Watch time by hour of day"));
+        if (hTot >= 300) {
+          var topBk = 0;
+          for (var bi = 1; bi < 4; bi++) if (bk[bi] > bk[topBk]) topBk = bi;
+          var bFull = [T("You mostly watch in the morning."), T("You mostly watch in the afternoon."), T("You mostly watch in the evening."), T("You mostly watch at night.")];
+          hSum.textContent = bFull[topBk] + " (" + Math.round(bk[topBk] / hTot * 100) + "%)";
+        } else {
+          hSum.textContent = T("Hours count from today on - watch a little and your pattern shows up.");
+        }
       }
     }
     var ul = $("statsList"); ul.innerHTML = "";
@@ -5713,6 +5766,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (d > 0 && d <= 3) {
         stats.total += d;
         stats.days[dayKey(new Date())] = (stats.days[dayKey(new Date())] || 0) + d;
+        var tickHr = new Date().getHours();
+        if (!stats.hours || typeof stats.hours !== "object") stats.hours = {};
+        stats.hours[tickHr] = (stats.hours[tickHr] || 0) + d;
         var g2 = goalMin(), tAfter = stats.days[dayKey(new Date())] || 0;
         if (g2 > 0 && tAfter >= g2 * 60 && tAfter - d < g2 * 60) goalCelebrate(g2);
         var rec = statsRec(curId); rec.secs += d;
@@ -5726,7 +5782,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   if ($("statsClear")) $("statsClear").addEventListener("click", function () {
     var snap = JSON.parse(JSON.stringify(stats));
-    stats = { total: 0, plays: 0, videos: {}, days: {} }; saveStats(); renderStats();
+    stats = { total: 0, plays: 0, videos: {}, days: {}, hours: {} }; saveStats(); renderStats();
     if (snap.plays || snap.total) toastUndo(T("Watch stats cleared"), function () { stats = snap; saveStats(); renderStats(); }, T("Watch stats restored"));
   });
   window.addEventListener("pagehide", saveStats);
@@ -8877,6 +8933,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Recently watched history", "history recent watched", "#lhHist"],
       ["Continue watching", "continue resume left off", "#lhContinue"],
       ["Watch stats and daily goal", "stats statistics goal time watched today", "#lhStats"],
+      ["When you watch (hour chart)", "hours pattern time of day when watch morning night", "#lhStats"],
       ["Search your videos", "find library videos", "#libSearch"],
       ["Export backup", "backup export json", "#libExport"],
       ["Import backup", "backup import restore json", "#libImport"],
