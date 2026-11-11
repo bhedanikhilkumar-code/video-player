@@ -2484,6 +2484,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Sort: Newest": ["क्रम: नया पहले", "ક્રમ: નવું પહેલા"],
    "Sort: A to Z": ["क्रम: A से Z", "ક્રમ: A થી Z"],
    "Change favourites order": ["पसंदीदा का क्रम बदलें", "મનપસંદનો ક્રમ બદલો"],
+   "Change playlist order": ["प्लेलिस्ट का क्रम बदलें", "પ્લેલિસ્ટનો ક્રમ બદલો"],
+   "Saved playlists": ["सेव की प्लेलिस्ट", "સેવ કરેલી પ્લેલિસ્ટ"],
    "Add queue": ["कतार जोड़ें", "કતાર ઉમેરો"],
    "Duplicate": ["कॉपी बनाएँ", "નકલ બનાવો"],
    "Added from the queue to": ["कतार से जोड़ा गया:", "કતારમાંથી ઉમેર્યું:"],
@@ -4340,10 +4342,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function plSay(m) { plMsg.textContent = m; }
   function plFind(name) { var n = name.toLowerCase(); for (var i = 0; i < playlists.length; i++) if (playlists[i].name.toLowerCase() === n) return i; return -1; }
   function cleanName(v) { return String(v || "").replace(/\s+/g, " ").trim().slice(0, 40); }
+  /* Playlists can be shown newest first (default) or sorted A to Z; the choice is remembered on this device. */
+  var plSortAZ = false;
+  try { plSortAZ = localStorage.getItem("vp-plsort.v1") === "az"; } catch (e) {}
+  var plSortBtn = document.createElement("button"); plSortBtn.type = "button"; plSortBtn.className = "chip"; plSortBtn.id = "plSortBtn";
+  plSortBtn.addEventListener("click", function () {
+    plSortAZ = !plSortAZ; try { localStorage.setItem("vp-plsort.v1", plSortAZ ? "az" : "new"); } catch (e) {}
+    plSortRefresh(); renderPlaylists();
+  });
+  function plSortRefresh() {
+    plSortBtn.textContent = T(plSortAZ ? "Sort: A to Z" : "Sort: Newest");
+    plSortBtn.setAttribute("aria-label", T("Change playlist order"));
+    plSortBtn.hidden = playlists.length < 2;
+  }
+  (function () {
+    var h = $("lhPlaylists"); if (!h || !h.parentNode) return;
+    var row = document.createElement("div"); row.className = "row lib-listtools"; row.setAttribute("data-for", "lhPlaylists");
+    row.appendChild(plSortBtn);
+    h.parentNode.parentNode.insertBefore(row, h.parentNode.nextSibling);
+  })();
   function renderPlaylists() {
     plList.textContent = "";
+    plSortRefresh();
+    var lh = $("lhPlaylists"); if (lh) lh.textContent = T("Saved playlists") + (playlists.length ? " (" + playlists.length + ")" : "");
     if (!playlists.length) { plList.appendChild(emptyLi(T("No saved playlists yet. Fill the queue, type a name above and tap Save."), "playlist")); return; }
-    playlists.forEach(function (pl, idx) {
+    var order = playlists.map(function (_, i) { return i; });
+    if (plSortAZ) order.sort(function (a, b) { return String(playlists[a].name).toLowerCase().localeCompare(String(playlists[b].name).toLowerCase()); });
+    order.forEach(function (idx) {
+      var pl = playlists[idx];
       var li = document.createElement("li"); li.className = "pl-item";
       var top = document.createElement("div"); top.className = "pl-top";
       var nm = document.createElement("span"); nm.className = "pl-name"; nm.textContent = pl.name;
