@@ -7711,5 +7711,62 @@ html.low-fx :focus-visible { box-shadow: none !important; }
 })();
 </script>
 
+<style id="recent-row-css">
+.recent-row{display:flex;gap:8px;align-items:center;overflow-x:auto;margin:10px 0 2px;padding:2px 0 6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.recent-row::-webkit-scrollbar{display:none}
+.recent-row[hidden]{display:none}
+.recent-row .rr-lab{flex:none;font-size:12px;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+.recent-row .chip{flex:none;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+</style>
+<script>
+/* Recently played quick row (round 39): the last few videos as one-tap chips right under the link
+   box, so replaying something is one tap instead of opening Library. Text only, no extra data use.
+   Also gives the link box a suggestion list (history, then favourites) via the browser's own list. */
+(function () {
+  var input = document.getElementById("linkInput"), load = document.getElementById("loadBtn"), hint = document.getElementById("linkHint");
+  if (!input || !load || !hint || !hint.parentNode) return;
+  var TR = { "Recent": ["हाल के", "તાજેતરના"], "Play again: ": ["फिर चलाएं: ", "ફરી ચલાવો: "] };
+  function t(s) { var l = document.documentElement.lang, r = TR[s]; return (r && (l === "hi" || l === "gu")) ? r[l === "hi" ? 0 : 1] : s; }
+  var row = document.createElement("div"); row.className = "recent-row"; row.id = "recentRow"; row.hidden = true;
+  row.setAttribute("role", "group");
+  hint.parentNode.insertBefore(row, hint);
+  var dl = document.createElement("datalist"); dl.id = "linkSuggest"; document.body.appendChild(dl);
+  input.setAttribute("list", "linkSuggest");
+  function items() {
+    try {
+      var l = JSON.parse(localStorage.getItem("vp-library.v1") || "null") || {};
+      var seen = {}, out = [];
+      (l.hist || []).concat(l.favs || []).forEach(function (x) {
+        if (x && typeof x.id === "string" && /^[a-zA-Z0-9_-]{11}$/.test(x.id) && !seen[x.id]) { seen[x.id] = 1; out.push(x); }
+      });
+      return out;
+    } catch (e) { return []; }
+  }
+  function render() {
+    var list = items();
+    row.textContent = ""; dl.textContent = "";
+    list.slice(0, 20).forEach(function (x) {
+      var o = document.createElement("option"); o.value = "https://youtu.be/" + x.id; o.label = x.title || x.id; dl.appendChild(o);
+    });
+    var hist = []; try { hist = (JSON.parse(localStorage.getItem("vp-library.v1") || "null") || {}).hist || []; } catch (e) {}
+    var shown = hist.filter(function (x) { return x && typeof x.id === "string" && /^[a-zA-Z0-9_-]{11}$/.test(x.id); }).slice(0, 5);
+    row.hidden = !shown.length;
+    if (!shown.length) return;
+    var lab = document.createElement("span"); lab.className = "rr-lab"; lab.textContent = t("Recent"); row.appendChild(lab);
+    shown.forEach(function (x) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip";
+      var name = x.title || x.id; b.textContent = name; b.title = name;
+      b.setAttribute("aria-label", t("Play again: ") + name);
+      b.addEventListener("click", function () { input.value = "https://youtu.be/" + x.id; load.click(); });
+      row.appendChild(b);
+    });
+  }
+  var hl = document.getElementById("histList");
+  if (hl) new MutationObserver(function () { setTimeout(render, 0); }).observe(hl, { childList: true });
+  var lb = document.getElementById("langBtn"); if (lb) lb.addEventListener("click", function () { setTimeout(render, 50); });
+  render();
+})();
+</script>
+
 </body>
           </html>
