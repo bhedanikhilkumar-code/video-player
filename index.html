@@ -3202,6 +3202,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     infoThumb.onload = function () { infoThumb.classList.remove("skel-img"); };
     infoThumb.onerror = function () { infoThumb.classList.remove("skel-img"); };
     infoThumb.src = "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg";
+    if (typeof videoAccentPick === "function") videoAccentPick(id);
     infoTitle.textContent = c.title || titleFor(id) || "Video " + id;
     $("backgroundVideo").textContent = c.title || titleFor(id) || "Video " + id;
     infoChannel.textContent = c.author || "";
@@ -6796,13 +6797,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // App color: accent presets plus a custom colour picker, on top of the light/dark theme.
   var ACCENTS = [["default", "#3a8a77"], ["blue", "#2f6fd0"], ["purple", "#7a4fd0"], ["orange", "#c96a1f"], ["pink", "#d02f7a"]];
   function accentHex() {
+    if (prefs.accent === "video" && videoAccentHex) return videoAccentHex;
     if (prefs.accent === "custom" && /^#[0-9a-fA-F]{6}$/.test(prefs.accentCustom)) return prefs.accentCustom;
     if (typeof ACCENTS === "undefined") return "#3f8f7d";
     for (var i = 0; i < ACCENTS.length; i++) if (ACCENTS[i][0] === prefs.accent) return ACCENTS[i][1];
     return "#3f8f7d";
   }
   function applyAccent() {
-    if (prefs.accent === "custom") {
+    if (prefs.accent === "video") {
+      document.documentElement.removeAttribute("data-accent");
+      document.documentElement.style.setProperty("--teal", videoAccentHex || "#3a8a77");
+    } else if (prefs.accent === "custom") {
       document.documentElement.removeAttribute("data-accent");
       document.documentElement.style.setProperty("--teal", prefs.accentCustom);
     } else {
@@ -6830,6 +6835,83 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     customDot.setAttribute("aria-label", "App color: pick your own");
     customDot.addEventListener("click", function () { var ci = $("accentCustom"); if (ci) ci.click(); });
     accentRow.appendChild(customDot);
+    // Match video (round 91): one more app-colour choice. The accent tint follows the
+    // playing video - the thumbnail's main colour becomes the app's colour, so the
+    // whole glass UI tints itself to match each video. The choice is kept in
+    // prefs.accent ("video"), so it rides in the backup like the other colours; the
+    // derived colour itself is not saved - it is re-read from the thumbnail each time.
+    // Falls back to the default teal until a video loads. Never touches the custom
+    // colour the user picked. Translated in Hindi and Gujarati.
+    var videoDot = document.createElement("button");
+    videoDot.type = "button"; videoDot.className = "accent-dot accent-video";
+    videoDot.dataset.value = "video";
+    videoDot.title = T("Match video");
+    videoDot.setAttribute("aria-label", T("App color: match the video's colours"));
+    videoDot.addEventListener("click", function () {
+      prefs.accent = "video"; savePrefs(); applyAccent(); applyTheme();
+      if (curId) { videoAccentPick(curId); toast(T("Colour updated")); }
+      else toast(T("Load a video and the app colour follows it."));
+    });
+    accentRow.appendChild(videoDot);
+  }
+  Object.assign(TR_MSG, {
+    "Match video": ["वीडियो मैच", "વિડિયો મેચ"],
+    "App color: match the video's colours": ["ऐप का रंग: वीडियो के रंगों से मैच", "એપનો રંગ: વિડિયોના રંગો સાથે મેચ"],
+    "Load a video and the app colour follows it.": ["कोई वीडियो चलाएं, ऐप का रंग उसके साथ बदलेगा.", "કોઈ વિડિયો ચલાવો, એપનો રંગ તેની સાથે બદલાશે."]
+  });
+  var videoAccentHex = null;
+  function videoAccentPick(id) {
+    if (!id || prefs.accent !== "video") return;
+    var img = new Image();
+    img.crossOrigin = "anonymous"; img.decoding = "async";
+    img.onload = function () {
+      try {
+        var w = 24, h = 14, cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+        var cx = cv.getContext("2d"); if (!cx) return;
+        cx.drawImage(img, 0, 0, w, h);
+        var d = cx.getImageData(0, 0, w, h).data;
+        var buckets = [], i2, r, g, b, mx, mn, sat, hue, bi;
+        for (i2 = 0; i2 + 3 < d.length; i2 += 4) {
+          r = d[i2]; g = d[i2 + 1]; b = d[i2 + 2];
+          mx = Math.max(r, g, b); mn = Math.min(r, g, b);
+          if (!mx) continue;
+          sat = (mx - mn) / mx;
+          if (sat < 0.28 || mx < 50) continue;
+          hue = 0;
+          if (mx !== mn) {
+            if (mx === r) hue = ((g - b) / (mx - mn)) % 6;
+            else if (mx === g) hue = (b - r) / (mx - mn) + 2;
+            else hue = (r - g) / (mx - mn) + 4;
+            hue *= 60; if (hue < 0) hue += 360;
+          }
+          bi = Math.floor(hue / 30);
+          if (!buckets[bi]) buckets[bi] = { n: 0, sr: 0, sg: 0, sb: 0, w: 0 };
+          buckets[bi].n++; buckets[bi].sr += r; buckets[bi].sg += g; buckets[bi].sb += b; buckets[bi].w += sat;
+        }
+        var best = null;
+        buckets.forEach(function (bk) { if (bk && (!best || bk.w > best.w)) best = bk; });
+        if (!best) return;
+        r = best.sr / best.n / 255; g = best.sg / best.n / 255; b = best.sb / best.n / 255;
+        // Normalise through HSL so the tint stays readable on the light and dark glass.
+        mx = Math.max(r, g, b); mn = Math.min(r, g, b);
+        var l = (mx + mn) / 2, s = 0, h2 = 0;
+        if (mx !== mn) {
+          s = l > 0.5 ? (mx - mn) / (2 - mx - mn) : (mx - mn) / (mx + mn);
+          if (mx === r) h2 = ((g - b) / (mx - mn)) % 6;
+          else if (mx === g) h2 = (b - r) / (mx - mn) + 2;
+          else h2 = (r - g) / (mx - mn) + 4;
+          h2 *= 60; if (h2 < 0) h2 += 360;
+        }
+        s = Math.min(0.72, Math.max(0.45, s));
+        l = Math.min(0.55, Math.max(0.38, l));
+        var q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+        function hue2rgb(t2) { if (t2 < 0) t2 += 1; if (t2 > 1) t2 -= 1; if (t2 < 1 / 6) return p + (q - p) * 6 * t2; if (t2 < 1 / 2) return q; if (t2 < 2 / 3) return p + (q - p) * (2 / 3 - t2) * 6; return p; }
+        function to2(v) { var x = Math.round(hue2rgb(v) * 255).toString(16); return x.length < 2 ? "0" + x : x; }
+        videoAccentHex = "#" + to2(h2 / 360 + 1 / 3) + to2(h2 / 360) + to2(h2 / 360 - 1 / 3);
+        if (prefs.accent === "video") { applyAccent(); applyTheme(); }
+      } catch (e) {}
+    };
+    img.src = "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg";
   }
   var accentCustomInput = $("accentCustom");
   if (accentCustomInput) accentCustomInput.addEventListener("input", function () {
@@ -10206,6 +10288,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Import backup", "backup import restore json", "#libImport"],
       ["Accessibility: larger text, contrast, low-end mode", "accessibility big text contrast low end slow", "#a11yH"],
       ["App color", "color colour accent custom", "#accentT"],
+      ["Match the video colour", "match video colour accent thumbnail adaptive tint app color", "#accentRow"],
       ["Settings and reset", "settings reset default", "#settingsH"],
       ["Replay welcome tour", "tour welcome intro guide", "#tourReplayBtn"],
       ["Report a problem", "report problem bug feedback email", "#rpH"],
@@ -11146,6 +11229,11 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   (window.__relang = window.__relang || []).push(function () { paintGreet(); paintClr(); });
 })();
 </script>
+<style id="r91-match-video">
+/* Match video (round 91): the App color dot whose tint follows the playing video. */
+.accent-video { background: conic-gradient(from 40deg, #3a8a77, #9769ff, #e8336d, #ff8a3d, #3a8a77); }
+.accent-video::after { content: "\2728"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; }
+</style>
 <script>
 /* Today chip (round 52): today's watch time always visible in the header.
    Tap it to jump to Watch stats. Reads the same on-device stats the Library shows. */
