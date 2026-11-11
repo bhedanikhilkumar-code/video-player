@@ -1641,6 +1641,7 @@ setTimeout(done,3000);})();
           <div class="chips" id="sleepChips"></div>
           <span class="label" id="sleepLabel" role="status">Off</span>
           <div class="row" style="margin-top:10px"><button class="chip" id="sleepEndBtn" type="button" aria-pressed="false">Stop at end of video</button></div>
+          <div class="row" style="margin-top:10px" id="sleepVidsRow"><span class="label" id="sleepVidsLab">Stop after videos:</span><span class="chips" id="sleepVidsChips"></span></div>
           <div class="row" style="margin-top:10px"><label for="sleepMinutes" id="sleepMinLab">Custom minutes</label><input id="sleepMinutes" type="number" min="1" max="720" value="20" style="width:90px"><button class="chip" id="sleepStart" type="button">Start timer</button></div>
           <div class="row" style="margin-top:10px"><button class="chip" id="sleepExtend" type="button" hidden>+10 min</button></div>
           <label class="dl-chk"><input type="checkbox" id="sleepFade"> <span id="sleepFadeT">Fade the sound out in the last minute</span></label>
@@ -2197,6 +2198,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Sleep timer finished - paused. Press Play to continue.": ["स्लीप टाइमर पूरा - रोक दिया. जारी रखने के लिए Play दबाएं.", "સ્લીપ ટાઈમર પૂરો - રોકાયું. ચાલુ રાખવા Play દબાવો."],
    "Choose 1 to 720 whole minutes.": ["1 से 720 के बीच पूरे मिनट चुनें.", "1 થી 720 વચ્ચે આખા મિનિટ પસંદ કરો."],
    "Stopped at the end of the video (sleep timer).": ["वीडियो के अंत में रोका गया (स्लीप टाइमर).", "વીડિયોના અંતે રોકાયું (સ્લીપ ટાઈમર)."],
+   "Stop after videos:": ["इतने वीडियो के बाद रुकें:", "આટલા વીડિયો પછી રોકાઓ:"],
+   "Will stop after": ["इतने के बाद रुकेगा:", "આટલા પછી રોકાશે:"],
+   "more video": ["और वीडियो", "વધુ વીડિયો"],
+   "more videos": ["और वीडियो", "વધુ વીડિયો"],
    "Stop at end of video": ["वीडियो के अंत में रुकें", "વીડિયોના અંતે રોકાઓ"],
    "Will stop at end of video": ["वीडियो के अंत में रुकेगा", "વીડિયોના અંતે રોકાશે"],
    "Stops at the end of this video.": ["इस वीडियो के अंत में रुकेगा.", "આ વીડિયોના અંતે રોકાશે."],
@@ -3258,6 +3263,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (!playing && statsDirty) { statsDirty = false; saveStats(); renderStats(); }
       playBtn.textContent = playing ? T("⏸ Pause") : T("▶ Play");
       if (data.info === 0 && sleepPaused) return;
+      if (data.info === 0 && sleepVids > 0) { sleepVids -= 1; if (sleepVids === 0) sleepAtEnd = true; sleepVidsRender(); }
       if (data.info === 0 && sleepAtEnd) {
         sleepAtEnd = false; sleepEndRender();
         sleepPaused = true; saveResume(true);
@@ -5578,6 +5584,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
   // Sleep timer: also offer "stop when this video ends" (pauses instead of auto-next).
   var sleepAtEnd = false;
+  var sleepVids = 0;
   var sleepEndBtn = $("sleepEndBtn");
   function sleepEndRender() {
     if (!sleepEndBtn) return;
@@ -5594,10 +5601,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (needVideo) sleepLabel.textContent = T("Load a video first, then set this.");
   });
 
+  // Sleep timer: stop after N more videos (counts each video that finishes).
+  var sleepVidsChips = $("sleepVidsChips");
+  function sleepVidsRender() {
+    var lab = $("sleepVidsLab"); if (lab) lab.textContent = T("Stop after videos:");
+    if (!sleepVidsChips) return;
+    [].forEach.call(sleepVidsChips.children, function (c) {
+      var on = sleepVids > 0 && Number(c.dataset.v) === sleepVids;
+      c.classList.toggle("active", on); c.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    if (sleepVids > 0 && !sleepEnd) sleepLabel.textContent = T("Will stop after") + " " + sleepVids + " " + T(sleepVids === 1 ? "more video" : "more videos");
+    else if (!sleepVids && !sleepAtEnd && !sleepEnd) sleepRender();
+  }
+  if (sleepVidsChips) {
+    [1, 2, 3, 5].forEach(function (n) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.v = n; b.textContent = String(n); b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () {
+        if (!curId) { sleepLabel.textContent = T("Load a video first, then set this."); return; }
+        sleepVids = sleepVids === n ? 0 : n; sleepVidsRender();
+      });
+      sleepVidsChips.appendChild(b);
+    });
+    sleepVidsRender();
+  }
+
   // Re-render dynamic labels when the UI language changes.
   window.__relang = window.__relang || [];
   window.__relang.push(function () {
-    updateFavBtn(); updateLaterBtn(); renderQueueModes(); ccRender(); sleepEndRender(); updateAB();
+    sleepVidsRender(); updateFavBtn(); updateLaterBtn(); renderQueueModes(); ccRender(); sleepEndRender(); updateAB();
     playBtn.textContent = playing ? T("\u23f8 Pause") : T("\u25b6 Play");
     muteBtn.textContent = muted ? T("\ud83d\udd07 Unmute") : T("\ud83d\udd0a Mute");
     loopBtn.textContent = prefs.loop ? T("\ud83d\udd01 Loop on") : T("\ud83d\udd01 Loop off");
