@@ -1262,6 +1262,15 @@ html.low-fx.vp-playing .frame-glow { opacity: .22; }
 @media (max-width: 640px) { .frame-glow { filter: blur(16px) saturate(1.2); inset: -8px -10px; } }
 @media (prefers-reduced-motion: reduce) { html .frame-glow, html.vp-playing .frame-glow { animation: none; } }
 </style>
+<style id="r36-ab-band">
+/* A-B repeat: amber band under the seek bar shows the loop range at a glance */
+.ab-strip { position: relative; height: 10px; margin: 2px 10px 0; }
+.ab-strip i { display: block; }
+.ab-strip .ab-band { position: absolute; top: 2px; height: 6px; border-radius: 99px; background: linear-gradient(90deg, #ffc53d, #ff8a3d); box-shadow: 0 0 10px #ffc53d88, 0 1px 3px rgba(0,0,0,.3); transition: left .2s ease, width .2s ease, opacity .2s ease; }
+.ab-strip .ab-band.pending { opacity: .45; background: repeating-linear-gradient(90deg, #ffc53d 0 8px, transparent 8px 14px); box-shadow: none; }
+.ab-strip .ab-cap { position: absolute; top: 0; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: #ffc53d; border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,.35); }
+html.low-fx .ab-strip .ab-band { transition: none; box-shadow: none; }
+</style>
 </head>
 <body>
 <style>
@@ -1448,6 +1457,7 @@ html.low-fx.vp-playing .frame-glow { opacity: .22; }
           </div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
+          <div class="ab-strip" id="abStrip" hidden aria-hidden="true"></div>
           <div class="seek-tip" id="seekTip" hidden></div>
           <div class="seek-marks" id="seekMarks" hidden></div>
           <form class="row" id="jumpForm" style="margin-top:8px">
@@ -3022,6 +3032,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (typeof i.duration === "number" && i.duration > 0) {
         duration = i.duration; seek.max = duration;
         if (window.__vpSeekMarks) window.__vpSeekMarks();
+        if (window.__vpABBand) window.__vpABBand(abA, abB);
         if (curId) { infoCache[curId] = infoCache[curId] || {}; infoCache[curId].dur = duration; infoDur.textContent = "Length " + fmt(duration); }
       }
       if (typeof i.volume === "number") { prefs.volume = Math.round(i.volume); vol.value = prefs.volume; volLabel.textContent = prefs.volume + "%"; }
@@ -3225,6 +3236,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1; if (typeof paintSeekFill === "function") paintSeekFill();
     if (typeof paintEndsAt === "function") paintEndsAt(0);
     if (window.__vpSeekMarks) window.__vpSeekMarks();
+    if (window.__vpABBand) window.__vpABBand(abA, abB);
     if (iframe) { iframe.remove(); iframe = null; }
     iframe = document.createElement("iframe");
     var clip = "";
@@ -3394,6 +3406,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (abB == null) abLabel.textContent = "A " + fmt(abA) + T(" - set B to start repeating");
     else if (abA == null) abLabel.textContent = "B " + fmt(abB) + T(" - set A to start repeating");
     else abLabel.textContent = (abEnabled ? T("Repeating ") : T("Paused repeat: ")) + fmt(abA) + T(" to ") + fmt(abB);
+    if (window.__vpABBand) window.__vpABBand(abA, abB);
   }
   function clearAB() { abA = null; abB = null; abEnabled = true; updateAB(); }
   aBtn.addEventListener("click", function () {
@@ -7428,6 +7441,27 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       sec.style.setProperty("--my", (e.clientY - r.top) + "px");
     });
   });
+})();
+</script>
+<script id="r36-ab-band-js">
+// A-B repeat: paints an amber band under the seek bar for the loop range (the player code calls this bridge).
+(function () {
+  var strip = document.getElementById("abStrip"), seekEl = document.getElementById("seek");
+  if (!strip || !seekEl) return;
+  window.__vpABBand = function (a, b) {
+    var dur = Number(seekEl.max) || 0;
+    strip.innerHTML = "";
+    if (a == null || !(dur > 1) || a >= dur) { strip.hidden = true; return; }
+    var aPct = Math.max(0, Math.min(100, a / dur * 100));
+    var hasB = (b != null && b > a && b <= dur);
+    var bPct = hasB ? b / dur * 100 : 100;
+    var band = document.createElement("i"); band.className = "ab-band" + (hasB ? "" : " pending");
+    band.style.left = aPct.toFixed(2) + "%"; band.style.width = Math.max(1, bPct - aPct).toFixed(2) + "%";
+    strip.appendChild(band);
+    var capA = document.createElement("i"); capA.className = "ab-cap"; capA.style.left = aPct.toFixed(2) + "%"; strip.appendChild(capA);
+    if (hasB) { var capB = document.createElement("i"); capB.className = "ab-cap"; capB.style.left = bPct.toFixed(2) + "%"; strip.appendChild(capB); }
+    strip.hidden = false;
+  };
 })();
 </script>
 </body>
