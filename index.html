@@ -2617,6 +2617,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Add all to the queue": ["सब कतार में जोड़ें", "બધું કતારમાં ઉમેરો"],
    "Sort: Newest": ["क्रम: नया पहले", "ક્રમ: નવું પહેલા"],
    "Sort: A to Z": ["क्रम: A से Z", "ક્રમ: A થી Z"],
+   "Sort: Top rated": ["क्रम: टॉप रेटेड", "ક્રમ: ટોપ રેટેડ"],
    "Change favourites order": ["पसंदीदा का क्रम बदलें", "મનપસંદનો ક્રમ બદલો"],
    "Change playlist order": ["प्लेलिस्ट का क्रम बदलें", "પ્લેલિસ્ટનો ક્રમ બદલો"],
    "Saved playlists": ["सेव की प्लेलिस्ट", "સેવ કરેલી પ્લેલિસ્ટ"],
@@ -3213,28 +3214,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     row.appendChild(a); row.appendChild(b); x.push(a, b);
     h.parentNode.parentNode.insertBefore(row, h.parentNode.nextSibling);
   });
-  var favSortAZ = false;
-  try { favSortAZ = localStorage.getItem("vp-favsort.v1") === "az"; } catch (e) {}
+  var favSortMode = "new";
+  try { var fm = localStorage.getItem("vp-favsort.v1"); favSortMode = (fm === "az" || fm === "rate") ? fm : "new"; } catch (e) {}
   function favView() {
-    if (!favSortAZ) return lib.favs;
-    return lib.favs.slice().sort(function (a, b) { return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase()); });
+    if (favSortMode === "az") return lib.favs.slice().sort(function (a, b) { return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase()); });
+    if (favSortMode === "rate") return lib.favs.slice().sort(function (a, b) { return vpRateOf(b.id) - vpRateOf(a.id); });
+    return lib.favs;
   }
   var favSortBtn = document.createElement("button"); favSortBtn.type = "button"; favSortBtn.className = "chip"; favSortBtn.id = "favSortBtn";
   favSortBtn.addEventListener("click", function () {
-    favSortAZ = !favSortAZ; try { localStorage.setItem("vp-favsort.v1", favSortAZ ? "az" : "new"); } catch (e) {}
+    favSortMode = favSortMode === "new" ? "az" : (favSortMode === "az" ? "rate" : "new"); try { localStorage.setItem("vp-favsort.v1", favSortMode); } catch (e) {}
     renderLib();
   });
   (function () { var r = document.querySelector('.lib-listtools[data-for="lhFavs"]'); if (r) r.appendChild(favSortBtn); })();
   /* Same title sort for Watch later and Recently watched. Newest first stays the default. */
   function makeSortView(key) {
-    var az = false;
-    try { az = localStorage.getItem(key) === "az"; } catch (e) {}
+    var mode = "new";
+    try { var sm = localStorage.getItem(key); mode = (sm === "az" || sm === "rate") ? sm : "new"; } catch (e) {}
     return {
-      isAZ: function () { return az; },
-      toggle: function () { az = !az; try { localStorage.setItem(key, az ? "az" : "new"); } catch (e) {} },
+      isAZ: function () { return mode === "az"; },
+      mode: function () { return mode; },
+      toggle: function () { mode = mode === "new" ? "az" : (mode === "az" ? "rate" : "new"); try { localStorage.setItem(key, mode); } catch (e) {} },
       view: function (items) {
-        if (!az) return items;
-        return items.slice().sort(function (a, b) { return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase()); });
+        if (mode === "new") return items;
+        if (mode === "az") return items.slice().sort(function (a, b) { return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase()); });
+        return items.slice().sort(function (a, b) { return vpRateOf(b.id) - vpRateOf(a.id); });
       }
     };
   }
@@ -3246,7 +3250,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     b.addEventListener("click", function () { sort.toggle(); renderLib(); });
     (function () { var r = document.querySelector('.lib-listtools[data-for="' + headingId + '"]'); if (r) r.appendChild(b); })();
     b.refresh = function () {
-      b.textContent = T(sort.isAZ() ? "Sort: A to Z" : "Sort: Newest");
+      b.textContent = T(sort.mode() === "az" ? "Sort: A to Z" : (sort.mode() === "rate" ? "Sort: Top rated" : "Sort: Newest"));
       b.setAttribute("aria-label", T(labelKey));
       b.hidden = items().length < 2;
     };
@@ -3261,7 +3265,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (!c) { c = document.createElement("span"); c.className = "lib-count hint"; h.parentNode.insertBefore(c, h.nextSibling); }
       c.textContent = x[1].length ? "(" + x[1].length + ")" : "";
     });
-    favSortBtn.textContent = T(favSortAZ ? "Sort: A to Z" : "Sort: Newest");
+    favSortBtn.textContent = T(favSortMode === "az" ? "Sort: A to Z" : (favSortMode === "rate" ? "Sort: Top rated" : "Sort: Newest"));
     favSortBtn.setAttribute("aria-label", T("Change favourites order"));
     favSortBtn.hidden = lib.favs.length < 2;
     laterSortBtn.refresh(); histSortBtn.refresh();
