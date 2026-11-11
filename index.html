@@ -1463,6 +1463,9 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
       <div class="help-card">
         <h3 id="settingsH">Settings</h3>
         <p class="hint" id="settingsHint">Everything the app remembers is stored on this device only: volume, speed, theme, language, queue modes, the sleep timer and saver choices.</p>
+        <label class="dl-chk"><input type="checkbox" id="autoPauseChk"> <span id="autoPauseT">Pause when I leave this tab</span></label>
+        <label class="dl-chk"><input type="checkbox" id="autoResumeChk"> <span id="autoResumeT">Resume when I come back</span></label>
+        <p class="hint" id="autoPauseHint">Handy when a call or another app pulls you away. Off by default; both are remembered on this device.</p>
         <div class="actions"><button class="chip" id="resetAllBtn" type="button">Reset to default</button></div>
       </div>
       <div class="help-card">
@@ -1611,10 +1614,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
-  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", lang: "en", seekStep: 10, dataSaver: false, battSaver: false };
+  var prefs = { volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
-    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; ["cc", "ccLang", "accent", "lang"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
+    if (saved) { if (typeof saved.volume === "number") prefs.volume = saved.volume; if (typeof saved.speed === "number") prefs.speed = saved.speed; if (saved.loop === true) prefs.loop = true; if (saved.theme === "light" || saved.theme === "dark" || saved.theme === "auto" || saved.theme === "daynight") prefs.theme = saved.theme; if (saved.bigText === true) prefs.bigText = true; if (saved.highContrast === true) prefs.highContrast = true; if (saved.lowFx === true) prefs.lowFx = true; if (saved.dataSaver === true) prefs.dataSaver = true; if (saved.battSaver === true) prefs.battSaver = true; if (saved.autoPause === true) prefs.autoPause = true; if (saved.autoResume === true) prefs.autoResume = true; ["cc", "ccLang", "accent", "lang"].forEach(function (k) { if (k in saved && typeof saved[k] === typeof prefs[k]) prefs[k] = saved[k]; }); if ([5, 10, 15, 30].indexOf(saved.seekStep) >= 0) prefs.seekStep = saved.seekStep; }
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) {} }
   var TR_MSG = {
@@ -2462,7 +2465,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     if (data.event === "onStateChange" && typeof data.info === "number") {
       if (sleepPaused && data.info === 1) { send("pauseVideo"); return; }
-      playing = data.info === 1; if (playing) failedQueueCount = 0;
+      playing = data.info === 1; if (playing) failedQueueCount = 0; if (playing && typeof tabAutoPaused !== "undefined") tabAutoPaused = false;
       if (playing && prefs.dataSaver && curId && dsAppliedFor !== curId) { dsAppliedFor = curId; send("setPlaybackQuality", ["large"]); markActive(qualityChips, "large"); }
       if (playing && curId && lastPlayId !== curId) { lastPlayId = curId; stats.plays += 1; statsRec(curId).plays += 1; saveStats(); renderStats(); }
       if (!playing && statsDirty) { statsDirty = false; saveStats(); renderStats(); }
@@ -4048,6 +4051,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     [".feat-nav a[href=\"#ctl-marks\"]", "Moments", "पल"],
     ["#upnextGo", "Play now", "अभी चलाएं"],
     ["#upnextCancel", "Cancel", "रद्द करें"],
+    ["#autoPauseT", "Pause when I leave this tab", "टैब छोड़ने पर रोकें"],
+    ["#autoResumeT", "Resume when I come back", "वापस आने पर फिर चलाएं"],
+    ["#autoPauseHint", "Handy when a call or another app pulls you away. Off by default; both are remembered on this device.", "जब कॉल या दूसरा ऐप ध्यान खींच ले तो काम आता है. डिफ़ॉल्ट रूप से बंद; दोनों इसी डिवाइस पर याद रहते हैं."],
   ];
   var I18N_PH = [
     ["#libSearch", "Search your videos", "अपने वीडियो खोजें"],
@@ -4141,6 +4147,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  ".feat-nav a[href=\"#ctl-marks\"]": "ક્ષણો",
  "#upnextGo": "અત્યારે ચલાવો",
  "#upnextCancel": "રદ કરો",
+ "#autoPauseT": "ટૅબ છોડું ત્યારે રોકો",
+ "#autoResumeT": "પાછો આવું ત્યારે ફરી ચલાવો",
+ "#autoPauseHint": "જ્યારે કૉલ કે બીજી એપ ધ્યાન ખેંચી લે ત્યારે ઉપયોગી. ડિફૉલ્ટ બંધ; બંને આ ડિવાઇસ પર યાદ રહે છે.",
  "#settingsH": "સેટિંગ",
  "#settingsHint": "એપ જે યાદ રાખે છે તે ફક્ત આ ડિવાઇસ પર જ રહે છે: વોલ્યુમ, સ્પીડ, થીમ, ભાષા, કતાર મોડ, સ્લીપ ટાઇમર અને સેવર પસંદગી.",
  "#a11yBigT": "મોટું અક્ષર",
@@ -4433,6 +4442,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (goB) goB.addEventListener("click", function () { upnextToken++; upnextHide(); if (!playNext()) { var qm = $("queueModeMsg"); if (qm) qm.textContent = T("Queue finished. Tap a video to play again."); } });
     if (cxB) cxB.addEventListener("click", function () { upnextCancel(false); });
   })();
+
+  // Auto-pause: optionally pause when the tab is hidden, and resume on return. YouTube and local files.
+  var tabAutoPaused = false;
+  (function () {
+    var ap = $("autoPauseChk"), ar = $("autoResumeChk");
+    if (ap) { ap.checked = prefs.autoPause === true; ap.addEventListener("change", function () { prefs.autoPause = ap.checked; savePrefs(); }); }
+    if (ar) { ar.checked = prefs.autoResume === true; ar.addEventListener("change", function () { prefs.autoResume = ar.checked; savePrefs(); }); }
+  })();
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+      if (prefs.autoPause === true) {
+        if (playing) { send("pauseVideo"); tabAutoPaused = true; }
+        var lvh = $("lpVideo"); if (lvh && !lvh.hidden && !lvh.paused) { lvh.pause(); tabAutoPaused = true; }
+      }
+    } else if (prefs.autoResume === true && tabAutoPaused) {
+      tabAutoPaused = false;
+      if (iframe) send("playVideo");
+      var lvv = $("lpVideo"); if (lvv && !lvv.hidden && lvv.paused && lvv.currentTime > 0) { var pp = lvv.play(); if (pp && pp.catch) pp.catch(function () {}); }
+    }
+  });
 })();
 </script>
 <script>
