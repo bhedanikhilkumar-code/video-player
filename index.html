@@ -7725,7 +7725,7 @@ html.low-fx :focus-visible { box-shadow: none !important; }
 (function () {
   var input = document.getElementById("linkInput"), load = document.getElementById("loadBtn"), hint = document.getElementById("linkHint");
   if (!input || !load || !hint || !hint.parentNode) return;
-  var TR = { "Recent": ["हाल के", "તાજેતરના"], "Play again: ": ["फिर चलाएं: ", "ફરી ચલાવો: "] };
+  var TR = { "Recent": ["हाल के", "તાજેતરના"], "Play again: ": ["फिर चलाएं: ", "ફરી ચલાવો: "], "Video ": ["वीडियो ", "વિડિયો "] };
   function t(s) { var l = document.documentElement.lang, r = TR[s]; return (r && (l === "hi" || l === "gu")) ? r[l === "hi" ? 0 : 1] : s; }
   var row = document.createElement("div"); row.className = "recent-row"; row.id = "recentRow"; row.hidden = true;
   row.setAttribute("role", "group");
@@ -7746,7 +7746,7 @@ html.low-fx :focus-visible { box-shadow: none !important; }
     var list = items();
     row.textContent = ""; dl.textContent = "";
     list.slice(0, 20).forEach(function (x) {
-      var o = document.createElement("option"); o.value = "https://youtu.be/" + x.id; o.label = x.title || x.id; dl.appendChild(o);
+      var o = document.createElement("option"); o.value = "https://youtu.be/" + x.id; o.label = x.title || (t("Video ") + x.id); dl.appendChild(o);
     });
     var hist = []; try { hist = (JSON.parse(localStorage.getItem("vp-library.v1") || "null") || {}).hist || []; } catch (e) {}
     var shown = hist.filter(function (x) { return x && typeof x.id === "string" && /^[a-zA-Z0-9_-]{11}$/.test(x.id); }).slice(0, 5);
@@ -7755,10 +7755,37 @@ html.low-fx :focus-visible { box-shadow: none !important; }
     var lab = document.createElement("span"); lab.className = "rr-lab"; lab.textContent = t("Recent"); row.appendChild(lab);
     shown.forEach(function (x) {
       var b = document.createElement("button"); b.type = "button"; b.className = "chip";
-      var name = x.title || x.id; b.textContent = name; b.title = name;
+      var name = x.title || (t("Video ") + x.id); b.textContent = name; b.title = name;
       b.setAttribute("aria-label", t("Play again: ") + name);
       b.addEventListener("click", function () { input.value = "https://youtu.be/" + x.id; load.click(); });
       row.appendChild(b);
+    });
+    backfill(shown);
+  }
+  /* Round 40 fix: an old history entry saved before titles were stored used to show a raw
+     video ID in the chips and the suggestion list. Now it gets a friendly label right away,
+     and the real title is fetched once via oEmbed and written back into the library so the
+     chip, the suggestions and the Recently watched list all heal themselves. */
+  var tried = {};
+  function backfill(list) {
+    if (!window.fetch) return;
+    list.forEach(function (x) {
+      if (!x || x.title || tried[x.id]) return;
+      tried[x.id] = 1;
+      fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + x.id))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (d) {
+          if (!d || !d.title) return;
+          try {
+            var l = JSON.parse(localStorage.getItem("vp-library.v1") || "null") || {};
+            ["hist", "favs", "queue", "later"].forEach(function (k) {
+              (l[k] || []).forEach(function (it) { if (it && it.id === x.id) it.title = String(d.title); });
+            });
+            localStorage.setItem("vp-library.v1", JSON.stringify(l));
+          } catch (e) {}
+          render();
+        })
+        .catch(function () {});
     });
   }
   var hl = document.getElementById("histList");
