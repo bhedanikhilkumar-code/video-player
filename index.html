@@ -2057,6 +2057,7 @@ setTimeout(done,3000);})();
             <li id="sc19"><b>H</b>: add the playing video to Favourites (press again to remove)</li>
             <li id="sc20"><b>U</b>: jump back to where you were before the last seek</li>
             <li id="sc21"><b>D</b>: switch between dark and light theme</li>
+            <li id="sc22"><b>Q</b>: find the video playing now in the queue</li>
           </ul>
           <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
         </details>
@@ -6205,6 +6206,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (k === "g" || k === "G") { var gjI = $("jumpInput"); if (gjI && curId) { try { gjI.scrollIntoView({block: "center"}); } catch (err) {} gjI.focus(); gjI.select(); toast(T("Type a time like 1:23, then press Enter")); } else handled = false; }
     else if (k === "u" || k === "U") usUndoSeek();
     else if (k === "d" || k === "D") dkThemeToggle();
+    else if (k === "q" || k === "Q") qFindPlaying();
     else handled = false;
     if (handled) e.preventDefault();
   });
@@ -6347,6 +6349,43 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     prefs.theme = darkNow ? "light" : "dark";
     savePrefs(); applyTheme();
     toast(darkNow ? T("Theme: Light") : T("Theme: Dark"));
+  }
+
+  // Q to find it in the queue (round 162): in a long queue the video that is playing can sit
+  // far off-screen. Press Q and the page scrolls the Up next list to that row and rings it
+  // for a moment, so you see where you are and what comes next. Playing something that is not
+  // in the queue just shows the queue and says so, an empty queue says that, and the key only
+  // scrolls and highlights - the queue is never changed and nothing is saved. Never fires
+  // while typing in a box, listed in the Keyboard shortcuts list (and the ? overlay, which
+  // mirrors that list), works on YouTube videos, translated in Hindi and Gujarati, in the
+  // feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Q to find it in the queue": ["कतार में खोजने के लिए Q", "કતારમાં શોધવા માટે Q"],
+    "The queue is empty.": ["कतार खाली है.", "કતાર ખાલી છે."],
+    "Not playing from the queue - here it is.": ["कतार से नहीं चल रहा - यह रही कतार.", "કતારમાંથી ચાલતું નથી - આ રહી કતાર."]
+  });
+  var qfSt = document.createElement("style");
+  qfSt.textContent =
+    "@keyframes qfRing{0%{box-shadow:0 0 0 0 var(--accent,#3a8a77)}35%{box-shadow:0 0 0 4px var(--accent,#3a8a77)}100%{box-shadow:0 0 0 0 rgba(0,0,0,0)}}"
+    + "#queueList .lib-item.q-found{animation:qfRing 1.4s ease-out 1;outline:2px solid var(--accent,#3a8a77);outline-offset:-2px}"
+    + "html.calm-motion #queueList .lib-item.q-found,html.low-fx #queueList .lib-item.q-found{animation:none}"
+    + "html.high-contrast #queueList .lib-item.q-found{animation:none;outline:3px solid var(--ink)}";
+  document.head.appendChild(qfSt);
+  function qFindPlaying() {
+    var ql = $("queueList");
+    if (!lib.queue.length || !ql) { toast(T("The queue is empty.")); return; }
+    var row = (qPos >= 0 && qPos < lib.queue.length && qPos < ql.children.length) ? ql.children[qPos] : null;
+    if (!row || !row.classList || !row.classList.contains("lib-item") || (curId && lib.queue[qPos] && lib.queue[qPos].id !== curId)) {
+      row = null;
+      var head = $("lhQueue");
+      if (head) { try { head.scrollIntoView({ block: "start", behavior: "smooth" }); } catch (err) { head.scrollIntoView(); } }
+      toast(T("Not playing from the queue - here it is."));
+      return;
+    }
+    try { row.scrollIntoView({ block: "center", behavior: "smooth" }); } catch (err) { row.scrollIntoView(); }
+    row.classList.remove("q-found"); void row.offsetWidth; row.classList.add("q-found");
+    setTimeout(function () { row.classList.remove("q-found"); }, 1500);
+    toast((qPos + 1) + " / " + lib.queue.length);
   }
 
   // Watch later feed (round 160): when it is on and the queue runs out - the last video
@@ -10753,6 +10792,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#sc19", "<b>H</b>: add the playing video to Favourites (press again to remove)", "<b>H</b>: चल रहा वीडियो पसंदीदा में जोड़ें (दोबारा दबाने पर हटेगा)"],
     ["#sc20", "<b>U</b>: jump back to where you were before the last seek", "<b>U</b>: आखिरी सीक से पहले जहां थे वहां वापस जाएं"],
     ["#sc21", "<b>D</b>: switch between dark and light theme", "<b>D</b>: डार्क और लाइट थीम के बीच बदलें"],
+    ["#sc22", "<b>Q</b>: find the video playing now in the queue", "<b>Q</b>: चल रहे वीडियो को कतार में खोजें"],
     ["#faq7a", "See the <a href=\"#backgroundHelp\">Listening help card</a> below the player for simple steps and the screen-off limits.", "सरल steps और screen-off सीमाओं के लिए प्लेयर के नीचे <a href=\"#backgroundHelp\">Listening help कार्ड</a> देखें."]
   ];
   var I18N_GU_HTML = {
@@ -10766,6 +10806,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#sc19": "<b>H</b>: ચાલતો વીડિયો મનપસંદમાં ઉમેરો (ફરી દબાવતાં દૂર થશે)",
  "#sc20": "<b>U</b>: છેલ્લી સીક પહેલાં જ્યાં હતા ત્યાં પાછા જાઓ",
  "#sc21": "<b>D</b>: ડાર્ક અને લાઇટ થીમ વચ્ચે બદલો",
+ "#sc22": "<b>Q</b>: ચાલતો વીડિયો કતારમાં શોધો",
  "#sc1": "<b>Space</b> અથવા <b>K</b>: ચલાવો / રોકો",
  "#sc2": "<b>Left / Right</b>: 5 સેકંડ પાછળ / આગળ",
  "#sc3": "<b>J / L</b>: 10 સેકંડ પાછળ / આગળ",
@@ -12149,6 +12190,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Q to find it in the queue", "#sc22"],
     ["Move to end", "#qPickBtn"],
     ["Row hover lift", "#lhQueue"],
     ["Menu edge fade", "#featNav"],
@@ -12158,10 +12200,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Card float", "#ctl-sound"],
     ["Sort queue by length", "#sortLenQueueBtn"],
     ["Queue as next", "#queueNextBtn"],
-    ["Glass sliders", "#vol"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
+    "Q to find it in the queue": ["कतार में खोजने के लिए Q", "કતારમાં શોધવા માટે Q"],
     "Move to end": ["सबसे नीचे भेजें", "સૌથી નીચે મોકલો"],
     "Thumb shimmer": ["थंब शिमर", "થંબ શિમર"],
     "Glass sliders": ["ग्लास स्लाइडर", "ગ્લાસ સ્લાઇડર"],
@@ -17863,6 +17905,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later feed", "watch later feed auto play queue runs out finished empty continue binge unwatched next automatic keep playing backlog evening", "#qFeedBtn"],
       ["D for dark or light theme", "d key dark light theme toggle switch keyboard shortcut night day quick eyes bright dim", "#sc21"],
       ["Menu edge fade", "menu edge fade feature menu links ends soft fade melt ios carousel more links off edge scroll hint swipe", "#featNav"],
+      ["Q to find it in the queue", "queue find key q keyboard shortcut locate playing video current row scroll highlight ring where am i long queue", "#sc22"],
       ["Move to end", "move to end bottom queue pick many send last later rest plays first not in the mood reorder", "#qPickBtn"],
       ["Row hover lift", "row hover lift library rows queue favourites watch later history playlist raise float shadow thumbnail zoom desktop mouse pointer poster", "#lhQueue"]
     ];
