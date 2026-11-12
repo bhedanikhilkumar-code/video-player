@@ -1679,6 +1679,11 @@ setTimeout(done,3000);})();
         <span id="laterNudgeText"></span>
         <span class="row" style="gap:8px;flex:none"><button class="chip" id="laterNudgeGo" type="button">Play oldest</button><button class="chip" id="laterNudgeX" type="button" aria-label="Hide for today">x</button></span>
       </div>
+      <button class="today-strip" id="todayStrip" type="button" hidden>
+        <span class="ts-ic" aria-hidden="true">📊</span>
+        <span class="ts-main"><span class="ts-line" id="todayStripTx"></span><span class="ts-bar" id="todayStripBar" hidden><i id="todayStripFill"></i></span></span>
+        <span class="ts-go" aria-hidden="true">→</span>
+      </button>
       <details class="tips">
         <summary id="tipsSum">Tips: queue and time links</summary>
         <p id="tipsP1">To queue several videos, paste their links separated by spaces and tap Add to queue. They play one after another.</p>
@@ -11141,6 +11146,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Sort favourites by length": ["पसंदीदा लंबाई से क्रम में", "મનપસંદ લંબાઈ મુજબ ક્રમમાં"]
   });
   var WNEW = [
+    ["Today at a glance", "#todayStrip"],
     ["Line up my evening", "#laterPlanBtn"],
     ["Premiere countdown", "#premRow"],
     ["Title card", "#titleChk"],
@@ -11149,8 +11155,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Theme wave", "#waveChk"],
     ["Cinema settle", "#settleChk"],
     ["Undo a removal", "#lhLater"],
-    ["Clear watched in Watch later", "#laterClrWBtn"],
-    ["Finish burst", "#finChk"]
+    ["Clear watched in Watch later", "#laterClrWBtn"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -11616,6 +11621,66 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     msg.textContent = "";
     laterPlanPaint();
   }
+})();
+
+(function () {
+  "use strict";
+  // Today at a glance (round 122): a slim glass strip on the start screen, right under
+  // the greeting, showing today's watch time - with a small goal progress bar, percent
+  // and streak when a daily goal is set - that jumps straight to Watch stats on tap, so
+  // the day's progress is visible without opening the library. Watch stats already counts
+  // everything and My week card already shares it; this is the always-there glance on the
+  // home screen. The strip hides honestly until something has been counted, refreshes
+  // with every stats repaint and every 30 seconds (so it follows along while a video
+  // plays and rolls over at midnight), retranslates on every language switch, works
+  // alongside YouTube videos, adds no setting, and is listed in the feature finder and
+  // the What's new card.
+  Object.assign(TR_MSG, {
+    "Today at a glance": ["आज एक नज़र में", "આજ એક નજરમાં"],
+    "See your stats": ["अपने आंकड़े देखें", "તમારા આંકડા જુઓ"],
+    "Jump to Watch stats": ["वॉच स्टैट्स पर जाएं", "વોચ સ્ટેટ્સ પર જાઓ"]
+  });
+  var stl2 = document.createElement("style");
+  stl2.textContent = ".today-strip{display:flex;align-items:center;gap:10px;width:100%;margin-top:10px;padding:10px 14px;border-radius:14px;background:var(--soft);border:1px solid var(--line);color:var(--ink);font:inherit;text-align:left;cursor:pointer}"
+    + ".today-strip[hidden]{display:none!important}"
+    + ".today-strip .ts-ic{font-size:1.1rem;flex:none}"
+    + ".today-strip .ts-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}"
+    + ".today-strip .ts-line{font-size:.95rem;font-weight:600;overflow-wrap:anywhere}"
+    + ".today-strip .ts-go{opacity:.6;flex:none}"
+    + ".today-strip .ts-bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}"
+    + ".today-strip .ts-bar[hidden]{display:none}"
+    + ".today-strip .ts-bar i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--teal,#3a8a77),#5b6fd0);transition:width .4s ease}"
+    + "html.calm-motion .today-strip .ts-bar i,html.low-fx .today-strip .ts-bar i{transition:none}"
+    + "@media (prefers-reduced-motion:reduce){.today-strip .ts-bar i{transition:none}}"
+    + "html.high-contrast .today-strip .ts-bar i{background:var(--ink)}";
+  document.head.appendChild(stl2);
+  var todayStripEl = $("todayStrip"), tsTx = $("todayStripTx"), tsBar = $("todayStripBar"), tsFill = $("todayStripFill");
+  function todayStripPaint() {
+    if (!todayStripEl || !tsTx) return;
+    var has = stats && (stats.plays > 0 || Object.keys(stats.videos || {}).length > 0);
+    if (!has) { todayStripEl.hidden = true; return; }
+    var tSecs = Math.floor((stats.days || {})[dayKey(new Date())] || 0);
+    var g = goalMin(), txt;
+    if (g > 0) {
+      var need = g * 60, pct = Math.min(100, Math.round(tSecs / need * 100));
+      txt = T("Today") + ": " + fmtWatch(Math.min(tSecs, need)) + " / " + fmtWatch(need) + " (" + pct + "%)";
+      if (tSecs >= need) txt += " · " + T("Goal reached!");
+      var st2 = goalStreak(g);
+      if (st2 > 0) txt += " · 🔥 " + st2 + " " + T(st2 === 1 ? "day streak" : "day streaks");
+      if (tsBar) { tsBar.hidden = false; if (tsFill) tsFill.style.width = pct + "%"; }
+    } else {
+      txt = T("Today") + ": " + fmtWatch(tSecs) + T(" watched") + " · " + T("See your stats");
+      if (tsBar) tsBar.hidden = true;
+    }
+    todayStripEl.hidden = false;
+    tsTx.textContent = txt;
+    todayStripEl.setAttribute("aria-label", T("Today at a glance") + ": " + txt + " - " + T("Jump to Watch stats"));
+  }
+  if (todayStripEl) todayStripEl.addEventListener("click", function () { favCtlJump("#lhStats"); });
+  renderStats = (function (orig) { return function () { var r = orig.apply(this, arguments); try { todayStripPaint(); } catch (e) {} return r; }; })(renderStats);
+  (window.__relang = window.__relang || []).push(todayStripPaint);
+  setInterval(todayStripPaint, 30000);
+  todayStripPaint();
 })();
 
 })();
@@ -13833,7 +13898,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Theme wave", "theme wave colour wave pours page theme button transition circle wipe pretty", "#waveChk"],
       ["Premiere countdown", "premiere countdown start clock time video plays by itself schedule movie night watch party", "#premRow"],
       ["Title card", "title card movie name sweeps frame start cinema intro pretty glass", "#titleChk"],
-      ["Line up my evening", "line up my evening plan queue time budget minutes free watch later fill fit tonight batch several videos", "#laterPlanBtn"]
+      ["Line up my evening", "line up my evening plan queue time budget minutes free watch later fill fit tonight batch several videos", "#laterPlanBtn"],
+      ["Today at a glance", "today at a glance watch time goal progress strip start home stats quick peek streak", "#todayStrip"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
