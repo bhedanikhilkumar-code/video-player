@@ -4602,6 +4602,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var t = (seeking ? Number(seek.value) : i.currentTime) || 0;
       paintTime(t);
       if (window.__vpHeroProg) window.__vpHeroProg(t);
+      if (window.__vpBeaconTick) window.__vpBeaconTick(t);
       introOvTick();
       if (typeof outroTick === "function") outroTick();
       statsTick();
@@ -11409,6 +11410,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Moment beacon", "#markAddBtn"],
     ["Whip pan", "#seek"],
     ["Play unwatched from a playlist", "#lhPlaylists"],
     ["Watch later length filter", "#laterLenBtn"],
@@ -11418,7 +11420,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Pin in Watch later", "#lhLater"],
     ["Magnetic moments", "#seek"],
     ["Fine scrub", "#seek"],
-    ["Time left in Continue watching", "#lhContinue"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -12904,6 +12905,85 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   document.addEventListener("vp-video-loaded", wpClear);
 })();
 
+(function () {
+  "use strict";
+  // Moment beacon (round 133): when playback reaches one of your saved
+  // moment dots, the dot pings a soft golden ring and a small glass pill
+  // rises from the seek bar with the moment's time and name - so a saved
+  // goal, drop or punchline announces itself as the video rolls through
+  // it, instead of sitting silently on the bar. Feedback for the moments
+  // you saved, not a setting; Moment comet celebrates the save, Magnetic
+  // moments helps you land on a dot while scrubbing, this one speaks when
+  // playback itself arrives. Works on YouTube videos on the main seek bar
+  // (a plain overlay pill and a class on the dot - the bar and every
+  // control stay tappable), fires only while playing (scrubbing past a
+  // dot stays quiet) and at most once per pass, a still pill without the
+  // ping under Calm/reduced motion and Low-end mode, the ping drops in
+  // High contrast, translated in Hindi and Gujarati, listed in the
+  // feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Moment beacon": ["पल बीकन", "ક્ષણ બીકન"]
+  });
+  var mbSt = document.createElement("style");
+  mbSt.textContent = "@keyframes mbPing{0%{box-shadow:0 0 0 0 rgba(255,190,80,.85)}100%{box-shadow:0 0 0 14px rgba(255,190,80,0)}}"
+    + ".seek-mark.mb-pop{animation:mbPing .65s ease}"
+    + ".vpBeaconPill{position:fixed;z-index:92;pointer-events:none;transform:translate(-50%,0);padding:5px 12px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.3;color:#fff;background:rgba(22,28,38,.55);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);border:1px solid rgba(255,255,255,.35);box-shadow:0 6px 24px rgba(0,0,0,.28);white-space:nowrap;max-width:70vw;overflow:hidden;text-overflow:ellipsis;animation:vpBeacon 2.4s ease forwards}"
+    + "@keyframes vpBeacon{0%{opacity:0;transform:translate(-50%,8px)}12%{opacity:1;transform:translate(-50%,0)}70%{opacity:1;transform:translate(-50%,-30px)}100%{opacity:0;transform:translate(-50%,-44px)}}"
+    + "@keyframes vpBeaconCalm{0%{opacity:0}15%{opacity:1}80%{opacity:1}100%{opacity:0}}"
+    + "html.calm-motion .vpBeaconPill,html.low-fx .vpBeaconPill{animation:vpBeaconCalm 2s ease forwards}"
+    + "@media (prefers-reduced-motion:reduce){.vpBeaconPill{animation:vpBeaconCalm 2s ease forwards}.seek-mark.mb-pop{animation:none}}"
+    + "html.calm-motion .seek-mark.mb-pop,html.low-fx .seek-mark.mb-pop,html.high-contrast .seek-mark.mb-pop{animation:none}"
+    + "html.high-contrast .vpBeaconPill{background:#000;color:#fff;border-color:#fff}";
+  document.head.appendChild(mbSt);
+  var mbLast = -1, mbFiredAt = 0, mbFiredT = -1;
+  function mbFire(m) {
+    try {
+      var box = $("seekMarks");
+      if (!box || box.hidden || !(duration > 0)) return;
+      var want = (m.t / duration * 100).toFixed(2) + "%";
+      var kids = box.children;
+      for (var i = 0; i < kids.length; i++) {
+        if (kids[i].style.left === want) {
+          var dot = kids[i];
+          dot.classList.remove("mb-pop"); void dot.offsetWidth; dot.classList.add("mb-pop");
+          setTimeout(function () { dot.classList.remove("mb-pop"); }, 700);
+          break;
+        }
+      }
+      var r = box.getBoundingClientRect();
+      if (!(r.width > 0)) return;
+      var pill = document.createElement("span");
+      pill.className = "vpBeaconPill"; pill.setAttribute("aria-hidden", "true");
+      pill.textContent = "🔖 " + fmt(m.t) + (m.name ? " · " + m.name : "");
+      var x = r.left + Math.min(Math.max(m.t / duration, 0), 1) * r.width;
+      x = Math.max(70, Math.min(window.innerWidth - 70, x));
+      pill.style.left = Math.round(x) + "px";
+      pill.style.top = Math.round(r.top - 10) + "px";
+      document.body.appendChild(pill);
+      setTimeout(function () { if (pill.parentNode) pill.parentNode.removeChild(pill); }, 2500);
+    } catch (e) {}
+  }
+  function mbTick(t) {
+    var prev = mbLast;
+    mbLast = t;
+    if (typeof t !== "number" || typeof prev !== "number" || prev < 0) return;
+    if (!playing || seeking || !curId || !(duration > 0)) return;
+    if (!(t > prev) || t - prev > 2.5) return;
+    var items = (typeof marks === "object" && marks && marks[curId]) || null;
+    if (!items || !items.length) return;
+    for (var i = 0; i < items.length; i++) {
+      var m = items[i];
+      if (m.t > prev && m.t <= t + 0.001) {
+        if (m.t === mbFiredT && Date.now() - mbFiredAt < 8000) return;
+        mbFiredT = m.t; mbFiredAt = Date.now();
+        mbFire(m);
+        return;
+      }
+    }
+  }
+  window.__vpBeaconTick = mbTick;
+  document.addEventListener("vp-video-loaded", function () { mbLast = -1; mbFiredT = -1; });
+})();
 })();
 </script>
 <script>
@@ -15141,7 +15221,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later length filter", "watch later length filter under 10 minutes 10-30 over 30 short medium long video fit time break quick", "#laterLenBtn"],
       ["Seek comet", "seek comet trail glow sparks follow scrub drag bar pretty tail light", "#scometChk"],
       ["Elastic edges", "elastic edges rubber band bounce spring seek bar start end edge scrub overshoot", "#seek"],
-      ["Whip pan", "whip pan seek jump travel motion blur frame slide spring landing forward rewind fling", "#seek"]
+      ["Whip pan", "whip pan seek jump travel motion blur frame slide spring landing forward rewind fling", "#seek"],
+      ["Moment beacon", "moment beacon saved moment pass spark pill name seek bar dot playback reaches announce", "#markAddBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
