@@ -9995,8 +9995,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // row; every later chip moves into the glass More menu. Moving nodes keeps each
       // button's own click handler, Undo and message untouched. The menu joins the top
       // layer while open (same move the toast made) so the docked mini player can never
-      // cover it, and it closes on tap-outside, Escape, page scroll or any pick; only one
-      // menu is open at a time. Rebuilt on every repaint, so Hindi/Gujarati follow.
+      // cover it, and it closes on tap-outside, Escape, any pick, or when its chip scrolls
+      // out of view; a page scroll just re-anchors it. Only one menu is open at a time.
+      // Rebuilt on every repaint, so Hindi/Gujarati follow.
       (function () {
         var rowChips = Array.prototype.slice.call(acts.children).filter(function (n) { return n.classList && n.classList.contains("chip"); });
         if (rowChips.length <= 5) return;
@@ -10017,7 +10018,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var open = false;
         function onDoc(e) { if (!wrap.contains(e.target)) close(); }
         function onKey(e) { if (e.key === "Escape") { close(); moreBtn.focus(); } }
-        function onScroll(e) { if (!e || !e.target || !menu.contains(e.target)) close(); }
+        // A page scroll re-anchors the menu to its chip (it closes only when the chip
+        // scrolls out of view) so a smooth scroll still settling from an earlier tap,
+        // like Play's scroll-to-player, can never shut a menu the user just opened.
+        function onScroll(e) {
+          if (e && e.target && menu.contains(e.target)) return;
+          var r = moreBtn.getBoundingClientRect();
+          if (r.bottom < -20 || r.top > window.innerHeight + 20) { close(); return; }
+          place(r);
+        }
+        function place(rect) {
+          var r = rect || moreBtn.getBoundingClientRect();
+          var w = menu.offsetWidth, h = menu.offsetHeight;
+          var mTop = r.bottom + 6;
+          if (mTop + h > window.innerHeight - 8 && r.top - h - 6 > 8) mTop = r.top - h - 6;
+          if (mTop + h > window.innerHeight - 8) mTop = Math.max(8, window.innerHeight - 8 - h);
+          menu.style.top = mTop + "px";
+          menu.style.left = Math.min(Math.max(8, r.right - w), Math.max(8, window.innerWidth - w - 8)) + "px";
+        }
         function close() {
           if (!open) return; open = false;
           menu.hidden = true;
@@ -10033,13 +10051,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           if (open) { close(); return; }
           if (typeof window.__plMoreClose === "function") window.__plMoreClose();
           menu.style.visibility = "hidden"; menu.hidden = false;
-          var r = moreBtn.getBoundingClientRect();
-          var w = menu.offsetWidth, h = menu.offsetHeight;
-          var mTop = r.bottom + 6;
-          if (mTop + h > window.innerHeight - 8 && r.top - h - 6 > 8) mTop = r.top - h - 6;
-          if (mTop + h > window.innerHeight - 8) mTop = Math.max(8, window.innerHeight - 8 - h);
-          menu.style.top = mTop + "px";
-          menu.style.left = Math.min(Math.max(8, r.right - w), Math.max(8, window.innerWidth - w - 8)) + "px";
+          place();
           menu.style.visibility = "";
           open = true;
           moreBtn.setAttribute("aria-expanded", "true");
