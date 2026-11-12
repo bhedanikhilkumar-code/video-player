@@ -2330,6 +2330,7 @@ setTimeout(done,3000);})();
           <button class="chip" id="qPickNextBtn" type="button">Play next</button>
           <button class="chip" id="qPickLaterBtn" type="button">Watch later</button>
           <button class="chip" id="qPickFavBtn" type="button">Favourite picked</button>
+          <button class="chip" id="qPickPlBtn" type="button">Add picked to playlist</button>
           <button class="chip" id="qPickRemoveBtn" type="button">Remove</button>
           <button class="chip" id="qPickDoneBtn" type="button">Done</button>
         </span>
@@ -4037,7 +4038,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var list = document.createElement("div"); list.className = "pl-pop-list";
     (playlists || []).forEach(function (p, i) {
       var row = document.createElement("button"); row.type = "button"; row.className = "pl-pop-row";
-      var has = findIn(p.items, item.id) >= 0;
+      var has = item.multi ? item.multi.every(function (m) { return findIn(p.items, m.id) >= 0; }) : findIn(p.items, item.id) >= 0;
       if (has) row.classList.add("on");
       var nm = document.createElement("span"); nm.textContent = (has ? "✓ " : "") + p.name;
       var nn = document.createElement("span"); nn.className = "pl-pop-n"; nn.textContent = p.items.length + "/50";
@@ -4074,6 +4075,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function plRowAddTo(i) {
     var item = plPopItem; if (!item) { plPopClose(); return; }
     var pl = playlists[i]; if (!pl) { plPopClose(); return; }
+    if (item.multi) {
+      var okN = 0, skN = 0;
+      item.multi.forEach(function (m) {
+        if (findIn(pl.items, m.id) >= 0 || pl.items.length >= 50) { skN++; return; }
+        pl.items.push({ id: m.id, title: m.title || titleFor(m.id) || "" }); okN++;
+      });
+      if (okN) { savePlaylists(); renderPlaylists(); }
+      toast(plMultiMsg(pl.name, okN, skN));
+      plPopClose(); return;
+    }
     if (findIn(pl.items, item.id) >= 0) { toast("\"" + pl.name + "\" " + T("already has this video.")); plPopClose(); return; }
     if (pl.items.length >= 50) { toast("\"" + pl.name + "\" " + T("is full (50 videos).")); plPopClose(); return; }
     pl.items.push({ id: item.id, title: item.title || titleFor(item.id) || "" });
@@ -4081,9 +4092,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toast(T("Added to ") + "\"" + pl.name + "\".");
     plPopClose();
   }
+  function plMultiMsg(name, ok, sk) {
+    return T("Added to ") + "\"" + name + "\": " + ok + " " + T("videos added") + (sk ? ", " + sk + " " + T("skipped (already there or full)") : "");
+  }
   function plRowCreate(name) {
     var item = plPopItem; if (!item) { plPopClose(); return; }
     name = (name || "").trim().slice(0, 40); if (!name) return;
+    if (item.multi) {
+      var made = item.multi.slice(0, 50).map(function (m) { return { id: m.id, title: m.title || titleFor(m.id) || "" }; });
+      playlists.push({ name: name, items: made });
+      savePlaylists(); renderPlaylists();
+      toast(plMultiMsg(name, made.length, item.multi.length - made.length));
+      plPopClose(); return;
+    }
     playlists.push({ name: name, items: [{ id: item.id, title: item.title || titleFor(item.id) || "" }] });
     savePlaylists(); renderPlaylists();
     toast(T("Added to ") + "\"" + name + "\".");
@@ -8707,7 +8728,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       qPickPrune();
       qPickCount.textContent = qPicked.length ? qPicked.length + " " + T("picked") : T("Tap videos to pick them.");
     }
-    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickInvertBtn", "Invert picks"], ["qPickCopyBtn", "Copy picked"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickNextBtn", "Play next"], ["qPickLaterBtn", "Watch later"], ["qPickFavBtn", "Favourite picked"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
+    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickInvertBtn", "Invert picks"], ["qPickCopyBtn", "Copy picked"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickNextBtn", "Play next"], ["qPickLaterBtn", "Watch later"], ["qPickFavBtn", "Favourite picked"], ["qPickPlBtn", "Add picked to playlist"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
   }
   function qPickNeed() { if (!qPicked.length) { toast(T("Pick some videos first.")); return false; } return true; }
   if (qPickBtn) qPickBtn.addEventListener("click", function () {
@@ -8818,6 +8839,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       lib.favs = lib.favs.filter(function (f) { return addedIds.indexOf(f.id) < 0; });
       saveLib(); renderLib();
     }, T("Favourites restored"));
+  });
+  // Add picked to playlist (round 174): the folder button on a row files one video into a
+  // saved playlist; with Pick many on, this button opens the same playlist picker for every
+  // picked video at once, in queue order. Videos a playlist already has, or that would pass
+  // its 50-video cap, are skipped and the toast says how many. Creating a new playlist from
+  // the picker works too. Nothing changes in the queue and the picks stay on.
+  Object.assign(TR_MSG, {
+    "Add picked to playlist": ["चुने हुए प्लेलिस्ट में जोड़ें", "પસંદ કરેલા પ્લેલિસ્ટમાં ઉમેરો"],
+    "videos added": ["वीडियो जोड़े", "વીડિયો ઉમેર્યા"],
+    "skipped (already there or full)": ["छोड़े (पहले से हैं या भरी)", "છોડ્યા (પહેલેથી છે અથવા ભરાઈ ગઈ)"],
+    "File picked queue videos into a playlist": ["कतार के चुने वीडियो प्लेलिस्ट में रखें", "કતારના પસંદ કરેલા વીડિયો પ્લેલિસ્ટમાં મૂકો"]
+  });
+  if ($("qPickPlBtn")) $("qPickPlBtn").addEventListener("click", function () {
+    qPickPrune();
+    if (!qPickNeed()) return;
+    plRowOpen({ multi: lib.queue.filter(function (it) { return qPicked.indexOf(it) >= 0; }) }, $("qPickPlBtn"));
   });
   if ($("qPickRemoveBtn")) $("qPickRemoveBtn").addEventListener("click", function () {
     if (!qPickNeed()) return;
@@ -12727,6 +12764,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["File picked queue videos into a playlist", "#qPickBtn"],
     ["Star picked queue videos", "#qPickBtn"],
     ["Toast timer line", "#vpToast"],
     ["New badge shine", "#whatsNewList"],
@@ -12736,7 +12774,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Favourites total time", "#favTime"],
     ["Play picked next", "#qPickBtn"],
     ["Glass selection", "#lhQueue"],
-    ["Glass scrollbar", "#lhQueue"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -18511,6 +18548,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Now playing lift", "now playing lift card spring sheen glass sweep info title channel new video load arrival entrance under frame ceremony", "#infoCard"],
       ["Toast spring", "toast spring notification bottom message confirm confirmation pop up springy sheen glass feedback saved cleared", "#vpToast"],
       ["Toast timer line", "toast timer line countdown drain bar bottom notification note how long stays visible undo time left accent", "#vpToast"],
+      ["File picked queue videos into a playlist", "playlist picked selected queue pick many file folder add collection organise bulk many at once save into", "#qPickBtn"],
       ["Star picked queue videos", "star favourite picked selected queue pick many add favourites like save heart bulk many at once", "#qPickBtn"],
       ["New badge shine", "new badge shine shimmer glint light sweep whats new card latest additions sparkle gloss", "#whatsNewList"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
