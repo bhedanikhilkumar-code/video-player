@@ -1735,6 +1735,7 @@ setTimeout(done,3000);})();
       <div class="actions">
         <button class="btn" id="loadBtn">Load video</button>
         <button class="chip" id="queueBtn">+ Add to queue</button>
+        <button class="chip" id="queueNextBtn" type="button">+ Queue as next</button>
         <button class="chip" id="pasteLinkBtn" type="button">Paste</button>
         <button class="chip" id="clearLinkBtn" type="button" hidden>Clear link</button>
         <button class="chip" id="cleanLinkBtn" type="button" hidden>Clean link</button>
@@ -3392,8 +3393,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // carry no place, no new setting, works on YouTube videos, translated in Hindi and
   // Gujarati, listed in the feature finder and the What's new card.
   Object.assign(TR_MSG, {
-    "Queue remembers its place": ["कतार अपनी जगह याद रखती है", "કતાર પોતાની જગહ યાદ રાખે છે"],
-    "Queue continues from where you left it": ["कतार वहीं से जारी है जहां छोड़ा था", "કતાર ત્યાંથી ચાલુ છે જ્યાં છોડ્યું હતું"]
+
   });
   if (qPlaceRestored) setTimeout(function () { toast(T("Queue continues from where you left it") + " - " + (qPos + 1) + "/" + lib.queue.length); }, 1600);
   // Round 138: a Watch later video parked with its snooze chip stays dimmed at the
@@ -4236,6 +4236,32 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (lib.queue.length >= 50) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
     }
   });
+  // Queue as next (round 158): like Add to queue, but the new videos are inserted
+  // right after the one playing now, so they play next without disturbing the rest
+  // of the queue - handy when a link must come before everything already lined up.
+  var queueNextBtn = $("queueNextBtn");
+  if (queueNextBtn) queueNextBtn.addEventListener("click", function () {
+    var tokens = linkInput.value.split(/[\s,]+/).filter(Boolean), ids = [];
+    tokens.forEach(function (t) { var id = parseVideoId(t); if (id && ids.indexOf(id) < 0) ids.push(id); });
+    if (!ids.length) {
+      linkError.textContent = T("No valid YouTube link found to add. Paste one or more full YouTube links.");
+      linkError.hidden = false; return;
+    }
+    linkError.hidden = true; showLibErr("");
+    var room = 50 - lib.queue.length;
+    var add = ids.slice(0, Math.max(0, room));
+    if (!add.length) { showLibErr(T("The queue holds up to 50 videos. Extra links were skipped.")); return; }
+    var at = (qPos >= 0 && qPos < lib.queue.length) ? qPos + 1 : 0;
+    var items = add.map(function (id) { return { id: id, title: titleFor(id) }; });
+    lib.queue = lib.queue.slice(0, at).concat(items, lib.queue.slice(at));
+    items.forEach(function (x) { if (!x.title) fetchTitle(x.id); });
+    resetShuffle(); saveLib(); renderLib(); linkInput.value = "";
+    toast(items.length === 1 ? T("Queued to play next") : items.length + " " + T("videos queued to play next"));
+    if (!iframe) playQueueAt(at);
+    if (ids.length > add.length) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
+  });
+  (window.__relang = window.__relang || []).push(function () { if (queueNextBtn) queueNextBtn.textContent = T("+ Queue as next"); });
+  if (queueNextBtn) queueNextBtn.textContent = T("+ Queue as next");
   var pasteLinkBtn = $("pasteLinkBtn");
   if (pasteLinkBtn && navigator.clipboard && navigator.clipboard.readText) {
     pasteLinkBtn.addEventListener("click", function () {
@@ -4357,6 +4383,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (lib.queue.length - start < 2) { showLibErr(T("Need at least 2 more videos after the current one to reverse.")); return; }
     lib.queue = lib.queue.slice(0, start).concat(lib.queue.slice(start).reverse()); resetShuffle(); saveLib(); renderLib(); showLibErr("");
     toastUndo(T("Queue order reversed"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+  });
+  // Translations for round 158 (inside the main app closure, so TR_MSG takes them).
+  Object.assign(TR_MSG, {
+    "+ Queue as next": ["+ \u0905\u0917\u0932\u0947 \u0928\u0902\u092c\u0930 \u092a\u0930 \u0921\u093e\u0932\u0947\u0902", "+ \u0a86\u0a97\u0ab3\u0aa8\u0abe \u0aa8\u0a82\u0aac\u0ab0\u0ac7 \u0a89\u0aae\u0ac7\u0ab0\u0acb"],
+    "Queued to play next": ["\u0905\u0917\u0932\u0947 \u092e\u0947\u0902 \u091a\u0932\u0928\u0947 \u0915\u094b \u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0921\u093e\u0932\u093e", "\u0a86\u0a97\u0ab3 \u0a9a\u0ab2\u0abe\u0ab5\u0ab5\u0abe \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0a89\u0aae\u0ac7\u0ab0\u0acd\u0aaf\u0ac1\u0a82"],
+    "videos queued to play next": ["\u0935\u0940\u0921\u093f\u092f\u094b \u0905\u0917\u0932\u0947 \u092e\u0947\u0902 \u091a\u0932\u0928\u0947 \u0915\u094b \u0915\u0924\u093e\u0930 \u092e\u0947\u0902", "\u0ab5\u0abf\u0aa1\u0abf\u0aaf\u0acb \u0a86\u0a97\u0ab3 \u0a9a\u0ab2\u0abe\u0ab5\u0ab5\u0abe \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82"],
+    "Queue as next": ["\u0905\u0917\u0932\u0947 \u0928\u0902\u092c\u0930 \u092a\u0930 \u0915\u0924\u093e\u0930 \u092e\u0947\u0902", "\u0a86\u0a97\u0ab3\u0aa8\u0abe \u0aa8\u0a82\u0aac\u0ab0\u0ac7 \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82"],
+    "Sort by length": ["\u0932\u0902\u092c\u093e\u0908 \u0938\u0947 \u0915\u094d\u0930\u092e \u092e\u0947\u0902", "\u0ab2\u0a82\u0aac\u0abe\u0a88 \u0aae\u0ac1\u0a9c\u0aac \u0a95\u0acd\u0ab0\u0aae\u0aae\u0abe\u0a82"],
+    "Sort: longest first": ["\u0915\u094d\u0930\u092e: \u0938\u092c\u0938\u0947 \u0932\u0902\u092c\u093e \u092a\u0939\u0932\u0947", "\u0a95\u0acd\u0ab0\u0aae: \u0ab8\u0acc\u0aa5\u0ac0 \u0ab2\u0abe\u0a82\u0aac\u0ac1\u0a82 \u0aaa\u0ab9\u0ac7\u0ab2\u0abe"],
+    "Queue sorted: shortest first": ["\u0915\u0924\u093e\u0930 \u0915\u094d\u0930\u092e\u093f\u0924: \u0938\u092c\u0938\u0947 \u091b\u094b\u091f\u093e \u092a\u0939\u0932\u0947", "\u0a95\u0aa4\u0abe\u0ab0 \u0a97\u0acb\u0aa0\u0ab5\u0abe\u0a88: \u0ab8\u0acc\u0aa5\u0ac0 \u0a9f\u0ac2\u0a82\u0a95\u0ac1\u0a82 \u0aaa\u0ab9\u0ac7\u0ab2\u0abe"],
+    "Queue sorted: longest first": ["\u0915\u0924\u093e\u0930 \u0915\u094d\u0930\u092e\u093f\u0924: \u0938\u092c\u0938\u0947 \u0932\u0902\u092c\u093e \u092a\u0939\u0932\u0947", "\u0a95\u0aa4\u0abe\u0ab0 \u0a97\u0acb\u0aa0\u0ab5\u0abe\u0a88: \u0ab8\u0acc\u0aa5\u0ac0 \u0ab2\u0abe\u0a82\u0aac\u0ac1\u0a82 \u0aaa\u0ab9\u0ac7\u0ab2\u0abe"],
+    "Need at least 2 more videos after the current one to sort.": ["\u0915\u094d\u0930\u092e \u092e\u0947\u0902 \u0932\u0917\u093e\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u0905\u092d\u0940 \u091a\u0932 \u0930\u0939\u0947 \u0915\u0947 \u092c\u093e\u0926 \u0915\u092e \u0938\u0947 \u0915\u092e 2 \u0935\u0940\u0921\u093f\u092f\u094b \u091a\u093e\u0939\u093f\u090f.", "\u0a97\u0acb\u0aa0\u0ab5\u0ab5\u0abe \u0ab9\u0ab2 \u0a9a\u0abe\u0ab2\u0aa4\u0abe \u0aaa\u0a9b\u0ac0 \u0a93\u0a9b\u0abe\u0aae\u0abe\u0a82 \u0a93\u0a9b\u0abe 2 \u0ab5\u0abf\u0aa1\u0abf\u0aaf\u0acb \u0a9c\u0acb\u0a88\u0a8f."],
+    "Lengths are learned once a video plays here - at least 2 known lengths are needed to sort.": ["\u0932\u0902\u092c\u093e\u0908 \u0924\u092d\u0940 \u092a\u0924\u093e \u091a\u0932\u0924\u0940 \u0939\u0948 \u091c\u092c \u0935\u0940\u0921\u093f\u092f\u094b \u092f\u0939\u093e\u0902 \u091a\u0932\u0924\u093e \u0939\u0948 - \u0915\u094d\u0930\u092e \u0915\u0947 \u0932\u093f\u090f \u0915\u092e \u0938\u0947 \u0915\u092e 2 \u092a\u0924\u093e \u0932\u0902\u092c\u093e\u0908 \u091a\u093e\u0939\u093f\u090f.", "\u0ab2\u0a82\u0aac\u0abe\u0a88 \u0ab5\u0abf\u0aa1\u0abf\u0aaf\u0acb \u0a85\u0ab9\u0abf\u0a82 \u0a9a\u0abe\u0ab2\u0ac7 \u0aa4\u0acd\u0aaf\u0abe\u0ab0\u0ac7 \u0a9c \u0a96\u0aac\u0ab0 \u0aaa\u0aa1\u0ac7 - \u0a97\u0acb\u0aa0\u0ab5\u0ab5\u0abe \u0a93\u0a9b\u0abe\u0aae\u0abe\u0a82 \u0a93\u0a9b\u0ac0 2 \u0a96\u0aac\u0ab0 \u0ab9\u0acb\u0aaf \u0a8f\u0ab5\u0ac0 \u0ab2\u0a82\u0aac\u0abe\u0a88 \u0a9c\u0acb\u0a88\u0a8f."],
+    "1 video with unknown length stayed at the end": ["1 \u0935\u0940\u0921\u093f\u092f\u094b \u0905\u0928\u091c\u093e\u0928 \u0932\u0902\u092c\u093e\u0908 \u0915\u0947 \u0938\u093e\u0925 \u0905\u0902\u0924 \u092e\u0947\u0902 \u0930\u0939\u093e", "1 \u0ab5\u0abf\u0aa1\u0abf\u0aaf\u0acb \u0a85\u0a9c\u0acd\u0a9e\u0abe\u0aa4 \u0ab2\u0a82\u0aac\u0abe\u0a88 \u0ab8\u0abe\u0aa5\u0ac7 \u0a85\u0a82\u0aa4\u0ac7 \u0ab0\u0ab9\u0acd\u0aaf\u0acb"],
+    "videos with unknown length stayed at the end": ["\u0935\u0940\u0921\u093f\u092f\u094b \u0905\u0928\u091c\u093e\u0928 \u0932\u0902\u092c\u093e\u0908 \u0915\u0947 \u0938\u093e\u0925 \u0905\u0902\u0924 \u092e\u0947\u0902 \u0930\u0939\u0947", "\u0ab5\u0abf\u0aa1\u0abf\u0aaf\u0acb \u0a85\u0a9c\u0acd\u0a9e\u0abe\u0aa4 \u0ab2\u0a82\u0aac\u0abe\u0a88 \u0ab8\u0abe\u0aa5\u0ac7 \u0a85\u0a82\u0aa4\u0ac7 \u0ab0\u0ab9\u0acd\u0aaf\u0abe"],
+    "Sort queue by length": ["\u0915\u0924\u093e\u0930 \u0932\u0902\u092c\u093e\u0908 \u0938\u0947 \u0915\u094d\u0930\u092e \u092e\u0947\u0902", "\u0a95\u0aa4\u0abe\u0ab0 \u0ab2\u0a82\u0aac\u0abe\u0a88 \u0aae\u0ac1\u0a9c\u0aac \u0a95\u0acd\u0ab0\u0aae\u0aae\u0abe\u0a82"]
   });
   // Copy every queued video into Watch later (skips ones already there, max 50), with undo.
   var queueToLaterBtn = $("queueToLaterBtn");
@@ -11973,6 +12015,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Queue as next", "#queueNextBtn"],
     ["Glass sliders", "#vol"],
     ["Heading tiles", "#linkHeading"],
     ["Remove played videos in queue", "#qConsumeBtn"],
@@ -11981,8 +12024,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Search frost", "#palBtn"],
     ["H for Favourites", "#sc19"],
     ["G to jump to a time", "#sc18"],
-    ["Chip glow", "#fxRow"],
-    ["Live border", "#infoCard"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -17510,7 +17551,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Ready glow", "ready glow link box input ring accent edge turning siri glow load video button breathe pulse valid link pasted waiting next tap obvious", "#linkInput"],
       ["Search frost", "search frost palette ctrl k frosted glass backdrop blur dim behind search spring entrance card veil", "#palBtn"],
       ["Glass sliders", "glass sliders volume slider fill liquid accent track frosted thumb dimmer equalizer balance boost iphone drag glow", "#vol"],
-      ["Heading tiles", "heading tiles section icons frosted glass tile heading icon settings style iphone tinted squares link player downloader file help library", "#linkHeading"]
+      ["Heading tiles", "heading tiles section icons frosted glass tile heading icon settings style iphone tinted squares link player downloader file help library", "#linkHeading"],
+      ["Queue as next", "queue as next insert after current play next up first link add before rest lined up", "#queueNextBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
