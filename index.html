@@ -2724,6 +2724,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Added to favourites": ["पसंदीदा में जोड़ा गया", "મનપસંદમાં ઉમેરાયું"],
    "Removed from favourites": ["पसंदीदा से हटाया गया", "મનપસંદમાંથી હટાવ્યું"],
    "Added to queue": ["कतार में जोड़ा गया", "કતારમાં ઉમેરાયું"],
+   "1 was already in the queue, skipped": ["1 पहले से कतार में था, छोड़ दिया", "1 પહેલેથી કતારમાં હતો, છોડ્યો"],
+   "were already in the queue, skipped": ["पहले से कतार में थे, छोड़ दिए", "પહેલેથી કતારમાં હતા, છોડ્યા"],
    "videos added to queue": ["वीडियो कतार में जोड़े गए", "વિડિયો કતારમાં ઉમેરાયા"],
    "Queue cleared": ["कतार साफ़ हुई", "કતાર સાફ થઈ"],
    "Undo jump": ["जंप वापस लें", "જમ્પ પાછો લો"],
@@ -3951,11 +3953,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     items.forEach(function (item, idx) { ul.appendChild(buildItem(item, actionLabel, function () { onAction(item, idx); }, onOpen ? function () { onOpen(item, idx); } : null, ul === queueList && idx === qPos, extraAction, showAge)); });
   }
+  // Round 209 fix: the main Add to queue path took duplicates - the same link twice in
+  // one paste, or a video already sitting in the queue - while every other add path
+  // (E key, playlist import, backup import, Watch later feed) skips them and the
+  // Remove duplicates chip only cleans up after the fact. Duplicates are skipped here
+  // too now, and the caller says honestly how many were skipped.
+  var queueAddLastSkipped = 0;
   function queueAdd(text) {
-    var tokens = text.split(/[\s,]+/).filter(Boolean), added = 0;
+    var tokens = text.split(/[\s,]+/).filter(Boolean), added = 0, seen = {};
+    queueAddLastSkipped = 0;
     tokens.forEach(function (t) {
       var id = parseVideoId(t);
-      if (id && lib.queue.length < 50) { lib.queue.push({ id: id, title: titleFor(id) }); added++; fetchTitle(id); }
+      if (!id) return;
+      if (seen[id] || findIn(lib.queue, id) >= 0) { queueAddLastSkipped++; return; }
+      if (lib.queue.length < 50) { seen[id] = 1; lib.queue.push({ id: id, title: titleFor(id) }); added++; fetchTitle(id); }
     });
     saveLib(); renderLib();
     return added;
@@ -4617,7 +4628,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       linkError.hidden = false;
     } else {
       linkError.hidden = true; showLibErr(""); linkInput.value = "";
-      toast(n === 1 ? T("Added to queue") : n + " " + T("videos added to queue"));
+      toast((n === 1 ? T("Added to queue") : n + " " + T("videos added to queue")) + (queueAddLastSkipped ? " - " + (queueAddLastSkipped === 1 ? T("1 was already in the queue, skipped") : queueAddLastSkipped + " " + T("were already in the queue, skipped")) : ""));
       if (!iframe) playQueueAt(firstNew);
       if (lib.queue.length >= 50) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
     }
