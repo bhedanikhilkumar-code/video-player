@@ -10124,6 +10124,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (name === null) return;
       arr.push({ t: t, name: name.trim().slice(0, 40) });
       marksSave(); renderMarks(); toast(T("Moment saved"));
+      if (window.__vpMarkComet) setTimeout(function () { window.__vpMarkComet(t); }, 60);
     });
   })();
   // Pause at each saved moment (round 76): while this is on, playback pauses by itself the
@@ -11145,9 +11146,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "History list copied": ["हिस्ट्री लिस्ट कॉपी हुई", "હિસ્ટ્રી યાદી કોપી થઈ"],
     "Copy a playlist": ["प्लेलिस्ट कॉपी करें", "પ્લેલિસ્ટ કોપી કરો"],
     "Sort favourites by length": ["पसंदीदा लंबाई से क्रम में", "મનપસંદ લંબાઈ મુજબ ક્રમમાં"],
-    "React on video": ["वीडियो पर रिएक्ट", "વિડિયો પર રિએક્ટ"]
+    "React on video": ["वीडियो पर रिएक्ट", "વિડિયો પર રિએક્ટ"],
+    "Moment comet": ["पल कॉमेट", "ક્ષણ કૉમેટ"]
   });
   var WNEW = [
+    ["Moment comet", "#markAddBtn"],
     ["React on video", "#reactChk"],
     ["Today at a glance", "#todayStrip"],
     ["Line up my evening", "#laterPlanBtn"],
@@ -11157,7 +11160,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Copy a playlist", "#lhPlaylists"],
     ["Theme wave", "#waveChk"],
     ["Cinema settle", "#settleChk"],
-    ["Undo a removal", "#lhLater"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -11803,6 +11805,53 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   (window.__relang = window.__relang || []).push(rxRender);
   rxRender(); rxApply();
+})();
+
+(function () {
+  "use strict";
+  // Moment comet (round 123): saving a moment (the button or the S key)
+  // sends a glowing bookmark comet flying from the frame down to its new
+  // dot on the seek bar, then the dot pops, so the save is easy to feel
+  // and see. No setting - it is feedback for an action the viewer already
+  // took. Works on YouTube videos on the main player (a plain overlay -
+  // the video itself is untouched and every control stays tappable), a
+  // plain dot pop without the flight under Calm/reduced motion and
+  // Low-end mode, skipped while the mini player shows, translated in
+  // Hindi and Gujarati, listed in the feature finder and the What's new
+  // card.
+  var mcSt = document.createElement("style");
+  mcSt.textContent = ".vpComet{position:fixed;left:0;top:0;z-index:95;pointer-events:none;font-size:22px;transform:translate(0,0);transition:transform .75s cubic-bezier(.3,.7,.25,1),opacity .75s ease;filter:drop-shadow(0 0 8px rgba(255,190,80,.85))}"
+    + "@keyframes mkPop{0%{transform:scale(1)}40%{transform:scale(2.1)}100%{transform:scale(1)}}"
+    + ".seek-mark.mk-pop{animation:mkPop .5s ease}"
+    + "@media (prefers-reduced-motion:reduce){.vpComet{transition:opacity .3s ease}.seek-mark.mk-pop{animation:none}}"
+    + "html.calm-motion .seek-mark.mk-pop,html.low-fx .seek-mark.mk-pop{animation:none}";
+  document.head.appendChild(mcSt);
+  window.__vpMarkComet = function (t) {
+    try {
+      var box = $("seekMarks");
+      if (!box || box.hidden || !(duration > 0) || !frameBox) return;
+      if (playerDock && playerDock.classList.contains("is-mini")) return;
+      if (document.documentElement.classList.contains("simple-mode")) return;
+      var i, dot = null, kids = box.children, want = (t / duration * 100).toFixed(2) + "%";
+      for (i = 0; i < kids.length; i++) {
+        if (kids[i].style.left === want) { dot = kids[i]; break; }
+      }
+      if (dot) { dot.classList.remove("mk-pop"); void dot.offsetWidth; dot.classList.add("mk-pop"); setTimeout(function () { dot.classList.remove("mk-pop"); }, 600); }
+      if (document.documentElement.classList.contains("calm-motion") || document.documentElement.classList.contains("low-fx")) return;
+      var brect = box.getBoundingClientRect();
+      var tx = brect.left + Math.min(Math.max(t / duration, 0), 1) * brect.width;
+      var ty = brect.top + 2;
+      var frect = frameBox.getBoundingClientRect();
+      if (frect.width < 10 || brect.width < 10) return;
+      var c = document.createElement("span"); c.className = "vpComet"; c.textContent = "🔖"; c.setAttribute("aria-hidden", "true");
+      c.style.transform = "translate(" + Math.round(frect.left + frect.width / 2 - 11) + "px," + Math.round(frect.top + frect.height / 2 - 11) + "px)";
+      document.body.appendChild(c);
+      void c.offsetWidth;
+      c.style.transform = "translate(" + Math.round(tx - 11) + "px," + Math.round(ty - 11) + "px) scale(.7)";
+      c.style.opacity = "0.15";
+      setTimeout(function () { c.remove(); }, 900);
+    } catch (e) {}
+  };
 })();
 
 })();
@@ -14022,7 +14071,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Title card", "title card movie name sweeps frame start cinema intro pretty glass", "#titleChk"],
       ["Line up my evening", "line up my evening plan queue time budget minutes free watch later fill fit tonight batch several videos", "#laterPlanBtn"],
       ["Today at a glance", "today at a glance watch time goal progress strip start home stats quick peek streak", "#todayStrip"],
-      ["React on video", "react on video emoji burst floating hearts fire clap laugh live stream pill video frame fun", "#reactChk"]
+      ["React on video", "react on video emoji burst floating hearts fire clap laugh live stream pill video frame fun", "#reactChk"],
+      ["Moment comet", "moment comet bookmark save dot seek bar fly spark glowing feedback saved moment", "#markAddBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
