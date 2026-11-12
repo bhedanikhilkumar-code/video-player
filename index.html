@@ -1808,7 +1808,7 @@ setTimeout(done,3000);})();
         <div class="info-text">
           <span class="np-pill" id="npPill"><span class="np-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="npPillT">Now playing</span></span>
           <div class="info-title" id="infoTitle"></div>
-          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><button class="chip chan-star" id="chanStarBtn" type="button" aria-pressed="false" aria-label="Save channel" hidden>☆</button><span id="infoDur"></span><span class="vmem-note" id="vmemNote" hidden></span><span class="vmem-note" id="npWatched" hidden></span></div>
+          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><button class="chip chan-star" id="chanStarBtn" type="button" aria-pressed="false" aria-label="Save channel" hidden>☆</button><span id="infoDur"></span><button class="chip info-copy" id="infoCopyBtn" type="button">Copy title &amp; link</button><span class="vmem-note" id="vmemNote" hidden></span><span class="vmem-note" id="npWatched" hidden></span></div>
         </div>
       </div>
 
@@ -2058,6 +2058,7 @@ setTimeout(done,3000);})();
             <li id="sc20"><b>U</b>: jump back to where you were before the last seek</li>
             <li id="sc21"><b>D</b>: switch between dark and light theme</li>
             <li id="sc22"><b>Q</b>: find the video playing now in the queue</li>
+            <li id="sc23"><b>I</b>: copy the video title and link, ready to paste in a chat</li>
           </ul>
           <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
         </details>
@@ -6245,6 +6246,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (k === "u" || k === "U") usUndoSeek();
     else if (k === "d" || k === "D") dkThemeToggle();
     else if (k === "q" || k === "Q") qFindPlaying();
+    else if (k === "i" || k === "I") iCopyTitle();
     else handled = false;
     if (handled) e.preventDefault();
   });
@@ -6425,6 +6427,47 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     setTimeout(function () { row.classList.remove("q-found"); }, 1500);
     toast((qPos + 1) + " / " + lib.queue.length);
   }
+
+  // Round 164, two practical additions (inside the main app closure, so TR_MSG takes them).
+  // I to copy the title and link: press I (or tap Copy title & link in the Now playing card)
+  // and the clipboard gets the video title and its plain watch link on two lines, ready to
+  // paste into a chat - the link opens the video from the start (Y still copies a link at
+  // the current time). Z to skip and remove: press Z while a queue video plays and it is
+  // dropped from the queue and the next one starts, so a video you do not like is gone in
+  // one key instead of Next then Remove; an Undo puts the queue back as it was (the next
+  // video keeps playing). If it was the last video it is only removed and says so. Nothing
+  // new is saved beyond the queue itself, and neither key fires while typing in a box.
+  Object.assign(TR_MSG, {
+    "Copy title & link": ["शीर्षक और लिंक कॉपी करें", "શીર્ષક અને લિંક કૉપિ કરો"],
+    "Title and link copied": ["शीर्षक और लिंक कॉपी हुए", "શીર્ષક અને લિંક કૉપિ થયા"],
+    "Load a video first, then copy its title and link.": ["पहले वीडियो लोड करें, फिर उसका शीर्षक और लिंक कॉपी करें.", "પહેલાં વીડિયો લોડ કરો, પછી તેનું શીર્ષક અને લિંક કૉપિ કરો."],
+  });
+  var icSt = document.createElement("style");
+  icSt.textContent = ".info-copy{padding:2px 9px;margin:-2px 0 -2px 4px;font-size:12.5px;line-height:1.45}";
+  document.head.appendChild(icSt);
+  function iCopyTitle() {
+    if (!curId) { toast(T("Load a video first, then copy its title and link.")); return; }
+    var text = (infoTitle.textContent || titleFor(curId) || "Video") + "\nhttps://youtu.be/" + curId;
+    var settled = false;
+    function fin(ok) { if (settled) return; settled = true; toast(ok ? T("Title and link copied") : T("Could not copy. Try again.")); }
+    var done = false;
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.setAttribute("aria-hidden", "true");
+      ta.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0";
+      document.body.appendChild(ta); ta.select();
+      done = document.execCommand("copy");
+      document.body.removeChild(ta);
+    } catch (err) { done = false; }
+    if (done) { fin(true); return; }
+    setTimeout(function () { fin(false); }, 1500);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { fin(true); }, function () { fin(false); }); else fin(false);
+  }
+  var infoCopyBtn = $("infoCopyBtn");
+  if (infoCopyBtn) infoCopyBtn.addEventListener("click", iCopyTitle);
+  function infoCopyPaint() { if (infoCopyBtn) infoCopyBtn.textContent = T("Copy title & link"); }
+  (window.__relang = window.__relang || []).push(infoCopyPaint);
+  infoCopyPaint();
 
   // Watch later feed (round 160): when it is on and the queue runs out - the last video
   // finishes, or a shuffle lap ends with Repeat off - the app pulls the next unwatched,
@@ -10831,6 +10874,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#sc20", "<b>U</b>: jump back to where you were before the last seek", "<b>U</b>: आखिरी सीक से पहले जहां थे वहां वापस जाएं"],
     ["#sc21", "<b>D</b>: switch between dark and light theme", "<b>D</b>: डार्क और लाइट थीम के बीच बदलें"],
     ["#sc22", "<b>Q</b>: find the video playing now in the queue", "<b>Q</b>: चल रहे वीडियो को कतार में खोजें"],
+    ["#sc23", "<b>I</b>: copy the video title and link, ready to paste in a chat", "<b>I</b>: वीडियो का शीर्षक और लिंक कॉपी करें, चैट में चिपकाने के लिए"],
     ["#faq7a", "See the <a href=\"#backgroundHelp\">Listening help card</a> below the player for simple steps and the screen-off limits.", "सरल steps और screen-off सीमाओं के लिए प्लेयर के नीचे <a href=\"#backgroundHelp\">Listening help कार्ड</a> देखें."]
   ];
   var I18N_GU_HTML = {
@@ -10845,6 +10889,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#sc20": "<b>U</b>: છેલ્લી સીક પહેલાં જ્યાં હતા ત્યાં પાછા જાઓ",
  "#sc21": "<b>D</b>: ડાર્ક અને લાઇટ થીમ વચ્ચે બદલો",
  "#sc22": "<b>Q</b>: ચાલતો વીડિયો કતારમાં શોધો",
+ "#sc23": "<b>I</b>: વીડિયોનું શીર્ષક અને લિંક કૉપિ કરો, ચેટમાં પેસ્ટ કરવા માટે",
  "#sc1": "<b>Space</b> અથવા <b>K</b>: ચલાવો / રોકો",
  "#sc2": "<b>Left / Right</b>: 5 સેકંડ પાછળ / આગળ",
  "#sc3": "<b>J / L</b>: 10 સેકંડ પાછળ / આગળ",
@@ -12228,6 +12273,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["I to copy title and link", "#sc23"],
     ["Play-pause pop", "#playBtn"],
     ["Theme spin", "#themeBtn"],
     ["Q to find it in the queue", "#sc22"],
@@ -12236,11 +12282,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Menu edge fade", "#featNav"],
     ["Watch later feed", "#qFeedBtn"],
     ["D for dark or light theme", "#sc21"],
-    ["Accent bloom", "#accentRow"],
-    ["Card float", "#ctl-sound"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
+    "I to copy title and link": ["शीर्षक और लिंक कॉपी करने के लिए I", "શીર્ષક અને લિંક કૉપિ કરવા માટે I"],
     "Q to find it in the queue": ["कतार में खोजने के लिए Q", "કતારમાં શોધવા માટે Q"],
     "Theme spin": ["थीम स्पिन", "થીમ સ્પિન"],
     "Play-pause pop": ["प्ले-पॉज़ पॉप", "પ્લે-પોઝ પોપ"],
@@ -17947,6 +17992,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Menu edge fade", "menu edge fade feature menu links ends soft fade melt ios carousel more links off edge scroll hint swipe", "#featNav"],
       ["Play-pause pop", "play pause button pop spring squash stretch animation transport state flip feedback", "#playBtn"],
       ["Theme spin", "theme spin icon rotate turn animation dark light midnight auto chip button change sun moon", "#themeBtn"],
+      ["I to copy title and link", "copy title link key i keyboard shortcut share paste chat name video text clipboard send friend whatsapp", "#sc23"],
       ["Q to find it in the queue", "queue find key q keyboard shortcut locate playing video current row scroll highlight ring where am i long queue", "#sc22"],
       ["Move to end", "move to end bottom queue pick many send last later rest plays first not in the mood reorder", "#qPickBtn"],
       ["Row hover lift", "row hover lift library rows queue favourites watch later history playlist raise float shadow thumbnail zoom desktop mouse pointer poster", "#lhQueue"]
