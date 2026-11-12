@@ -11141,6 +11141,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Sort favourites by length": ["पसंदीदा लंबाई से क्रम में", "મનપસંદ લંબાઈ મુજબ ક્રમમાં"]
   });
   var WNEW = [
+    ["Line up my evening", "#laterPlanBtn"],
     ["Premiere countdown", "#premRow"],
     ["Title card", "#titleChk"],
     ["Sort favourites by length", "#favSortBtn"],
@@ -11149,8 +11150,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Cinema settle", "#settleChk"],
     ["Undo a removal", "#lhLater"],
     ["Clear watched in Watch later", "#laterClrWBtn"],
-    ["Finish burst", "#finChk"],
-    ["Video reveal", "#revealChk"]
+    ["Finish burst", "#finChk"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -11498,6 +11498,124 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function tcRender() { var el = document.getElementById("titleT"); if (el) el.textContent = T("Title card (the video's name sweeps over the frame like a movie title when it starts)"); }
   (window.__relang = window.__relang || []).push(tcRender);
   tcRender(); tcApply();
+})();
+
+(function () {
+  "use strict";
+  // Line up my evening (round 122): next to Pick for me in Watch later, the same
+  // Minutes free box gets a second button that fills the whole budget instead of picking
+  // one video - it walks the Watch later list in order and lines up as many videos with
+  // learned lengths as fit in the time, skips anything already in the queue, and shows
+  // the plan as a numbered list with its total before one tap queues the lot. Pick for me
+  // answers "which one video", this answers "what does my evening look like"; Queue
+  // unwatched dumps everything regardless of time, this stops at the budget. It respects
+  // the Only-unwatched filter, says honestly when nothing is saved, no length is learned
+  // yet, everything fitting is already queued or nothing fits (naming the shortest), the
+  // plan is rebuilt from its stored ids on every repaint so a language switch retranslates
+  // it, works on YouTube videos, adds no setting, and is listed in the feature finder and
+  // the What's new card.
+  Object.assign(TR_MSG, {
+    "Line up my evening": ["मेरी शाम की लिस्ट बनाओ", "મારી સાંજની યાદી બનાવો"],
+    "Your evening plan": ["आपकी शाम की योजना", "તમારી સાંજની યોજના"],
+    "Queue this plan": ["यह योजना कतार में डालें", "આ યોજના કતારમાં મૂકો"],
+    "Clear plan": ["योजना हटाएं", "યોજના હટાવો"],
+    "Plan total:": ["योजना कुल:", "યોજના કુલ:"],
+    "Lengths are not learned yet - play a saved video once, then Line up my evening can fit videos to your time.": ["लंबाई अभी ज्ञात नहीं है - कोई सेव किया वीडियो एक बार चलाएं, फिर शाम की लिस्ट उन्हें आपके समय में फिट कर सकेगी.", "લંબાઈ હજી ખબર નથી - સેવ કરેલો વીડિયો એક વાર ચલાવો, પછી સાંજની યાદી તેમને તમારા સમયમાં ફિટ કરી શકશે."],
+    "Everything with a known length is already in the queue.": ["जिनकी लंबाई ज्ञात है, वे सब पहले से कतार में हैं.", "જેની લંબાઈ ખબર છે, તે બધું પહેલેથી કતારમાં છે."]
+  });
+  var stl = document.createElement("style");
+  stl.textContent = ".later-plan{margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--soft);border:1px solid var(--line)}"
+    + ".later-plan[hidden]{display:none!important}"
+    + ".later-plan h4{margin:0 0 6px;font-size:.95rem}"
+    + ".later-plan ul{margin:0 0 8px;padding-left:2px;list-style:none;display:flex;flex-direction:column;gap:4px;font-size:.9rem;overflow-wrap:anywhere}"
+    + ".later-plan .lp-total{font-size:.85rem;color:var(--muted,#6b7280);margin:0 0 8px}"
+    + "#laterPlanBtn{white-space:nowrap}";
+  document.head.appendChild(stl);
+  var planState = null;
+  (function () {
+    var pickRow = $("laterPickRow"), anchor = $("laterPickAct");
+    if (!pickRow || !anchor || !anchor.parentNode) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "laterPlanBtn";
+    pickRow.appendChild(btn);
+    var msg = document.createElement("p"); msg.className = "hint"; msg.id = "laterPlanMsg"; msg.setAttribute("role", "status");
+    var box = document.createElement("div"); box.className = "later-plan"; box.id = "laterPlanBox"; box.hidden = true;
+    box.innerHTML = '<h4 id="laterPlanH"></h4><ul id="laterPlanList"></ul><p class="lp-total" id="laterPlanTotal"></p><div class="row"><button class="chip" id="laterPlanQueueBtn" type="button"></button> <button class="chip" id="laterPlanClearBtn" type="button"></button></div>';
+    anchor.parentNode.insertBefore(msg, anchor.nextSibling);
+    anchor.parentNode.insertBefore(box, msg.nextSibling);
+    btn.addEventListener("click", laterPlanBuild);
+    $("laterPlanClearBtn").addEventListener("click", function () {
+      planState = null; laterPlanPaint();
+      var m = $("laterPlanMsg"); if (m) m.textContent = "";
+    });
+    $("laterPlanQueueBtn").addEventListener("click", function () {
+      if (!planState || !planState.ids.length) return;
+      var room = 50 - lib.queue.length, added = 0;
+      if (room <= 0) { toast(T("The queue is full (50 videos).")); return; }
+      planState.ids.forEach(function (id) {
+        if (added >= room) return;
+        if (findIn(lib.queue, id) >= 0) return;
+        lib.queue.push({ id: id, title: titleFor(id) || "" }); added++;
+      });
+      if (!added) { toast(T("Those videos are already in the queue (or the queue is full at 50).")); return; }
+      var mins = Math.max(1, Math.round(planState.total / 60));
+      saveLib(); renderLib();
+      toast(T("Added ") + added + " " + (added === 1 ? T("video") : T("videos")) + T(" to the queue.") + " ~" + mins + " " + T("min"));
+      planState = null; laterPlanPaint();
+      var m = $("laterPlanMsg"); if (m) m.textContent = "";
+    });
+    (window.__relang = window.__relang || []).push(laterPlanPaint);
+    laterPlanPaint();
+  })();
+  function laterPlanPaint() {
+    var btn = $("laterPlanBtn"); if (btn) btn.textContent = "🌆 " + T("Line up my evening");
+    var box = $("laterPlanBox"); if (!box) return;
+    if (!planState) { box.hidden = true; return; }
+    box.hidden = false;
+    var h = $("laterPlanH"); if (h) h.textContent = T("Your evening plan");
+    var ul = $("laterPlanList"); if (ul) {
+      ul.innerHTML = "";
+      planState.ids.forEach(function (id, i) {
+        var li = document.createElement("li");
+        var d = infoCache[id] && infoCache[id].dur;
+        li.textContent = (i + 1) + ". " + (titleFor(id) || (T("Video ") + id)) + (typeof d === "number" && d > 0 ? " · ~" + Math.max(1, Math.round(d / 60)) + " " + T("min") : "");
+        ul.appendChild(li);
+      });
+    }
+    var tot = $("laterPlanTotal");
+    if (tot) tot.textContent = T("Plan total:") + " ~" + Math.max(1, Math.round(planState.total / 60)) + " " + T("min") + " / " + planState.budget + " " + T("min");
+    var qb = $("laterPlanQueueBtn"); if (qb) qb.textContent = "➕ " + T("Queue this plan");
+    var cb = $("laterPlanClearBtn"); if (cb) cb.textContent = T("Clear plan");
+  }
+  function laterPlanBuild() {
+    var msg = $("laterPlanMsg"), inp = $("laterPickMin");
+    if (!msg) return;
+    var budget = parseInt(inp && inp.value, 10); if (!(budget >= 1)) budget = 20; if (budget > 600) budget = 600;
+    var pool = lib.later.filter(function (it) {
+      if (prefs.laterUnwatched) { var hi = findIn(lib.hist, it.id); if (hi >= 0 && lib.hist[hi].done) return false; }
+      return true;
+    });
+    if (!pool.length) { planState = null; laterPlanPaint(); msg.textContent = T("Nothing saved for later yet. Load a video and tap Watch later."); return; }
+    var known = pool.filter(function (it) { var d = infoCache[it.id] && infoCache[it.id].dur; return typeof d === "number" && d > 0; });
+    if (!known.length) { planState = null; laterPlanPaint(); msg.textContent = T("Lengths are not learned yet - play a saved video once, then Line up my evening can fit videos to your time."); return; }
+    var queued = {}; lib.queue.forEach(function (q) { if (q && q.id) queued[q.id] = 1; });
+    var rem = budget * 60, picks = [], total = 0, taken = {};
+    known.forEach(function (it) {
+      if (queued[it.id] || taken[it.id]) return;
+      var d = infoCache[it.id].dur;
+      if (d <= rem) { picks.push(it); taken[it.id] = 1; rem -= d; total += d; }
+    });
+    if (!picks.length) {
+      planState = null; laterPlanPaint();
+      var rest = known.filter(function (it) { return !queued[it.id]; });
+      if (!rest.length) { msg.textContent = T("Everything with a known length is already in the queue."); return; }
+      rest.sort(function (a, b) { return infoCache[a.id].dur - infoCache[b.id].dur; });
+      msg.textContent = T("Nothing fits in") + " " + budget + " " + T("min") + " - " + T("shortest here is about") + " " + Math.max(1, Math.round(infoCache[rest[0].id].dur / 60)) + " " + T("min") + ".";
+      return;
+    }
+    planState = { ids: picks.map(function (it) { return it.id; }), total: total, budget: budget };
+    msg.textContent = "";
+    laterPlanPaint();
+  }
 })();
 
 })();
@@ -13714,7 +13832,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Cinema settle", "cinema settle pause vignette frame rests dim edges paused relax still", "#settleChk"],
       ["Theme wave", "theme wave colour wave pours page theme button transition circle wipe pretty", "#waveChk"],
       ["Premiere countdown", "premiere countdown start clock time video plays by itself schedule movie night watch party", "#premRow"],
-      ["Title card", "title card movie name sweeps frame start cinema intro pretty glass", "#titleChk"]
+      ["Title card", "title card movie name sweeps frame start cinema intro pretty glass", "#titleChk"],
+      ["Line up my evening", "line up my evening plan queue time budget minutes free watch later fill fit tonight batch several videos", "#laterPlanBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
