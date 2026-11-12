@@ -2320,7 +2320,7 @@ setTimeout(done,3000);})();
       <div id="musicQueue">
       <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="sortLenQueueBtn" type="button">Sort by length</button><button class="chip" id="queueToLaterBtn" type="button">Save all to Watch later</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="qSkipWBtn" type="button" aria-pressed="false">Skip watched: off</button><button class="chip" id="qConsumeBtn" type="button" aria-pressed="false">Remove played: off</button><button class="chip" id="qFeedBtn" type="button" aria-pressed="false">Watch later feed: off</button><button class="chip" id="qPickBtn" type="button" aria-pressed="false">☑ Pick many: off</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <div class="q-pick-bar" id="qPickBar" hidden>
-        <span class="hint q-pick-count" id="qPickCount" role="status"></span>
+        <div class="hint q-pick-count" role="status"><span id="qPickCount"></span><span id="qPickTime" style="display:block;margin-top:4px"></span></div>
         <span class="row">
           <button class="chip" id="qPickAllBtn" type="button">All</button>
           <button class="chip" id="qPickNoneBtn" type="button">None</button>
@@ -4994,7 +4994,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (window.__vpSeekMarks) window.__vpSeekMarks();
         if (window.__vpABBand) window.__vpABBand(abA, abB);
         if (window.__vpLpDur) window.__vpLpDur();
-        if (curId) { infoCache[curId] = infoCache[curId] || {}; infoCache[curId].dur = duration; infoDur.textContent = "Length " + fmt(duration); if (typeof updateQueueTime === "function") updateQueueTime(); if (typeof updateLaterTime === "function") updateLaterTime(); }
+        if (curId) { infoCache[curId] = infoCache[curId] || {}; infoCache[curId].dur = duration; infoDur.textContent = "Length " + fmt(duration); if (typeof updateQueueTime === "function") updateQueueTime(); if (typeof renderQPickTime === "function") renderQPickTime(); if (typeof updateLaterTime === "function") updateLaterTime(); }
       }
       if (typeof i.videoLoadedFraction === "number" && Math.abs(i.videoLoadedFraction - (seekBuffered || 0)) > 0.005) { seekBuffered = i.videoLoadedFraction; if (typeof paintSeekFill === "function") paintSeekFill(); }
       if (typeof i.volume === "number") {
@@ -8747,7 +8747,35 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       qPickPrune();
       qPickCount.textContent = qPicked.length ? qPicked.length + " " + T("picked") : T("Tap videos to pick them.");
     }
+    renderQPickTime();
     [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickWatchedBtn", "Pick watched"], ["qPickUnwatchedBtn", "Pick unwatched"], ["qPickInvertBtn", "Invert picks"], ["qPickCopyBtn", "Copy picked"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickNextBtn", "Play next"], ["qPickLaterBtn", "Watch later"], ["qPickFavBtn", "Favourite picked"], ["qPickPlBtn", "Add picked to playlist"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
+  }
+  // Round 180: count only the selected rows, not the entire queue. Reuse the
+  // learned lengths shown on rows, including history after a fresh load. This is
+  // full running time at 1x, not time remaining and not a promise for unknown videos.
+  Object.assign(TR_MSG, {
+    "Picked running time": ["चुने वीडियो का कुल समय", "પસંદ કરેલા વીડિયોનો કુલ સમય"],
+    "at normal speed": ["सामान्य गति पर", "સામાન્ય ઝડપે"],
+    "Length not known yet": ["लंबाई अभी पता नहीं है", "લંબાઈ હજી ખબર નથી"],
+    "known lengths only": ["केवल ज्ञात लंबाइयां", "ફક્ત જાણીતી લંબાઈઓ"]
+  });
+  function renderQPickTime() {
+    var el = $("qPickTime"); if (!el) return;
+    if (!qPickOn() || !Array.isArray(qPicked) || !qPicked.length) { el.textContent = ""; return; }
+    var secs = 0, known = 0;
+    qPicked.forEach(function (it) {
+      var hi = findIn(lib.hist, it.id);
+      var d = (infoCache && infoCache[it.id] && infoCache[it.id].dur) || (hi >= 0 && lib.hist[hi].dur) || 0;
+      if (typeof d === "number" && isFinite(d) && d > 0) { known++; secs += d; }
+    });
+    var text = T("Picked running time") + ": ";
+    if (!known) text += T("Length not known yet");
+    else {
+      text += fmt(Math.round(secs)) + " · " + T("at normal speed");
+      if (known < qPicked.length) text += " · " + T("known lengths only");
+    }
+    text += " · " + known + "/" + qPicked.length + " " + T("lengths known");
+    if (el.textContent !== text) el.textContent = text;
   }
   function qPickNeed() { if (!qPicked.length) { toast(T("Pick some videos first.")); return false; } return true; }
   if (qPickBtn) qPickBtn.addEventListener("click", function () {
@@ -12854,6 +12882,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Picked running time", "#qPickBtn"],
     ["Glass dropdowns", "#dl"],
     ["Glass shortcuts sheet", "#scBox"],
     ["Smart queue picks", "#qPickBtn"],
@@ -12863,7 +12892,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Length on every row", "#lhQueue"],
     ["Sleep ember", "#ctl-sleep"],
     ["Menu bubble pop", "#featNav"],
-    ["File picked queue videos into a playlist", "#qPickBtn"],
   ];
   Object.assign(TR_MSG, {
     "Glass dropdowns": ["\u0917\u094d\u0932\u093e\u0938 \u0921\u094d\u0930\u0949\u092a\u0921\u093e\u0909\u0928", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aa1\u0acd\u0ab0\u0acb\u0aaa\u0aa1\u0abe\u0a89\u0aa8"],
@@ -18514,6 +18542,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Up next queue", "queue next upnext order", "#lhQueue"],
       ["Copy picked queue videos", "copy picked selected queue titles links clipboard subset share list selection", "#qPickBtn"],
       ["Invert queue picks", "invert picks selection opposite swap selected unselected bulk queue all except", "#qPickBtn"],
+      ["Picked running time", "picked selected duration time total length fit break budget normal speed known unknown selection", "#qPickBtn"],
       ["Pick many in queue", "pick many select multiple bulk queue organise tidy move top remove watch later", "#qPickBtn"],
       ["Remove played videos in queue", "remove played finished auto clear queue consume tidy shrink podcast clean automatic", "#qConsumeBtn"],
       ["Queue progress bar", "queue progress bar position how far through playing", "#qProg"],
