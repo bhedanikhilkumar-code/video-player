@@ -1877,7 +1877,7 @@ setTimeout(done,3000);})();
           <form class="row" id="jumpForm" style="margin-top:8px">
             <label class="label" for="jumpInput" id="jumpLab">Jump to time</label>
             <input id="jumpInput" placeholder="1:23 or 90s" inputmode="text" autocomplete="off" maxlength="12" style="width:110px">
-            <button class="chip" type="submit" id="jumpGo">Go</button>
+            <button class="chip" type="submit" id="jumpGo">Go</button><button class="chip" type="button" id="copyTimeBtn">Copy time</button>
           </form>
           <span class="label" id="jumpMsg" role="status"></span>
           <form class="row" id="pauseAtForm" style="margin-top:8px">
@@ -7680,6 +7680,35 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       out.textContent = T("Jumped to ") + fmt(t) + ".";
       if (typeof toast === "function") toast(T("Jumped to ") + fmt(t));
     });
+  })();
+
+  // Round 210 new 6: Copy time - the Jump to time box takes a time, but there was no way to get the current
+  // time out for a note, a chat or a chapter list. The chip copies the playing second as 1:23 (or 1:02:03),
+  // with the clipboard fallback the other copy chips use, and it still answers if the clipboard never does.
+  Object.assign(TR_MSG, {
+    "Copy time": ["समय कॉपी करें", "સમય કૉપી કરો"],
+    "Time copied: ": ["समय कॉपी हुआ: ", "સમય કૉપી થયો: "],
+    "Load a video first, then copy its time.": ["पहले वीडियो लोड करें, फिर उसका समय कॉपी करें.", "પહેલા વિડિયો લોડ કરો, પછી તેનો સમય કૉપી કરો."]
+  });
+  (function () {
+    var cb = $("copyTimeBtn"), out = $("jumpMsg");
+    if (!cb) return;
+    cb.addEventListener("click", function () {
+      if (!curId || controls.hidden) { if (out) out.textContent = T("Load a video first, then copy its time."); return; }
+      var secs = Math.max(0, Math.floor(seeking ? Number(seek.value) : (curTime || 0))), text = fmt(secs).replace(/^0(\d:)/, "$1"), shown = false;
+      function done(ok) {
+        if (shown) return; shown = true;
+        var msg = ok ? T("Time copied: ") + text : T("Could not copy. Try again.");
+        if (out) out.textContent = msg; if (typeof toast === "function") toast(msg);
+      }
+      function fallback() {
+        try { var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var ok2 = document.execCommand("copy"); ta.remove(); done(!!ok2); } catch (e) { done(false); }
+      }
+      var hang = setTimeout(fallback, 1500);
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { clearTimeout(hang); done(true); }, function () { clearTimeout(hang); fallback(); }); else { clearTimeout(hang); fallback(); }
+    });
+    (window.__relang = window.__relang || []).push(function () { cb.textContent = T("Copy time"); });
+    cb.textContent = T("Copy time");
   })();
 
   // ---- Double-tap seek size: 5, 10, 15 or 30 seconds, saved on this device ----
@@ -14612,6 +14641,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Copy time", "#copyTimeBtn"],
     ["Queue this day from history", "#lhHist"],
     ["Star on queue and Watch later rows", "#queueList"],
     ["Save all queue videos to favourites", "#queueToFavBtn"],
@@ -14620,8 +14650,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Queue rows show when each video starts", "#lhQueue"],
     ["Clear upcoming but keep the playing video", "#clearUpcomingBtn"],
     ["O to open on YouTube", "#sc27"],
-    ["Drop a YouTube link", "#link"],
-    ["Tell a friend", "#tellFriendBtn"]
+    ["Drop a YouTube link", "#link"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -14652,6 +14681,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Save all queue videos to favourites": ["पूरी कतार पसंदीदा में सेव करें", "આખી કતાર મનપસંદમાં સાચવો"],
     "Star on queue and Watch later rows": ["कतार और बाद में देखें पंक्तियों पर स्टार", "કતાર અને પછી જુઓ પંક્તિઓ પર સ્ટાર"],
     "Queue this day from history": ["इतिहास से यह दिन कतार में डालें", "ઇતિહાસમાંથી આ દિવસ કતારમાં નાખો"],
+    "Copy time": ["समय कॉपी करें", "સમય કૉપી કરો"],
     "Remove played videos in queue": ["कतार से चले हुए वीडियो हटाएं", "કતારમાંથી ચલાવેલા વિડિયો કાઢો"],
     "Queue chip on every list row": ["हर लिस्ट पंक्ति पर कतार चिप", "દરેક યાદી પંક્તિ પર કતાર ચિપ"]
   });
@@ -20929,6 +20959,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Copy time", "copy time current second timestamp paste note chat chapter list clipboard jump to time", "#copyTimeBtn"],
       ["Queue this day from history", "queue this day history heading yesterday today videos continue carry on add all that day one tap", "#lhHist"],
       ["Star on queue and Watch later rows", "star favourite queue watch later rows toggle without playing fill heart like save", "#queueList"],
       ["Save all queue videos to favourites", "save all queue videos to favourites keep liked starred one tap undo duplicates skipped hearts", "#queueToFavBtn"],
