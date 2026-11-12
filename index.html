@@ -2061,7 +2061,7 @@ setTimeout(done,3000);})();
             <input id="noteFindIn" type="search" autocomplete="off" spellcheck="false" placeholder="Search every saved note..." aria-label="Search every saved note">
             <div class="marks-list" id="noteFindOut"></div>
           </details>
-          <div class="row" style="margin-top:10px"><button class="chip" id="noteTxtBtn" type="button">Save all notes as text file</button><button class="chip" id="studySheetBtn" type="button">Save study sheet (.md)</button></div>
+          <div class="row" style="margin-top:10px"><button class="chip" id="noteTxtBtn" type="button">Save all notes as text file</button><button class="chip" id="notesCopyAllBtn" type="button">📋 Copy all notes</button><button class="chip" id="studySheetBtn" type="button">Save study sheet (.md)</button></div>
         </div>
 
         <div class="ctl-card wide" id="ctl-lyrics">
@@ -13117,6 +13117,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#histTxtBtn", "Save as text file", "टेक्स्ट फ़ाइल में सेव करें"],
     ["#surpriseBtn", "🎲 Surprise me", "🎲 सरप्राइज़ मी"],
     ["#noteTxtBtn", "Save all notes as text file", "सभी नोट्स टेक्स्ट फ़ाइल में सेव करें"],
+    ["#notesCopyAllBtn", "📋 Copy all notes", "📋 सभी नोट्स कॉपी करें"],
     ["#queueTxtBtn", "Save queue as text file", "कतार को टेक्स्ट फ़ाइल में सेव करें"],
     ["#queueTxtImportBtn", "Add links from a text file", "टेक्स्ट फ़ाइल से लिंक जोड़ें"],
     ["#plPasteAdd", "Add to queue", "कतार में जोड़ें"],
@@ -13303,6 +13304,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#histTxtBtn": "ટેક્સ્ટ ફાઇલમાં સાચવો",
  "#surpriseBtn": "🎲 સરપ્રાઇઝ મી",
  "#noteTxtBtn": "બધી નોંધો ટેક્સ્ટ ફાઇલમાં સાચવો",
+ "#notesCopyAllBtn": "📋 બધી નોંધો કોપી કરો",
  "#queueTxtBtn": "કતારને ટેક્સ્ટ ફાઇલમાં સાચવો",
  "#queueTxtImportBtn": "ટેક્સ્ટ ફાઇલમાંથી લિંક ઉમેરો",
  "#plPasteAdd": "કતારમાં ઉમેરો",
@@ -14345,6 +14347,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (!ids.length) { toast(T("No notes saved yet.")); return; }
       dl(ids.map(function (id) { return (titleFor(id) || id) + "\nhttps://youtu.be/" + id + "\n" + notes[id].trim(); }).join("\n\n----\n\n") + "\n", "video-player-notes.txt", "Notes saved as a text file");
     });
+    // Round 214 new 4: Copy all notes - notes could leave the app only as a downloaded file,
+    // while every other list (favourites, history, queue, one note) had a Copy chip. This copies
+    // the same title + link + note text to the clipboard in one tap, hang-safe via vpCopySafe.
+    Object.assign(TR_MSG, {
+      "All notes copied": ["सभी नोट्स कॉपी हुए", "બધી નોંધો કોપી થઈ"]
+    });
+    var nca = $("notesCopyAllBtn");
+    if (nca) nca.addEventListener("click", function () {
+      var ids = Object.keys(notes).filter(function (id) { return typeof notes[id] === "string" && notes[id].trim(); });
+      if (!ids.length) { toast(T("No notes saved yet.")); return; }
+      var text = ids.map(function (id) { return (titleFor(id) || id) + "\nhttps://youtu.be/" + id + "\n" + notes[id].trim(); }).join("\n\n----\n\n") + "\n";
+      if (window.vpCopySafe) window.vpCopySafe(text, function (ok) { toast(ok ? T("All notes copied") : T("Could not copy. Try again.")); });
+      else toast(T("Could not copy. Try again."));
+    });
     var fb = $("favTxtBtn");
     if (fb) fb.addEventListener("click", function () {
       if (!lib.favs.length) { toast(T("No favourites yet.")); return; }
@@ -15094,6 +15110,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Copy all notes", "#notesCopyAllBtn"],
     ["Wake all snoozed videos", "#laterWakeBtn"],
     ["Shuffle play Watch later", "#laterShufBtn"],
     ["Clear finished downloads", "#dlQClearFin"],
@@ -21454,6 +21471,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Copy all notes", "copy all notes clipboard share study text every saved note paste", "#notesCopyAllBtn"],
       ["Wake all snoozed videos", "wake all snoozed watch later sleeping hidden come back unsnooze every", "#laterWakeBtn"],
       ["Shuffle play Watch later", "shuffle play watch later saved videos random mix evening start play all", "#laterShufBtn"],
       ["Clear finished downloads", "clear finished done completed failed download queue make room tidy remove", "#dlQClearFin"],
