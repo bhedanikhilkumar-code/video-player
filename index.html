@@ -2149,7 +2149,8 @@ setTimeout(done,3000);})();
 
     <section id="lp" aria-labelledby="lpHeading">
       <h2 id="lpHeading">Play a file with volume boost</h2>
-      <input id="lpFile" type="file" multiple accept="video/*,audio/*" aria-label="Choose a video or audio file from your device">
+      <input id="lpFile" type="file" multiple accept="video/*,audio/*" aria-label="Choose a video or audio file from your device" hidden>
+      <div class="row" id="lpPickRow"><button class="chip" id="lpPickBtn" type="button">📁 Choose files</button><span class="hint" id="lpPickName" role="status">No file chosen</span></div>
       <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button><button class="chip" id="lpPip" type="button" hidden>PiP</button><button class="chip" id="lpClose" type="button" disabled>Close files</button></div>
       <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><div class="row lp-qmodes"><button class="chip" id="lpShuffleBtn" type="button" aria-pressed="false">Shuffle: off</button><button class="chip" id="lpRepeatBtn" type="button" aria-pressed="false">Repeat all: off</button></div><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
       <p class="hint" id="lpSessionMsg" role="status">Select one or more local files. Notification and lock-screen controls are local-file only, where supported by your browser. They do not enable screen-off YouTube playback.</p>
@@ -14185,6 +14186,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Save lyrics as .lrc": ["गीतों के बोल .lrc में सेव करें", "ગીતના શબ્દો .lrcમાં સાચવો"],
     "Favourites fold": ["पसंदीदा सूची छोटी-बड़ी करें", "મનપસંદ યાદી નાની-મોટી કરો"]
   });
+  Object.assign(TR_MSG, {
+    "📁 Choose files": ["📁 फ़ाइलें चुनें", "📁 ફાઇલો પસંદ કરો"],
+    "No file chosen": ["कोई फ़ाइल नहीं चुनी", "કોઈ ફાઇલ પસંદ નથી"],
+    "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
+  });
   var WNEW = [
     ["Undo last import", "#libUndoImport"],
     ["Check offline readiness", "#offlineCheckBtn"],
@@ -18619,8 +18625,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   $("lpPrev").addEventListener("click",function(){localStep(-1);});
   $("lpNext").addEventListener("click",function(){localStep(1);});
+  // Round 208 fix 5: the native file input always spoke the browser's own language
+  // ("Choose Files" / "No file chosen" in English) inside a translated page - seen live
+  // in Hindi. The input is now hidden and a translated chip opens it, with a translated
+  // status line that follows the choice (the lpSubFile picker already used this pattern).
+  var lpPickBtn = $("lpPickBtn"), lpPickName = $("lpPickName"), lpPickCount = 0;
+  function lpPickPaint() {
+    if (!lpPickBtn || !lpPickName) return;
+    lpPickBtn.textContent = T("📁 Choose files");
+    lpPickName.textContent = lpPickCount === 0 ? T("No file chosen") : (lpPickCount === 1 && localFiles[0] ? localFiles[0].name : T("{n} files chosen").replace("{n}", lpPickCount));
+  }
+  if (lpPickBtn) lpPickBtn.addEventListener("click", function () { file.click(); });
+  (window.__relang = window.__relang || []).push(lpPickPaint);
+  lpPickPaint();
   file.addEventListener("change", function () {
-    localFiles = Array.prototype.slice.call(file.files || []); if (!localFiles.length) return;
+    localFiles = Array.prototype.slice.call(file.files || []);
+    lpPickCount = localFiles.length; lpPickPaint();
+    if (!localFiles.length) return;
     playLocalAt(0, false);
   });
   function mediaAction(name, fn) { if (session) try { session.setActionHandler(name, fn); } catch(e) {} }
@@ -20696,7 +20717,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Glass shortcuts sheet", "glass shortcuts sheet keyboard question mark popup overlay frosted blur spring card iphone sheet keys help dialog", "#scBox"],
       ["Glass pick boxes", "glass pick boxes pick many queue select circle tick check orb bead picked row wash glow bulk iphone", "#qPickBtn"],
       ["Glass text fields", "glass text fields link box input search playlist name notes textarea well inset frosted focus glow lift typing field iphone", "#linkInput"],
-      ["Glass file picker", "glass file picker choose files button local file pill gloss spring press hover lift drop box iphone", "#lpFile"],
+      ["Glass file picker", "glass file picker choose files button local file pill gloss spring press hover lift drop box iphone", "#lpPickBtn"],
       ["Split a playlist", "split playlist divide cut half two parts long course mix new list part 2 undo songs lectures", "#plList"],
       ["Glass tour dots", "glass tour dots welcome tour progress dots steps capsule pill bead frosted first run replay intro", "#tourReplayBtn"],
       ["History in backups", "history backups export import recently watched resume spot watch stats streak new phone restore move device keep", "#libExport"],
