@@ -2151,7 +2151,7 @@ setTimeout(done,3000);})();
         <div id="dlSubs"></div>
       </div>
       <div id="dlQWrap" hidden>
-        <div class="lib-head"><h3 id="lhDlQ">Download queue</h3><button class="chip" id="dlQRetry" type="button" hidden>Retry failed</button><button class="chip" id="dlQClear" type="button">Clear</button></div>
+        <div class="lib-head"><h3 id="lhDlQ">Download queue</h3><button class="chip" id="dlQRetry" type="button" hidden>Retry failed</button><button class="chip" id="dlQClearFin" type="button" hidden>Clear finished</button><button class="chip" id="dlQClear" type="button">Clear</button></div>
         <ul class="lib-list" id="dlQ"></ul>
         <p class="hint">Items download one after another. Your browser may ask once to allow multiple downloads. Each finished file also gets a Save link (kept for 15 minutes).</p>
       </div>
@@ -3434,7 +3434,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else { clearTimeout(hang); fallback(); }
   }
   window.vpCopySafe = vpCopySafe;
-  Object.assign(TR_MSG, { "Video - ": ["\u0935\u0940\u0921\u093f\u092f\u094b - ", "\u0ab5\u0abf\u0aa1\u0abf\u0aaf\u0acb - "] });
+  Object.assign(TR_MSG, { "Video - ": ["\u0935\u0940\u0921\u093f\u092f\u094b - ", "\u0ab5\u0abf\u0aa1\u0abf\u0aaf\u0acb - "],
+   "Clear finished": ["पूरे हुए हटाएँ", "પૂરા થયેલા હટાવો"],
+   "No finished downloads to clear.": ["हटाने के लिए कोई पूरा डाउनलोड नहीं।", "હટાવવા માટે કોઈ પૂરા થયેલા ડાઉનલોડ નથી."],
+   "Cleared finished downloads: ": ["पूरे हुए डाउनलोड हटाए: ", "પૂરા થયેલા ડાઉનલોડ હટાવ્યા: "],
+   "Finished downloads restored": ["पूरे हुए डाउनलोड वापस आए", "પૂરા થયેલા ડાઉનલોડ પાછા આવ્યા"] });
 
   // Storage full or blocked (round 201 fix): saving the library, preferences or playlists failed
   // silently when the browser's storage was full or blocked (private mode, a cleared quota), so a
@@ -12961,6 +12965,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#dlFmtLab", "Quality / format", "क्वालिटी / फॉर्मेट"],
     ["#dlQVideoBtn", "+ Queue video", "+ वीडियो कतार में"],
     ["#dlQMp3Btn", "+ Queue MP3", "+ MP3 कतार में"],
+    ["#dlQClearFin", "Clear finished", "पूरे हुए हटाएँ"],
     ["#dlQClear", "Clear", "साफ़ करें"],
     ["#dlHistClear", "Clear", "साफ़ करें"],
     ["#dlRetryBtn", "Retry", "फिर कोशिश करें"],
@@ -13301,6 +13306,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#dlFmtLab": "ક્વોલિટી / ફોર્મેટ",
  "#dlQVideoBtn": "+ વીડિયો કતારમાં",
  "#dlQMp3Btn": "+ MP3 કતારમાં",
+ "#dlQClearFin": "પૂરા થયેલા હટાવો",
  "#dlQClear": "સાફ કરો",
  "#dlHistClear": "સાફ કરો",
  "#dlRetryBtn": "ફરી પ્રયાસ કરો",
@@ -15040,6 +15046,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Clear finished downloads", "#dlQClearFin"],
     ["Stop the sleep timer from the pill", "#ctl-sleep"],
     ["Sort Oldest first", "#lhLater"],
     ["Press / to find in the library", "#libSearch"],
@@ -19381,6 +19388,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       li.appendChild(l); li.appendChild(right); qEl.appendChild(li);
     });
     qRetryRender();
+    if (typeof qClearFinRender === "function") qClearFinRender();
   }
   function qAdd(body, title) {
     if (Q.length >= 20) { showErr("The queue is full (20 items). Clear finished items first."); return false; }
@@ -19407,6 +19415,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // used to mean tapping Retry on each row of a failed batch.
   var qRetryBtn = $("dlQRetry");
   function qRetryRender() { if (!qRetryBtn) return; qRetryBtn.hidden = !Q.some(function (q) { return q.status === "error"; }); qRetryBtn.textContent = T("Retry failed"); }
+  // Round 214 new 1: "Clear finished" - Clear removed every waiting row too, and the queue is
+  // capped at 20, so after a batch you had to tap x on each finished row to make room. This chip
+  // drops only done/error rows, keeps waiting and running ones, and offers Undo like Clear does.
+  var qClearFinBtn = $("dlQClearFin");
+  function qClearFinRender() { if (!qClearFinBtn) return; qClearFinBtn.hidden = !Q.some(function (q) { return q.status === "done" || q.status === "error"; }); }
+  if (qClearFinBtn) qClearFinBtn.addEventListener("click", function () {
+    var snap = Q.slice();
+    Q = Q.filter(function (q) { return q.status !== "done" && q.status !== "error"; });
+    qRender();
+    var n = snap.length - Q.length;
+    if (n) toastUndo(T("Cleared finished downloads: ") + n, function () { Q = snap; qRender(); }, T("Finished downloads restored"));
+  });
+  (window.__relang = window.__relang || []).push(qClearFinRender);
   if (qRetryBtn) qRetryBtn.addEventListener("click", function () {
     var n = 0;
     Q.forEach(function (q) { if (q.status === "error") { q.status = "waiting"; q.err = ""; q.progress = 0; n++; } });
@@ -21383,6 +21404,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Clear finished downloads", "clear finished done completed failed download queue make room tidy remove", "#dlQClearFin"],
       ["Enter opens the first search match", "enter return open first search match result library keyboard play top hit", "#libSearch"],
       ["Tap a note to dismiss it", "tap toast note dismiss close early notification banner bottom controls hide", "#vpToast"],
       ["Shuffle play from the queue", "shuffle play random queue video pick any luck dice mix now playing", "#shufflePlayBtn"],
