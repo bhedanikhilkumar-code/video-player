@@ -3348,6 +3348,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     saveLib(); renderLib();
     toast(nowPinned ? T("Pinned to the top") : T("Pin removed"));
   }
+  // Pin in Watch later (round 130): the same pin favourites already had, now on
+  // Watch later rows too - a small pin button on every row floats that video to
+  // the top of the list, whatever the sort, so a must-watch-next never sinks
+  // under newer saves. The pin flag is saved on this device with the list and
+  // now rides the backup export/import for Watch later as well (favourites
+  // already carried theirs). The Undo snapshot on row removal keeps the whole
+  // list, so a restored row keeps its pin. No setting, works on YouTube videos,
+  // translated in Hindi and Gujarati, listed in the feature finder and the
+  // What's new card.
+  Object.assign(TR_MSG, {
+    "Pin in Watch later": ["बाद में देखें में पिन", "પછી જુઓમાં પિન"]
+  });
+  function togglePinLater(id) {
+    var i = findIn(lib.later, id);
+    if (i < 0) return;
+    lib.later[i].pin = !lib.later[i].pin;
+    var nowPinned = lib.later[i].pin;
+    saveLib(); renderLib();
+    toast(nowPinned ? T("Pinned to the top") : T("Pin removed"));
+  }
   function toggleLater(id) {
     var i = findIn(lib.later, id);
     if (i >= 0) lib.later.splice(i, 1); else lib.later.unshift({ id: id, title: titleFor(id), ts: Date.now() });
@@ -3674,7 +3694,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var snapLat = lib.later.slice();
       lib.later.splice(lIdx, 1); saveLib(); renderLib();
       toastUndo(T("Removed from Watch later."), function () { lib.later = snapLat; saveLib(); renderLib(); }, T("Watch later list restored"));
-    }, null, plRowAction(), "later", undefined, true);
+    }, null, [{ label: "📌", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinLater(item.id); } }, plRowAction()], "later", undefined, true);
     fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) {
       // Round 118: removing a favourite row offers Undo too - the pin flag rides along in the snapshot.
       var fIdx = findIn(lib.favs, item.id); if (fIdx < 0) return;
@@ -4270,8 +4290,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var laterSort = makeSortView("vp-latersort.v1"), histSort = makeSortView("vp-histsort.v1");
   function laterView() {
     var v = typeof laterSort !== "undefined" && laterSort ? laterSort.view(lib.later) : lib.later;
+    v = v.slice();
     if (prefs.laterUnwatched) v = v.filter(function (it) { var hi = findIn(lib.hist, it.id); return !(hi >= 0 && lib.hist[hi].done); });
-    return v;
+    // Round 130: pinned Watch later rows float to the top, whatever the sort - like pinned favourites.
+    return v.sort(function (a, b) { return (b.pin ? 1 : 0) - (a.pin ? 1 : 0); });
   }
   function histView() { return typeof histSort !== "undefined" && histSort ? histSort.view(lib.hist) : lib.hist; }
   function makeSortBtn(headingId, sort, items, labelKey) {
@@ -8118,7 +8140,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var data = { app: "hd-video-player", version: 2, exportedAt: new Date().toISOString(),
       queue: lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }),
       favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "", pin: x.pin === true }; }),
-      later: lib.later.map(function (x) { return { id: x.id, title: x.title || "" }; }),
+      later: lib.later.map(function (x) { return { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; }),
       playlists: playlists.map(function (p) { return { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; }),
       moments: (function () { var o = {}; Object.keys(marks).forEach(function (id) { if (Array.isArray(marks[id]) && marks[id].length) o[id] = marks[id].map(function (m) { return { t: m.t, name: m.name || "" }; }); }); return o; })(),
       notes: (function () { var o = {}; if (typeof notes === "object" && notes) Object.keys(notes).forEach(function (id) { if (typeof notes[id] === "string" && notes[id].trim()) o[id] = notes[id]; }); return o; })(),
@@ -8174,7 +8196,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           playlists.push({ name: nm, items: items }); pn++;
         });
         var ln = 0;
-        (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { lib.later.push({ id: x.id, title: typeof x.title === "string" ? x.title : "", ts: typeof x.ts === "number" ? x.ts : 0 }); ln++; } });
+        (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { lib.later.push({ id: x.id, title: typeof x.title === "string" ? x.title : "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }); ln++; } });
         var cn = 0;
         if (Array.isArray(d.channels) && typeof vpChans !== "undefined") {
           d.channels.forEach(function (c) {
@@ -11284,6 +11306,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Pin in Watch later", "#lhLater"],
     ["Magnetic moments", "#seek"],
     ["Fine scrub", "#seek"],
     ["Time left in Continue watching", "#lhContinue"],
@@ -14766,6 +14789,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["What's new", "new latest recent additions updates features whats new", "#whatsNewCard"],
       ["Watch later added date", "watch later added date when saved how old days ago", "#lhLater"],
       ["Pin favourites to the top", "pin favourite top keep important first p pinned", "#lhFavs"],
+      ["Pin in Watch later", "pin watch later top keep important first must watch next saved", "#lhLater"],
       ["Pause when headphones disconnect", "pause headphones unplug disconnect bluetooth earphones wire out", "#unplugChk"],
       ["Only unwatched in Watch later", "watch later unwatched filter hide watched backlog left to watch", "#laterUnwBtn"],
       ["Sleep countdown on the video", "sleep timer countdown pill video pause time left clock", "#ctl-sleep"],
