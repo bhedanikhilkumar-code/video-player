@@ -11844,6 +11844,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Live border", "#infoCard"],
     ["Y to copy link", "#sc17"],
     ["W for Watch later", "#sc16"],
     ["Glass hints", "#cinemaBtn"],
@@ -11853,7 +11854,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Thumb shimmer", "#lhQueue"],
     ["Glass switches", "#autoPauseChk"],
     ["Speed keys", "#sc14"],
-    ["Stats grow", "#lhStats"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -14944,6 +14944,42 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     document.addEventListener("keydown", function (e) { if (e.key === "Escape") tipHide(); });
   }
 
+  // Live border (round 153): while a video plays, the Now playing card's edge
+  // gets a slowly-rotating accent ring of light - like the glowing edge Siri
+  // draws on an iPhone - so the card for the video on the air reads as "live"
+  // at a glance. The ring fades in when playback starts and melts away on a
+  // pause, on the end or on a new video, riding the same vp-playing flag the
+  // equalizer badge already uses, so nothing hooks into video load. Pure look:
+  // no setting, nothing new is saved, the spin stills to a soft still edge
+  // under Calm/reduced motion and Low-end mode, High contrast keeps the card's
+  // own strong border and drops the ring, light and dark themes each get their
+  // own tint, and the ring lives on the main page's card only (the mini player
+  // never shows this card). Works on YouTube videos, translated in Hindi and
+  // Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Live border": ["लाइव बॉर्डर", "લાઇવ બોર્ડર"]
+  });
+  var liveBdSt = document.createElement("style");
+  liveBdSt.textContent = "#infoCard .vp-lb{position:absolute;inset:0;border-radius:inherit;padding:2px;pointer-events:none;z-index:6;opacity:0;transition:opacity .7s ease;overflow:hidden;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}"
+    + "#infoCard .vp-lb i{position:absolute;left:50%;top:50%;width:260%;padding-bottom:260%;border-radius:50%;background:conic-gradient(from 0deg,rgba(58,216,176,0) 0deg,rgba(58,216,176,.95) 60deg,rgba(255,255,255,.9) 90deg,rgba(124,92,255,.85) 140deg,rgba(58,216,176,0) 200deg,rgba(58,216,176,0) 360deg);transform:translate(-50%,-50%);animation:vpLbSpin 7s linear infinite}"
+    + "@keyframes vpLbSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}"
+    + "html.vp-playing #infoCard .vp-lb{opacity:1}"
+    + ":root[data-theme=\"dark\"] #infoCard .vp-lb i{background:conic-gradient(from 0deg,rgba(127,210,191,0) 0deg,rgba(127,210,191,.95) 60deg,rgba(255,255,255,.85) 90deg,rgba(158,140,255,.8) 140deg,rgba(127,210,191,0) 200deg,rgba(127,210,191,0) 360deg)}"
+    + "html.calm-motion #infoCard .vp-lb i,html.low-fx #infoCard .vp-lb i{animation:none}"
+    + "html:not(.vp-playing) #infoCard .vp-lb i{animation-play-state:paused}"
+    + "html.high-contrast #infoCard .vp-lb{display:none}"
+    + "@media (prefers-reduced-motion:reduce){#infoCard .vp-lb i{animation:none}}";
+  document.head.appendChild(liveBdSt);
+  var liveBdCard = $("infoCard");
+  if (liveBdCard && !liveBdCard.querySelector(".vp-lb")) {
+    var liveBdRing = document.createElement("span");
+    liveBdRing.className = "vp-lb";
+    liveBdRing.setAttribute("aria-hidden", "true");
+    liveBdRing.appendChild(document.createElement("i"));
+    liveBdCard.appendChild(liveBdRing);
+  }
+  window.__vpLiveBorder = function () { return !!document.querySelector("#infoCard .vp-lb"); };
+
 })();
 </script>
 <script>
@@ -17220,6 +17256,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Queue remembers its place", "queue remembers place current row reload reopen app continue where you left off next auto-next previous marker saved", "#lhQueue"],
       ["P for previous video", "previous video key p keyboard shortcut queue back last played before", "#sc15"],
       ["W for Watch later", "watch later key w keyboard shortcut save for later add remove toggle playing video backlog", "#sc16"],
+      ["Live border", "live border now playing card edge glowing accent ring moving light glow around card on air playing", "#infoCard"],
       ["Y to copy link", "copy link key y keyboard shortcut share at this time current time timestamp clipboard", "#sc17"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
