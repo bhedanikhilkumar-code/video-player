@@ -11870,6 +11870,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Ready glow", "#linkInput"],
     ["H for Favourites", "#sc19"],
     ["G to jump to a time", "#sc18"],
     ["Chip glow", "#fxRow"],
@@ -11878,8 +11879,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["W for Watch later", "#sc16"],
     ["Glass hints", "#cinemaBtn"],
     ["Menu lift", "#featNav"],
-    ["Queue remembers its place", "#lhQueue"],
-    ["P for previous video", "#sc15"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -15033,6 +15032,66 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   document.head.appendChild(chipGlowSt);
   window.__vpChipGlow = function () { return !!document.getElementById("fxRow"); };
 
+  // Ready glow (round 155): while the link box holds a YouTube link that is not
+  // the video already playing, the box grows a soft slowly-turning accent ring -
+  // like the glowing edge Siri draws on an iPhone - and the Load video button
+  // breathes a matching glow, so the next tap is obvious. The ring clears the
+  // moment that video loads (the box then holds the playing video's own link)
+  // or the box is emptied, and it never hooks into video load: a light watch on
+  // the box flips one class on the page. Pure look: no setting, nothing new is
+  // saved, the turn and the pulse still to a soft still ring under Calm/reduced
+  // motion and Low-end mode, High contrast swaps the glow for a strong solid
+  // outline, and light and dark themes each get their own tint. Works on
+  // YouTube videos, translated in Hindi and Gujarati, listed in the feature
+  // finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Ready glow": ["\u0930\u0947\u0921\u0940 \u0917\u094d\u0932\u094b", "\u0ab0\u0ac7\u0aa1\u0ac0 \u0a97\u0acd\u0ab2\u0acb"]
+  });
+  var readyGlowSt = document.createElement("style");
+  readyGlowSt.textContent = ".input-row{position:relative}"
+    + ".input-row .vp-rg{position:absolute;inset:-4px;border-radius:18px;padding:2.5px;pointer-events:none;opacity:0;transition:opacity .45s ease;overflow:hidden;z-index:2;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);mask-composite:exclude}"
+    + ".input-row .vp-rg i{position:absolute;left:50%;top:50%;width:400%;padding-bottom:400%;border-radius:50%;background:conic-gradient(from 0deg,rgba(58,216,176,0) 0deg,rgba(58,216,176,.95) 60deg,rgba(255,255,255,.9) 90deg,rgba(124,92,255,.85) 140deg,rgba(58,216,176,0) 200deg,rgba(58,216,176,0) 360deg);transform:translate(-50%,-50%);animation:vpRgSpin 5s linear infinite}"
+    + "@keyframes vpRgSpin{to{transform:translate(-50%,-50%) rotate(360deg)}}"
+    + "html.link-ready .input-row .vp-rg{opacity:1}"
+    + ":root[data-theme=\"dark\"] .input-row .vp-rg i{background:conic-gradient(from 0deg,rgba(127,210,191,0) 0deg,rgba(127,210,191,.95) 60deg,rgba(255,255,255,.85) 90deg,rgba(158,140,255,.8) 140deg,rgba(127,210,191,0) 200deg,rgba(127,210,191,0) 360deg)}"
+    + "html.link-ready #loadBtn{animation:vpReadyBtn 2.6s ease-in-out infinite}"
+    + "@keyframes vpReadyBtn{0%,100%{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 5px 18px rgba(38,131,113,.22),0 0 6px 0 rgba(58,216,176,.12)}50%{box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 5px 18px rgba(38,131,113,.22),0 0 22px 5px rgba(58,216,176,.5)}}"
+    + "html.calm-motion .input-row .vp-rg i,html.low-fx .input-row .vp-rg i{animation:none}"
+    + "html.calm-motion.link-ready #loadBtn,html.low-fx.link-ready #loadBtn{animation:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 5px 18px rgba(38,131,113,.22),0 0 10px 1px rgba(58,216,176,.3)}"
+    + "html.high-contrast .input-row .vp-rg{display:none}"
+    + "html.high-contrast.link-ready #loadBtn{animation:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 5px 18px rgba(38,131,113,.22)}"
+    + "html.high-contrast.link-ready .input-row input{outline:3px solid var(--teal);outline-offset:1px}"
+    + "@media (prefers-reduced-motion:reduce){.input-row .vp-rg i,html.link-ready #loadBtn{animation:none}}";
+  document.head.appendChild(readyGlowSt);
+  var rgRow = document.querySelector(".input-row");
+  if (rgRow && !rgRow.querySelector(".vp-rg")) {
+    var rgRing = document.createElement("span");
+    rgRing.className = "vp-rg";
+    rgRing.setAttribute("aria-hidden", "true");
+    rgRing.appendChild(document.createElement("i"));
+    rgRow.appendChild(rgRing);
+  }
+  function paintReadyGlow() {
+    var on = false;
+    try {
+      if (typeof parseVideoId === "function" && linkInput && linkInput.value.trim()) {
+        var vid = parseVideoId(linkInput.value);
+        on = !!vid && (typeof curId === "undefined" || vid !== curId);
+      }
+    } catch (e) { on = false; }
+    document.documentElement.classList.toggle("link-ready", on);
+  }
+  if (linkInput) {
+    linkInput.addEventListener("input", paintReadyGlow);
+    linkInput.addEventListener("change", paintReadyGlow);
+    // The box is also filled by taps elsewhere (queue rows, Paste, resume), which
+    // set the value directly, so a slow watch keeps the glow honest.
+    setInterval(paintReadyGlow, 1200);
+    paintReadyGlow();
+  }
+  window.__vpReadyGlow = function () { return document.documentElement.classList.contains("link-ready"); };
+
+
 })();
 </script>
 <script>
@@ -17313,7 +17372,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Live border", "live border now playing card edge glowing accent ring moving light glow around card on air playing", "#infoCard"],
       ["Y to copy link", "copy link key y keyboard shortcut share at this time current time timestamp clipboard", "#sc17"],
       ["G to jump to a time", "go to time key g keyboard shortcut jump seek focus box type minutes seconds timestamp", "#sc18"],
-      ["H for Favourites", "favourites key h keyboard shortcut heart star favorite save like add remove playing video", "#sc19"]
+      ["H for Favourites", "favourites key h keyboard shortcut heart star favorite save like add remove playing video", "#sc19"],
+      ["Ready glow", "ready glow link box input ring accent edge turning siri glow load video button breathe pulse valid link pasted waiting next tap obvious", "#linkInput"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
