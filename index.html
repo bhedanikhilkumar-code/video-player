@@ -6252,11 +6252,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   abToggle.id = "abToggle"; abToggle.textContent = T("Repeat A-B") + ": " + T("on"); abToggle.setAttribute("aria-pressed", "true");
   abLabel.parentNode.appendChild(abToggle);
   var abFields = document.createElement("div"); abFields.className = "row"; abFields.style.marginTop = "10px";
-  abFields.innerHTML = '<label for="abFrom" id="abFromLab">A (seconds)</label><input id="abFrom" type="number" min="0" step="1" value="0" style="width:85px"><label for="abTo" id="abToLab">B (seconds)</label><input id="abTo" type="number" min="1" step="1" value="10" style="width:85px"><button id="abApply" class="chip" type="button">Apply A-B</button>';
+  abFields.innerHTML = '<label for="abFrom" id="abFromLab">A (sec or 1:23)</label><input id="abFrom" type="text" inputmode="decimal" autocomplete="off" value="0" style="width:85px"><label for="abTo" id="abToLab">B (sec or 1:23)</label><input id="abTo" type="text" inputmode="decimal" autocomplete="off" value="10" style="width:85px"><button id="abApply" class="chip" type="button">Apply A-B</button>';
   abLabel.parentNode.appendChild(abFields);
   abToggle.addEventListener("click", function() { abEnabled = !abEnabled; updateAB(); });
   $("abApply").addEventListener("click", function() {
-    var a = Number($("abFrom").value), b = Number($("abTo").value);
+    // Round 205 fix 4: the A and B boxes were number-only (seconds), so "1:23" could not be typed; the shared time reader takes 83, 1:23 and 1m23s.
+    var a = window.vpParseTime($("abFrom").value), b = window.vpParseTime($("abTo").value);
     if (!curId) { abLabel.textContent = T("Load a video first."); return; }
     if (!isFinite(a) || !isFinite(b) || a < 0 || b <= a || (duration > 0 && b > duration)) { abLabel.textContent = T("Use 0 ≤ A < B, within the video length."); return; }
     abA = a; abB = b; abEnabled = true; abLoopCount = 0; updateAB(); send("seekTo", [a, true]);
@@ -12736,7 +12737,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var mBack = $("miniBack"), mClose = $("miniClose");
     if (mBack) mBack.textContent = T("Back to player");
     if (mClose) { mClose.textContent = T("\u2715 Pause"); mClose.setAttribute("aria-label", T("Close mini player and pause")); }
-    if ($("abFromLab")) { $("abFromLab").textContent = T("A (seconds)"); $("abToLab").textContent = T("B (seconds)"); $("abApply").textContent = T("Apply A-B"); }
+    if ($("abFromLab")) { $("abFromLab").textContent = T("A (sec or 1:23)"); $("abToLab").textContent = T("B (sec or 1:23)"); $("abApply").textContent = T("Apply A-B"); }
     renderLib(); renderPlaylists(); renderStats(); renderContinue(); resumeRender(); applyLibSearch();
   });
 
@@ -14080,6 +14081,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   Object.assign(TR_MSG, {"Copy as Markdown link": ["मार्कडाउन लिंक कॉपी करें", "માર્કડાઉન લિંક કૉપી કરો"]});
   Object.assign(TR_MSG, {"Copy as Markdown link": ["मार्कडाउन लिंक कॉपी करें", "માર્કડાઉન લિંક કૉપી કરો"]});
   Object.assign(TR_MSG, {"Markdown link copied": ["मार्कडाउन लिंक कॉपी हुआ", "માર્કડાઉન લિંક કૉપી થયો"]});
+  Object.assign(TR_MSG, {"A (sec or 1:23)": ["A (सेकंड या 1:23)", "A (સેકંડ કે 1:23)"]});
+  Object.assign(TR_MSG, {"B (sec or 1:23)": ["B (सेकंड या 1:23)", "B (સેકંડ કે 1:23)"]});
   var WNEW = [
     ["Copy as Markdown link", "#mdLinkBtn"],
     ["Copy embed code", "#embedBtn"],
