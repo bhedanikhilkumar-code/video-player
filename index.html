@@ -2354,7 +2354,7 @@ setTimeout(done,3000);})();
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
       <p class="hint" id="favTime" role="status"></p>
-      <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="histQueueBtn" type="button">Queue unfinished</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="histQueueBtn" type="button">Queue unfinished</button><button class="chip" id="histTrimBtn" type="button">Trim old history</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsClear" type="button">Clear</button></div>
@@ -12636,6 +12636,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Trim old history", "#histTrimBtn"],
     ["Queue favourites", "#favQueueBtn"],
     ["Landing glow", "#lhQueue"],
     ["Favourites total time", "#favTime"],
@@ -12645,7 +12646,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Copy picked queue videos", "#qPickBtn"],
     ["Invert queue picks", "#qPickBtn"],
     ["Empty breath", "#lhQueue"],
-    ["Switch ring", "#saverData"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -16119,6 +16119,39 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toastUndo((add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue")) + (full ? " · " + full + " " + T("left out - queue is full") : ""), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
   });
 
+  // Trim old history (round 172): Recently watched only had Clear, which wipes everything,
+  // and a single removed row at a time. A chip in its header now drops just the videos last
+  // watched more than 30 days ago and keeps the recent ones, so the list stays tidy (and
+  // private) without losing this month. It says how many went, says honestly when nothing
+  // is that old, and the toast offers Undo that puts them back. Rows with no date are
+  // never touched. Nothing new is saved beyond the history itself, works on YouTube
+  // videos, translated in Hindi and Gujarati, listed in the feature finder and the
+  // What's new card.
+  Object.assign(TR_MSG, {
+    "Trim old history": ["पुरानी हिस्ट्री छांटें", "જૂની હિસ્ટ્રી છાંટો"],
+    "Remove videos last watched more than 30 days ago from Recently watched": ["30 दिन से ज़्यादा पहले देखे वीडियो Recently watched से हटाएं", "30 દિવસથી વધુ પહેલાં જોયેલા વીડિયો Recently watched માંથી કાઢો"],
+    "Nothing in history is older than 30 days.": ["हिस्ट्री में कुछ भी 30 दिन से पुराना नहीं है.", "હિસ્ટ્રીમાં કંઈ 30 દિવસથી જૂનું નથી."],
+    "1 old video removed from history": ["1 पुराना वीडियो हिस्ट्री से हटाया", "1 જૂનો વીડિયો હિસ્ટ્રીમાંથી કાઢ્યો"],
+    "old videos removed from history": ["पुराने वीडियो हिस्ट्री से हटाए", "જૂના વીડિયો હિસ્ટ્રીમાંથી કાઢ્યા"]
+  });
+  var histTrimBtn = $("histTrimBtn");
+  function histTrimPaint() { if (histTrimBtn) { histTrimBtn.textContent = T("Trim old history"); histTrimBtn.setAttribute("aria-label", T("Remove videos last watched more than 30 days ago from Recently watched")); } }
+  (window.__relang = window.__relang || []).push(histTrimPaint);
+  histTrimPaint();
+  if (histTrimBtn) histTrimBtn.addEventListener("click", function () {
+    var cutoff = Date.now() - 30 * 86400000, snap = lib.hist.slice();
+    var keep = lib.hist.filter(function (h) { return !(h && typeof h.ts === "number" && h.ts > 0 && h.ts < cutoff); });
+    var n = snap.length - keep.length;
+    if (!n) { showLibErr(T("Nothing in history is older than 30 days.")); return; }
+    showLibErr("");
+    lib.hist = keep; saveLib(); renderLib();
+    if (typeof renderContinue === "function") renderContinue();
+    toastUndo(n === 1 ? T("1 old video removed from history") : n + " " + T("old videos removed from history"), function () {
+      lib.hist = snap; saveLib(); renderLib();
+      if (typeof renderContinue === "function") renderContinue();
+    }, T("History restored"));
+  });
+
 })();
 </script>
 <script>
@@ -18432,6 +18465,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["E to queue the playing video", "queue this video playing now key e keyboard shortcut add end of queue current chip now playing link opened from history", "#sc25"],
       ["Empty breath", "empty breath list icon tile pulse glow idle alive queue watch later favourites history nothing here ios widget", "#lhQueue"],
       ["Switch ring", "switch ring toggle switch ring pulse flip on off settings saver accessibility checkbox confirmation glass ios haptic", "#saverData"],
+      ["Trim old history", "trim old history clean older than thirty days month prune delete privacy recently watched tidy shrink forget", "#histTrimBtn"],
       ["Queue favourites", "queue favourites starred hearts add all favourite list evening rewatch play every liked bulk saved", "#favQueueBtn"],
       ["Queue unfinished", "queue unfinished started half watched finish what i began history recently watched continue resume add all partly incomplete", "#histQueueBtn"],
     ];
