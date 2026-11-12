@@ -2729,6 +2729,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "seconds back / forward": ["सेकंड पीछे / आगे", "સેકંડ પાછળ / આગળ"],
    "back / forward 1 second": ["1 सेकंड पीछे / आगे", "1 સેકંડ પાછળ / આગળ"],
    "Tap a note to dismiss it": ["नोट को बंद करने के लिए टैप करें", "નોંધ બંધ કરવા ટૅપ કરો"],
+   "Enter opens the first search match": ["Enter पहला नतीजा खोलता है", "Enter પહેલું પરિણામ ખોલે છે"],
+   "Opened the first match.": ["पहला नतीजा खुला.", "પહેલું પરિણામ ખુલ્યું."],
+   "No match to open.": ["खोलने के लिए कोई नतीजा नहीं.", "ખોલવા કોઈ પરિણામ નથી."],
    "Watched": ["देखा हुआ", "જોયેલું"],
    "Allow clipboard access, or long-press the field to paste.": ["क्लिपबोर्ड की अनुमति दें, या फ़ील्ड को लॉन्ग-प्रेस करके पेस्ट करें.", "ક્લિપબોર્ડની પરવાનગી આપો, અથવા ફીલ્ડને લૉંગ-પ્રેસ કરીને પેસ્ટ કરો."],
    "Back to top": ["ऊपर जाएं", "ઉપર જાઓ"],
@@ -10083,6 +10086,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (libSearch) {
     libSearch.addEventListener("input", applyLibSearch);
     libSearch.addEventListener("keydown", function (e) { if (e.key === "Escape") { libSearch.value = ""; applyLibSearch(); } });
+    // Enter opens the first match (round 212 new 5): typing a name filtered the lists, but
+    // playing the find still meant reaching for the mouse or tabbing through rows. Enter now
+    // opens the first visible row - the same as tapping it - and says when nothing matched.
+    libSearch.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter") return;
+      if (!libSearch.value.trim()) return;
+      var uls = [queueList, laterList, favList, histList, $("continueList")], hit = null;
+      for (var ui = 0; ui < uls.length && !hit; ui++) {
+        var ul = uls[ui]; if (!ul) continue;
+        var lis = ul.children;
+        for (var li2 = 0; li2 < lis.length; li2++) {
+          var row = lis[li2];
+          if (row.style && row.style.display === "none") continue;
+          var open = row.querySelector && row.querySelector(".lib-open");
+          if (open && open.offsetParent !== null) { hit = open; break; }
+        }
+      }
+      if (hit) { e.preventDefault(); hit.click(); toast(T("Opened the first match.")); }
+      else toast(T("No match to open."));
+    });
   }
 
   // Pick queue search matches (round 182): replaces only the temporary picks.
@@ -14883,6 +14906,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Enter opens the first search match", "#libSearch"],
     ["Tap a note to dismiss it", "#vpToast"],
     ["Shuffle play from the queue", "#shufflePlayBtn"],
     ["Shift+Arrow fine seek", "#sc28"],
@@ -21219,6 +21243,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Enter opens the first search match", "enter return open first search match result library keyboard play top hit", "#libSearch"],
       ["Tap a note to dismiss it", "tap toast note dismiss close early notification banner bottom controls hide", "#vpToast"],
       ["Shuffle play from the queue", "shuffle play random queue video pick any luck dice mix now playing", "#shufflePlayBtn"],
       ["Shift+Arrow fine seek", "shift arrow fine seek one second precise keyboard arrow keys exact frame practice", "#sc28"],
