@@ -9758,6 +9758,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     + ":root.high-contrast .pl-prog-bar{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card,#fff);border:2px solid currentColor;box-shadow:none}"
     + ":root.high-contrast .pl-prog-bar>i{background:var(--teal);box-shadow:none}";
   document.head.appendChild(plProgGlassSt);
+  // Playlist to top (round 200): playlists show in saved order, and the one you use every day could
+  // only get there by deleting and re-saving. To top moves that one playlist to the first place and
+  // keeps it there (the saved order is the order, so it also lands in backups). Undo puts it back.
+  // With Sort A to Z on it says so. No setting, no new saved data.
+  Object.assign(TR_MSG, {
+    "Playlist to top": ["प्लेलिस्ट सबसे ऊपर", "પ્લેલિસ્ટ સૌથી ઉપર"],
+    "To top": ["सबसे ऊपर", "સૌથી ઉપર"],
+    "Moved to the top:": ["सबसे ऊपर ले गए:", "સૌથી ઉપર લઈ ગયા:"],
+    "This playlist is already first.": ["यह प्लेलिस्ट पहले से पहली है.", "આ પ્લેલિસ્ટ પહેલેથી પહેલી છે."],
+    "Sort is A to Z, so the new order shows when you switch Sort back to Newest.": ["सॉर्ट A से Z है, इसलिए नया क्रम तब दिखेगा जब आप सॉर्ट को Newest पर लौटाएंगे.", "સૉર્ટ A થી Z છે, એટલે નવો ક્રમ સૉર્ટ Newest પર પાછો લાવશો ત્યારે દેખાશે."],
+    "Playlist order restored": ["प्लेलिस्ट का क्रम पहले जैसा", "પ્લેલિસ્ટનો ક્રમ પહેલા જેવો"]
+  });
   function plShuffled(items) {
     var a = items.map(function (x) { return { id: x.id, title: x.title }; });
     for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
@@ -9967,6 +9979,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         while (plFind(nm) >= 0) { nm = base + " " + k; k++; }
         playlists.splice(idx + 1, 0, { name: nm.slice(0, 40), items: pl.items.map(function (x) { return { id: x.id, title: x.title }; }) });
         savePlaylists(); renderPlaylists(); plSay(T("Duplicated as") + " \"" + nm.slice(0, 40) + "\".");
+      });
+      btn(T("To top"), "", function () {
+        if (idx === 0) { plSay(T("This playlist is already first.")); return; }
+        var oldAt = idx;
+        playlists.splice(idx, 1); playlists.unshift(pl);
+        savePlaylists(); renderPlaylists();
+        plSay(T("Moved to the top:") + " \"" + pl.name + "\"." + (plSortAZ ? " " + T("Sort is A to Z, so the new order shows when you switch Sort back to Newest.") : ""));
+        toastUndo(T("Moved to the top:") + " " + pl.name, function () { var at = playlists.indexOf(pl); if (at >= 0) { playlists.splice(at, 1); playlists.splice(Math.min(oldAt, playlists.length), 0, pl); savePlaylists(); renderPlaylists(); } }, T("Playlist order restored"));
       });
       btn(T("Rename"), "", async function () {
         var nv = cleanName(await vpAsk(T("New name for this playlist"), pl.name)); if (!nv || nv === pl.name) return;
@@ -13471,6 +13491,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Playlist to top", "#plList"],
     ["Glass playlist progress", "#plList"],
     ["Playlist actions More menu", "#plList"],
     ["Keep first N in a playlist", "#plList"],
@@ -13480,7 +13501,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Sort a playlist by length", "#plList"],
     ["Glass tour dots", "#tourReplayBtn"],
     ["Shuffle a playlist's saved order", "#plList"],
-    ["Glass rest cards", "#vpBreak"],
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -19380,6 +19400,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Glass file picker", "glass file picker choose files button local file pill gloss spring press hover lift drop box iphone", "#lpFile"],
       ["Split a playlist", "split playlist divide cut half two parts long course mix new list part 2 undo songs lectures", "#plList"],
       ["Glass tour dots", "glass tour dots welcome tour progress dots steps capsule pill bead frosted first run replay intro", "#tourReplayBtn"],
+      ["Playlist to top", "playlist to top first move up favourite everyday pin order priority reorder saved list undo", "#plList"],
       ["Keep first N in a playlist", "keep first trim playlist cut shorten long course mix top N only opening part remove rest undo", "#plList"],
       ["Open on YouTube", "open youtube website app watch page new tab like comment subscribe description share original official", "#infoYtBtn"],
       ["Shuffle a playlist's saved order", "shuffle order playlist mix saved random jumble reorder different start course songs undo permanent", "#plList"],
