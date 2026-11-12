@@ -12883,19 +12883,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     addB.addEventListener("click", function () {
       if (!curId) { msg.textContent = T("Load a video first, then add chapters."); return; }
       var arr = marks[curId] = marks[curId] || [];
-      var added = 0;
+      var added = 0, pastEnd = 0, full = 0;
+      // Round 205 fix 3: lines copied from a YouTube description often come as "[1:23] Chorus",
+      // "(2:00) Bridge" or "• 0:45 Verse", and minutes can pass 99 ("125:30"); those were dropped
+      // silently, while times past the end of the video were saved. Both are handled now.
       ta.value.split(/\r?\n/).forEach(function (ln) {
-        var m = ln.match(/^\s*((?:\d{1,2}:)?\d{1,2}:[0-5]\d)\s*[-\u2013\u2014|:.]?\s*(.*)$/);
+        var m = ln.match(/^\s*[\[(\u25B6\u25BA\u2022*\-]*\s*(\d{1,3}:[0-5]\d(?::[0-5]\d)?)\s*[\])]?\s*[-\u2013\u2014|:.]?\s*(.*)$/);
         if (!m) return;
-        var p = m[1].split(":").map(Number), sec = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1];
+        var sec = typeof window.vpParseTime === "function" ? window.vpParseTime(m[1]) : NaN;
+        if (!isFinite(sec)) return;
         var name = (m[2] || "").trim().slice(0, 40);
+        if (duration > 0 && sec > duration) { pastEnd++; return; }
         if (arr.some(function (x) { return x.t === sec; })) return;
-        if (arr.length >= 30) return;
+        if (arr.length >= 30) { full++; return; }
         arr.push({ t: sec, name: name }); added++;
       });
       if (!arr.length) delete marks[curId];
       if (added) { marksSave(); renderMarks(); ta.value = ""; }
       msg.textContent = added ? (T("Added ") + added + (added === 1 ? T(" moment.") : T(" moments."))) : T("No new times found - write lines like 1:23 Chorus.");
+      if (pastEnd) msg.textContent += " " + pastEnd + " " + T("skipped: past the end of the video.");
+      if (full) msg.textContent += " " + full + " " + T("skipped: a video keeps up to 30 moments.");
     });
   })();
   function setMarkBtns(n) { ["markCopyBtn", "markPrevBtn", "markNextBtn"].forEach(function (id) { var b = $(id); if (b) b.disabled = !n; }); renderSeekMarks(); }
@@ -14048,6 +14055,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   Object.assign(TR_MSG, {"30 min": ["30 मिनट", "30 મિનિટ"]});
   Object.assign(TR_MSG, {"45 min": ["45 मिनट", "45 મિનિટ"]});
   Object.assign(TR_MSG, {"60 min": ["60 मिनट", "60 મિનિટ"]});
+  Object.assign(TR_MSG, {"skipped: past the end of the video.": ["छोड़े गए: वीडियो के अंत के बाद का समय.", "છોડ્યા: વીડિયોના અંત પછીનો સમય."]});
+  Object.assign(TR_MSG, {"skipped: a video keeps up to 30 moments.": ["छोड़े गए: एक वीडियो में 30 पल तक रहते हैं.", "છોડ્યા: એક વીડિયોમાં 30 ક્ષણો સુધી રહે છે."]});
   var WNEW = [
     ["Skip to the player", "#skipLink"],
     ["Low-end suggestion on slow phones", "#a11yLowT"],
