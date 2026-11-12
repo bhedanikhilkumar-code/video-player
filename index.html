@@ -3717,7 +3717,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       { label: T("Paste a link"), fn: function () { var lb = $("pasteLinkBtn"); if (lb) lb.click(); var li2 = $("link"); if (li2) li2.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); var inp = $("linkInput"); if (inp) setTimeout(function () { inp.focus(); }, 350); } },
       { label: T("Import playlist"), fn: function () { var pb = $("plImportBtn"); if (pb) pb.click(); } }
     ]);
-    fillList(laterList, laterView(), (prefs.laterUnwatched && lib.later.length) ? T("Everything here is watched. Turn the filter off to see the full list.") : T("Nothing saved for later yet. Load a video and tap Watch later."), T("Remove"), function (item) {
+    fillList(laterList, laterView(), laterEmptyMsg(), T("Remove"), function (item) {
       // Round 118: removing a Watch later row offers Undo, like queue and history removals do.
       var lIdx = findIn(lib.later, item.id); if (lIdx < 0) return;
       var snapLat = lib.later.slice();
@@ -4321,8 +4321,33 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var v = typeof laterSort !== "undefined" && laterSort ? laterSort.view(lib.later) : lib.later;
     v = v.slice();
     if (prefs.laterUnwatched) v = v.filter(function (it) { var hi = findIn(lib.hist, it.id); return !(hi >= 0 && lib.hist[hi].done); });
+    // Round 132: the length filter chip narrows the list by learned length.
+    if (laterLenActive()) v = v.filter(function (it) { return laterLenOk(it.id); });
     // Round 130: pinned Watch later rows float to the top, whatever the sort - like pinned favourites.
     return v.sort(function (a, b) { return (b.pin ? 1 : 0) - (a.pin ? 1 : 0); });
+  }
+  // Length filter for Watch later (round 132): a cycling chip next to the sort button
+  // narrows the saved list by learned length - All, under 10 minutes, 10-30 minutes or
+  // over 30 minutes - so picking a video that fits the free time you have takes one tap
+  // instead of scanning every row. Lengths come from the same learned-length cache the
+  // total-time line and Pick for me use; a video whose length is not learned yet shows
+  // under All only, and an empty bucket says so honestly. The choice is remembered on
+  // this device, works together with the Only-unwatched filter and every sort mode,
+  // retranslates on language change, adds no setting and needs no backup change.
+  var laterLenMode = "all";
+  try { var llm = localStorage.getItem("vp-laterlen.v1"); if (llm === "u10" || llm === "m30" || llm === "o30") laterLenMode = llm; } catch (e) {}
+  function laterLenActive() { return typeof laterLenMode !== "undefined" && laterLenMode !== "all"; }
+  function laterLenOk(id) {
+    var d = infoCache[id] && infoCache[id].dur;
+    if (typeof d !== "number" || d <= 0) return false;
+    if (laterLenMode === "u10") return d < 600;
+    if (laterLenMode === "m30") return d >= 600 && d <= 1800;
+    return d > 1800;
+  }
+  function laterEmptyMsg() {
+    if (laterLenActive() && lib.later.length) return T("No saved videos in this length range. The app learns each length once you play a video - Length: All brings everything back.");
+    if (prefs.laterUnwatched && lib.later.length) return T("Everything here is watched. Turn the filter off to see the full list.");
+    return T("Nothing saved for later yet. Load a video and tap Watch later.");
   }
   function histView() { return typeof histSort !== "undefined" && histSort ? histSort.view(lib.hist) : lib.hist; }
   function makeSortBtn(headingId, sort, items, labelKey) {
@@ -4338,6 +4363,30 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   var laterSortBtn = makeSortBtn("lhLater", laterSort, function () { return lib.later; }, "Change watch-later order");
   var histSortBtn = makeSortBtn("lhHist", histSort, function () { return lib.hist; }, "Change history order");
+  Object.assign(TR_MSG, {
+    "Length: All": ["\u0932\u0902\u092c\u093e\u0908: \u0938\u092c", "\u0ab2\u0a82\u0aac\u0abe\u0a88: \u0aac\u0aa7\u0ac0"],
+    "Length: under 10 min": ["\u0932\u0902\u092c\u093e\u0908: 10 \u092e\u093f\u0928\u091f \u0938\u0947 \u0915\u092e", "\u0ab2\u0a82\u0aac\u0abe\u0a88: 10 \u0aae\u0abf\u0aa8\u0abf\u0a9f\u0aa5\u0ac0 \u0a93\u0a9b\u0ac0"],
+    "Length: 10-30 min": ["\u0932\u0902\u092c\u093e\u0908: 10-30 \u092e\u093f\u0928\u091f", "\u0ab2\u0a82\u0aac\u0abe\u0a88: 10-30 \u0aae\u0abf\u0aa8\u0abf\u0a9f"],
+    "Length: over 30 min": ["\u0932\u0902\u092c\u093e\u0908: 30 \u092e\u093f\u0928\u091f \u0938\u0947 \u091c\u093c\u094d\u092f\u093e\u0926\u093e", "\u0ab2\u0a82\u0aac\u0abe\u0a88: 30 \u0aae\u0abf\u0aa8\u0abf\u0a9f\u0aa5\u0ac0 \u0ab5\u0aa7\u0abe\u0ab0\u0ac7"],
+    "Filter Watch later by length": ["\u0935\u0949\u091a \u0932\u0947\u091f\u0930 \u0915\u094b \u0932\u0902\u092c\u093e\u0908 \u0938\u0947 \u091b\u093e\u0902\u091f\u0947\u0902", "\u0ab5\u0acb\u0a9a \u0ab2\u0ac7\u0a9f\u0ab0 \u0ab2\u0a82\u0aac\u0abe\u0a88 \u0aaa\u0acd\u0ab0\u0aae\u0abe\u0aa3\u0ac7 \u0a97\u0abe\u0ab3\u0acb"],
+    "No saved videos in this length range. The app learns each length once you play a video - Length: All brings everything back.": ["\u0907\u0938 \u0932\u0902\u092c\u093e\u0908 \u092e\u0947\u0902 \u0915\u094b\u0908 \u0938\u0947\u0935 \u0935\u0940\u0921\u093f\u092f\u094b \u0928\u0939\u0940\u0902. \u090f\u092a \u0935\u0940\u0921\u093f\u092f\u094b \u091a\u0932\u093e\u0928\u0947 \u092a\u0930 \u0909\u0938\u0915\u0940 \u0932\u0902\u092c\u093e\u0908 \u0938\u0940\u0916 \u0932\u0947\u0924\u093e \u0939\u0948 - \u0932\u0902\u092c\u093e\u0908: \u0938\u092c \u0938\u092c \u0915\u0941\u091b \u0935\u093e\u092a\u0938 \u0932\u093e\u0924\u093e \u0939\u0948.", "\u0a86 \u0ab2\u0a82\u0aac\u0abe\u0a88\u0aae\u0abe\u0a82 \u0a95\u0acb\u0a88 \u0ab8\u0ac7\u0ab5 \u0ab5\u0abf\u0aa1\u0abf\u0aaf\u0acb \u0aa8\u0aa5\u0ac0. \u0ab5\u0abf\u0aa1\u0abf\u0aaf\u0acb \u0a9a\u0ab2\u0abe\u0ab5\u0aa4\u0abe\u0a82 \u0a8f\u0aaa \u0aa4\u0ac7\u0aa8\u0ac0 \u0ab2\u0a82\u0aac\u0abe\u0a88 \u0ab6\u0ac0\u0a96\u0ac0 \u0ab2\u0ac7 \u0a9b\u0ac7 - \u0ab2\u0a82\u0aac\u0abe\u0a88: \u0aac\u0aa7\u0ac0 \u0aac\u0aa7\u0ac1\u0a82 \u0aaa\u0abe\u0a9b\u0ac1\u0a82 \u0ab2\u0abe\u0ab5\u0ac7 \u0a9b\u0ac7."],
+    "Watch later length filter": ["\u0935\u0949\u091a \u0932\u0947\u091f\u0930 \u0932\u0902\u092c\u093e\u0908 \u092b\u093c\u093f\u0932\u094d\u091f\u0930", "\u0ab5\u0acb\u0a9a \u0ab2\u0ac7\u0a9f\u0ab0 \u0ab2\u0a82\u0aac\u0abe\u0a88 \u0aab\u0abf\u0ab2\u0acd\u0a9f\u0ab0"]
+  });
+  var laterLenBtn = document.createElement("button");
+  laterLenBtn.type = "button"; laterLenBtn.className = "chip"; laterLenBtn.id = "laterLenBtn";
+  laterLenBtn.addEventListener("click", function () {
+    laterLenMode = laterLenMode === "all" ? "u10" : (laterLenMode === "u10" ? "m30" : (laterLenMode === "m30" ? "o30" : "all"));
+    try { localStorage.setItem("vp-laterlen.v1", laterLenMode); } catch (e) {}
+    renderLib();
+  });
+  (function () { var r = document.querySelector('.lib-listtools[data-for="lhLater"]'); if (r) r.appendChild(laterLenBtn); })();
+  laterLenBtn.refresh = function () {
+    laterLenBtn.textContent = T(laterLenMode === "u10" ? "Length: under 10 min" : (laterLenMode === "m30" ? "Length: 10-30 min" : (laterLenMode === "o30" ? "Length: over 30 min" : "Length: All")));
+    laterLenBtn.setAttribute("aria-label", T("Filter Watch later by length"));
+    laterLenBtn.setAttribute("aria-pressed", String(laterLenMode !== "all"));
+    laterLenBtn.classList.toggle("active", laterLenMode !== "all");
+    laterLenBtn.hidden = lib.later.length < 2;
+  };
   function renderCounts() {
     [["lhFavs", lib.favs], ["lhLater", lib.later], ["lhHist", lib.hist], ["lhQueue", lib.queue]].forEach(function (x) {
       var h = $(x[0]); if (!h || !h.parentNode) return;
@@ -4349,6 +4398,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     favSortBtn.setAttribute("aria-label", T("Change favourites order"));
     favSortBtn.hidden = lib.favs.length < 2;
     laterSortBtn.refresh(); histSortBtn.refresh();
+    if (laterLenBtn && laterLenBtn.refresh) laterLenBtn.refresh();
   }
   function renderListTools() {
     renderCounts();
@@ -11335,6 +11385,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Watch later length filter", "#laterLenBtn"],
     ["Seek comet", "#scometChk"],
     ["Elastic edges", "#seek"],
     ["Length on Watch later rows", "#lhLater"],
@@ -11344,7 +11395,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Time left in Continue watching", "#lhContinue"],
     ["Start over", "#infoCard"],
     ["Aurora glow", "#auroraChk"],
-    ["Volume waves", "#vwaveChk"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -15009,6 +15059,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Time left in Continue watching", "time left remaining continue watching how much left unwatched minutes fit break", "#lhContinue"],
       ["Magnetic moments", "magnet magnetic snap moment dot seek bar stick sticks exact saved moment scrub drag", "#seek"],
       ["Fine scrub", "fine scrub precise exact second press hold seek bar slow accurate adjust", "#seek"],
+      ["Watch later length filter", "watch later length filter under 10 minutes 10-30 over 30 short medium long video fit time break quick", "#laterLenBtn"],
       ["Seek comet", "seek comet trail glow sparks follow scrub drag bar pretty tail light", "#scometChk"],
       ["Elastic edges", "elastic edges rubber band bounce spring seek bar start end edge scrub overshoot", "#seek"]
     ];
