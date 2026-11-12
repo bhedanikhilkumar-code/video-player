@@ -2729,6 +2729,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "This one shows up only when it can be used.": ["यह तभी दिखता है जब इसे इस्तेमाल किया जा सकता है.", "આ ત્યારે જ દેખાય જ્યારે તે વપરાઈ શકે."],
    "This chip appears after you import a backup - then it can undo that import.": ["यह चिप बैकअप इम्पोर्ट करने के बाद दिखती है - तब वह उस इम्पोर्ट को पूर्ववत कर सकती है.", "આ ચિપ બેકઅપ ઇમ્પોર્ટ કર્યા પછી દેખાય - પછી તે તે ઇમ્પોર્ટ પૂર્વવત કરી શકે."],
    "Load a video first - this one works on the playing video.": ["पहले वीडियो चलाएं - यह चल रहे वीडियो पर काम करता है.", "પહેલા વિડિયો ચલાવો - આ ચાલતા વિડિયો પર કામ કરે છે."],
+   "Removed from Continue watching": ["देखना जारी रखें से हटाया", "જારી રાખોમાંથી કાઢ્યું"],
+   "Position restored": ["स्थिति वापस आई", "સ્થિતિ પાછી આવી"],
    "videos added to queue": ["वीडियो कतार में जोड़े गए", "વિડિયો કતારમાં ઉમેરાયા"],
    "Queue cleared": ["कतार साफ़ हुई", "કતાર સાફ થઈ"],
    "Undo jump": ["जंप वापस लें", "જમ્પ પાછો લો"],
@@ -12887,7 +12889,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       open.appendChild(img); open.appendChild(box);
       open.addEventListener("click", function () { linkInput.value = "https://youtu.be/" + item.id; var cqi = findIn(lib.queue, item.id); loadVideo(resumeStart(item.t), null, cqi >= 0 ? cqi : undefined, true); });
       var act = document.createElement("button"); act.className = "chip"; act.type = "button"; act.textContent = T("Remove");
-      act.addEventListener("click", function () { item.t = 0; saveLib(); renderLib(); });
+      // Round 209 fix: this Remove wiped the saved position on the spot, while every
+      // other list removal in the app (queue, Watch later, favourites, history)
+      // offers Undo. One accidental tap lost your place for good. It now offers the
+      // same Undo toast, restoring the exact saved second.
+      act.addEventListener("click", function () {
+        var had = item.t; item.t = 0; saveLib(); renderLib();
+        toastUndo(T("Removed from Continue watching"), function () { item.t = had; saveLib(); renderLib(); }, T("Position restored"));
+      });
       li.appendChild(open); li.appendChild(act); ul.appendChild(li);
     });
   }
