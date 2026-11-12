@@ -8058,6 +8058,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     row.appendChild(plSortBtn);
     h.parentNode.parentNode.insertBefore(row, h.parentNode.nextSibling);
   })();
+  // Play unwatched (round 132): every saved playlist grows a Play unwatched button next
+  // to Play - it lines up only the videos you have not finished yet (the same Watched
+  // state the green pills use) and plays them, so a study course or a season picks up
+  // exactly where the unwatched ones are instead of replaying finished videos. Play all
+  // still queues everything; this keeps the queue - and its progress bar and total time -
+  // to just what is left. When every video in the playlist is watched it says so honestly
+  // and touches nothing. Works on YouTube videos, adds no setting, translated in Hindi
+  // and Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Play unwatched": ["\u0905\u0928\u0926\u0947\u0916\u0947 \u091a\u0932\u093e\u090f\u0902", "\u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0a9a\u0ab2\u0abe\u0ab5\u0acb"],
+    "Playing the unwatched videos of": ["\u0907\u0938 \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u0947 \u0905\u0928\u0926\u0947\u0916\u0947 \u0935\u0940\u0921\u093f\u092f\u094b \u091a\u0932 \u0930\u0939\u0947 \u0939\u0948\u0902", "\u0a86 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0abe \u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0ab5\u0abf\u0aa1\u0abf\u0aaf\u0acb \u0a9a\u0abe\u0ab2\u0ac7 \u0a9b\u0ac7"],
+    "Everything in this playlist is watched.": ["\u0907\u0938 \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u093e \u0938\u092c \u0915\u0941\u091b \u0926\u0947\u0916\u093e \u091c\u093e \u091a\u0941\u0915\u093e \u0939\u0948.", "\u0a86 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0ac1\u0a82 \u0aac\u0aa7\u0ac1\u0a82 \u0a9c\u0acb\u0a88 \u0ab2\u0ac0\u0aa7\u0ac1\u0a82 \u0a9b\u0ac7."],
+    "Play unwatched from a playlist": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0938\u0947 \u0905\u0928\u0926\u0947\u0916\u0947 \u091a\u0932\u093e\u090f\u0902", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aae\u0abe\u0a82\u0aa5\u0ac0 \u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0a9a\u0ab2\u0abe\u0ab5\u0acb"]
+  });
   function renderPlaylists() {
     plList.textContent = "";
     plSortRefresh();
@@ -8105,6 +8119,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var acts = document.createElement("div"); acts.className = "pl-acts";
       function btn(label, cls, fn) { var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (cls ? " " + cls : ""); b.textContent = label; b.setAttribute("aria-label", label + ": " + pl.name); b.addEventListener("click", fn); acts.appendChild(b); }
       btn(T("Play"), "", playPl);
+      btn(T("Play unwatched"), "", function () {
+        if (!pl.items.length) return;
+        var un = pl.items.filter(function (x) { var hi = findIn(lib.hist, x.id); return !(hi >= 0 && lib.hist[hi].done); });
+        if (!un.length) { plSay(T("Everything in this playlist is watched.")); return; }
+        lib.queue = un.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1;
+        saveLib(); renderLib(); showLibErr("");
+        plSay(T("Playing the unwatched videos of") + " \"" + pl.name + "\": " + un.length + "/" + pl.items.length + " " + (un.length === 1 ? T("video") : T("videos")) + ".");
+        playQueueAt(0);
+        if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+      });
       btn(T("Add to queue"), "", function () {
         var n = 0; pl.items.forEach(function (x) { if (findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: x.title }); n++; } });
         saveLib(); renderLib(); plSay(n ? T("Added ") + n + " " + (n === 1 ? T("video") : T("videos")) + T(" to the queue.") : T("Those videos are already in the queue (or the queue is full at 50)."));
@@ -11385,6 +11409,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Play unwatched from a playlist", "#lhPlaylists"],
     ["Watch later length filter", "#laterLenBtn"],
     ["Seek comet", "#scometChk"],
     ["Elastic edges", "#seek"],
@@ -11394,7 +11419,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Fine scrub", "#seek"],
     ["Time left in Continue watching", "#lhContinue"],
     ["Start over", "#infoCard"],
-    ["Aurora glow", "#auroraChk"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -15059,6 +15083,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Time left in Continue watching", "time left remaining continue watching how much left unwatched minutes fit break", "#lhContinue"],
       ["Magnetic moments", "magnet magnetic snap moment dot seek bar stick sticks exact saved moment scrub drag", "#seek"],
       ["Fine scrub", "fine scrub precise exact second press hold seek bar slow accurate adjust", "#seek"],
+      ["Play unwatched from a playlist", "playlist play unwatched only left to watch course continue fresh unseen skip finished remaining", "#lhPlaylists"],
       ["Watch later length filter", "watch later length filter under 10 minutes 10-30 over 30 short medium long video fit time break quick", "#laterLenBtn"],
       ["Seek comet", "seek comet trail glow sparks follow scrub drag bar pretty tail light", "#scometChk"],
       ["Elastic edges", "elastic edges rubber band bounce spring seek bar start end edge scrub overshoot", "#seek"]
