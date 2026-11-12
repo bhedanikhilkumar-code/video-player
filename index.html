@@ -3537,6 +3537,90 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   (window.__relang = window.__relang || []).push(updateLaterTime);
 
+  // Pick for me (round 114): a small time-budget picker in Watch later. Say how many
+  // minutes are free and the app suggests a saved video whose learned length fits, so a
+  // short break gets a short video instead of guesswork. Lengths come from the videos the
+  // app has already learned (the same source as the total-time line); when nothing fits it
+  // honestly offers the shortest one, and when no length is known yet it says so instead of
+  // guessing. It respects the Only-unwatched filter, remembers nothing outside the page,
+  // works on YouTube videos, translated in Hindi and Gujarati, listed in the feature finder
+  // and the What's new card.
+  Object.assign(TR_MSG, {
+    "Minutes free": ["खाली मिनट", "ખાલી મિનિટ"],
+    "Pick for me": ["मेरे लिए चुनो", "મારા માટે પસંદ કરો"],
+    "Another": ["दूसरा", "બીજું"],
+    "Picked:": ["चुना:", "પસંદ કર્યું:"],
+    "Best fit for your": ["आपके समय में सबसे सही", "તમારા સમયમાં સૌથી યોગ્ય"],
+    "Nothing fits in": ["इतने में कुछ फिट नहीं", "આટલામાં કંઈ ફિટ નથી"],
+    "shortest here is about": ["सबसे छोटा करीब", "સૌથી ટૂંકું આશરે"],
+    "Lengths are not learned yet - play a saved video once, then Pick for me can fit it to your time.": ["लंबाई अभी ज्ञात नहीं है - कोई सेव किया वीडियो एक बार चलाएं, फिर Pick for me उसे आपके समय में फिट कर सकेगा.", "લંબાઈ હજી જ્ઞાત નથી - સેવ કરેલો વીડિયો એક વાર ચલાવો, પછી Pick for me તેને તમારા સમયમાં ફિટ કરી શકશે."]
+  });
+  var laterPickState = null;
+  (function () {
+    var st = document.createElement("style"); st.id = "later-pick-style";
+    st.textContent = "#laterPickAct[hidden]{display:none}#laterPickMin{width:76px;min-width:0;border-radius:14px;padding:10px;background:var(--soft);color:var(--ink);border:1px solid var(--line);font:inherit}";
+    document.head.appendChild(st);
+    var anchor = $("laterTime"); if (!anchor || !anchor.parentNode) return;
+    var row = document.createElement("div"); row.className = "row"; row.id = "laterPickRow"; row.style.marginTop = "8px";
+    var lab = document.createElement("label"); lab.className = "label"; lab.id = "laterPickLab"; lab.setAttribute("for", "laterPickMin");
+    var inp = document.createElement("input"); inp.id = "laterPickMin"; inp.type = "number"; inp.min = "1"; inp.max = "600"; inp.step = "1"; inp.value = "20"; inp.inputMode = "numeric";
+    var go = document.createElement("button"); go.type = "button"; go.className = "chip"; go.id = "laterPickBtn";
+    row.appendChild(lab); row.appendChild(inp); row.appendChild(go);
+    var msg = document.createElement("p"); msg.className = "hint"; msg.id = "laterPickMsg"; msg.setAttribute("role", "status");
+    var act = document.createElement("div"); act.className = "row"; act.id = "laterPickAct"; act.hidden = true;
+    var play = document.createElement("button"); play.type = "button"; play.className = "chip"; play.id = "laterPickPlay";
+    var more = document.createElement("button"); more.type = "button"; more.className = "chip"; more.id = "laterPickNext";
+    act.appendChild(play); act.appendChild(more);
+    anchor.parentNode.insertBefore(row, anchor.nextSibling);
+    anchor.parentNode.insertBefore(msg, row.nextSibling);
+    anchor.parentNode.insertBefore(act, msg.nextSibling);
+    go.addEventListener("click", function () { laterPickDo(null); });
+    more.addEventListener("click", function () { laterPickDo(laterPickState && laterPickState.id); });
+    play.addEventListener("click", function () {
+      if (!laterPickState || !laterPickState.id) return;
+      linkInput.value = laterPickState.id;
+      loadVideo(null, null, -1, true);
+      if (frameBox && frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+    });
+  })();
+  function laterPickPaint() {
+    var lab = $("laterPickLab"), go = $("laterPickBtn"), play = $("laterPickPlay"), more = $("laterPickNext"), msg = $("laterPickMsg");
+    if (!lab || !go) return;
+    lab.textContent = T("Minutes free");
+    go.textContent = "🎯 " + T("Pick for me");
+    if (play) play.textContent = T("▶ Play");
+    if (more) more.textContent = "🔁 " + T("Another");
+    if (laterPickState && msg) msg.textContent = laterPickState.note + " " + laterPickState.title + " · ~" + laterPickState.mins + " " + T("min");
+  }
+  function laterPickDo(excludeId) {
+    var msg = $("laterPickMsg"), act = $("laterPickAct"), inp = $("laterPickMin");
+    if (!msg || !act) return;
+    var budget = parseInt(inp && inp.value, 10); if (!(budget >= 1)) budget = 20; if (budget > 600) budget = 600;
+    var pool = lib.later.filter(function (it) {
+      if (prefs.laterUnwatched) { var hi = findIn(lib.hist, it.id); if (hi >= 0 && lib.hist[hi].done) return false; }
+      return true;
+    });
+    if (!pool.length) { laterPickState = null; act.hidden = true; msg.textContent = T("Nothing saved for later yet. Load a video and tap Watch later."); return; }
+    var known = pool.filter(function (it) { var d = infoCache[it.id] && infoCache[it.id].dur; return typeof d === "number" && d > 0; });
+    if (!known.length) { laterPickState = null; act.hidden = true; msg.textContent = T("Lengths are not learned yet - play a saved video once, then Pick for me can fit it to your time."); return; }
+    var dur = function (it) { return infoCache[it.id].dur; };
+    var fits = known.filter(function (it) { return dur(it) <= budget * 60 && it.id !== excludeId; });
+    if (!fits.length) fits = known.filter(function (it) { return dur(it) <= budget * 60; });
+    var pick = null, note = "";
+    if (fits.length) { fits.sort(function (a, b) { return dur(b) - dur(a); }); pick = fits[0]; note = T("Best fit for your") + " " + budget + " " + T("min") + ":"; }
+    else {
+      var rest = known.filter(function (it) { return it.id !== excludeId; }); if (!rest.length) rest = known;
+      rest.sort(function (a, b) { return dur(a) - dur(b); }); pick = rest[0];
+      note = T("Nothing fits in") + " " + budget + " " + T("min") + " - " + T("shortest here is about") + " " + Math.max(1, Math.round(dur(pick) / 60)) + " " + T("min") + ":";
+    }
+    laterPickState = { id: pick.id, title: pick.title || titleFor(pick.id) || pick.id, mins: Math.max(1, Math.round(dur(pick) / 60)), note: note };
+    act.hidden = false;
+    laterPickPaint();
+    libSay(T("Picked:") + " " + laterPickState.title);
+  }
+  (window.__relang = window.__relang || []).push(laterPickPaint);
+  laterPickPaint();
+
   function renderLib() {
     renderContinue();
     fillList(queueList, lib.queue, T("Queue is empty. Add links with Add to queue."), T("Remove"), function (item, idx) {
@@ -5813,7 +5897,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Not supported here": ["यहां काम नहीं करता", "અહીં કામ કરતું નથી"],
     "Move the sound towards the left or right ear - handy when one earphone sounds louder. Works on files you open here.": ["आवाज़ को बाएं या दाएं कान की ओर ले जाएं - जब एक ईयरफ़ोन तेज़ लगे तो काम आता है. यहां खोली गई फ़ाइलों पर काम करता है.", "અવાજને ડાબા કે જમણા કાન તરફ લઈ જાઓ - જ્યારે એક ઇયરફોન વધુ સંભળાય ત્યારે ઉપયોગી. અહીં ખોલેલી ફાઇલો પર કામ કરે છે."],
     "This browser cannot move sound left or right, so Balance stays in the middle.": ["यह ब्राउज़र आवाज़ को बाएं-दाएं नहीं कर सकता, इसलिए बैलेंस बीच में रहता है.", "આ બ્રાઉઝર અવાજને ડાબે-જમણે ખસેડી શકતું નથી, એટલે બૅલેન્સ વચ્ચે જ રહે છે."],
-    "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"]
+    "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"],
+    "Pick for me": ["मेरे लिए चुनो", "મારા માટે પસંદ કરો"]
   });
   var mileBtn = $("mileBtn"), mileFired = {}, mileHideT = 0, mileOv = null;
   var mileSt = document.createElement("style");
@@ -10696,6 +10781,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"]
   });
   var WNEW = [
+    ["Pick for me", "#laterPickBtn"],
     ["Snowfall", "#snowChk"],
     ["Video reflection", "#reflChk"],
     ["Watch later total time", "#laterTime"],
@@ -10704,8 +10790,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Starlight", "#starsChk"],
     ["Queue unwatched from Watch later", "#laterQueueBtn"],
     ["Channel speed memory", "#chSpeedBtn"],
-    ["Pick many in queue", "#qPickBtn"],
-    ["Queue progress bar", "#qProg"]
+    ["Pick many in queue", "#qPickBtn"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -12925,7 +13010,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Snowfall", "snowfall snow flakes falling drifting winter page background pretty cozy", "#snowChk"],
       ["Video reflection", "video reflection mirror poster under frame cover flow glass pretty shine", "#reflChk"],
       ["Channel speed memory", "channel speed remember always this channel creator auto apply rate favourite", "#chSpeedBtn"],
-      ["Queue unwatched from Watch later", "queue unwatched watch later add all backlog bulk move play saved", "#laterQueueBtn"]
+      ["Queue unwatched from Watch later", "queue unwatched watch later add all backlog bulk move play saved", "#laterQueueBtn"],
+      ["Pick for me", "pick for me suggest choose what to watch time budget minutes free fits watch later smart suggestion", "#laterPickBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
