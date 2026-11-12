@@ -9829,12 +9829,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       });
       btn(T("By length"), "", function () {
         if (pl.items.length < 2) { plSay(T("A playlist with one video has no order to reverse.")); return; }
-        var known = [], unknown = [];
-        pl.items.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) known.push(x); else unknown.push(x); });
+        var known = [], unknown = [], lenOf = function (x) {
+          var d = infoCache[x.id] && infoCache[x.id].dur;
+          if (!(typeof d === "number" && d > 0)) { var hi = findIn(lib.hist, x.id); d = hi >= 0 ? lib.hist[hi].dur : 0; }
+          return typeof d === "number" && d > 0 ? d : 0;
+        };
+        pl.items.forEach(function (x) { if (lenOf(x)) known.push(x); else unknown.push(x); });
         if (known.length < 2) { plSay(T("Lengths are learned once a video plays here - at least 2 known lengths are needed to sort.")); return; }
         window.__plLenDir = window.__plLenDir || {};
         var dir = window.__plLenDir[pl.name] === -1 ? -1 : 1, snap = pl.items.slice();
-        known = known.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) { return dir * (infoCache[a.x.id].dur - infoCache[b.x.id].dur) || a.i - b.i; }).map(function (o) { return o.x; });
+        known = known.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) { return dir * (lenOf(a.x) - lenOf(b.x)) || a.i - b.i; }).map(function (o) { return o.x; });
         pl.items = known.concat(unknown);
         window.__plLenDir[pl.name] = -dir;
         savePlaylists(); renderPlaylists();
