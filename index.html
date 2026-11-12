@@ -13003,6 +13003,191 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   window.__vpBeaconTick = mbTick;
   document.addEventListener("vp-video-loaded", function () { mbLast = -1; mbFiredT = -1; });
 })();
+  // Skip seen parts (round 134): when the watch map knows you have already seen a stretch of
+  // this video, a small glass Skip chip appears on the frame as playback rolls into that stretch -
+  // one tap jumps past it, so a re-watch only plays the parts that are actually new. It only ever
+  // offers (nothing seeks by itself), it reads the same per-video seen map the Watch map strip
+  // paints (vp-vmem, riding the backup), and a skipped jump lands through the normal seek, so the
+  // Undo jump chip can bring you back. A ⏭ Skip seen chip sits in its own row under the Watch map
+  // strip (no new transport chip), off by default, remembered on this device in prefs and riding
+  // the backup; turning it on turns Watch map on too, since the seen map is what it reads. The
+  // offer hides in the mini player and Simple mode, respects A-B loops, never fires while paused
+  // or scrubbing, leaves the last stretch alone when everything left is seen, and is retranslated
+  // in Hindi and Gujarati on every language switch. Listed in the feature finder and What's new.
+  Object.assign(TR_MSG, {
+    "⏭ Skip seen: off": ["⏭ देखा हुआ छोड़ें: बंद", "⏭ જોયેલું સ્કિપ: બંધ"],
+    "⏭ Skip seen: on": ["⏭ देखा हुआ छोड़ें: चालू", "⏭ જોયેલું સ્કિપ: ચાલુ"],
+    "Skip seen parts": ["देखे हुए हिस्से छोड़ें", "જોયેલા ભાગ સ્કિપ કરો"],
+    "Skip seen parts on": ["देखे हुए हिस्से छोड़ना चालू", "જોયેલા ભાગ સ્કિપ ચાલુ"],
+    "Skip seen parts off": ["देखे हुए हिस्से छोड़ना बंद", "જોયેલા ભાગ સ્કિપ બંધ"],
+    "Offers a Skip chip when playback reaches a part you have already seen.": ["जब वीडियो पहले से देखे हुए हिस्से पर पहुँचे तो Skip चिप दिखाता है.", "વીડિયો પહેલેથી જોયેલા ભાગ પર પહોંચે ત્યારે Skip ચિપ બતાવે છે."],
+    "Watch map turns on too - it learns the seen parts.": ["Watch map भी चालू होता है - वही देखे हुए हिस्से सीखता है.", "Watch map પણ ચાલુ થાય છે - તે જ જોયેલા ભાગ શીખે છે."],
+    "Seen before · Skip to ": ["पहले देखा है · सीधे ", "પહેલાં જોયું છે · સીધું "],
+    "Skipped a part you had seen.": ["देखा हुआ हिस्सा छोड़ दिया.", "જોયેલો ભાગ સ્કિપ થયો."],
+    "Jump past the part of this video you have already seen": ["इस वीडियो का देखा हुआ हिस्सा आगे छोड़ें", "આ વીડિયોનો જોયેલો ભાગ આગળ સ્કિપ કરો"]
+  });
+  var sskipSt = document.createElement("style");
+  sskipSt.textContent = ".sskip-row{margin:6px 10px 0}"
+    + ".sskip-row[hidden]{display:none}"
+    + ".vp-sskip{position:absolute;right:10px;bottom:52px;z-index:6;padding:9px 16px;border-radius:999px;background:rgba(20,20,30,.78);color:#fff;border:1px solid rgba(255,255,255,.34);box-shadow:0 6px 22px #0008;backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);font-size:13px;font-weight:800;letter-spacing:.01em;cursor:pointer;animation:mp-pop .35s cubic-bezier(.34,1.56,.5,1) both}"
+    + ".vp-sskip[hidden]{display:none}"
+    + ".vp-sskip:active{transform:scale(.96)}"
+    + ".vp-sskip:focus-visible{outline:3px solid #fff;outline-offset:2px}"
+    + "html.low-fx .vp-sskip{backdrop-filter:none;-webkit-backdrop-filter:none}"
+    + "#playerDock.is-mini .vp-sskip,html.simple-mode .vp-sskip{display:none}";
+  document.head.appendChild(sskipSt);
+  var sskipRow = $("sskipRow"), sskipBtn = $("sskipBtn"), sskipPill = null, sskipRun = null;
+  function sskipRowPaint() {
+    if (!sskipRow) return;
+    sskipRow.hidden = !(prefs.watchMap === true && !!curId && duration > 0);
+  }
+  function sskipRender() {
+    if (!sskipBtn) return;
+    var on = prefs.skipSeen === true;
+    sskipBtn.textContent = on ? T("⏭ Skip seen: on") : T("⏭ Skip seen: off");
+    sskipBtn.setAttribute("aria-pressed", String(on));
+    sskipBtn.classList.toggle("active", on);
+    sskipBtn.setAttribute("aria-label", T("Skip seen parts") + " - " + T("Offers a Skip chip when playback reaches a part you have already seen."));
+    sskipRowPaint();
+  }
+  function sskipHidePill() { if (sskipPill && !sskipPill.hidden) sskipPill.hidden = true; }
+  function sskipEnsurePill() {
+    if (sskipPill || !frameBox) return;
+    sskipPill = document.createElement("button");
+    sskipPill.type = "button"; sskipPill.id = "vpSkipSeen"; sskipPill.className = "vp-sskip"; sskipPill.hidden = true;
+    sskipPill.addEventListener("click", function () {
+      if (!sskipRun || sskipRun.id !== curId) { sskipHidePill(); return; }
+      sskipRun.done = true;
+      manualSeek(sskipRun.end);
+      sskipHidePill();
+      toast(T("Skipped a part you had seen."));
+    });
+    frameBox.appendChild(sskipPill);
+  }
+  function sskipTick(t) {
+    if (prefs.skipSeen !== true || prefs.watchMap !== true) { sskipHidePill(); return; }
+    if (!curId || !(duration > 0) || !playing || seeking || (controls && controls.hidden)) { sskipHidePill(); return; }
+    if (abEnabled && abA != null && abB != null) { sskipHidePill(); return; } // A-B and practice loops keep their range
+    if (!wmapSeen || wmapSeen.length !== 100) { sskipHidePill(); return; }
+    var b = Math.min(99, Math.floor(t / duration * 100));
+    if (wmapSeen.charAt(b) !== "1") {
+      if (sskipRun && sskipRun.id === curId && b !== sskipRun.b) { sskipRun = null; sskipHidePill(); }
+      return;
+    }
+    var e = b; while (e < 100 && wmapSeen.charAt(e) === "1") e++;
+    var end = e / 100 * duration + 0.4;
+    if (end >= duration - 2) { sskipHidePill(); return; } // everything left is seen - let it end naturally
+    if (end - t < 3) return; // too short to be worth a jump
+    if (sskipRun && sskipRun.id === curId && sskipRun.b === b) return; // already offered (or skipped) this stretch
+    sskipRun = { id: curId, b: b, end: end, done: false };
+    sskipEnsurePill();
+    if (sskipPill) {
+      sskipPill.textContent = T("Seen before · Skip to ") + fmt(end) + " ▶";
+      sskipPill.setAttribute("aria-label", T("Skip seen parts") + ": " + T("Jump past the part of this video you have already seen") + " - " + fmt(end));
+      sskipPill.hidden = false;
+    }
+  }
+  window.__vpSkipSeenTick = sskipTick;
+  if (sskipBtn) sskipBtn.addEventListener("click", function () {
+    prefs.skipSeen = !prefs.skipSeen;
+    if (prefs.skipSeen && prefs.watchMap !== true) {
+      prefs.watchMap = true; savePrefs();
+      if (typeof wmapRender === "function") wmapRender();
+      if (typeof wmapPaint === "function") wmapPaint();
+      toast(T("Watch map turns on too - it learns the seen parts."));
+    }
+    savePrefs(); sskipRender();
+    toast(prefs.skipSeen ? T("Skip seen parts on") : T("Skip seen parts off"));
+  });
+  if (wmapStrip && window.MutationObserver) new MutationObserver(sskipRowPaint).observe(wmapStrip, { attributes: true, attributeFilter: ["hidden"] });
+  (window.__relang = window.__relang || []).push(sskipRender);
+  sskipRender();
+
+
+  // Channel volume (round 134): a chip in the Sound card next to Per-video volume remembers the
+  // volume you use for the channel of the video playing now - the next time one of its videos
+  // loads, that volume applies by itself, handy for loud music channels and quiet lecture ones.
+  // A volume saved for the video itself (Per-video volume) wins over the channel volume. Tapping
+  // the chip again forgets the channel, and changing the volume by hand while a remembered channel
+  // plays updates its memory (levels the app sets by itself do not). Up to 30 channels, saved on
+  // this device and riding the backup export/import, retranslates on language switch, listed in
+  // the feature finder and the What's new card. Mirrors Channel speed (round 110) for sound.
+  Object.assign(TR_MSG, {
+    "🔊 Channel volume": ["🔊 चैनल वॉल्यूम", "🔊 ચેનલ વોલ્યુમ"],
+    "Channel volume": ["चैनल वॉल्यूम", "ચેનલ વોલ્યુમ"],
+    "Volume {v}% remembered for {c}.": ["{c} के लिए {v}% आवाज़ याद रखी गई.", "{c} માટે {v}% અવાજ યાદ રાખ્યો."],
+    "Volume {v}% for {c}.": ["{c} के लिए {v}% आवाज़.", "{c} માટે {v}% અવાજ."],
+    "Channel volume forgotten for {c}.": ["{c} की चैनल वॉल्यूम भुला दी गई.", "{c} ની ચેનલ વોલ્યુમ ભૂલાઈ ગઈ."],
+    "Load a video first, then set a channel volume.": ["पहले वीडियो चलाएं, फिर चैनल वॉल्यूम सेट करें.", "પહેલાં વીડિયો ચલાવો, પછી ચેનલ વોલ્યુમ સેટ કરો."],
+    "Remember a volume for this channel and it applies by itself when one of its videos plays. A volume saved for the video itself wins.": ["इस चैनल के लिए आवाज़ याद रखें - उसका वीडियो चलते ही वह अपने आप लग जाती है. वीडियो के लिए अलग से सेव की गई आवाज़ पहले लगती है.", "આ ચેનલ માટે અવાજ યાદ રાખો - તેનો વીડિયો ચાલતાં જ તે આપોઆપ લાગુ થાય. વીડિયો માટે અલગથી સાચવેલો અવાજ પહેલાં લાગુ થાય."],
+    "Channel volume memory": ["चैनल वॉल्यूम मेमोरी", "ચેનલ વોલ્યુમ મેમરી"],
+    "Channel volumes included: ": ["चैनल वॉल्यूम शामिल: ", "ચેનલ વોલ્યુમ સામેલ: "],
+    "Channel volumes restored: ": ["चैनल वॉल्यूम वापस मिलीं: ", "ચેનલ વોલ્યુમ પાછી મળી: "]
+  });
+  var CHVOL_KEY = "vp-chanvol.v1", chVol = {}, chVolAppliedId = null;
+  try {
+    var _cv = JSON.parse(localStorage.getItem(CHVOL_KEY) || "null");
+    if (_cv && typeof _cv === "object" && !Array.isArray(_cv)) Object.keys(_cv).forEach(function (k) {
+      var v = Number(_cv[k]);
+      if (typeof k === "string" && k.trim() && isFinite(v) && v >= 0 && v <= 100) chVol[k] = Math.round(v);
+    });
+  } catch (e) {}
+  function chVolSave() { try { var ks = Object.keys(chVol); while (ks.length > 30) delete chVol[ks.shift()]; localStorage.setItem(CHVOL_KEY, JSON.stringify(chVol)); } catch (e) {} }
+  function chVolFind(n) { n = (n || "").toLowerCase(); var ks = Object.keys(chVol); for (var i = 0; i < ks.length; i++) if (ks[i].toLowerCase() === n) return ks[i]; return null; }
+  function chVolCurName() { var c = typeof chanCur === "function" ? chanCur() : null; return c ? c.n : ""; }
+  var chVolBtn = $("chVolBtn");
+  function chVolRender() {
+    if (!chVolBtn) return;
+    var n = chVolCurName(), k = n ? chVolFind(n) : null;
+    chVolBtn.textContent = T("🔊 Channel volume") + ": " + (k ? chVol[k] + "%" : T("off"));
+    chVolBtn.setAttribute("aria-pressed", String(!!k));
+    chVolBtn.classList.toggle("active", !!k);
+    chVolBtn.setAttribute("aria-label", T("🔊 Channel volume") + " - " + T("Remember a volume for this channel and it applies by itself when one of its videos plays. A volume saved for the video itself wins."));
+    chVolBtn.title = n ? n : "";
+  }
+  if (chVolBtn) chVolBtn.addEventListener("click", function () {
+    var n = chVolCurName();
+    if (!n) { toast(T("Load a video first, then set a channel volume.")); return; }
+    var k = chVolFind(n);
+    if (k) {
+      delete chVol[k]; chVolSave(); chVolRender();
+      toast(T("Channel volume forgotten for {c}.").replace("{c}", n));
+    } else {
+      chVol[n] = prefs.volume; chVolSave(); chVolRender();
+      toast(T("Volume {v}% remembered for {c}.").replace("{v}", prefs.volume).replace("{c}", n));
+    }
+  });
+  function chVolApply(id) {
+    if (!id || id !== curId || chVolAppliedId === id) return;
+    var n = chVolCurName(); if (!n) return; // wait for the channel name
+    chVolAppliedId = id;
+    var k = chVolFind(n); if (!k) return;
+    var vm = typeof vmem !== "undefined" ? vmem[id] : null;
+    if (prefs.pvVol && vm && typeof vm.vol === "number") return; // the video's own volume wins
+    var v = chVol[k];
+    if (v !== prefs.volume) {
+      prefs.volume = v; savePrefs(); vol.value = v;
+      window.__vpVolAutoT = Date.now();
+      if (ready && iframe) send("setVolume", [effVol()]);
+      if (v > 0 && muted) send("unMute");
+      paintVolLabel();
+      toast(T("Volume {v}% for {c}.").replace("{v}", v).replace("{c}", n));
+    }
+  }
+  window.__vpChVolNote = function (v) {
+    // A level the app set itself (a saved video/channel volume applied on load) is not the
+    // viewer choosing a new volume for the channel - only hand-made changes update the memory.
+    if (window.__vpVolAutoT && Date.now() - window.__vpVolAutoT < 2500) return;
+    var n = chVolCurName(); if (!n) return;
+    var k = chVolFind(n);
+    if (k && chVol[k] !== v) { chVol[k] = v; chVolSave(); chVolRender(); }
+  };
+  window.__vpChVolApply = chVolApply;
+  window.__vpChVolRender = chVolRender;
+  if (infoChannel) new MutationObserver(function () { chVolRender(); chVolApply(curId); }).observe(infoChannel, { childList: true, characterData: true, subtree: true });
+  (window.__relang = window.__relang || []).push(chVolRender);
+  chVolRender();
+
 })();
 </script>
 <script>
@@ -16969,191 +17154,6 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
   (window.__relang = window.__relang || []).push(paint);
   paint();
 })();
-
-  // Skip seen parts (round 134): when the watch map knows you have already seen a stretch of
-  // this video, a small glass Skip chip appears on the frame as playback rolls into that stretch -
-  // one tap jumps past it, so a re-watch only plays the parts that are actually new. It only ever
-  // offers (nothing seeks by itself), it reads the same per-video seen map the Watch map strip
-  // paints (vp-vmem, riding the backup), and a skipped jump lands through the normal seek, so the
-  // Undo jump chip can bring you back. A ⏭ Skip seen chip sits in its own row under the Watch map
-  // strip (no new transport chip), off by default, remembered on this device in prefs and riding
-  // the backup; turning it on turns Watch map on too, since the seen map is what it reads. The
-  // offer hides in the mini player and Simple mode, respects A-B loops, never fires while paused
-  // or scrubbing, leaves the last stretch alone when everything left is seen, and is retranslated
-  // in Hindi and Gujarati on every language switch. Listed in the feature finder and What's new.
-  Object.assign(TR_MSG, {
-    "⏭ Skip seen: off": ["⏭ देखा हुआ छोड़ें: बंद", "⏭ જોયેલું સ્કિપ: બંધ"],
-    "⏭ Skip seen: on": ["⏭ देखा हुआ छोड़ें: चालू", "⏭ જોયેલું સ્કિપ: ચાલુ"],
-    "Skip seen parts": ["देखे हुए हिस्से छोड़ें", "જોયેલા ભાગ સ્કિપ કરો"],
-    "Skip seen parts on": ["देखे हुए हिस्से छोड़ना चालू", "જોયેલા ભાગ સ્કિપ ચાલુ"],
-    "Skip seen parts off": ["देखे हुए हिस्से छोड़ना बंद", "જોયેલા ભાગ સ્કિપ બંધ"],
-    "Offers a Skip chip when playback reaches a part you have already seen.": ["जब वीडियो पहले से देखे हुए हिस्से पर पहुँचे तो Skip चिप दिखाता है.", "વીડિયો પહેલેથી જોયેલા ભાગ પર પહોંચે ત્યારે Skip ચિપ બતાવે છે."],
-    "Watch map turns on too - it learns the seen parts.": ["Watch map भी चालू होता है - वही देखे हुए हिस्से सीखता है.", "Watch map પણ ચાલુ થાય છે - તે જ જોયેલા ભાગ શીખે છે."],
-    "Seen before · Skip to ": ["पहले देखा है · सीधे ", "પહેલાં જોયું છે · સીધું "],
-    "Skipped a part you had seen.": ["देखा हुआ हिस्सा छोड़ दिया.", "જોયેલો ભાગ સ્કિપ થયો."],
-    "Jump past the part of this video you have already seen": ["इस वीडियो का देखा हुआ हिस्सा आगे छोड़ें", "આ વીડિયોનો જોયેલો ભાગ આગળ સ્કિપ કરો"]
-  });
-  var sskipSt = document.createElement("style");
-  sskipSt.textContent = ".sskip-row{margin:6px 10px 0}"
-    + ".sskip-row[hidden]{display:none}"
-    + ".vp-sskip{position:absolute;right:10px;bottom:52px;z-index:6;padding:9px 16px;border-radius:999px;background:rgba(20,20,30,.78);color:#fff;border:1px solid rgba(255,255,255,.34);box-shadow:0 6px 22px #0008;backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);font-size:13px;font-weight:800;letter-spacing:.01em;cursor:pointer;animation:mp-pop .35s cubic-bezier(.34,1.56,.5,1) both}"
-    + ".vp-sskip[hidden]{display:none}"
-    + ".vp-sskip:active{transform:scale(.96)}"
-    + ".vp-sskip:focus-visible{outline:3px solid #fff;outline-offset:2px}"
-    + "html.low-fx .vp-sskip{backdrop-filter:none;-webkit-backdrop-filter:none}"
-    + "#playerDock.is-mini .vp-sskip,html.simple-mode .vp-sskip{display:none}";
-  document.head.appendChild(sskipSt);
-  var sskipRow = $("sskipRow"), sskipBtn = $("sskipBtn"), sskipPill = null, sskipRun = null;
-  function sskipRowPaint() {
-    if (!sskipRow) return;
-    sskipRow.hidden = !(prefs.watchMap === true && !!curId && duration > 0);
-  }
-  function sskipRender() {
-    if (!sskipBtn) return;
-    var on = prefs.skipSeen === true;
-    sskipBtn.textContent = on ? T("⏭ Skip seen: on") : T("⏭ Skip seen: off");
-    sskipBtn.setAttribute("aria-pressed", String(on));
-    sskipBtn.classList.toggle("active", on);
-    sskipBtn.setAttribute("aria-label", T("Skip seen parts") + " - " + T("Offers a Skip chip when playback reaches a part you have already seen."));
-    sskipRowPaint();
-  }
-  function sskipHidePill() { if (sskipPill && !sskipPill.hidden) sskipPill.hidden = true; }
-  function sskipEnsurePill() {
-    if (sskipPill || !frameBox) return;
-    sskipPill = document.createElement("button");
-    sskipPill.type = "button"; sskipPill.id = "vpSkipSeen"; sskipPill.className = "vp-sskip"; sskipPill.hidden = true;
-    sskipPill.addEventListener("click", function () {
-      if (!sskipRun || sskipRun.id !== curId) { sskipHidePill(); return; }
-      sskipRun.done = true;
-      manualSeek(sskipRun.end);
-      sskipHidePill();
-      toast(T("Skipped a part you had seen."));
-    });
-    frameBox.appendChild(sskipPill);
-  }
-  function sskipTick(t) {
-    if (prefs.skipSeen !== true || prefs.watchMap !== true) { sskipHidePill(); return; }
-    if (!curId || !(duration > 0) || !playing || seeking || (controls && controls.hidden)) { sskipHidePill(); return; }
-    if (abEnabled && abA != null && abB != null) { sskipHidePill(); return; } // A-B and practice loops keep their range
-    if (!wmapSeen || wmapSeen.length !== 100) { sskipHidePill(); return; }
-    var b = Math.min(99, Math.floor(t / duration * 100));
-    if (wmapSeen.charAt(b) !== "1") {
-      if (sskipRun && sskipRun.id === curId && b !== sskipRun.b) { sskipRun = null; sskipHidePill(); }
-      return;
-    }
-    var e = b; while (e < 100 && wmapSeen.charAt(e) === "1") e++;
-    var end = e / 100 * duration + 0.4;
-    if (end >= duration - 2) { sskipHidePill(); return; } // everything left is seen - let it end naturally
-    if (end - t < 3) return; // too short to be worth a jump
-    if (sskipRun && sskipRun.id === curId && sskipRun.b === b) return; // already offered (or skipped) this stretch
-    sskipRun = { id: curId, b: b, end: end, done: false };
-    sskipEnsurePill();
-    if (sskipPill) {
-      sskipPill.textContent = T("Seen before · Skip to ") + fmt(end) + " ▶";
-      sskipPill.setAttribute("aria-label", T("Skip seen parts") + ": " + T("Jump past the part of this video you have already seen") + " - " + fmt(end));
-      sskipPill.hidden = false;
-    }
-  }
-  window.__vpSkipSeenTick = sskipTick;
-  if (sskipBtn) sskipBtn.addEventListener("click", function () {
-    prefs.skipSeen = !prefs.skipSeen;
-    if (prefs.skipSeen && prefs.watchMap !== true) {
-      prefs.watchMap = true; savePrefs();
-      if (typeof wmapRender === "function") wmapRender();
-      if (typeof wmapPaint === "function") wmapPaint();
-      toast(T("Watch map turns on too - it learns the seen parts."));
-    }
-    savePrefs(); sskipRender();
-    toast(prefs.skipSeen ? T("Skip seen parts on") : T("Skip seen parts off"));
-  });
-  if (wmapStrip && window.MutationObserver) new MutationObserver(sskipRowPaint).observe(wmapStrip, { attributes: true, attributeFilter: ["hidden"] });
-  (window.__relang = window.__relang || []).push(sskipRender);
-  sskipRender();
-
-
-  // Channel volume (round 134): a chip in the Sound card next to Per-video volume remembers the
-  // volume you use for the channel of the video playing now - the next time one of its videos
-  // loads, that volume applies by itself, handy for loud music channels and quiet lecture ones.
-  // A volume saved for the video itself (Per-video volume) wins over the channel volume. Tapping
-  // the chip again forgets the channel, and changing the volume by hand while a remembered channel
-  // plays updates its memory (levels the app sets by itself do not). Up to 30 channels, saved on
-  // this device and riding the backup export/import, retranslates on language switch, listed in
-  // the feature finder and the What's new card. Mirrors Channel speed (round 110) for sound.
-  Object.assign(TR_MSG, {
-    "🔊 Channel volume": ["🔊 चैनल वॉल्यूम", "🔊 ચેનલ વોલ્યુમ"],
-    "Channel volume": ["चैनल वॉल्यूम", "ચેનલ વોલ્યુમ"],
-    "Volume {v}% remembered for {c}.": ["{c} के लिए {v}% आवाज़ याद रखी गई.", "{c} માટે {v}% અવાજ યાદ રાખ્યો."],
-    "Volume {v}% for {c}.": ["{c} के लिए {v}% आवाज़.", "{c} માટે {v}% અવાજ."],
-    "Channel volume forgotten for {c}.": ["{c} की चैनल वॉल्यूम भुला दी गई.", "{c} ની ચેનલ વોલ્યુમ ભૂલાઈ ગઈ."],
-    "Load a video first, then set a channel volume.": ["पहले वीडियो चलाएं, फिर चैनल वॉल्यूम सेट करें.", "પહેલાં વીડિયો ચલાવો, પછી ચેનલ વોલ્યુમ સેટ કરો."],
-    "Remember a volume for this channel and it applies by itself when one of its videos plays. A volume saved for the video itself wins.": ["इस चैनल के लिए आवाज़ याद रखें - उसका वीडियो चलते ही वह अपने आप लग जाती है. वीडियो के लिए अलग से सेव की गई आवाज़ पहले लगती है.", "આ ચેનલ માટે અવાજ યાદ રાખો - તેનો વીડિયો ચાલતાં જ તે આપોઆપ લાગુ થાય. વીડિયો માટે અલગથી સાચવેલો અવાજ પહેલાં લાગુ થાય."],
-    "Channel volume memory": ["चैनल वॉल्यूम मेमोरी", "ચેનલ વોલ્યુમ મેમરી"],
-    "Channel volumes included: ": ["चैनल वॉल्यूम शामिल: ", "ચેનલ વોલ્યુમ સામેલ: "],
-    "Channel volumes restored: ": ["चैनल वॉल्यूम वापस मिलीं: ", "ચેનલ વોલ્યુમ પાછી મળી: "]
-  });
-  var CHVOL_KEY = "vp-chanvol.v1", chVol = {}, chVolAppliedId = null;
-  try {
-    var _cv = JSON.parse(localStorage.getItem(CHVOL_KEY) || "null");
-    if (_cv && typeof _cv === "object" && !Array.isArray(_cv)) Object.keys(_cv).forEach(function (k) {
-      var v = Number(_cv[k]);
-      if (typeof k === "string" && k.trim() && isFinite(v) && v >= 0 && v <= 100) chVol[k] = Math.round(v);
-    });
-  } catch (e) {}
-  function chVolSave() { try { var ks = Object.keys(chVol); while (ks.length > 30) delete chVol[ks.shift()]; localStorage.setItem(CHVOL_KEY, JSON.stringify(chVol)); } catch (e) {} }
-  function chVolFind(n) { n = (n || "").toLowerCase(); var ks = Object.keys(chVol); for (var i = 0; i < ks.length; i++) if (ks[i].toLowerCase() === n) return ks[i]; return null; }
-  function chVolCurName() { var c = typeof chanCur === "function" ? chanCur() : null; return c ? c.n : ""; }
-  var chVolBtn = $("chVolBtn");
-  function chVolRender() {
-    if (!chVolBtn) return;
-    var n = chVolCurName(), k = n ? chVolFind(n) : null;
-    chVolBtn.textContent = T("🔊 Channel volume") + ": " + (k ? chVol[k] + "%" : T("off"));
-    chVolBtn.setAttribute("aria-pressed", String(!!k));
-    chVolBtn.classList.toggle("active", !!k);
-    chVolBtn.setAttribute("aria-label", T("🔊 Channel volume") + " - " + T("Remember a volume for this channel and it applies by itself when one of its videos plays. A volume saved for the video itself wins."));
-    chVolBtn.title = n ? n : "";
-  }
-  if (chVolBtn) chVolBtn.addEventListener("click", function () {
-    var n = chVolCurName();
-    if (!n) { toast(T("Load a video first, then set a channel volume.")); return; }
-    var k = chVolFind(n);
-    if (k) {
-      delete chVol[k]; chVolSave(); chVolRender();
-      toast(T("Channel volume forgotten for {c}.").replace("{c}", n));
-    } else {
-      chVol[n] = prefs.volume; chVolSave(); chVolRender();
-      toast(T("Volume {v}% remembered for {c}.").replace("{v}", prefs.volume).replace("{c}", n));
-    }
-  });
-  function chVolApply(id) {
-    if (!id || id !== curId || chVolAppliedId === id) return;
-    var n = chVolCurName(); if (!n) return; // wait for the channel name
-    chVolAppliedId = id;
-    var k = chVolFind(n); if (!k) return;
-    var vm = typeof vmem !== "undefined" ? vmem[id] : null;
-    if (prefs.pvVol && vm && typeof vm.vol === "number") return; // the video's own volume wins
-    var v = chVol[k];
-    if (v !== prefs.volume) {
-      prefs.volume = v; savePrefs(); vol.value = v;
-      window.__vpVolAutoT = Date.now();
-      if (ready && iframe) send("setVolume", [effVol()]);
-      if (v > 0 && muted) send("unMute");
-      paintVolLabel();
-      toast(T("Volume {v}% for {c}.").replace("{v}", v).replace("{c}", n));
-    }
-  }
-  window.__vpChVolNote = function (v) {
-    // A level the app set itself (a saved video/channel volume applied on load) is not the
-    // viewer choosing a new volume for the channel - only hand-made changes update the memory.
-    if (window.__vpVolAutoT && Date.now() - window.__vpVolAutoT < 2500) return;
-    var n = chVolCurName(); if (!n) return;
-    var k = chVolFind(n);
-    if (k && chVol[k] !== v) { chVol[k] = v; chVolSave(); chVolRender(); }
-  };
-  window.__vpChVolApply = chVolApply;
-  window.__vpChVolRender = chVolRender;
-  if (infoChannel) new MutationObserver(function () { chVolRender(); chVolApply(curId); }).observe(infoChannel, { childList: true, characterData: true, subtree: true });
-  (window.__relang = window.__relang || []).push(chVolRender);
-  chVolRender();
 
 </script>
 <script>
