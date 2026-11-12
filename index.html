@@ -11655,6 +11655,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   var WNEW = [
     ["Stats grow", "#lhStats"],
+    ["Dock glide", "#playerDock"],
     ["Top channels", "#lhStats"],
     ["Loop a moment", "#markList"],
     ["Finder cascade", "#palBtn"],
@@ -11663,7 +11664,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Pause at a time", "#pauseAtForm"],
     ["Now playing lift", "#infoCard"],
     ["Library cascade", "#lhQueue"],
-    ["Save pop", "#favBtn"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -14363,6 +14363,44 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     };
   })(renderStats);
 
+  // Dock glide (round 147): when you scroll past the player and it docks into
+  // the corner mini player, the mini player glides up into place with a soft
+  // spring instead of snapping in, and when you scroll back it settles into its
+  // slot with a small rise - the jump between page player and mini player feels
+  // like one continuous move, the way an iPhone app card shrinks into its icon.
+  // Interaction feedback, not a setting: nothing new is saved, it works
+  // wherever the mini player works (left-corner placement included), and under
+  // Calm/reduced motion and Low-end mode the dock simply appears as before.
+  // Works on YouTube videos, translated in Hindi and Gujarati, listed in the
+  // feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Dock glide": ["\u0921\u0949\u0915 \u0917\u094d\u0932\u093e\u0907\u0921", "\u0aa1\u0ac9\u0a95 \u0a97\u0acd\u0ab2\u0abe\u0a87\u0aa1"]
+  });
+  var dgSt = document.createElement("style");
+  dgSt.textContent = "#playerDock.vp-dock-in{animation:vpDockIn .5s cubic-bezier(.2,.9,.3,1.2) 1}"
+    + "@keyframes vpDockIn{from{transform:translateY(40px) scale(.92);opacity:0}60%{opacity:1}to{transform:none;opacity:1}}"
+    + "#playerDock.vp-dock-out{animation:vpDockOut .4s cubic-bezier(.3,.7,.4,1) 1}"
+    + "@keyframes vpDockOut{from{transform:translateY(16px) scale(.97);opacity:.5}to{transform:none;opacity:1}}"
+    + "@media(prefers-reduced-motion:reduce){#playerDock.vp-dock-in,#playerDock.vp-dock-out{animation:none}}";
+  document.head.appendChild(dgSt);
+  (function () {
+    var dockEl = document.getElementById("playerDock");
+    if (!dockEl || !window.MutationObserver) return;
+    var wasMini = dockEl.classList.contains("is-mini");
+    var dgMo = new MutationObserver(function () {
+      var isMini = dockEl.classList.contains("is-mini");
+      if (isMini === wasMini) return;
+      wasMini = isMini;
+      if (window.vpReducedMotion() || document.documentElement.classList.contains("low-fx")) return;
+      var cls = isMini ? "vp-dock-in" : "vp-dock-out";
+      dockEl.classList.remove("vp-dock-in"); dockEl.classList.remove("vp-dock-out");
+      void dockEl.offsetHeight;
+      dockEl.classList.add(cls);
+      setTimeout(function () { dockEl.classList.remove(cls); }, 700);
+    });
+    dgMo.observe(dockEl, { attributes: true, attributeFilter: ["class"] });
+  })();
+
   // Pause at a time (round 144): type a time like 5:20 and the video pauses by itself the
   // moment playback reaches it - handy for watching just one part of a long video, or for
   // stopping before an ending you do not want to see. A one-shot for the video playing now:
@@ -16844,7 +16882,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
       ["Top channels", "top channels most watched creators ranking watch time stats favourite channel who watch most", "#lhStats"],
-      ["Stats grow", "stats grow bars chart week days hours calendar watch time statistics numbers grow rise pop in entrance animate progress card", "#lhStats"]
+      ["Stats grow", "stats grow bars chart week days hours calendar watch time statistics numbers grow rise pop in entrance animate progress card", "#lhStats"],
+      ["Dock glide", "dock glide mini player corner spring slide up settle back dock undock scroll down small floating player entrance animation", "#playerDock"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
