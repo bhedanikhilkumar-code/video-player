@@ -11285,6 +11285,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   var WNEW = [
     ["Magnetic moments", "#seek"],
+    ["Fine scrub", "#seek"],
     ["Time left in Continue watching", "#lhContinue"],
     ["Start over", "#infoCard"],
     ["Aurora glow", "#auroraChk"],
@@ -11292,7 +11293,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Add to playlist from any list", "#lhLater"],
     ["Finish rate", "#lhStats"],
     ["Dream orbs", "#orbsChk"],
-    ["Rain glass", "#rainChk"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -12534,6 +12534,71 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   seek.addEventListener("pointermove", function () { if (mgMark && mgDown && !(window.__vpFineScrubOn && window.__vpFineScrubOn())) mgTipShow(mgMark.t, mgMark.name); });
   document.addEventListener("vp-video-loaded", function () { mgMark = null; });
+})();
+
+(function () {
+  "use strict";
+  // Fine scrub (round 129): press the seek bar and hold it still for a blink
+  // and the bar lifts with a spring into fine mode - the same finger movement
+  // then moves the video about four times slower and the time bubble says
+  // "Fine scrub", so nailing the exact second of a drop or a wicket is easy;
+  // let go and the seek commits as usual, and the Magnetic moments snap stays
+  // out of the way while fine mode is on. It is interaction feedback, not a
+  // setting, works on YouTube videos on the main seek bar (keyboard arrows
+  // keep their plain stepping), the spring sits still under Calm/reduced
+  // motion and Low-end mode while fine scrubbing keeps working, translated in
+  // Hindi and Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Fine scrub": ["\u092b\u093e\u0907\u0928 \u0938\u094d\u0915\u094d\u0930\u092c", "\u0aab\u0abe\u0a87\u0aa8 \u0ab8\u0acd\u0a95\u0acd\u0ab0\u0aac"]
+  });
+  var fsSt = document.createElement("style");
+  fsSt.textContent = "@keyframes vpFinePop{0%{transform:scaleY(1)}45%{transform:scaleY(1.55)}100%{transform:scaleY(1.18)}}"
+    + "#seek.fine-on{animation:vpFinePop .4s cubic-bezier(.34,1.56,.5,1) both;filter:drop-shadow(0 0 10px rgba(127,210,191,.55))}"
+    + "#seek.fine-on::-webkit-slider-thumb{transform:scale(1.45)}"
+    + "#seek.fine-on::-moz-range-thumb{transform:scale(1.45)}"
+    + "html.calm-motion #seek.fine-on,html.low-fx #seek.fine-on{animation:none;filter:none}"
+    + "@media (prefers-reduced-motion:reduce){#seek.fine-on{animation:none;filter:none}}";
+  document.head.appendChild(fsSt);
+  var fineOn = false, fineT = 0, fineAX = 0, fineAV = 0, fineX = 0, fineDownX = 0;
+  window.__vpFineScrubOn = function () { return fineOn; };
+  function fineCancelT() { if (fineT) { clearTimeout(fineT); fineT = 0; } }
+  function fineOff() { fineCancelT(); if (fineOn) { fineOn = false; seek.classList.remove("fine-on"); } }
+  function fineTip() {
+    var tip = $("seekTip"); if (!tip) return;
+    var r = seek.getBoundingClientRect(); if (!(r.width > 0) || !(duration > 0)) return;
+    var v = Number(seek.value);
+    tip.textContent = fmt(v) + " \u00b7 " + T("Fine scrub");
+    tip.style.left = (seek.offsetLeft + Math.min(1, Math.max(0, v / duration)) * r.width) + "px";
+    tip.style.top = (seek.offsetTop - 32) + "px";
+    tip.hidden = false;
+  }
+  seek.addEventListener("pointerdown", function (e) {
+    fineDownX = e.clientX; fineX = e.clientX;
+    if (!curId || !(duration > 0)) return;
+    fineCancelT();
+    fineT = setTimeout(function () {
+      fineT = 0;
+      if (fineOn) return;
+      fineOn = true; fineAX = fineX; fineAV = Number(seek.value);
+      seek.classList.add("fine-on");
+      fineTip();
+    }, 450);
+  });
+  seek.addEventListener("pointermove", function (e) {
+    fineX = e.clientX;
+    if (fineT && Math.abs(e.clientX - fineDownX) > 12) fineCancelT();
+    if (fineOn) fineTip();
+  }, true);
+  seek.addEventListener("input", function () {
+    if (!fineOn) return;
+    var r = seek.getBoundingClientRect();
+    if (!(r.width > 0) || !(duration > 0)) return;
+    var v = fineAV + (fineX - fineAX) * (duration / r.width) * 0.22;
+    v = Math.min(duration, Math.max(0, v));
+    seek.value = v; paintTime(v); paintSeekFill(); fineTip();
+  });
+  ["pointerup", "pointercancel", "blur"].forEach(function (ev) { seek.addEventListener(ev, fineOff); });
+  document.addEventListener("vp-video-loaded", fineOff);
 })();
 
 })();
@@ -14765,7 +14830,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Volume waves", "volume waves ripples rings sound level loud quiet feedback glass frame", "#vwaveChk"],
       ["Start over", "start over beginning restart from zero resumed partway video watch again fresh", "#infoCard"],
       ["Time left in Continue watching", "time left remaining continue watching how much left unwatched minutes fit break", "#lhContinue"],
-      ["Magnetic moments", "magnet magnetic snap moment dot seek bar stick sticks exact saved moment scrub drag", "#seek"]
+      ["Magnetic moments", "magnet magnetic snap moment dot seek bar stick sticks exact saved moment scrub drag", "#seek"],
+      ["Fine scrub", "fine scrub precise exact second press hold seek bar slow accurate adjust", "#seek"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
