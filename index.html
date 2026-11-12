@@ -10208,6 +10208,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       lyrics: (function () { var o = {}; if (typeof lyrics === "object" && lyrics) Object.keys(lyrics).forEach(function (id) { if (typeof lyrics[id] === "string" && lyrics[id].trim()) o[id] = lyrics[id]; }); return o; })(),
       lyricSync: (function () { var o = {}; if (typeof lyrSync === "object" && lyrSync) Object.keys(lyrSync).forEach(function (id) { var a = lyrSync[id]; if (Array.isArray(a) && a.length) o[id] = a.map(function (x) { return Math.round(x * 10) / 10; }); }); return o; })(),
       practiceLoops: practiceLoops,
+      history: lib.hist.map(function (x) { var o = { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0 }; if (typeof x.t === "number" && x.t > 0) o.t = Math.floor(x.t); if (typeof x.dur === "number" && x.dur > 0) o.dur = Math.floor(x.dur); if (x.done === true) o.done = true; return o; }),
+      stats: (stats && (stats.total > 0 || stats.plays > 0)) ? stats : null,
       channels: vpChans.map(function (c) { return { n: c.n, u: c.u }; }),
       chanSpeeds: (function () { var o = {}; Object.keys(chSpeed).forEach(function (k) { o[k] = chSpeed[k]; }); return o; })(),
       chanVols: (function () { var o = {}; Object.keys(chVol).forEach(function (k) { o[k] = chVol[k]; }); return o; })(),
@@ -10224,6 +10226,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     libBackupMsg.textContent = T("Backup saved") + " (" + data.queue.length + T(" queued, ") + data.favourites.length + T(" favourites, ") + data.playlists.length + T(" playlists).");
     var nLoops = Object.keys(practiceLoops).reduce(function (n, id) { return n + practiceLoops[id].length; }, 0);
     if (nLoops) libBackupMsg.textContent += " " + T("Practice loops included: ") + nLoops + ".";
+    if (data.history.length) libBackupMsg.textContent += " " + T("History included: ") + data.history.length + ".";
+    if (data.stats) libBackupMsg.textContent += " " + T("Watch stats included.");
     var nNotes = Object.keys(data.notes).length;
     if (nNotes) libBackupMsg.textContent += " " + T("Notes included: ") + nNotes + ".";
     var nLyrics = Object.keys(data.lyrics || {}).length;
@@ -10344,6 +10348,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           });
           if (nSyn) { lyrSyncSave(); renderLyrics(); }
         }
+        // History in backups (round 201): Recently watched (with the spot each video stopped at) and the
+        // watch stats come back too. History from the file is added below what is already here and never
+        // replaces it; stats are restored only on a device that has none yet, so nothing is counted twice.
+        var hn = 0, sn = 0;
+        if (Array.isArray(d.history)) {
+          d.history.forEach(function (x) {
+            if (!validItem(x) || findIn(lib.hist, x.id) >= 0 || lib.hist.length >= HIST_MAX) return;
+            var o = { id: x.id, title: typeof x.title === "string" ? x.title.slice(0, 200) : "", ts: typeof x.ts === "number" && isFinite(x.ts) && x.ts > 0 ? x.ts : 1 };
+            if (typeof x.t === "number" && isFinite(x.t) && x.t > 0) o.t = Math.floor(x.t);
+            if (typeof x.dur === "number" && isFinite(x.dur) && x.dur > 0) o.dur = Math.floor(x.dur);
+            if (x.done === true) o.done = true;
+            lib.hist.push(o); hn++;
+          });
+          if (hn) lib.hist.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+        }
+        if (d.stats && typeof d.stats === "object" && typeof d.stats.total === "number" && d.stats.videos && typeof d.stats.videos === "object" && !(stats.total > 0) && !(stats.plays > 0)) {
+          stats = d.stats; if (!stats.days || typeof stats.days !== "object") stats.days = {}; if (!stats.hours || typeof stats.hours !== "object") stats.hours = {};
+          saveStats(); renderStats(); sn = 1;
+        }
         var s = d.settings && typeof d.settings === "object" ? d.settings : null, gotSettings = false;
         if (s) {
           if (s.prefs && typeof s.prefs === "object") { Object.keys(s.prefs).forEach(function (k) { if (k in prefs && typeof s.prefs[k] === typeof prefs[k]) prefs[k] = s.prefs[k]; }); if ([5, 10, 15, 30].indexOf(prefs.seekStep) < 0) prefs.seekStep = 10; savePrefs(); gotSettings = true; }
@@ -10353,10 +10376,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
         }
-        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !cn && !csn && !cvn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
+        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !cn && !csn && !cvn && !hn && !sn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
         saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
         bkMark();
         libBackupMsg.textContent = T("Imported ") + qn + T(" queued, ") + fn + " " + (fn === 1 ? T("favourite") : T("favourites")) + T(" and ") + pn + " " + (pn === 1 ? T("playlist") : T("playlists")) + ".";
+        if (hn) libBackupMsg.textContent += " " + T("History restored: ") + hn + ".";
+        if (sn) libBackupMsg.textContent += " " + T("Watch stats restored.");
         if (mn) libBackupMsg.textContent += " " + T("Moments restored: ") + mn + ".";
         if (nn) libBackupMsg.textContent += " " + T("Notes restored: ") + nn + ".";
         if (nl) libBackupMsg.textContent += " " + T("Lyrics restored: ") + nl + ".";
@@ -13530,7 +13555,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Start over": ["शुरू से चलाएं", "શરૂઆતથી ચલાવો"],
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
+  Object.assign(TR_MSG, {
+    "History in backups": ["बैकअप में हिस्ट्री", "બેકઅપમાં હિસ્ટ્રી"]
+  });
+  Object.assign(TR_MSG, {
+    "History included: ": ["हिस्ट्री शामिल: ", "હિસ્ટ્રી સામેલ: "],
+    "Watch stats included.": ["वॉच स्टैट्स शामिल.", "વોચ સ્ટેટ્સ સામેલ."],
+    "History restored: ": ["हिस्ट्री वापस आई: ", "હિસ્ટ્રી પાછી આવી: "],
+    "Watch stats restored.": ["वॉच स्टैट्स वापस आए.", "વોચ સ્ટેટ્સ પાછા આવ્યા."]
+  });
   var WNEW = [
+    ["History in backups", "#libExport"],
     ["Playlist to top", "#plList"],
     ["Glass playlist progress", "#plList"],
     ["Playlist actions More menu", "#plList"],
@@ -13539,8 +13574,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Glass keycaps", "#scBox"],
     ["Glass toasts", "#vpToast"],
     ["Sort a playlist by length", "#plList"],
-    ["Glass tour dots", "#tourReplayBtn"],
-    ["Shuffle a playlist's saved order", "#plList"],
+    ["Glass tour dots", "#tourReplayBtn"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -19440,6 +19474,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Glass file picker", "glass file picker choose files button local file pill gloss spring press hover lift drop box iphone", "#lpFile"],
       ["Split a playlist", "split playlist divide cut half two parts long course mix new list part 2 undo songs lectures", "#plList"],
       ["Glass tour dots", "glass tour dots welcome tour progress dots steps capsule pill bead frosted first run replay intro", "#tourReplayBtn"],
+      ["History in backups", "history backups export import recently watched resume spot watch stats streak new phone restore move device keep", "#libExport"],
       ["Playlist to top", "playlist to top first move up favourite everyday pin order priority reorder saved list undo", "#plList"],
       ["Keep first N in a playlist", "keep first trim playlist cut shorten long course mix top N only opening part remove rest undo", "#plList"],
       ["Open on YouTube", "open youtube website app watch page new tab like comment subscribe description share original official", "#infoYtBtn"],
