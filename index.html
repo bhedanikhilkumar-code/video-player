@@ -2056,7 +2056,7 @@ setTimeout(done,3000);})();
           <h3 id="lyricsH">Lyrics</h3>
           <textarea class="note-box" id="lyricsBox" maxlength="4000" rows="5" disabled aria-labelledby="lyricsH"></textarea>
           <div class="note-meta"><span id="lyricsStatus" role="status"></span><span id="lyricsCount">0 / 4000</span></div>
-          <div class="row"><button class="chip" id="lyricsShowBtn" type="button" aria-pressed="false" disabled>🎤 Show on video: off</button> <button class="chip" id="lyricsScrollBtn" type="button" aria-pressed="true">Auto-scroll: on</button> <button class="chip" id="lyricsClearBtn" type="button" disabled>🗑 Clear lyrics</button> <button class="chip" id="lyricsLrcBtn" type="button" disabled>⬇ Save as .lrc</button></div>
+          <div class="row"><button class="chip" id="lyricsShowBtn" type="button" aria-pressed="false" disabled>🎤 Show on video: off</button> <button class="chip" id="lyricsScrollBtn" type="button" aria-pressed="true">Auto-scroll: on</button> <button class="chip" id="lyricsClearBtn" type="button" disabled>🗑 Clear lyrics</button> <button class="chip" id="lyricsLrcBtn" type="button" disabled>⬇ Save as .lrc</button> <button class="chip" id="lyricsCopyBtn" type="button" disabled>Copy lyrics</button></div>
           <p class="hint" id="lyricsHint">Paste a song's words once and they stay with this video on this device. Show on video puts them in a glass pane on the player; tap Sync lines once while the song plays and the lines then follow it exactly.</p>
         </div>
 
@@ -17928,6 +17928,35 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = title + ".lrc";
       document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
       toast(T("Lyrics saved as a .lrc file"));
+    });
+  })();
+
+  // Round 206 new 3: Copy lyrics - lyrics could be shown on the video and saved as a file,
+  // but there was no quick way to paste them into a chat or a note. This chip copies this
+  // video's lyrics to the clipboard, with the app's usual copy fallback for browsers
+  // without the clipboard API.
+  Object.assign(TR_MSG, {
+    "Copy lyrics": ["गीत के बोल कॉपी करें", "ગીતના શબ્દો કૉપિ કરો"],
+    "Copy this video's lyrics": ["इस वीडियो के गीत के बोल कॉपी करें", "આ વિડિયોના ગીતના શબ્દો કૉપિ કરો"],
+    "Lyrics copied": ["गीत के बोल कॉपी हुए", "ગીતના શબ્દો કૉપિ થયા"],
+    "No lyrics to copy yet.": ["कॉपी करने के लिए अभी कोई बोल नहीं.", "કૉપિ કરવા માટે હજી કોઈ શબ્દો નથી."]
+  });
+  (function () {
+    var cpBtn = $("lyricsCopyBtn"); if (!cpBtn) return;
+    function cpPaint() {
+      cpBtn.textContent = T("Copy lyrics");
+      cpBtn.setAttribute("aria-label", T("Copy this video's lyrics"));
+      var box = $("lyricsBox");
+      cpBtn.disabled = !(curId && box && box.value.trim());
+    }
+    (window.__relang = window.__relang || []).push(cpPaint);
+    (window.__lyrXtra = window.__lyrXtra || []).push(cpPaint);
+    cpPaint();
+    cpBtn.addEventListener("click", function () {
+      if (!curId) return;
+      var box = $("lyricsBox"), text = box ? box.value.trim() : "";
+      if (!text) { toast(T("No lyrics to copy yet.")); return; }
+      copy(text, function () { toast(T("Lyrics copied")); });
     });
   })();
 })();
