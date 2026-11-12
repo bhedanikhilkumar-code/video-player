@@ -1977,7 +1977,7 @@ setTimeout(done,3000);})();
           <div class="row">
             <button class="chip" id="aBtn">Set A</button>
             <button class="chip" id="bBtn">Set B</button>
-            <button class="chip" id="abClearBtn">Clear</button>
+            <button class="chip" id="abClearBtn">Clear</button><button class="chip" id="abLast10Btn" type="button">⏪ Last 10s</button>
           </div>
           <div class="row" id="abNudgeRow" style="margin-top:8px"><span class="label" id="abNudgeLab">Fine-tune:</span><button class="chip" id="abAmBtn" type="button">A -1s</button><button class="chip" id="abApBtn" type="button">A +1s</button><button class="chip" id="abBmBtn" type="button">B -1s</button><button class="chip" id="abBpBtn" type="button">B +1s</button></div>
           <span class="label" id="abLabel" role="status">Off</span>
@@ -6834,6 +6834,30 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (abBmBtn) abBmBtn.addEventListener("click", function () { abNudge("B", -1); });
   if (abBpBtn) abBpBtn.addEventListener("click", function () { abNudge("B", 1); });
   (window.__relang = window.__relang || []).push(function () { if (abNudgeLab) abNudgeLab.textContent = T("Fine-tune:"); });
+
+  // Loop the last 10 seconds (round 211 new 4): the most common A-B use is 'play that bit
+  // again' right after it passes - the missed lyric, the trick, the punchline. One tap sets
+  // A ten seconds back and B at the playhead and seeks to A, so the moment loops instantly
+  // without any manual setting. Needs a few seconds played first; Clear or a new A/B undoes
+  // it like any other A-B repeat.
+  Object.assign(TR_MSG, {
+    "⏪ Last 10s": ["⏪ पिछले 10 सेकंड", "⏪ છેલ્લા 10 સેકંડ"],
+    "Loop the last 10 seconds from here": ["यहाँ से पिछले 10 सेकंड लूप करें", "અહીંથી છેલ્લા 10 સેકંડ લૂપ કરો"],
+    "Play a few seconds first, then loop the last 10.": ["पहले कुछ सेकंड चलाएं, फिर पिछले 10 लूप करें.", "પહેલા થોડી સેકંડ ચલાવો, પછી છેલ્લા 10 લૂપ કરો."],
+    "Looping the last 10 seconds": ["पिछले 10 सेकंड लूप हो रहे हैं", "છેલ્લા 10 સેકંડ લૂપ થાય છે"]
+  });
+  var abLast10Btn = $("abLast10Btn");
+  if (abLast10Btn) abLast10Btn.addEventListener("click", function () {
+    if (!curId || curTime < 2) { abLabel.textContent = T("Play a few seconds first, then loop the last 10."); return; }
+    abB = Math.floor(curTime);
+    abA = Math.max(0, abB - 10);
+    if (abA >= abB) abA = Math.max(0, abB - 1);
+    abEnabled = true; abLoopCount = 0; updateAB();
+    send("seekTo", [abA, true]);
+    toast(T("Looping the last 10 seconds"));
+  });
+  (window.__relang = window.__relang || []).push(function () { if (abLast10Btn) { abLast10Btn.textContent = T("⏪ Last 10s"); abLast10Btn.setAttribute("aria-label", T("Loop the last 10 seconds from here")); } });
+  if (abLast10Btn) abLast10Btn.setAttribute("aria-label", T("Loop the last 10 seconds from here"));
   abClearBtn.addEventListener("click", clearAB);
   shareBtn.addEventListener("click", function () {
     if (!curId) { shareMsg.textContent = T("Load a video first, then share it at the current time."); return; }
