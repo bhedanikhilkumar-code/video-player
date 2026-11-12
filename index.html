@@ -3420,6 +3420,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var carry = [];
     if (toastEl.classList.contains("show")) {
       carry = Array.prototype.slice.call(toastEl.querySelectorAll(".vp-undo"));
+      // Round 207 fix: a one-time offer chip (the Low-end "Turn on") is not an Undo and belongs to its own text. It used to
+      // ride onto the next note, so "Vinyl look on" showed a Turn on button that switched Low-end mode on. An offer that
+      // is replaced before it was used is handed back (its flag reset) so it can be shown again on a later visit.
+      carry = carry.filter(function (cb) { if (!cb.classList.contains("vp-offer")) return true; if (typeof cb._displaced === "function") cb._displaced(); return false; });
     }
     toastEl.textContent = msg;
     toastEl._undo = null;
@@ -10856,7 +10860,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         toast(T("This phone may run smoother in Low-end mode (lighter effects)."), 12000);
         if (!toastEl) return;
         var b = document.createElement("button");
-        b.type = "button"; b.className = "chip vp-undo";
+        b.type = "button"; b.className = "chip vp-undo vp-offer";
+        b._displaced = function () { prefs.lowFxHinted = false; savePrefs(); };
         b.textContent = T("Turn on");
         b.setAttribute("aria-label", T("Turn on") + ": " + T("Low-end mode"));
         b.addEventListener("click", function () {
