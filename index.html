@@ -2103,6 +2103,7 @@ setTimeout(done,3000);})();
             <li id="sc26"><b>Home</b> / <b>End</b>: jump to the start / end of the video</li>
             <li id="sc27"><b>O</b>: open the playing video on YouTube at the same second</li>
             <li id="sc28"><b>Shift + Left / Right</b>: back / forward 1 second</li>
+            <li id="sc29"><b>/</b>: focus the library search</li>
           </ul>
           <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
         </details>
@@ -7658,7 +7659,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "t":[10,0], "s":[11,0], ",":[12,0], ".":[12,1],
     "<":[14,0], ">":[14,1], "p":[15,0], "w":[16,0], "y":[17,0],
     "g":[18,0], "h":[19,0], "u":[20,0], "d":[21,0], "q":[22,0],
-    "i":[23,0], "z":[24,0], "e":[25,0],
+    "i":[23,0], "z":[24,0], "e":[25,0], "/":[29,0],
     // Round 212 fix: Home, End and O got their own shortcut rows (sc26, sc27) after the
     // echo map was written, but were never added to it - pressing them ran the command yet
     // lit no key cap, unlike every other shortcut.
@@ -7681,6 +7682,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         cap._keyEchoTimer = setTimeout(function () { cap.classList.remove("key-echo"); }, 700);
       });
     });
+  });
+
+  // Round 213 new: '/' jumps straight into the library search box, like Gmail and YouTube.
+  // This sits outside the player shortcut handler on purpose: that handler returns early
+  // until a video is loaded, but the search box is useful on a fresh page too. A collapsed
+  // library opens first, and typing in any box is never stolen.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    var el = e.target;
+    if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))) return;
+    var lsB = $("libSearch");
+    if (!lsB) return;
+    e.preventDefault();
+    if (window.vpExpandSection) window.vpExpandSection("library");
+    try { lsB.scrollIntoView({block: "center"}); } catch (err) {}
+    lsB.focus(); lsB.select();
   });
 
   // Glass selection (round 169): highlighting text anywhere on the page - a title, a note,
@@ -7899,6 +7916,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // Round 212 new 4: Shift+Arrow seeks a single second, so the list row follows the language.
     var sc28 = $("sc28");
     if (sc28) sc28.innerHTML = "<b>Shift + Left / Right</b>: " + T("back / forward 1 second");
+    var sc29 = $("sc29");
+    if (sc29) sc29.innerHTML = "<b>/</b>: " + T("focus the library search");
   }
   var dtChips = $("dtSeekChips");
   if (dtChips) [5, 10, 15, 30].forEach(function (v) {
