@@ -2435,7 +2435,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var infoCache = {};
   var queueList = $("queueList"), queueBtn = $("queueBtn"), nextBtn = $("nextBtn"), clearQueueBtn = $("clearQueueBtn"), libError = $("libError"), laterList = $("laterList");
   function showLibErr(m) { libError.textContent = m || ""; libError.hidden = !m; if (m && window.vpExpandSection) window.vpExpandSection("library"); }
-  var qPos = -1;
+  var qPos = -1, qPlaceRestored = false;
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
   var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false, playedOnce = false;
@@ -3365,13 +3365,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (Array.isArray(savedLib.favs)) lib.favs = savedLib.favs.filter(validItem);
       if (Array.isArray(savedLib.queue)) lib.queue = savedLib.queue.filter(validItem).slice(0, 50);
       if (Array.isArray(savedLib.later)) lib.later = savedLib.later.filter(validItem).slice(0, 50);
+      // Round 150: restore the queue's place - qcur holds the video id of the row that
+      // was current when the app was last open, so the ▶ marker, Next, Previous and
+      // auto-next continue from there instead of jumping back to the first video.
+      if (typeof savedLib.qcur === "string") { var rq = findIn(lib.queue, savedLib.qcur); if (rq >= 0) { qPos = rq; qPlaceRestored = true; } }
     }
   } catch (e) {}
   function validItem(x) { return x && typeof x.id === "string" && /^[a-zA-Z0-9_-]{11}$/.test(x.id); }
+  // Queue remembers its place (round 150): the queue's current row is written into the
+  // library on every save (qcur, one video id) and restored on the next open - before this,
+  // reopening the app kept the queue's videos but forgot which one you were on, so Next and
+  // auto-next jumped back to the first video and the ▶ marker vanished. Continuing a
+  // half-watched video (the resume banner or a Continue watching row) re-joins the queue
+  // at that row when the video sits in it, so the place survives the usual resume flow.
+  // The place rides the backup export/import with the queue itself, older backups simply
+  // carry no place, no new setting, works on YouTube videos, translated in Hindi and
+  // Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Queue remembers its place": ["कतार अपनी जगह याद रखती है", "કતાર પોતાની જગહ યાદ રાખે છે"],
+    "Queue continues from where you left it": ["कतार वहीं से जारी है जहां छोड़ा था", "કતાર ત્યાંથી ચાલુ છે જ્યાં છોડ્યું હતું"]
+  });
+  if (qPlaceRestored) setTimeout(function () { toast(T("Queue continues from where you left it") + " - " + (qPos + 1) + "/" + lib.queue.length); }, 1600);
   // Round 138: a Watch later video parked with its snooze chip stays dimmed at the
   // bottom of the list until its wake-up time passes.
   function laterSnoozed(x) { return !!(x && typeof x.snoozeUntil === "number" && x.snoozeUntil > Date.now()); }
-  function saveLib() { try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); } catch (e) {} }
+  function saveLib() { try { lib.qcur = (qPos >= 0 && qPos < lib.queue.length && lib.queue[qPos] && typeof lib.queue[qPos].id === "string") ? lib.queue[qPos].id : null; localStorage.setItem(LIB_KEY, JSON.stringify(lib)); } catch (e) {} }
   function findIn(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return i; return -1; }
   function titleFor(id) {
     var h = findIn(lib.hist, id), f = findIn(lib.favs, id), q = findIn(lib.queue, id), w = findIn(lib.later, id);
@@ -4936,7 +4954,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var box = $("resumeBox");
     resumeRender();
     box.hidden = false;
-    $("resumeGo").addEventListener("click", function () { box.hidden = true; linkInput.value = "https://youtu.be/" + r.id; loadVideo(resumeStart(r.t), null, undefined, true); });
+    $("resumeGo").addEventListener("click", function () { box.hidden = true; linkInput.value = "https://youtu.be/" + r.id; var rqi = findIn(lib.queue, r.id); loadVideo(resumeStart(r.t), null, rqi >= 0 ? rqi : undefined, true); });
     $("resumeX").addEventListener("click", function () { box.hidden = true; try { localStorage.removeItem(RK); } catch (e) {} });
   })();
 
@@ -8448,6 +8466,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (typeof lyricsFlush === "function") lyricsFlush();
     var data = { app: "hd-video-player", version: 2, exportedAt: new Date().toISOString(),
       queue: lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }),
+      queuePos: (qPos >= 0 && qPos < lib.queue.length && lib.queue[qPos]) ? lib.queue[qPos].id : null,
       favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "", pin: x.pin === true }; }),
       later: lib.later.map(function (x) { var o = { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (laterSnoozed(x)) o.snoozeUntil = x.snoozeUntil; return o; }),
       playlists: playlists.map(function (p) { return { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; }),
@@ -8498,6 +8517,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (mergePracticeLoops(d.practiceLoops)) { savePracticeLoops(); renderPracticeLoops(); }
         var qn = 0, fn = 0;
         q.forEach(function (x) { if (validItem(x) && findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: typeof x.title === "string" ? x.title : "" }); qn++; } });
+        if (typeof d.queuePos === "string") { var iqPos = findIn(lib.queue, d.queuePos); if (iqPos >= 0) qPos = iqPos; }
         fv.forEach(function (x) { if (validItem(x) && findIn(lib.favs, x.id) < 0) { lib.favs.push({ id: x.id, title: typeof x.title === "string" ? x.title : "", pin: x.pin === true }); fn++; } });
         var pn = 0;
         (Array.isArray(d.playlists) ? d.playlists : []).forEach(function (p) {
@@ -10428,7 +10448,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var fill = document.createElement("i"); fill.style.width = Math.min(100, Math.round(item.t / item.dur * 100)) + "%";
       prog.appendChild(fill); box.appendChild(span); box.appendChild(meta); box.appendChild(prog);
       open.appendChild(img); open.appendChild(box);
-      open.addEventListener("click", function () { linkInput.value = "https://youtu.be/" + item.id; loadVideo(resumeStart(item.t), null, undefined, true); });
+      open.addEventListener("click", function () { linkInput.value = "https://youtu.be/" + item.id; var cqi = findIn(lib.queue, item.id); loadVideo(resumeStart(item.t), null, cqi >= 0 ? cqi : undefined, true); });
       var act = document.createElement("button"); act.className = "chip"; act.type = "button"; act.textContent = T("Remove");
       act.addEventListener("click", function () { item.t = 0; saveLib(); renderLib(); });
       li.appendChild(open); li.appendChild(act); ul.appendChild(li);
@@ -11752,6 +11772,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Queue remembers its place", "#lhQueue"],
     ["Thumb shimmer", "#lhQueue"],
     ["Glass switches", "#autoPauseChk"],
     ["Speed keys", "#sc14"],
@@ -11760,8 +11781,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Top channels", "#lhStats"],
     ["Loop a moment", "#markList"],
     ["Finder cascade", "#palBtn"],
-    ["Toast spring", "#vpToast"],
-    ["Time in the tab title", "#tabTimeChk"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -16988,7 +17007,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Glass switches", "glass switches settings toggles iphone style on off switch look premium controls accessibility", "#autoPauseChk"],
       ["Speed keys", "speed keys keyboard shortcut slower faster playback speed less greater than shift comma period step 0.25 2x rate", "#sc14"],
       ["Stats grow", "stats grow bars chart week days hours calendar watch time statistics numbers grow rise pop in entrance animate progress card", "#lhStats"],
-      ["Dock glide", "dock glide mini player corner spring slide up settle back dock undock scroll down small floating player entrance animation", "#playerDock"]
+      ["Dock glide", "dock glide mini player corner spring slide up settle back dock undock scroll down small floating player entrance animation", "#playerDock"],
+      ["Queue remembers its place", "queue remembers place current row reload reopen app continue where you left off next auto-next previous marker saved", "#lhQueue"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
