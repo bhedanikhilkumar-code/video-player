@@ -1979,7 +1979,7 @@ setTimeout(done,3000);})();
             <button class="chip" id="bBtn">Set B</button>
             <button class="chip" id="abClearBtn">Clear</button><button class="chip" id="abLast10Btn" type="button">⏪ Last 10s</button>
           </div>
-          <div class="row" id="abNudgeRow" style="margin-top:8px"><span class="label" id="abNudgeLab">Fine-tune:</span><button class="chip" id="abAmBtn" type="button">A -1s</button><button class="chip" id="abApBtn" type="button">A +1s</button><button class="chip" id="abBmBtn" type="button">B -1s</button><button class="chip" id="abBpBtn" type="button">B +1s</button></div>
+          <div class="row" id="abNudgeRow" style="margin-top:8px"><span class="label" id="abNudgeLab">Fine-tune:</span><button class="chip" id="abAmBtn" type="button">A -1s</button><button class="chip" id="abApBtn" type="button">A +1s</button><button class="chip" id="abBmBtn" type="button">B -1s</button><button class="chip" id="abBpBtn" type="button">B +1s</button><span class="label" id="abShiftLab" style="margin-left:6px">Shift loop:</span><button class="chip" id="abShiftMBtn" type="button">-1s</button><button class="chip" id="abShiftPBtn" type="button">+1s</button></div>
           <span class="label" id="abLabel" role="status">Off</span>
         </div>
 
@@ -6833,6 +6833,35 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (abApBtn) abApBtn.addEventListener("click", function () { abNudgePoint("A", 1); });
   if (abBmBtn) abBmBtn.addEventListener("click", function () { abNudgePoint("B", -1); });
   if (abBpBtn) abBpBtn.addEventListener("click", function () { abNudgePoint("B", 1); });
+
+  // Shift the whole loop (round 212 new 1): the nudge chips move one end at a time,
+  // but a practiced loop that sits half a second early needs BOTH ends moved together,
+  // length untouched - four taps become one. The pair of chips slides the whole A-B
+  // window a second at a time, clamped to the video's start and end, and the repeat
+  // label and seekbar band repaint like any other A-B change. Hindi and Gujarati text
+  // included, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Shift loop:": ["लूप खिसकाएं:", "લૂપ ખસેડો:"],
+    "Shift the whole A-B loop one second": ["पूरा A-B लूप एक सेकंड खिसकाएं", "આખો A-B લૂપ એક સેકંડ ખસેડો"],
+    "Set A and B first, then shift the loop.": ["पहले A और B लगाएं, फिर लूप खिसकाएं.", "પહેલા A અને B લગાવો, પછી લૂપ ખસેડો."],
+    "Shift the whole loop": ["पूरा लूप खिसकाएं", "આખો લૂપ ખસેડો"]
+  });
+  var abShiftLab = $("abShiftLab"), abShiftMBtn = $("abShiftMBtn"), abShiftPBtn = $("abShiftPBtn");
+  function abShiftBoth(delta) {
+    if (abA == null || abB == null) { abLabel.textContent = T("Set A and B first, then shift the loop."); return; }
+    var len = abB - abA, na = abA + delta;
+    if (na < 0) na = 0;
+    if (duration > 0 && na + len > Math.floor(duration)) na = Math.floor(duration) - len;
+    if (na < 0) na = 0;
+    if (na !== abA) { abA = na; abB = na + len; abLoopCount = 0; updateAB(); }
+  }
+  if (abShiftMBtn) abShiftMBtn.addEventListener("click", function () { abShiftBoth(-1); });
+  if (abShiftPBtn) abShiftPBtn.addEventListener("click", function () { abShiftBoth(1); });
+  (window.__relang = window.__relang || []).push(function () {
+    if (abShiftLab) abShiftLab.textContent = T("Shift loop:");
+    if (abShiftMBtn) abShiftMBtn.setAttribute("aria-label", T("Shift the whole A-B loop one second") + " -1");
+    if (abShiftPBtn) abShiftPBtn.setAttribute("aria-label", T("Shift the whole A-B loop one second") + " +1");
+  });
   (window.__relang = window.__relang || []).push(function () { if (abNudgeLab) abNudgeLab.textContent = T("Fine-tune:"); });
 
   // Loop the last 10 seconds (round 211 new 4): the most common A-B use is 'play that bit
@@ -14818,6 +14847,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Shift the whole loop", "#abShiftMBtn"],
     ["Weekly goal", "#wgoalRow"],
     ["Surprise me in Watch later", "#laterSurpriseBtn"],
     ["A-B fine-tune nudge chips", "#abNudgeRow"],
@@ -21150,6 +21180,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Shift the whole loop", "shift whole loop ab window move both ends together second slide practice section", "#abShiftMBtn"],
       ["Copy time", "copy time current second timestamp paste note chat chapter list clipboard jump to time", "#copyTimeBtn"],
       ["Weekly goal", "weekly goal hours week target watch time stats seven days total 3 5 7 10", "#wgoalRow"],
       ["Surprise me in Watch later", "surprise random unwatched watch later pick play dice saved list", "#laterSurpriseBtn"],
