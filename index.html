@@ -3355,6 +3355,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // queue, a favourite or a setting looked saved and was gone at the next open. Every failed save now
   // shows one warning note (at most once a minute, so a burst of saves does not spam).
   Object.assign(TR_MSG, { "Could not save: browser storage is full or blocked. Your latest changes may be lost - export a backup.": ["सेव नहीं हो सका: ब्राउज़र की स्टोरेज भरी है या बंद है. आपके ताज़ा बदलाव खो सकते हैं - बैकअप निकाल लें.", "સેવ ન થયું: બ્રાઉઝરનું સ્ટોરેજ ભરેલું છે અથવા બંધ છે. તમારા તાજા ફેરફારો જઈ શકે છે - બેકઅપ કાઢી લો."] });
+  Object.assign(TR_MSG, {"Not saved - export a backup before closing.": ["सेव नहीं हुआ - बंद करने से पहले बैकअप निकालें.", "સાચવાયું નથી - બંધ કરતાં પહેલાં બેકઅપ કાઢો."]});
   var storageWarnAt = 0;
   function storageWarn() {
     var now = Date.now(); if (now - storageWarnAt < 60000) return; storageWarnAt = now;
@@ -12463,7 +12464,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Saved moments: named, tappable timestamps for the current YouTube video, saved on this device.
   var MARKS_KEY = "vp-marks.v1", marks = {};
   try { var mkIn = JSON.parse(localStorage.getItem(MARKS_KEY) || "null"); if (mkIn && typeof mkIn === "object") marks = mkIn; } catch (e) {}
-  function marksSave() { try { localStorage.setItem(MARKS_KEY, JSON.stringify(marks)); } catch (e) {} }
+  function marksSave() { try { localStorage.setItem(MARKS_KEY, JSON.stringify(marks)); return true; } catch (e) { storageWarn(); return false; } }
   // Loop a moment (round 146): every saved moment grows a repeat chip - one tap
   // loops the video from that moment to the next saved moment (or to the outro
   // mark or the end of the video when it is the last), so a chorus or a tricky
@@ -12872,7 +12873,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // again now that the Note pills can show.
   if (typeof renderLib === "function") renderLib();
   var noteTimer = null, noteShown = null;
-  function notesSave() { try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch (e) {} }
+  function notesSave() { try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); return true; } catch (e) { storageWarn(); return false; } }
   // Times written in a note (1:23 or 1:02:03) become buttons that jump to that moment.
   function renderNoteTimes() {
     var box = $("noteTimes"), b = $("noteBox"); if (!box || !b) return;
@@ -12897,11 +12898,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var v = b.value.slice(0, 600);
     var hadNote = typeof notes[noteShown] === "string" && !!notes[noteShown].trim();
     if (v.trim()) notes[noteShown] = v; else delete notes[noteShown];
-    notesSave();
+    var stored = notesSave();
     // Round 116: refresh the library rows only when the note's empty/full state flipped,
     // so the Note pill appears or disappears without rebuilding the lists on every keystroke.
     if (hadNote !== !!v.trim() && typeof renderLib === "function") renderLib();
-    if (st) st.textContent = T("Note saved");
+    if (st) st.textContent = T(stored ? "Note saved" : "Not saved - export a backup before closing.");
   }
   function renderNotes() {
     var b = $("noteBox"); if (!b || !notes) return;
@@ -13236,7 +13237,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   try { var lyrIn = JSON.parse(localStorage.getItem(LYR_KEY) || "null"); if (lyrIn && typeof lyrIn === "object" && !Array.isArray(lyrIn)) lyrics = lyrIn; } catch (e) {}
   var lyricsUi = { show: false, scroll: true };
   try { var luIn = JSON.parse(localStorage.getItem(LYR_UI_KEY) || "null"); if (luIn && typeof luIn === "object") { lyricsUi.show = !!luIn.show; lyricsUi.scroll = luIn.scroll !== false; } } catch (e) {}
-  function lyricsSave() { try { localStorage.setItem(LYR_KEY, JSON.stringify(lyrics)); } catch (e) {} }
+  function lyricsSave() { try { localStorage.setItem(LYR_KEY, JSON.stringify(lyrics)); return true; } catch (e) { storageWarn(); return false; } }
   function lyricsUiSave() { try { localStorage.setItem(LYR_UI_KEY, JSON.stringify(lyricsUi)); } catch (e) {} }
   var lyrOv = null, lyrLines = [], lyrForId = null, lyrForText = null, lyrForSync = false;
   (function () {
@@ -13314,8 +13315,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var b = $("lyricsBox"); if (!b || !lyricsShown) return;
     var v = b.value.slice(0, 4000);
     if (v.trim()) lyrics[lyricsShown] = v; else delete lyrics[lyricsShown];
-    lyricsSave();
-    var st2 = $("lyricsStatus"); if (st2) st2.textContent = T("Lyrics saved");
+    var stored = lyricsSave();
+    var st2 = $("lyricsStatus"); if (st2) st2.textContent = T(stored ? "Lyrics saved" : "Not saved - export a backup before closing.");
     lyrForId = null; lyricsPaintBtns(); lyricsPaintOv();
   }
   function lyricsPaintBtns() {
