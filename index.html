@@ -4334,7 +4334,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (copyQueueBtn) copyQueueBtn.addEventListener("click", function () {
     if (!lib.queue.length) { showLibErr(T("Queue is empty. Add links with Add to queue.")); return; }
     var text = lib.queue.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n");
-    function done(ok) { toast(ok ? T("Queue copied as a list") : T("Could not copy. Try again.")); }
+    function done(ok) { if (ok) copyTick(copyQueueBtn); toast(ok ? T("Queue copied as a list") : T("Could not copy. Try again.")); }
     function fallback() {
       try { var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var ok2 = document.execCommand("copy"); ta.remove(); done(!!ok2); } catch (e) { done(false); }
     }
@@ -4354,19 +4354,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   // Copy list for Watch later, Favourites and Recently watched (round 116): one tap puts the
   // numbered titles and links on the clipboard, ready to paste into a chat or a note app.
-  function copyLibList(items, emptyMsg, okMsg) {
+  function copyLibList(items, emptyMsg, okMsg, btn) {
     if (!items.length) { showLibErr(T(emptyMsg)); return; }
     var text = items.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n");
-    function done(ok) { toast(ok ? T(okMsg) : T("Could not copy. Try again.")); }
+    function done(ok) { if (ok) copyTick(btn); toast(ok ? T(okMsg) : T("Could not copy. Try again.")); }
     function fallback() {
       try { var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var ok2 = document.execCommand("copy"); ta.remove(); done(!!ok2); } catch (e) { done(false); }
     }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback); else fallback();
   }
   var laterCopyBtn = $("laterCopyBtn"), favCopyBtn = $("favCopyBtn"), histCopyBtn = $("histCopyBtn");
-  if (laterCopyBtn) laterCopyBtn.addEventListener("click", function () { copyLibList(lib.later, "Nothing saved for later yet. Load a video and tap Watch later.", "Watch later list copied"); });
-  if (favCopyBtn) favCopyBtn.addEventListener("click", function () { copyLibList(lib.favs, "No favourites yet. Load a video and tap Add to favourites.", "Favourites list copied"); });
-  if (histCopyBtn) histCopyBtn.addEventListener("click", function () { copyLibList(lib.hist, "Videos you play will show up here.", "History list copied"); });
+  if (laterCopyBtn) laterCopyBtn.addEventListener("click", function () { copyLibList(lib.later, "Nothing saved for later yet. Load a video and tap Watch later.", "Watch later list copied", laterCopyBtn); });
+  if (favCopyBtn) favCopyBtn.addEventListener("click", function () { copyLibList(lib.favs, "No favourites yet. Load a video and tap Add to favourites.", "Favourites list copied", favCopyBtn); });
+  if (histCopyBtn) histCopyBtn.addEventListener("click", function () { copyLibList(lib.hist, "Videos you play will show up here.", "History list copied", histCopyBtn); });
   function copyListBtnsPaint() { [laterCopyBtn, favCopyBtn, histCopyBtn].forEach(function (bb) { if (bb) bb.textContent = T("Copy list"); }); }
   (window.__relang = window.__relang || []).push(copyListBtnsPaint);
   copyListBtnsPaint();
@@ -6473,7 +6473,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!curId) { toast(T("Load a video first, then copy its title and link.")); return; }
     var text = (infoTitle.textContent || titleFor(curId) || "Video") + "\nhttps://youtu.be/" + curId;
     var settled = false;
-    function fin(ok) { if (settled) return; settled = true; toast(ok ? T("Title and link copied") : T("Could not copy. Try again.")); }
+    function fin(ok) { if (settled) return; settled = true; if (ok) copyTick(infoCopyBtn); toast(ok ? T("Title and link copied") : T("Could not copy. Try again.")); }
     var done = false;
     try {
       var ta = document.createElement("textarea");
@@ -6535,6 +6535,46 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     + "html.high-contrast .lib-item.q-dragging{transform:none;box-shadow:none;outline-width:3px}"
     + "@media (prefers-reduced-motion:reduce){.lib-item{transition:none}.lib-item.q-dragging{transform:none;box-shadow:none;opacity:1}}";
   document.head.appendChild(dragLiftSt);
+
+  // Copied tick (round 165): when a copy chip actually lands text on the clipboard -
+  // Copy title & link in Now playing, or Copy list on Up next, Watch later,
+  // Favourites and Recently watched - a small green tick springs up from the chip you
+  // pressed and floats away, the little receipt an iPhone gives when something
+  // copies, so the confirmation lives right under your finger instead of only in the
+  // toast at the bottom. Pure look on the existing copy paths (the toasts stay): no
+  // setting, nothing new is saved, a key-only copy (Y, I) skips it when its chip is
+  // off-screen, and under Calm/reduced motion and Low-end mode the tick appears and
+  // fades without the spring, while High contrast gives it a strong ring. Works on
+  // YouTube videos, translated in Hindi and Gujarati, listed in the feature finder
+  // and the What's new card.
+  Object.assign(TR_MSG, {
+    "Copied tick": ["कॉपी टिक", "કૉપિ ટિક"]
+  });
+  var copyTickSt = document.createElement("style");
+  copyTickSt.textContent =
+    ".vp-copytick{position:fixed;z-index:9800;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;background:var(--teal,#3a8a77);color:#fff;font-size:15px;font-weight:700;line-height:26px;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.3);pointer-events:none;opacity:0;transform:translateY(6px) scale(.4);transition:transform .5s cubic-bezier(.2,1.4,.3,1),opacity .5s ease}"
+    + ".vp-copytick.go{opacity:1;transform:translateY(-26px) scale(1)}"
+    + ".vp-copytick.bye{opacity:0;transform:translateY(-40px) scale(.85);transition:transform .35s ease,opacity .35s ease}"
+    + "html.calm-motion .vp-copytick,html.low-fx .vp-copytick{transition:opacity .3s ease}"
+    + "html.calm-motion .vp-copytick,html.calm-motion .vp-copytick.go,html.calm-motion .vp-copytick.bye,html.low-fx .vp-copytick,html.low-fx .vp-copytick.go,html.low-fx .vp-copytick.bye{transform:none}"
+    + "html.high-contrast .vp-copytick{border:2px solid #fff}"
+    + "@media (prefers-reduced-motion:reduce){.vp-copytick{transition:opacity .3s ease}.vp-copytick,.vp-copytick.go,.vp-copytick.bye{transform:none}}";
+  document.head.appendChild(copyTickSt);
+  function copyTick(btn) {
+    if (!btn || !btn.getBoundingClientRect) return;
+    var r = btn.getBoundingClientRect();
+    if ((!r.width && !r.height) || r.bottom < 0 || r.top > (window.innerHeight || 800)) return;
+    var t = document.createElement("div");
+    t.className = "vp-copytick";
+    t.textContent = "✓";
+    t.setAttribute("aria-hidden", "true");
+    t.style.left = (r.left + r.width / 2) + "px";
+    t.style.top = r.top + "px";
+    document.body.appendChild(t);
+    setTimeout(function () { t.classList.add("go"); }, 20);
+    setTimeout(function () { t.classList.add("bye"); }, 700);
+    setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 1200);
+  }
 
   // Watch later feed (round 160): when it is on and the queue runs out - the last video
   // finishes, or a shuffle lap ends with Repeat off - the app pulls the next unwatched,
@@ -12342,6 +12382,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Copied tick", "#infoCopyBtn"],
     ["Drag lift", "#lhQueue"],
     ["I to copy title and link", "#sc23"],
     ["Z to skip and remove", "#sc24"],
@@ -12351,7 +12392,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Move to end", "#qPickBtn"],
     ["Row hover lift", "#lhQueue"],
     ["Menu edge fade", "#featNav"],
-    ["Watch later feed", "#qFeedBtn"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -18068,7 +18108,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Q to find it in the queue", "queue find key q keyboard shortcut locate playing video current row scroll highlight ring where am i long queue", "#sc22"],
       ["Move to end", "move to end bottom queue pick many send last later rest plays first not in the mood reorder", "#qPickBtn"],
       ["Row hover lift", "row hover lift library rows queue favourites watch later history playlist raise float shadow thumbnail zoom desktop mouse pointer poster", "#lhQueue"],
-      ["Drag lift", "drag lift queue row reorder pick up move grip float shadow glass edge iphone icon grab grabbing", "#lhQueue"]
+      ["Drag lift", "drag lift queue row reorder pick up move grip float shadow glass edge iphone icon grab grabbing", "#lhQueue"],
+      ["Copied tick", "copied tick copy confirmation green check pop chip button clipboard feedback receipt copy list title link", "#infoCopyBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
