@@ -9716,6 +9716,29 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Kept the first videos:": ["शुरू के वीडियो रखे:", "શરૂઆતના વીડિયો રાખ્યા:"],
     "removed": ["हटाए", "કાઢ્યા"]
   });
+  // Playlist actions More menu (round 199): every saved playlist row carried all of its
+  // action chips at once - Play, Shuffle, sorts, Split, Merge, Export, Delete... over
+  // twenty - so one playlist filled half a phone screen. The everyday four stay as chips;
+  // the rest live in a frosted glass More menu that springs open under its chip, like the
+  // long-press menus on an iPhone. Nothing is removed: same actions, same order, same Undo
+  // and messages, and the Videos and Share chips still join the row after it. No setting,
+  // nothing new is saved. Dark theme, High contrast, Calm and Low-end treatments below.
+  Object.assign(TR_MSG, {
+    "Playlist actions More menu": ["प्लेलिस्ट एक्शन का और मेनू", "પ્લેલિસ્ટ એક્શનનું વધુ મેનૂ"],
+    "More actions": ["और एक्शन", "વધુ એક્શન"]
+  });
+  var plMoreSt = document.createElement("style");
+  plMoreSt.textContent = ".pl-more{display:inline-block}"
+    + ".pl-more-menu{position:fixed;z-index:4000;inset:auto;margin:0;min-width:210px;max-width:min(260px,calc(100vw - 16px));max-height:min(70vh,480px);overflow:auto;padding:6px;display:flex;flex-direction:column;gap:4px;border-radius:18px;background:linear-gradient(165deg,rgba(255,255,255,.9),rgba(255,255,255,.7));-webkit-backdrop-filter:blur(20px) saturate(1.6);backdrop-filter:blur(20px) saturate(1.6);border:1px solid rgba(255,255,255,.7);box-shadow:0 18px 44px rgba(10,8,20,.26),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.25);animation:plMorePop .18s cubic-bezier(.34,1.4,.5,1)}"
+    + ".pl-more-menu[hidden]{display:none}"
+    + ".pl-more-menu .chip{width:100%;text-align:left;justify-content:flex-start;min-height:40px}"
+    + "@keyframes plMorePop{from{opacity:0;transform:translateY(-6px) scale(.97)}to{opacity:1;transform:none}}"
+    + ":root[data-theme=\"dark\"] .pl-more-menu{background:linear-gradient(165deg,rgba(42,40,52,.92),rgba(28,26,38,.78));border-color:rgba(255,255,255,.16);box-shadow:0 18px 44px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.05)}"
+    + ":root.low-fx .pl-more-menu{-webkit-backdrop-filter:none !important;backdrop-filter:none !important;background:var(--card,#fff)}"
+    + ":root.high-contrast .pl-more-menu{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card,#fff);border:2px solid currentColor;box-shadow:none}"
+    + "html.calm-motion .pl-more-menu,html.low-fx .pl-more-menu{animation:none}"
+    + "@media (prefers-reduced-motion:reduce){.pl-more-menu{animation:none}}";
+  document.head.appendChild(plMoreSt);
   function plShuffled(items) {
     var a = items.map(function (x) { return { id: x.id, title: x.title }; });
     for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
@@ -9949,6 +9972,73 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (!await vpConfirm(T("Delete the playlist") + " \"" + pl.name + "\"? " + T("Your queue stays as it is."), T("Delete"))) return;
         playlists.splice(idx, 1); savePlaylists(); renderPlaylists(); plSay(T("Deleted."));
       });
+      // Playlist actions More menu (round 199, wiring): the first four chips stay in the
+      // row; every later chip moves into the glass More menu. Moving nodes keeps each
+      // button's own click handler, Undo and message untouched. The menu joins the top
+      // layer while open (same move the toast made) so the docked mini player can never
+      // cover it, and it closes on tap-outside, Escape, page scroll or any pick; only one
+      // menu is open at a time. Rebuilt on every repaint, so Hindi/Gujarati follow.
+      (function () {
+        var rowChips = Array.prototype.slice.call(acts.children).filter(function (n) { return n.classList && n.classList.contains("chip"); });
+        if (rowChips.length <= 5) return;
+        var keep = 4;
+        var wrap = document.createElement("div"); wrap.className = "pl-more";
+        var moreBtn = document.createElement("button");
+        moreBtn.type = "button"; moreBtn.className = "chip pl-more-btn";
+        moreBtn.setAttribute("aria-haspopup", "menu"); moreBtn.setAttribute("aria-expanded", "false");
+        moreBtn.setAttribute("aria-label", T("More actions") + ": " + pl.name);
+        moreBtn.textContent = T("More") + " ▾";
+        var menu = document.createElement("div");
+        menu.className = "pl-more-menu"; menu.hidden = true;
+        menu.setAttribute("role", "menu");
+        menu.setAttribute("aria-label", T("More actions") + ": " + pl.name);
+        acts.insertBefore(wrap, rowChips[keep]);
+        rowChips.slice(keep).forEach(function (c) { c.setAttribute("role", "menuitem"); menu.appendChild(c); });
+        wrap.appendChild(moreBtn); wrap.appendChild(menu);
+        var open = false;
+        function onDoc(e) { if (!wrap.contains(e.target)) close(); }
+        function onKey(e) { if (e.key === "Escape") { close(); moreBtn.focus(); } }
+        function onScroll(e) { if (!e || !e.target || !menu.contains(e.target)) close(); }
+        function close() {
+          if (!open) return; open = false;
+          menu.hidden = true;
+          moreBtn.setAttribute("aria-expanded", "false");
+          try { if (menu.matches && menu.matches(":popover-open")) menu.hidePopover(); menu.removeAttribute("popover"); } catch (e) {}
+          if (window.__plMoreClose === close) window.__plMoreClose = null;
+          document.removeEventListener("pointerdown", onDoc, true);
+          document.removeEventListener("keydown", onKey, true);
+          window.removeEventListener("scroll", onScroll, true);
+          window.removeEventListener("resize", close);
+        }
+        moreBtn.addEventListener("click", function () {
+          if (open) { close(); return; }
+          if (typeof window.__plMoreClose === "function") window.__plMoreClose();
+          menu.style.visibility = "hidden"; menu.hidden = false;
+          var r = moreBtn.getBoundingClientRect();
+          var w = menu.offsetWidth, h = menu.offsetHeight;
+          var mTop = r.bottom + 6;
+          if (mTop + h > window.innerHeight - 8 && r.top - h - 6 > 8) mTop = r.top - h - 6;
+          if (mTop + h > window.innerHeight - 8) mTop = Math.max(8, window.innerHeight - 8 - h);
+          menu.style.top = mTop + "px";
+          menu.style.left = Math.min(Math.max(8, r.right - w), Math.max(8, window.innerWidth - w - 8)) + "px";
+          menu.style.visibility = "";
+          open = true;
+          moreBtn.setAttribute("aria-expanded", "true");
+          try {
+            if (typeof menu.showPopover === "function") {
+              menu.setAttribute("popover", "manual");
+              menu.showPopover();
+            }
+          } catch (e) { menu.removeAttribute("popover"); }
+          document.addEventListener("pointerdown", onDoc, true);
+          document.addEventListener("keydown", onKey, true);
+          window.addEventListener("scroll", onScroll, true);
+          window.addEventListener("resize", close);
+        });
+        menu.addEventListener("click", function (e) {
+          if (e.target && e.target.closest && e.target.closest(".chip")) close();
+        });
+      })();
       li.appendChild(top); li.appendChild(acts); plList.appendChild(li);
     });
     if (window.__plPickRender) window.__plPickRender();
@@ -13350,6 +13440,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Playlist actions More menu", "#plList"],
     ["Keep first N in a playlist", "#plList"],
     ["Open on YouTube", "#infoYtBtn"],
     ["Glass keycaps", "#scBox"],
@@ -13359,7 +13450,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Shuffle a playlist's saved order", "#plList"],
     ["Glass rest cards", "#vpBreak"],
     ["Split a playlist", "#plList"],
-    ["Glass dialogs", "#vpAskBg"],
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -19277,6 +19367,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Glass number boxes", "glass number boxes custom speed minutes time clock field input well inset frosted stepper arrows spinner digits iphone", "#speedCustom"],
       ["Glass dropdowns", "glass dropdowns select picker playlist chooser downloader quality list arrow chevron frosted menu combo box iphone settings", "#dl"],
       ["Glass dialogs", "glass dialogs popup confirm name box rename merge delete ask frosted blur spring card iphone sheet dialog modal prompt", "#vpAskBg"],
+      ["Playlist actions More menu", "playlist actions more menu group chips overflow tidy crowded row hidden extra actions dropdown glass popover iphone sorts split merge rename export delete less clutter", "#plList"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
