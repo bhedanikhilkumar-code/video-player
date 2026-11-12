@@ -6162,6 +6162,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var link = shareLink(), at = fmt(Math.floor(curTime));
     function ok() { toast(T("Link copied - opens at ") + at); }
     function bad() { toast(T("Could not copy - use Share at this time")); }
+    // A key press is a user gesture, so the plain copy command works at once; some browsers
+    // leave the newer clipboard call waiting on a permission prompt, so it is only the fallback.
+    var done = false;
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = link; ta.setAttribute("readonly", ""); ta.setAttribute("aria-hidden", "true");
+      ta.style.cssText = "position:fixed;left:-9999px;top:0;opacity:0";
+      document.body.appendChild(ta); ta.select();
+      done = document.execCommand("copy");
+      document.body.removeChild(ta);
+    } catch (err) { done = false; }
+    if (done) { ok(); return; }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok, bad); else bad();
   }
   // Speed keys (round 148): press < or > (Shift+comma / Shift+period) to step the playback
