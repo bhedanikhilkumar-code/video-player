@@ -9440,6 +9440,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Everything in this playlist is watched.": ["\u0907\u0938 \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u093e \u0938\u092c \u0915\u0941\u091b \u0926\u0947\u0916\u093e \u091c\u093e \u091a\u0941\u0915\u093e \u0939\u0948.", "\u0a86 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0ac1\u0a82 \u0aac\u0aa7\u0ac1\u0a82 \u0a9c\u0acb\u0a88 \u0ab2\u0ac0\u0aa7\u0ac1\u0a82 \u0a9b\u0ac7."],
     "Play unwatched from a playlist": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0938\u0947 \u0905\u0928\u0926\u0947\u0916\u0947 \u091a\u0932\u093e\u090f\u0902", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aae\u0abe\u0a82\u0aa5\u0ac0 \u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0a9a\u0ab2\u0abe\u0ab5\u0acb"]
   });
+  // Shuffle play (round 184): every saved playlist gets a Shuffle play button next to Play.
+  // It loads the playlist into the queue in a fresh random order and starts the first
+  // video, so a music or study list does not always begin with the same track. The saved
+  // playlist keeps its own order. No setting and nothing new is saved beyond the queue.
+  Object.assign(TR_MSG, {
+    "Shuffle play": ["मिलाकर चलाएं", "ફેરવીને ચલાવો"],
+    "Playing in shuffled order:": ["मिलाकर चल रहा है:", "ફેરવીને ચાલે છે:"]
+  });
+  function plShuffled(items) {
+    var a = items.map(function (x) { return { id: x.id, title: x.title }; });
+    for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+    if (a.length > 1 && items[0] && a[0].id === items[0].id) { var k = 1 + Math.floor(Math.random() * (a.length - 1)); var u = a[0]; a[0] = a[k]; a[k] = u; }
+    return a;
+  }
   function renderPlaylists() {
     plList.textContent = "";
     plSortRefresh();
@@ -9487,6 +9501,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var acts = document.createElement("div"); acts.className = "pl-acts";
       function btn(label, cls, fn) { var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (cls ? " " + cls : ""); b.textContent = label; b.setAttribute("aria-label", label + ": " + pl.name); b.addEventListener("click", fn); acts.appendChild(b); }
       btn(T("Play"), "", playPl);
+      btn(T("Shuffle play"), "", function () {
+        if (!pl.items.length) return;
+        lib.queue = plShuffled(pl.items); qPos = -1; resetShuffle();
+        saveLib(); renderLib(); showLibErr("");
+        plSay(T("Playing in shuffled order:") + " \"" + pl.name + "\" - " + pl.items.length + " " + (pl.items.length === 1 ? T("video") : T("videos")) + ".");
+        playQueueAt(0);
+        if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+      });
       btn(T("Play unwatched"), "", function () {
         if (!pl.items.length) return;
         var un = pl.items.filter(function (x) { var hi = findIn(lib.hist, x.id); return !(hi >= 0 && lib.hist[hi].done); });
@@ -12942,6 +12964,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Shuffle play", "#plList"],
     ["Key echo", "#scBox"],
     ["Pick queue search matches", "#qPickBtn"],
     ["Glass colour orb", "#accentCustom"],
@@ -12951,7 +12974,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Glass shortcuts sheet", "#scBox"],
     ["Smart queue picks", "#qPickBtn"],
     ["Glass chevrons", "#scBox"],
-    ["Live row glow", "#queueList"],
   ];
   Object.assign(TR_MSG, {
     "Glass colour orb": ["\u0917\u094d\u0932\u093e\u0938 \u0930\u0902\u0917 \u0917\u094b\u0932\u093e", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0ab0\u0a82\u0a97 \u0a97\u0acb\u0ab3\u0acb"],
@@ -18797,6 +18819,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Smart queue picks", "smart queue picks select watched unwatched finished seen bulk pick many remove move whole queue", "#qPickBtn"],
       ["Glass chevrons", "glass chevrons faq tips shortcuts fold away box arrow chip spring open close expand collapse frosted rotate reveal answer help", "#scBox"],
       ["Glass shortcuts sheet", "glass shortcuts sheet keyboard question mark popup overlay frosted blur spring card iphone sheet keys help dialog", "#scBox"],
+      ["Shuffle play", "shuffle play playlist random order mix music study list saved queue start different first track surprise", "#plList"],
       ["Key echo", "key echo keyboard shortcut keycap light flash pressed hardware keyboard feedback glass", "#scBox"],
       ["Glass colour orb", "glass colour orb color picker custom accent round swatch dot circle dome ring frosted pick any colour app colour", "#accentCustom"],
       ["Glass number boxes", "glass number boxes custom speed minutes time clock field input well inset frosted stepper arrows spinner digits iphone", "#speedCustom"],
