@@ -6736,6 +6736,50 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     + "html:not(.high-contrast) input,html:not(.high-contrast) textarea{caret-color:#3ab498}";
   document.head.appendChild(glassSelSt);
 
+  // Landing glow (round 171): tapping an item in the feature menu scrolls to its section, and
+  // once the scroll settles that section's edge lights up with a soft teal glass halo that
+  // fades in about a second, so your eye finds where the page landed. Pure look: no setting,
+  // nothing new is saved, the jump itself is unchanged. Still under Calm/reduced motion and
+  // Low-end mode (a short plain outline), High contrast gets a solid white outline.
+  // Works on YouTube videos, translated in Hindi and Gujarati, listed in the feature finder
+  // and the What's new card.
+  Object.assign(TR_MSG, {
+    "Landing glow": ["लैंडिंग ग्लो", "લેન્ડિંગ ગ્લો"]
+  });
+  var landSt = document.createElement("style");
+  landSt.textContent =
+    "@keyframes vpLand{0%{box-shadow:0 0 0 0 rgba(45,212,191,0),0 0 0 rgba(45,212,191,0)}25%{box-shadow:0 0 0 3px rgba(45,212,191,.6),0 0 38px rgba(45,212,191,.38)}100%{box-shadow:0 0 0 0 rgba(45,212,191,0),0 0 0 rgba(45,212,191,0)}}"
+    + "html .vp-land{animation:vpLand 1.3s ease-out 1 both}"
+    + "html.low-fx .vp-land,html.calm-motion .vp-land{animation:none;outline:2px solid rgba(45,212,191,.7);outline-offset:2px}"
+    + "html.high-contrast .vp-land{animation:none;outline:4px solid #fff;outline-offset:2px}"
+    + "@media (prefers-reduced-motion:reduce){html .vp-land{animation:none;outline:2px solid rgba(45,212,191,.7);outline-offset:2px}}";
+  document.head.appendChild(landSt);
+  (function () {
+    var nav = document.querySelector(".feat-nav"), landTimer = 0, landEl = null;
+    if (!nav) return;
+    nav.addEventListener("click", function (e) {
+      var a = e.target.closest ? e.target.closest("a") : null;
+      var href = a && a.getAttribute("href") || "";
+      if (!/^#[\w-]+$/.test(href)) return;
+      var t = document.getElementById(href.slice(1));
+      if (!t) return;
+      if (landEl) landEl.classList.remove("vp-land");
+      clearTimeout(landTimer);
+      var last = -1, still = 0, start = Date.now();
+      (function poll() {
+        var y = window.pageYOffset;
+        still = (y === last) ? still + 1 : 0; last = y;
+        if (still >= 6 || Date.now() - start > 1800) {
+          if (!t.offsetParent && t.tagName !== "BODY") return;
+          landEl = t; t.classList.remove("vp-land"); void t.offsetWidth; t.classList.add("vp-land");
+          landTimer = setTimeout(function () { t.classList.remove("vp-land"); }, 1400);
+          return;
+        }
+        requestAnimationFrame(poll);
+      })();
+    });
+  })();
+
   // Watch later feed (round 160): when it is on and the queue runs out - the last video
   // finishes, or a shuffle lap ends with Repeat off - the app pulls the next unwatched,
   // un-snoozed Watch later video into the queue and keeps playing, so a saved backlog
@@ -12592,6 +12636,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Landing glow", "#lhQueue"],
     ["Favourites total time", "#favTime"],
     ["Play picked next", "#qPickBtn"],
     ["Glass selection", "#lhQueue"],
@@ -12601,7 +12646,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Empty breath", "#lhQueue"],
     ["Switch ring", "#saverData"],
     ["E to queue the playing video", "#sc25"],
-    ["Queue unfinished", "#histQueueBtn"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -18348,6 +18392,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Play picked next", "play picked next selected queue right after current now playing following upcoming sooner priority reorder pick many", "#qPickBtn"],
       ["Row hover lift", "row hover lift library rows queue favourites watch later history playlist raise float shadow thumbnail zoom desktop mouse pointer poster", "#lhQueue"],
       ["Drag lift", "drag lift queue row reorder pick up move grip float shadow glass edge iphone icon grab grabbing", "#lhQueue"],
+      ["Landing glow", "landing glow menu tap jump section highlight halo teal edge fade scroll arrive find place ios style", "#lhQueue"],
       ["Glass scrollbar", "glass scrollbar scroll bar thumb slim teal track desktop laptop page scroll ios style hover", "#lhQueue"],
       ["Glass selection", "glass selection highlight select text tint teal blue caret cursor input ios style copy", "#lhQueue"],
       ["Copied tick", "copied tick copy confirmation green check pop chip button clipboard feedback receipt copy list title link", "#infoCopyBtn"],
