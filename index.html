@@ -6823,6 +6823,39 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     + "html.high-contrast[data-theme=\"light\"] ::-webkit-scrollbar-thumb{background:#000;background-clip:padding-box}";
   document.head.appendChild(glassBarSt);
 
+  // Key echo (round 183): the shortcut list answers a hardware-key press with a
+  // brief glass light on the matching key cap, in the inline list and the ? sheet.
+  // Feedback only, not a claim that a command ran. No player hooks or saved setting.
+  Object.assign(TR_MSG, {"Key echo": ["की इको", "કી ઇકો"]});
+  var keyEchoMap = {
+    " ":[1,0], "k":[1,1], "arrowleft":[2,0], "arrowright":[2,0],
+    "j":[3,0], "l":[3,0], "arrowup":[4,0], "arrowdown":[4,0],
+    "m":[5,0], "f":[5,1], "r":[5,2], "n":[5,3],
+    "c":[7,0], "?":[8,0], "a":[9,0], "b":[9,1], "x":[9,2],
+    "t":[10,0], "s":[11,0], ",":[12,0], ".":[12,1],
+    "<":[14,0], ">":[14,1], "p":[15,0], "w":[16,0], "y":[17,0],
+    "g":[18,0], "h":[19,0], "u":[20,0], "d":[21,0], "q":[22,0],
+    "i":[23,0], "z":[24,0], "e":[25,0]
+  };
+  document.addEventListener("keydown", function (e) {
+    var el = e.target, key = String(e.key || "").toLowerCase();
+    if (e.repeat || e.altKey || (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)))) return;
+    var hit = keyEchoMap[key];
+    if (/^[0-9]$/.test(key)) hit = [6,0];
+    if (e.ctrlKey || e.metaKey) { if (key === "v") hit = [13,0]; else return; }
+    if (!hit) return;
+    requestAnimationFrame(function () {
+      document.querySelectorAll('#scBox [id="sc' + hit[0] + '"], #scHelpOverlay [id="sc' + hit[0] + '"]').forEach(function (row) {
+        var cap = row.querySelectorAll("b")[hit[1]];
+        if (!cap) return;
+        clearTimeout(cap._keyEchoTimer);
+        cap.classList.remove("key-echo"); void cap.offsetWidth;
+        cap.classList.add("key-echo");
+        cap._keyEchoTimer = setTimeout(function () { cap.classList.remove("key-echo"); }, 700);
+      });
+    });
+  });
+
   // Glass selection (round 169): highlighting text anywhere on the page - a title, a note,
   // a link in a box - now paints a soft teal-glass tint instead of the default hard blue,
   // and the blinking cursor in every text box turns teal too, so even a text selection
@@ -12909,6 +12942,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Key echo", "#scBox"],
     ["Pick queue search matches", "#qPickBtn"],
     ["Glass colour orb", "#accentCustom"],
     ["Glass number boxes", "#speedCustom"],
@@ -12918,7 +12952,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Smart queue picks", "#qPickBtn"],
     ["Glass chevrons", "#scBox"],
     ["Live row glow", "#queueList"],
-    ["Queue search matches", "#libQueueMatchBtn"],
   ];
   Object.assign(TR_MSG, {
     "Glass colour orb": ["\u0917\u094d\u0932\u093e\u0938 \u0930\u0902\u0917 \u0917\u094b\u0932\u093e", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0ab0\u0a82\u0a97 \u0a97\u0acb\u0ab3\u0acb"],
@@ -18764,6 +18797,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Smart queue picks", "smart queue picks select watched unwatched finished seen bulk pick many remove move whole queue", "#qPickBtn"],
       ["Glass chevrons", "glass chevrons faq tips shortcuts fold away box arrow chip spring open close expand collapse frosted rotate reveal answer help", "#scBox"],
       ["Glass shortcuts sheet", "glass shortcuts sheet keyboard question mark popup overlay frosted blur spring card iphone sheet keys help dialog", "#scBox"],
+      ["Key echo", "key echo keyboard shortcut keycap light flash pressed hardware keyboard feedback glass", "#scBox"],
       ["Glass colour orb", "glass colour orb color picker custom accent round swatch dot circle dome ring frosted pick any colour app colour", "#accentCustom"],
       ["Glass number boxes", "glass number boxes custom speed minutes time clock field input well inset frosted stepper arrows spinner digits iphone", "#speedCustom"],
       ["Glass dropdowns", "glass dropdowns select picker playlist chooser downloader quality list arrow chevron frosted menu combo box iphone settings", "#dl"],
@@ -20901,6 +20935,17 @@ html.low-fx input[type="number"]::-webkit-inner-spin-button, html.low-fx input[t
 html.high-contrast #accentCustom { background: var(--card, #fff) !important; border: 2px solid var(--ink, #000) !important; box-shadow: none !important; }
 html.low-fx #accentCustom { transition: none; box-shadow: none !important; transform: none !important; }
 @media (prefers-reduced-motion: reduce) { :root #accentCustom { transition: none; } :root #accentCustom:hover, :root #accentCustom:active { transform: none; } }
+</style>
+
+<style id="r183-key-echo">
+/* A short light on the printed key, not a new control or an execution status. */
+@keyframes r183KeyEcho { 0% { transform: translateY(1px) scale(.94); } 35% { transform: translateY(-1px) scale(1.08); } 100% { transform: none; } }
+#scBox b.key-echo, #scHelpOverlay b.key-echo { background: linear-gradient(160deg, rgba(255,255,255,.9), rgba(110,230,199,.56)); border-color: var(--teal); color: var(--ink); box-shadow: inset 0 1px 0 #fff, 0 0 0 3px rgba(58,180,152,.18), 0 4px 12px rgba(58,180,152,.25); animation: r183KeyEcho .42s cubic-bezier(.2,.9,.3,1.2); }
+:root[data-theme="dark"] #scBox b.key-echo, :root[data-theme="dark"] #scHelpOverlay b.key-echo { background: linear-gradient(160deg, rgba(127,210,191,.42), rgba(58,180,152,.2)); border-color: #7fd2bf; color: #f0fffc; box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 0 0 3px rgba(127,210,191,.2), 0 4px 12px rgba(0,0,0,.3); }
+html.calm-motion #scBox b.key-echo, html.calm-motion #scHelpOverlay b.key-echo,
+html.low-fx #scBox b.key-echo, html.low-fx #scHelpOverlay b.key-echo { animation: none; transform: none; box-shadow: none; }
+html.high-contrast #scBox b.key-echo, html.high-contrast #scHelpOverlay b.key-echo { animation: none; transform: none; background: var(--ink) !important; color: var(--card) !important; border-color: var(--ink) !important; outline: 2px solid var(--ink); outline-offset: 2px; box-shadow: none !important; }
+@media (prefers-reduced-motion: reduce) { #scBox b.key-echo, #scHelpOverlay b.key-echo { animation: none; transform: none; } }
 </style>
 </body>
           </html>
