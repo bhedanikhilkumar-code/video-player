@@ -4057,6 +4057,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!lib.queue.length) { el.textContent = ""; return; }
     var known = 0, secs = 0;
     lib.queue.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { known++; secs += d; } });
+    // Round 209 fix: the total and the "ends ~" clock counted the video that is
+    // playing right now at its FULL length, so halfway through a 10-minute video
+    // the clock said 10 minutes for it instead of the 5 that are actually left.
+    // The part already watched is now taken off (only when the length is known).
+    if (qPos >= 0 && qPos < lib.queue.length && curId && lib.queue[qPos] && lib.queue[qPos].id === curId && curTime > 0) {
+      var dCur = infoCache[curId] && infoCache[curId].dur;
+      if (typeof dCur === "number" && dCur > 0) secs = Math.max(0, secs - Math.min(Math.floor(curTime), dCur));
+    }
     var sp = prefs.speed > 0 ? prefs.speed : 1;
     var txt = lib.queue.length + " " + T("videos in queue");
     if (known) {
