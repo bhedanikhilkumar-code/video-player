@@ -1808,7 +1808,7 @@ setTimeout(done,3000);})();
         <div class="info-text">
           <span class="np-pill" id="npPill"><span class="np-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="npPillT">Now playing</span></span>
           <div class="info-title" id="infoTitle"></div>
-          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><button class="chip chan-star" id="chanStarBtn" type="button" aria-pressed="false" aria-label="Save channel" hidden>☆</button><span id="infoDur"></span><button class="chip info-copy" id="infoCopyBtn" type="button">Copy title &amp; link</button><span class="vmem-note" id="vmemNote" hidden></span><span class="vmem-note" id="npWatched" hidden></span></div>
+          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><button class="chip chan-star" id="chanStarBtn" type="button" aria-pressed="false" aria-label="Save channel" hidden>☆</button><span id="infoDur"></span><button class="chip info-copy" id="infoCopyBtn" type="button">Copy title &amp; link</button><button class="chip info-copy" id="infoQueueBtn" type="button">Queue this video</button><span class="vmem-note" id="vmemNote" hidden></span><span class="vmem-note" id="npWatched" hidden></span></div>
         </div>
       </div>
 
@@ -2060,6 +2060,7 @@ setTimeout(done,3000);})();
             <li id="sc22"><b>Q</b>: find the video playing now in the queue</li>
             <li id="sc23"><b>I</b>: copy the video title and link, ready to paste in a chat</li>
             <li id="sc24"><b>Z</b>: skip the playing video and remove it from the queue</li>
+            <li id="sc25"><b>E</b>: add the playing video to the end of the queue</li>
           </ul>
           <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
         </details>
@@ -6299,6 +6300,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (k === "q" || k === "Q") qFindPlaying();
     else if (k === "i" || k === "I") iCopyTitle();
     else if (k === "z" || k === "Z") zSkipRemove();
+    else if (k === "e" || k === "E") eQueueThis();
     else handled = false;
     if (handled) e.preventDefault();
   });
@@ -6523,6 +6525,41 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function infoCopyPaint() { if (infoCopyBtn) infoCopyBtn.textContent = T("Copy title & link"); }
   (window.__relang = window.__relang || []).push(infoCopyPaint);
   infoCopyPaint();
+  // E to queue the playing video (round 166): press E, or tap the new Queue this video
+  // chip in the Now playing card, and the video playing right now goes to the end of the
+  // queue. Before this a video opened from a link or from Recently watched could only be
+  // queued by pasting its link again. A video already in the queue is not added twice
+  // (the toast says so), a full queue (50 videos) says so, and with nothing playing it
+  // says to play something first. The toast offers Undo that takes it out again, the
+  // playing position in the queue never moves, and nothing new is saved beyond the queue
+  // itself. Never fires while typing in a box, works on YouTube videos, translated in
+  // Hindi and Gujarati, listed in the Keyboard shortcuts list (and the ? overlay), the
+  // feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Queue this video": ["इस वीडियो को कतार में डालें", "આ વીડિયોને કતારમાં નાખો"],
+    "Added to the queue": ["कतार में डाला", "કતારમાં નાખ્યું"],
+    "Already in the queue": ["पहले से कतार में है", "પહેલેથી કતારમાં છે"],
+    "The queue is full (50 videos).": ["कतार भरी है (50 वीडियो).", "કતાર ભરેલી છે (50 વીડિયો)."],
+    "Play a video first, then add it to the queue.": ["पहले कोई वीडियो चलाएं, फिर उसे कतार में डालें.", "પહેલા કોઈ વીડિયો ચલાવો, પછી કતારમાં નાખો."],
+    "E to queue the playing video": ["चल रहे वीडियो को कतार में डालने के लिए E", "ચાલતા વીડિયોને કતારમાં નાખવા માટે E"]
+  });
+  function eQueueThis() {
+    if (!curId) { toast(T("Play a video first, then add it to the queue.")); return; }
+    if (findIn(lib.queue, curId) >= 0) { toast(T("Already in the queue")); return; }
+    if (lib.queue.length >= 50) { toast(T("The queue is full (50 videos).")); return; }
+    var id = curId;
+    lib.queue.push({ id: id, title: titleFor(id) });
+    saveLib(); renderLib();
+    toastUndo(T("Added to the queue") + " (" + lib.queue.length + ")", function () {
+      var ix = findIn(lib.queue, id);
+      if (ix >= 0) { lib.queue.splice(ix, 1); if (qPos > ix) qPos--; saveLib(); renderLib(); }
+    }, T("Queue restored"));
+  }
+  var infoQueueBtn = $("infoQueueBtn");
+  if (infoQueueBtn) infoQueueBtn.addEventListener("click", eQueueThis);
+  function infoQueuePaint() { if (infoQueueBtn) infoQueueBtn.textContent = T("Queue this video"); }
+  (window.__relang = window.__relang || []).push(infoQueuePaint);
+  infoQueuePaint();
   function zSkipRemove() {
     var item = (qPos >= 0 && qPos < lib.queue.length) ? lib.queue[qPos] : null;
     if (!item || !curId || item.id !== curId) { toast(T("Not playing from the queue - nothing to remove.")); return; }
@@ -11014,6 +11051,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#sc22", "<b>Q</b>: find the video playing now in the queue", "<b>Q</b>: चल रहे वीडियो को कतार में खोजें"],
     ["#sc23", "<b>I</b>: copy the video title and link, ready to paste in a chat", "<b>I</b>: वीडियो का शीर्षक और लिंक कॉपी करें, चैट में चिपकाने के लिए"],
     ["#sc24", "<b>Z</b>: skip the playing video and remove it from the queue", "<b>Z</b>: चल रहे वीडियो को छोड़कर कतार से हटाएं"],
+    ["#sc25", "<b>E</b>: add the playing video to the end of the queue", "<b>E</b>: चल रहे वीडियो को कतार के अंत में जोड़ें"],
     ["#faq7a", "See the <a href=\"#backgroundHelp\">Listening help card</a> below the player for simple steps and the screen-off limits.", "सरल steps और screen-off सीमाओं के लिए प्लेयर के नीचे <a href=\"#backgroundHelp\">Listening help कार्ड</a> देखें."]
   ];
   var I18N_GU_HTML = {
@@ -11030,6 +11068,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#sc22": "<b>Q</b>: ચાલતો વીડિયો કતારમાં શોધો",
  "#sc23": "<b>I</b>: વીડિયોનું શીર્ષક અને લિંક કૉપિ કરો, ચેટમાં પેસ્ટ કરવા માટે",
  "#sc24": "<b>Z</b>: ચાલતો વીડિયો છોડીને કતારમાંથી કાઢો",
+ "#sc25": "<b>E</b>: ચાલતા વીડિયોને કતારના અંતે ઉમેરો",
  "#sc1": "<b>Space</b> અથવા <b>K</b>: ચલાવો / રોકો",
  "#sc2": "<b>Left / Right</b>: 5 સેકંડ પાછળ / આગળ",
  "#sc3": "<b>J / L</b>: 10 સેકંડ પાછળ / આગળ",
@@ -12413,6 +12452,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["E to queue the playing video", "#sc25"],
     ["Queue unfinished", "#histQueueBtn"],
     ["Copied tick", "#infoCopyBtn"],
     ["Drag lift", "#lhQueue"],
@@ -12422,7 +12462,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Theme spin", "#themeBtn"],
     ["Q to find it in the queue", "#sc22"],
     ["Move to end", "#qPickBtn"],
-    ["Row hover lift", "#lhQueue"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -18141,6 +18180,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Row hover lift", "row hover lift library rows queue favourites watch later history playlist raise float shadow thumbnail zoom desktop mouse pointer poster", "#lhQueue"],
       ["Drag lift", "drag lift queue row reorder pick up move grip float shadow glass edge iphone icon grab grabbing", "#lhQueue"],
       ["Copied tick", "copied tick copy confirmation green check pop chip button clipboard feedback receipt copy list title link", "#infoCopyBtn"]
+      ["E to queue the playing video", "queue this video playing now key e keyboard shortcut add end of queue current chip now playing link opened from history", "#sc25"],
       ["Queue unfinished", "queue unfinished started half watched finish what i began history recently watched continue resume add all partly incomplete", "#histQueueBtn"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
