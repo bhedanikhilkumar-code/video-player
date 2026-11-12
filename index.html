@@ -2324,6 +2324,8 @@ setTimeout(done,3000);})();
         <span class="row">
           <button class="chip" id="qPickAllBtn" type="button">All</button>
           <button class="chip" id="qPickNoneBtn" type="button">None</button>
+          <button class="chip" id="qPickWatchedBtn" type="button">Pick watched</button>
+          <button class="chip" id="qPickUnwatchedBtn" type="button">Pick unwatched</button>
           <button class="chip" id="qPickInvertBtn" type="button">Invert picks</button>
           <button class="chip" id="qPickCopyBtn" type="button">Copy picked</button>
           <button class="chip" id="qPickTopBtn" type="button">Move to top</button>
@@ -8745,7 +8747,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       qPickPrune();
       qPickCount.textContent = qPicked.length ? qPicked.length + " " + T("picked") : T("Tap videos to pick them.");
     }
-    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickInvertBtn", "Invert picks"], ["qPickCopyBtn", "Copy picked"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickNextBtn", "Play next"], ["qPickLaterBtn", "Watch later"], ["qPickFavBtn", "Favourite picked"], ["qPickPlBtn", "Add picked to playlist"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
+    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickWatchedBtn", "Pick watched"], ["qPickUnwatchedBtn", "Pick unwatched"], ["qPickInvertBtn", "Invert picks"], ["qPickCopyBtn", "Copy picked"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickNextBtn", "Play next"], ["qPickLaterBtn", "Watch later"], ["qPickFavBtn", "Favourite picked"], ["qPickPlBtn", "Add picked to playlist"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
   }
   function qPickNeed() { if (!qPicked.length) { toast(T("Pick some videos first.")); return false; } return true; }
   if (qPickBtn) qPickBtn.addEventListener("click", function () {
@@ -8754,6 +8756,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   if ($("qPickAllBtn")) $("qPickAllBtn").addEventListener("click", function () { qPicked = lib.queue.slice(); renderLib(); });
   if ($("qPickNoneBtn")) $("qPickNoneBtn").addEventListener("click", function () { qPicked = []; renderLib(); });
+  // Smart queue picks (round 178): replace only the temporary selection, using
+  // the same queue/history watched test as Skip watched. Never changes watch flags,
+  // queue order or playback. Existing bulk actions can then move or remove the set.
+  Object.assign(TR_MSG, {
+    "Smart queue picks": ["कतार में समझदार चयन", "કતારમાં સ્માર્ટ પસંદગી"],
+    "Pick watched": ["देखे हुए चुनें", "જોયેલા પસંદ કરો"],
+    "Pick unwatched": ["बिना देखे चुनें", "ન જોયેલા પસંદ કરો"],
+    "No watched videos in the queue.": ["कतार में कोई देखा हुआ वीडियो नहीं है.", "કતારમાં કોઈ જોયેલો વીડિયો નથી."],
+    "No unwatched videos in the queue.": ["कतार में कोई बिना देखा वीडियो नहीं है.", "કતારમાં કોઈ ન જોયેલો વીડિયો નથી."],
+    "Pick watched videos in the whole queue": ["पूरी कतार के देखे हुए वीडियो चुनें", "આખી કતારના જોયેલા વીડિયો પસંદ કરો"],
+    "Pick unwatched videos in the whole queue": ["पूरी कतार के बिना देखे वीडियो चुनें", "આખી કતારના ન જોયેલા વીડિયો પસંદ કરો"]
+  });
+  function qPickByWatched(watched) {
+    qPicked = lib.queue.filter(function (it, i) { return qWatchedAt(i) === watched; });
+    renderLib();
+    if (!qPicked.length) toast(T(watched ? "No watched videos in the queue." : "No unwatched videos in the queue."));
+  }
+  if ($("qPickWatchedBtn")) $("qPickWatchedBtn").addEventListener("click", function () { qPickByWatched(true); });
+  if ($("qPickUnwatchedBtn")) $("qPickUnwatchedBtn").addEventListener("click", function () { qPickByWatched(false); });
+  function qSmartPickPaint() {
+    if ($("qPickWatchedBtn")) $("qPickWatchedBtn").title = T("Pick watched videos in the whole queue");
+    if ($("qPickUnwatchedBtn")) $("qPickUnwatchedBtn").title = T("Pick unwatched videos in the whole queue");
+  }
+  (window.__relang = window.__relang || []).push(qSmartPickPaint);
+  qSmartPickPaint();
   // Copy only picked titles and links, in queue order rather than selection order.
   // Reuse the clipboard fallback and honest success/failure feedback from Copy list.
   if ($("qPickCopyBtn")) $("qPickCopyBtn").addEventListener("click", function () {
@@ -12827,6 +12854,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Smart queue picks", "#qPickBtn"],
     ["Glass chevrons", "#scBox"],
     ["Live row glow", "#queueList"],
     ["Queue search matches", "#libQueueMatchBtn"],
@@ -12836,7 +12864,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["File picked queue videos into a playlist", "#qPickBtn"],
     ["Star picked queue videos", "#qPickBtn"],
     ["Toast timer line", "#vpToast"],
-    ["New badge shine", "#whatsNewList"],
   ];
   Object.assign(TR_MSG, {
     "Glass chevrons": ["\u0917\u094d\u0932\u093e\u0938 \u0936\u0947\u0935\u0930\u0949\u0928", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0ab6\u0ac7\u0ab5\u0ab0\u0acb\u0aa8"],
@@ -18673,6 +18700,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Menu bubble pop", "menu bubble pop library link queue count number badge spring change added removed video top feature menu", "#featNav"],
       ["Sleep ember", "sleep ember timer pill last minute warm glow amber countdown pause soon ending almost done night", "#ctl-sleep"],
       ["Live row glow", "live row glow now playing queue row equalizer bars dancing animated accent edge breathing glow iphone music current video indicator playing", "#queueList"],
+      ["Smart queue picks", "smart queue picks select watched unwatched finished seen bulk pick many remove move whole queue", "#qPickBtn"],
       ["Glass chevrons", "glass chevrons faq tips shortcuts fold away box arrow chip spring open close expand collapse frosted rotate reveal answer help", "#scBox"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
