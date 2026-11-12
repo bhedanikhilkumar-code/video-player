@@ -1077,17 +1077,6 @@ html.high-contrast .dl-chk input[type="checkbox"] { background: var(--soft); }
 html.high-contrast .dl-chk input[type="checkbox"]:checked { background: var(--teal); }
 html.high-contrast .dl-chk input[type="checkbox"]::before { box-shadow: 0 0 0 2px rgba(0,0,0,.45); }
 </style>
-<style id="r149-rate">
-/* Round 149 - Rate this video: five glass stars in the Now playing card. */
-.vp-rate { display: inline-flex; align-items: center; gap: 0; margin-left: 8px; vertical-align: -2px; }
-.vp-rate button { -webkit-appearance: none; appearance: none; background: none; border: none; padding: 3px 2px; font-size: 16px; line-height: 1; cursor: pointer; color: var(--ink2); opacity: .5; transition: transform .18s ease, opacity .18s ease, color .18s ease; }
-.vp-rate button.on { color: #f2a93b; opacity: 1; text-shadow: 0 1px 8px rgba(242,169,59,.5); }
-.vp-rate button.pop { animation: vpRatePop .5s cubic-bezier(.3,1.7,.5,1) 1; }
-@keyframes vpRatePop { 0% { transform: scale(.3) rotate(-20deg); } 55% { transform: scale(1.5) rotate(6deg); } 100% { transform: scale(1); } }
-@media (hover:hover) and (pointer:fine) { .vp-rate button:hover { transform: scale(1.18); } }
-html.high-contrast .vp-rate button { opacity: 1; }
-html.high-contrast .vp-rate button.on { text-shadow: none; }
-</style>
 <style id="subtitle-upload">
 /* Subtitle upload for local files: cue styling and size switch. */
 video::cue { background: rgba(0,0,0,.55); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.8); }
@@ -1796,7 +1785,7 @@ setTimeout(done,3000);})();
         <div class="info-text">
           <span class="np-pill" id="npPill"><span class="np-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="npPillT">Now playing</span></span>
           <div class="info-title" id="infoTitle"></div>
-          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><button class="chip chan-star" id="chanStarBtn" type="button" aria-pressed="false" aria-label="Save channel" hidden>☆</button><span id="infoDur"></span><span class="vmem-note" id="vmemNote" hidden></span><span class="vmem-note" id="npWatched" hidden></span><span class="vp-rate" id="npRate" hidden></span></div>
+          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><button class="chip chan-star" id="chanStarBtn" type="button" aria-pressed="false" aria-label="Save channel" hidden>☆</button><span id="infoDur"></span><span class="vmem-note" id="vmemNote" hidden></span><span class="vmem-note" id="npWatched" hidden></span></div>
         </div>
       </div>
 
@@ -4786,7 +4775,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // without re-applying speed/CC/volume. Registered below in __relang: before this fix the
   // line kept the language it was first rendered in until the next video load.
   function vmemNoteRender() {
-    npRateRender();
     var vm = curId && vmem[curId];
     if (!vm) { vmemNote(""); return; }
     var bits = [];
@@ -4795,79 +4783,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (prefs.pvVol && typeof vm.vol === "number") bits.push(T("vol ") + vm.vol + "%");
     if (typeof vm.intro === "number" && vm.intro >= 1) bits.push(T("skip to ") + fmt(vm.intro));
     if (typeof vm.outro === "number" && vm.outro >= 1) bits.push(T("outro from ") + fmt(vm.outro));
-    if (typeof vm.rate === "number" && vm.rate >= 1 && vm.rate <= 5) bits.push("\u2605 " + vm.rate);
     vmemNote(bits.length ? T("Remembered for this video: ") + bits.join(" \u00b7 ") : "");
   }
   (window.__relang = window.__relang || []).push(vmemNoteRender);
-  // ---- Rate this video (round 149): five glass stars in the Now playing card mark how
-  // much you liked the video playing now - one tap rates 1 to 5, tapping the same star
-  // again clears it. The picked star pops on a spring (skipped under Calm/reduced
-  // motion). The rating is kept per video in the per-video memory on this device, so it
-  // rides the backup with the speed and CC choices, and the Remembered-for-this-video
-  // line shows it. Works on YouTube videos, translated in Hindi and Gujarati, listed in
-  // the feature finder and the What's new card.
-  Object.assign(TR_MSG, {
-    "Rate this video": ["इस वीडियो को रेट करें", "આ વીડિયોને રેટ કરો"],
-    "Star ": ["स्टार ", "સ્ટાર "],
-    "Rated ": ["रेटिंग दी ", "રેટિંગ આપી "],
-    "Rating cleared": ["रेटिंग हटा दी गई", "રેટિંગ કાઢી નાખી"],
-    "Your rating": ["आपकी रेटिंग", "તમારી રેટિંગ"]
-  });
-  var npRate = $("npRate");
-  function npRateGet() { var vm = curId && vmem[curId]; return (vm && typeof vm.rate === "number" && vm.rate >= 1 && vm.rate <= 5) ? vm.rate : 0; }
-  function npRateClasses(n) {
-    [].forEach.call(npRate.children, function (b, idx) {
-      var on = idx < n;
-      b.classList.toggle("on", on);
-      b.textContent = on ? "\u2605" : "\u2606";
-    });
-  }
-  function npRateRender() {
-    if (!npRate) return;
-    if (!curId) { npRate.hidden = true; return; }
-    npRate.hidden = false;
-    if (!npRate.children.length) {
-      for (var i = 1; i <= 5; i++) {
-        var b = document.createElement("button");
-        b.type = "button"; b.dataset.star = i;
-        npRate.appendChild(b);
-      }
-      npRate.addEventListener("click", function (e) {
-        var b = e.target && e.target.closest ? e.target.closest("button[data-star]") : null;
-        if (!b) return;
-        npRateSet(Number(b.dataset.star), b);
-      });
-      npRate.addEventListener("pointerover", function (e) {
-        if (e.pointerType === "touch") return;
-        var b = e.target && e.target.closest ? e.target.closest("button[data-star]") : null;
-        if (b) npRateClasses(Number(b.dataset.star));
-      });
-      npRate.addEventListener("pointerleave", function () { npRateClasses(npRateGet()); });
-    }
-    npRate.setAttribute("role", "group");
-    var r = npRateGet();
-    npRate.setAttribute("aria-label", T("Rate this video") + (r ? " - " + T("Your rating") + ": " + r + "/5" : ""));
-    [].forEach.call(npRate.children, function (b, idx) {
-      b.setAttribute("aria-label", T("Star ") + (idx + 1));
-      b.setAttribute("aria-pressed", idx < r ? "true" : "false");
-    });
-    npRateClasses(r);
-  }
-  function npRateSet(n, btn) {
-    if (!curId) return;
-    if (npRateGet() === n) {
-      vmemRec({ rate: null });
-      vmemNoteRender();
-      toast(T("Rating cleared"));
-      return;
-    }
-    vmemRec({ rate: n });
-    vmemNoteRender();
-    if (btn && !(window.vpReducedMotion && window.vpReducedMotion())) {
-      btn.classList.remove("pop"); void btn.offsetWidth; btn.classList.add("pop");
-    }
-    toast(T("Rated ") + "\u2605 " + n + "/5");
-  }
   // ---- Skip intro (round 74): mark where a video's intro ends once, and a glass Skip chip
   // on the video jumps straight past it on every watch, Netflix style. Kept per video in the
   // per-video memory on this device, so it is included in the backup with speed and CC choices.
@@ -11807,7 +11725,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
-    ["Rate this video", "#infoCard"],
     ["Glass switches", "#autoPauseChk"],
     ["Speed keys", "#sc14"],
     ["Stats grow", "#lhStats"],
@@ -11817,10 +11734,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Finder cascade", "#palBtn"],
     ["Toast spring", "#vpToast"],
     ["Time in the tab title", "#tabTimeChk"],
+    ["Pause at a time", "#pauseAtForm"],
   ];
   Object.assign(TR_MSG, {
-    "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
-    "Rate this video": ["इस वीडियो को रेट करें", "આ વીડિયોને રેટ કરો"]
+    "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"]
   });
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -17039,7 +16956,6 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
       ["Top channels", "top channels most watched creators ranking watch time stats favourite channel who watch most", "#lhStats"],
-      ["Rate this video", "rate this video stars rating one two three four five star like quality remember per video now playing", "#infoCard"],
       ["Glass switches", "glass switches settings toggles iphone style on off switch look premium controls accessibility", "#autoPauseChk"],
       ["Speed keys", "speed keys keyboard shortcut slower faster playback speed less greater than shift comma period step 0.25 2x rate", "#sc14"],
       ["Stats grow", "stats grow bars chart week days hours calendar watch time statistics numbers grow rise pop in entrance animate progress card", "#lhStats"],
