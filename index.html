@@ -2326,6 +2326,7 @@ setTimeout(done,3000);})();
           <button class="chip" id="qPickNoneBtn" type="button">None</button>
           <button class="chip" id="qPickWatchedBtn" type="button">Pick watched</button>
           <button class="chip" id="qPickUnwatchedBtn" type="button">Pick unwatched</button>
+          <button class="chip" id="qPickSearchBtn" type="button" hidden>Pick search matches</button>
           <button class="chip" id="qPickInvertBtn" type="button">Invert picks</button>
           <button class="chip" id="qPickCopyBtn" type="button">Copy picked</button>
           <button class="chip" id="qPickTopBtn" type="button">Move to top</button>
@@ -8960,6 +8961,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var LIB_SCOPE_LABELS = { all: "All", queue: "Queue", playlists: "Playlists", favs: "Favourites", later: "Watch later", hist: "History" };
   function applyLibSearch() {
     if (!libSearch) return;
+    qPickSearchPaint();
     var q = libSearch.value.trim().toLowerCase(), shown = 0, total = 0, parts = [];
     function inScope(s) { return libScope === "all" || libScope === s; }
     function filt(ul, items, scope, label) {
@@ -9026,6 +9028,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     libSearch.addEventListener("input", applyLibSearch);
     libSearch.addEventListener("keydown", function (e) { if (e.key === "Escape") { libSearch.value = ""; applyLibSearch(); } });
   }
+
+  // Pick queue search matches (round 182): replaces only the temporary picks.
+  // Use the same title/id substring and scope as Library search, never DOM row
+  // indexes or text from action buttons. Hidden without a query or outside Queue.
+  Object.assign(TR_MSG, {
+    "Pick queue search matches": ["कतार में खोज के मिलान चुनें", "કતારમાં શોધના મેળ પસંદ કરો"],
+    "Pick search matches": ["खोज के मिलान चुनें", "શોધના મેળ પસંદ કરો"],
+    "Replace picks with queue videos matching the search": ["खोज से मेल खाते कतार के वीडियो चुनें, पुराना चयन बदलें", "શોધ સાથે મેળ ખાતા કતારના વીડિયો પસંદ કરો, જૂની પસંદગી બદલો"],
+    "No queue videos match this search.": ["कतार का कोई वीडियो इस खोज से नहीं मिलता.", "કતારનો કોઈ વીડિયો આ શોધ સાથે મેળ ખાતો નથી."]
+  });
+  function qPickSearchPaint() {
+    var b = $("qPickSearchBtn"); if (!b) return;
+    b.textContent = T("Pick search matches");
+    b.title = T("Replace picks with queue videos matching the search");
+    b.hidden = !(libSearch && libSearch.value.trim() && (libScope === "all" || libScope === "queue"));
+  }
+  if ($("qPickSearchBtn")) $("qPickSearchBtn").addEventListener("click", function () {
+    var q = libSearch ? libSearch.value.trim().toLowerCase() : "";
+    if (!qPickOn() || !q || (libScope !== "all" && libScope !== "queue")) return;
+    qPicked = lib.queue.filter(function (it) { return ((it.title || "") + " " + it.id).toLowerCase().indexOf(q) >= 0; });
+    renderLib();
+    if (!qPicked.length) toast(T("No queue videos match this search."));
+  });
+  (window.__relang = window.__relang || []).push(qPickSearchPaint);
+  qPickSearchPaint();
 
   // Queue search matches (round 176): while the library search holds a word, a small chip
   // under the box offers to queue every saved video that matches - Favourites, Watch later,
@@ -12882,6 +12909,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Pick queue search matches", "#qPickBtn"],
     ["Glass colour orb", "#accentCustom"],
     ["Glass number boxes", "#speedCustom"],
     ["Picked running time", "#qPickBtn"],
@@ -12891,7 +12919,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Glass chevrons", "#scBox"],
     ["Live row glow", "#queueList"],
     ["Queue search matches", "#libQueueMatchBtn"],
-    ["Length on every row", "#lhQueue"],
   ];
   Object.assign(TR_MSG, {
     "Glass colour orb": ["\u0917\u094d\u0932\u093e\u0938 \u0930\u0902\u0917 \u0917\u094b\u0932\u093e", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0ab0\u0a82\u0a97 \u0a97\u0acb\u0ab3\u0acb"],
@@ -18544,6 +18571,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Up next queue", "queue next upnext order", "#lhQueue"],
       ["Copy picked queue videos", "copy picked selected queue titles links clipboard subset share list selection", "#qPickBtn"],
       ["Invert queue picks", "invert picks selection opposite swap selected unselected bulk queue all except", "#qPickBtn"],
+      ["Pick queue search matches", "pick search matches matching selected queue title id bulk move remove playlist filter", "#qPickBtn"],
       ["Picked running time", "picked selected duration time total length fit break budget normal speed known unknown selection", "#qPickBtn"],
       ["Pick many in queue", "pick many select multiple bulk queue organise tidy move top remove watch later", "#qPickBtn"],
       ["Remove played videos in queue", "remove played finished auto clear queue consume tidy shrink podcast clean automatic", "#qConsumeBtn"],
