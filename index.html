@@ -4640,6 +4640,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
   var themeBtn = $("themeBtn");
   var darkQuery = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+  // Round 163 (Theme spin): when the theme actually changes - the Theme chip, the D key, a
+  // backup restore - the chip's little icon spins once and settles on the new symbol, like
+  // the sun-moon spin on an iPhone's dark mode toggle. The first paint of a page load stays
+  // still, and a repaint that only re-translates the label (same icon) stays still too. Pure
+  // look: no setting, nothing new is saved, the spin sits out under Calm/reduced motion,
+  // Low-end mode and High contrast. Listed in the feature finder and the What's new card.
+  var themeSpinLast = null;
+  var tsSt = document.createElement("style");
+  tsSt.textContent =
+    "#themeBtn .theme-ico{display:inline-block}"
+    + "@keyframes vpThemeSpin{0%{transform:rotate(0deg) scale(1)}40%{transform:rotate(220deg) scale(.65)}75%{transform:rotate(340deg) scale(1.15)}100%{transform:rotate(360deg) scale(1)}}"
+    + "#themeBtn .theme-ico.theme-spin{animation:vpThemeSpin .55s cubic-bezier(.34,1.3,.64,1)}"
+    + "html.calm-motion #themeBtn .theme-ico.theme-spin,html.low-fx #themeBtn .theme-ico.theme-spin,html.high-contrast #themeBtn .theme-ico.theme-spin{animation:none}";
+  document.head.appendChild(tsSt);
   function applyTheme() {
     var hr2 = new Date().getHours(), night2 = hr2 >= 19 || hr2 < 7;
     var dark = prefs.theme === "dark" || prefs.theme === "midnight" || (prefs.theme === "auto" && darkQuery && darkQuery.matches) || (prefs.theme === "daynight" && night2);
@@ -4654,6 +4668,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var themeLabel = prefs.theme === "auto" ? T("Auto") : prefs.theme === "daynight" ? T("Day/Night") : prefs.theme === "dark" ? T("Dark") : prefs.theme === "midnight" ? T("Midnight") : T("Light");
     var ico = prefs.theme === "auto" ? "\u25D0" : prefs.theme === "daynight" ? "\u263C" : prefs.theme === "dark" ? "\u263E" : prefs.theme === "midnight" ? "\u2737" : "\u2600";
     themeBtn.innerHTML = '<span class="theme-ico" aria-hidden="true">' + ico + '</span><span class="theme-prefix">' + T("Theme: ") + '</span><span>' + themeLabel + '</span>';
+    var icoEl = themeBtn.querySelector(".theme-ico");
+    if (themeSpinLast === null) themeSpinLast = ico;
+    else if (themeSpinLast !== ico) { themeSpinLast = ico; if (icoEl) icoEl.classList.add("theme-spin"); }
     var metas = document.querySelectorAll('meta[name="theme-color"]');
     for (var mi = 0; mi < metas.length; mi++) {
       if (!metas[mi].hasAttribute("data-orig")) metas[mi].setAttribute("data-orig", metas[mi].getAttribute("content"));
@@ -12190,6 +12207,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Theme spin", "#themeBtn"],
     ["Q to find it in the queue", "#sc22"],
     ["Move to end", "#qPickBtn"],
     ["Row hover lift", "#lhQueue"],
@@ -12199,11 +12217,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Accent bloom", "#accentRow"],
     ["Card float", "#ctl-sound"],
     ["Sort queue by length", "#sortLenQueueBtn"],
-    ["Queue as next", "#queueNextBtn"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
     "Q to find it in the queue": ["कतार में खोजने के लिए Q", "કતારમાં શોધવા માટે Q"],
+    "Theme spin": ["थीम स्पिन", "થીમ સ્પિન"],
     "Move to end": ["सबसे नीचे भेजें", "સૌથી નીચે મોકલો"],
     "Thumb shimmer": ["थंब शिमर", "થંબ શિમર"],
     "Glass sliders": ["ग्लास स्लाइडर", "ગ્લાસ સ્લાઇડર"],
@@ -17905,6 +17923,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later feed", "watch later feed auto play queue runs out finished empty continue binge unwatched next automatic keep playing backlog evening", "#qFeedBtn"],
       ["D for dark or light theme", "d key dark light theme toggle switch keyboard shortcut night day quick eyes bright dim", "#sc21"],
       ["Menu edge fade", "menu edge fade feature menu links ends soft fade melt ios carousel more links off edge scroll hint swipe", "#featNav"],
+      ["Theme spin", "theme spin icon rotate turn animation dark light midnight auto chip button change sun moon", "#themeBtn"],
       ["Q to find it in the queue", "queue find key q keyboard shortcut locate playing video current row scroll highlight ring where am i long queue", "#sc22"],
       ["Move to end", "move to end bottom queue pick many send last later rest plays first not in the mood reorder", "#qPickBtn"],
       ["Row hover lift", "row hover lift library rows queue favourites watch later history playlist raise float shadow thumbnail zoom desktop mouse pointer poster", "#lhQueue"]
