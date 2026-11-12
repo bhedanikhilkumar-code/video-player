@@ -9421,6 +9421,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   Object.assign(TR_MSG, {
     "Yesterday": ["कल", "ગઈકાલે"],
     "Earlier": ["पहले", "પહેલાં"],
+    "Queue this day": ["यह दिन कतार में डालें", "આ દિવસ કતારમાં નાખો"],
+    "1 video added to queue": ["1 वीडियो कतार में जोड़ा गया", "1 વિડિયો કતારમાં ઉમેર્યો"],
+    "skipped": ["छोड़े गए", "છોડ્યા"],
     "Day headings in history": ["इतिहास में दिन के शीर्षक", "ઇતિહાસમાં દિવસના શીર્ષક"]
   });
   function histDayLabel(ts) {
@@ -9433,23 +9436,42 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var loc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-US";
     return d.toLocaleDateString(loc, { weekday: "short", day: "numeric", month: "short" });
   }
+  // Round 210 new 5: each day heading also has a Queue this day chip - "carry on with yesterday's videos" in
+  // one tap. It adds that day's videos to the end of the queue (duplicates skipped, 50 at most) and says how
+  // many were added and how many were skipped. Nothing else changes.
+  function histDayQueue() {
+    var ids = this._ids || [], added = 0, skipped = 0;
+    ids.forEach(function (id) {
+      if (findIn(lib.queue, id) >= 0 || lib.queue.length >= 50) { skipped++; return; }
+      var hi = findIn(lib.hist, id);
+      lib.queue.push({ id: id, title: (hi >= 0 && lib.hist[hi].title) || titleFor(id) }); added++;
+    });
+    if (added) { resetShuffle(); saveLib(); renderLib(); }
+    toast(added ? (added === 1 ? T("1 video added to queue") : added + " " + T("videos added to queue")) + (skipped ? " - " + skipped + " " + T("skipped") : "") : T("Already in the queue, or the queue is full at 50."));
+  }
   function paintHistDays() {
     if (!histList) return;
     Array.prototype.forEach.call(histList.querySelectorAll(".hist-day"), function (n) { n.remove(); });
     if (typeof histSort !== "undefined" && histSort && histSort.mode && histSort.mode() !== "new") return;
-    var last = null;
+    var last = null, curIds = null;
     Array.prototype.slice.call(histList.children).forEach(function (li) {
       var id = li.getAttribute && li.getAttribute("data-vid"); if (!id) return;
       var hi = findIn(lib.hist, id); if (hi < 0) return;
       var lab = histDayLabel(lib.hist[hi].ts);
-      if (lab === last) return;
+      if (lab === last) { if (curIds) curIds.push(id); return; }
       last = lab;
-      var h = document.createElement("li"); h.className = "hist-day"; h.setAttribute("role", "presentation"); h.textContent = lab;
+      var h = document.createElement("li"); h.className = "hist-day"; h.setAttribute("role", "presentation");
+      var hl = document.createElement("span"); hl.textContent = lab; h.appendChild(hl);
+      var hb = document.createElement("button"); hb.type = "button"; hb.className = "chip hist-day-q"; hb.textContent = T("Queue this day");
+      hb.setAttribute("aria-label", T("Queue this day") + ": " + lab);
+      curIds = [id]; hb._ids = curIds;
+      hb.addEventListener("click", histDayQueue);
+      h.appendChild(hb);
       histList.insertBefore(h, li);
     });
   }
   var histDaySt = document.createElement("style");
-  histDaySt.textContent = ".hist-day{list-style:none;margin:10px 2px 2px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#6b7280)}.hist-day:first-child{margin-top:2px}:root[data-theme=\"dark\"] .hist-day,:root[data-theme=\"midnight\"] .hist-day{color:#aab2bd}";
+  histDaySt.textContent = ".hist-day{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 2px 2px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#6b7280)}.hist-day:first-child{margin-top:2px}:root[data-theme=\"dark\"] .hist-day,:root[data-theme=\"midnight\"] .hist-day{color:#aab2bd}";
   document.head.appendChild(histDaySt);
   var baseRenderLibHD = renderLib;
   renderLib = function () { baseRenderLibHD(); paintHistDays(); };
@@ -14590,6 +14612,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Queue this day from history", "#lhHist"],
     ["Star on queue and Watch later rows", "#queueList"],
     ["Save all queue videos to favourites", "#queueToFavBtn"],
     ["Day headings in history", "#lhHist"],
@@ -14598,8 +14621,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Clear upcoming but keep the playing video", "#clearUpcomingBtn"],
     ["O to open on YouTube", "#sc27"],
     ["Drop a YouTube link", "#link"],
-    ["Tell a friend", "#tellFriendBtn"],
-    ["Copy my stats", "#statsCopyBtn"]
+    ["Tell a friend", "#tellFriendBtn"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -14629,6 +14651,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Day headings in history": ["इतिहास में दिन के शीर्षक", "ઇતિહાસમાં દિવસના શીર્ષક"],
     "Save all queue videos to favourites": ["पूरी कतार पसंदीदा में सेव करें", "આખી કતાર મનપસંદમાં સાચવો"],
     "Star on queue and Watch later rows": ["कतार और बाद में देखें पंक्तियों पर स्टार", "કતાર અને પછી જુઓ પંક્તિઓ પર સ્ટાર"],
+    "Queue this day from history": ["इतिहास से यह दिन कतार में डालें", "ઇતિહાસમાંથી આ દિવસ કતારમાં નાખો"],
     "Remove played videos in queue": ["कतार से चले हुए वीडियो हटाएं", "કતારમાંથી ચલાવેલા વિડિયો કાઢો"],
     "Queue chip on every list row": ["हर लिस्ट पंक्ति पर कतार चिप", "દરેક યાદી પંક્તિ પર કતાર ચિપ"]
   });
@@ -20906,6 +20929,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Queue this day from history", "queue this day history heading yesterday today videos continue carry on add all that day one tap", "#lhHist"],
       ["Star on queue and Watch later rows", "star favourite queue watch later rows toggle without playing fill heart like save", "#queueList"],
       ["Save all queue videos to favourites", "save all queue videos to favourites keep liked starred one tap undo duplicates skipped hearts", "#queueToFavBtn"],
       ["Day headings in history", "day headings history recently watched today yesterday date group days when watched last tuesday", "#lhHist"],
