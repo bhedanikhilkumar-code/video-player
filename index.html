@@ -11585,6 +11585,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Library cascade", "#lhQueue"],
     ["Speak your note", "#noteMicBtn"],
     ["Videos in a playlist", "#lhPlaylists"],
     ["Save pop", "#favBtn"],
@@ -11594,7 +11595,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Home stretch glow", "#seek"],
     ["Snooze in Watch later", "#lhLater"],
     ["Check a backup", "#libCheck"],
-    ["Full screen bloom", "#fsBtn"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -14142,6 +14142,47 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     nmLang();
   })();
 
+  // Library cascade (round 143): when a library list - Up next, Watch later,
+  // Favourites or Recently watched - repaints with new content, its rows rise
+  // in one after another on a quick stagger, so opening the app, switching a
+  // sort or filter, or adding a video lands with a soft cascade instead of a
+  // hard swap. It fires only when the list's videos actually changed (a repaint
+  // with the same videos, like a language switch or a progress refresh, stays
+  // still) and at most once in a short breath per list, and only the first
+  // twelve rows take part so a long list never ripples for seconds. Interaction
+  // feedback, not a setting: nothing new is saved, and under Calm/reduced
+  // motion and Low-end mode the rows simply appear as before. Works on YouTube
+  // videos, translated in Hindi and Gujarati, listed in the feature finder and
+  // the What's new card.
+  Object.assign(TR_MSG, {
+    "Library cascade": ["लाइब्रेरी कैस्केड", "લાઇબ્રેરી કેસ્કેડ"]
+  });
+  var cascSt = document.createElement("style");
+  cascSt.textContent = "ul.lib-list.vp-cascade > li:nth-child(-n+12){opacity:0;animation:vpCascadeIn .5s cubic-bezier(.2,.8,.2,1) forwards;animation-delay:calc(var(--ci,0)*45ms)}"
+    + "@keyframes vpCascadeIn{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}";
+  document.head.appendChild(cascSt);
+  fillList = (function (orig) {
+    return function (ul, items) {
+      var r = orig.apply(this, arguments);
+      try {
+        if (!ul || !items || !items.length) return r;
+        if (window.vpReducedMotion() || document.documentElement.classList.contains("low-fx")) return r;
+        var sig = items.length + ":" + items.slice(0, 25).map(function (x) { return x.id; }).join(",");
+        var now = Date.now();
+        if (ul.__vpCascSig === sig || now - (ul.__vpCascAt || 0) < 900) return r;
+        ul.__vpCascSig = sig; ul.__vpCascAt = now;
+        var rows = ul.children, n = Math.min(rows.length, 12), i, j;
+        for (i = 0; i < n; i++) rows[i].style.setProperty("--ci", i);
+        ul.classList.remove("vp-cascade"); void ul.offsetHeight; ul.classList.add("vp-cascade");
+        setTimeout(function () {
+          ul.classList.remove("vp-cascade");
+          for (j = 0; j < n; j++) if (rows[j]) rows[j].style.removeProperty("--ci");
+        }, 45 * (n - 1) + 620);
+      } catch (e) {}
+      return r;
+    };
+  })(fillList);
+
 
 })();
 </script>
@@ -16398,7 +16439,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Recent searches", "recent searches history search again library chips repeat last words quick retype", "#libSearch"],
       ["Find in all moments", "find moments search saved moment name all videos jump bookmark marked spot chapter", "#markFindSum"],
       ["Videos in a playlist", "playlist videos items list inside see view reorder arrange order move up down remove play from position manage tidy contents", "#lhPlaylists"],
-      ["Speak your note", "speak note voice dictate microphone talk hands free write words typing notes", "#noteMicBtn"]
+      ["Speak your note", "speak note voice dictate microphone talk hands free write words typing notes", "#noteMicBtn"],
+      ["Library cascade", "library cascade rows rise stagger list repaint appear animation queue up next watch later favourites recently watched sort filter soft entrance", "#lhQueue"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
