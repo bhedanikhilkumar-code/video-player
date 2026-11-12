@@ -9448,6 +9448,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Shuffle play": ["मिलाकर चलाएं", "ફેરવીને ચલાવો"],
     "Playing in shuffled order:": ["मिलाकर चल रहा है:", "ફેરવીને ચાલે છે:"]
   });
+  // Remove watched from a playlist (round 184): Watch later has Clear watched; saved
+  // playlists did not, so a finished course kept every finished video. This button drops
+  // the videos you have finished (the same Watched state Play unwatched uses) and says how
+  // many went. Undo puts the whole list back in its old order. It never empties a list:
+  // when everything is watched it says so and removes nothing. No setting, no new saved data.
+  Object.assign(TR_MSG, {
+    "Remove watched": ["देखे हुए हटाएं", "જોયેલા કાઢો"],
+    "Remove watched from a playlist": ["प्लेलिस्ट से देखे हुए हटाएं", "પ્લેલિસ્ટમાંથી જોયેલા કાઢો"],
+    "No watched videos in this playlist.": ["इस प्लेलिस्ट में कोई देखा हुआ वीडियो नहीं.", "આ પ્લેલિસ્ટમાં કોઈ જોયેલો વીડિયો નથી."],
+    "Everything here is watched, so nothing was removed. Delete the playlist instead if you are done with it.": ["सब देखा जा चुका है, इसलिए कुछ नहीं हटाया. काम पूरा हो गया हो तो प्लेलिस्ट डिलीट करें.", "બધું જોવાઈ ગયું છે, તેથી કંઈ કાઢ્યું નથી. કામ પૂરું થયું હોય તો પ્લેલિસ્ટ ડિલીટ કરો."],
+    "Removed watched videos:": ["देखे हुए हटाए:", "જોયેલા કાઢ્યા:"],
+    "Playlist restored": ["प्लेलिस्ट पहले जैसी", "પ્લેલિસ્ટ પહેલા જેવી"]
+  });
   function plShuffled(items) {
     var a = items.map(function (x) { return { id: x.id, title: x.title }; });
     for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
@@ -9532,6 +9545,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var n = 0; lib.queue.forEach(function (x) { if (findIn(pl.items, x.id) < 0 && pl.items.length < 50) { pl.items.push({ id: x.id, title: x.title || "" }); n++; } });
         if (!n) { plSay(T("Nothing new to add. The queue is empty, or those videos are already in this playlist, or it is full at 50.")); return; }
         savePlaylists(); renderPlaylists(); plSay(T("Added from the queue to") + " \"" + pl.name + "\": " + n + " " + T("videos added."));
+      });
+      btn(T("Remove watched"), "", function () {
+        var isDone = function (x) { var hi = findIn(lib.hist, x.id); return hi >= 0 && lib.hist[hi].done; };
+        var snap = pl.items.slice(), gone = snap.filter(isDone).length;
+        if (!gone) { plSay(T("No watched videos in this playlist.")); return; }
+        if (gone === snap.length) { plSay(T("Everything here is watched, so nothing was removed. Delete the playlist instead if you are done with it.")); return; }
+        pl.items = snap.filter(function (x) { return !isDone(x); });
+        savePlaylists(); renderPlaylists();
+        plSay(T("Removed watched videos:") + " " + gone + " (\"" + pl.name + "\").");
+        toastUndo(T("Removed watched videos:") + " " + gone, function () { pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
       });
       btn(T("Duplicate"), "", function () {
         if (playlists.length >= PL_MAX) { plSay(T("You can keep up to ") + PL_MAX + T(" playlists. Delete one first.")); return; }
@@ -12964,6 +12987,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Remove watched from a playlist", "#plList"],
     ["Shuffle play", "#plList"],
     ["Key echo", "#scBox"],
     ["Pick queue search matches", "#qPickBtn"],
@@ -12973,7 +12997,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Glass dropdowns", "#dl"],
     ["Glass shortcuts sheet", "#scBox"],
     ["Smart queue picks", "#qPickBtn"],
-    ["Glass chevrons", "#scBox"],
   ];
   Object.assign(TR_MSG, {
     "Glass colour orb": ["\u0917\u094d\u0932\u093e\u0938 \u0930\u0902\u0917 \u0917\u094b\u0932\u093e", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0ab0\u0a82\u0a97 \u0a97\u0acb\u0ab3\u0acb"],
@@ -18819,6 +18842,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Smart queue picks", "smart queue picks select watched unwatched finished seen bulk pick many remove move whole queue", "#qPickBtn"],
       ["Glass chevrons", "glass chevrons faq tips shortcuts fold away box arrow chip spring open close expand collapse frosted rotate reveal answer help", "#scBox"],
       ["Glass shortcuts sheet", "glass shortcuts sheet keyboard question mark popup overlay frosted blur spring card iphone sheet keys help dialog", "#scBox"],
+      ["Remove watched from a playlist", "remove watched playlist finished seen clear tidy course done videos undo delete old", "#plList"],
       ["Shuffle play", "shuffle play playlist random order mix music study list saved queue start different first track surprise", "#plList"],
       ["Key echo", "key echo keyboard shortcut keycap light flash pressed hardware keyboard feedback glass", "#scBox"],
       ["Glass colour orb", "glass colour orb color picker custom accent round swatch dot circle dome ring frosted pick any colour app colour", "#accentCustom"],
