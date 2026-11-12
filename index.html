@@ -2210,7 +2210,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button></span></div>
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
-      <div class="lib-head"><h3 id="lhHist">Recently watched</h3><button class="chip" id="clearHistBtn">Clear</button></div>
+      <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsClear" type="button">Clear</button></div>
@@ -9079,6 +9079,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#plPasteBtn", "Paste a list of links", "लिंक की सूची पेस्ट करें"],
     ["#laterTxtBtn", "Save as text file", "टेक्स्ट फ़ाइल में सेव करें"],
     ["#favTxtBtn", "Save as text file", "टेक्स्ट फ़ाइल में सेव करें"],
+    ["#histTxtBtn", "Save as text file", "टेक्स्ट फ़ाइल में सेव करें"],
     ["#surpriseBtn", "🎲 Surprise me", "🎲 सरप्राइज़ मी"],
     ["#noteTxtBtn", "Save all notes as text file", "सभी नोट्स टेक्स्ट फ़ाइल में सेव करें"],
     ["#queueTxtBtn", "Save queue as text file", "कतार को टेक्स्ट फ़ाइल में सेव करें"],
@@ -9214,6 +9215,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#plPasteBtn": "લિંકની યાદી પેસ્ટ કરો",
  "#laterTxtBtn": "ટેક્સ્ટ ફાઇલમાં સાચવો",
  "#favTxtBtn": "ટેક્સ્ટ ફાઇલમાં સાચવો",
+ "#histTxtBtn": "ટેક્સ્ટ ફાઇલમાં સાચવો",
  "#surpriseBtn": "🎲 સરપ્રાઇઝ મી",
  "#noteTxtBtn": "બધી નોંધો ટેક્સ્ટ ફાઇલમાં સાચવો",
  "#queueTxtBtn": "કતારને ટેક્સ્ટ ફાઇલમાં સાચવો",
@@ -10062,6 +10064,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (!lib.favs.length) { toast(T("No favourites yet.")); return; }
       dl(lib.favs.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n\n") + "\n", "video-player-favourites.txt", "Favourites saved as a text file");
     });
+    // History as a text file (round 112): the same numbered titles-and-links list as
+    // Favourites and Watch later, plus when each video was watched and a Finished mark
+    // for the ones seen to the end, so an outside record of a watching run is one tap.
+    Object.assign(TR_MSG, {
+      "History as text file": ["हिस्ट्री टेक्स्ट फ़ाइल में", "હિસ્ટ્રી ટેક્સ્ટ ફાઇલમાં"],
+      "History saved as a text file": ["हिस्ट्री टेक्स्ट फ़ाइल में सेव हुई", "હિસ્ટ્રી ટેક્સ્ટ ફાઇલમાં સેવ થઈ"],
+      "Nothing watched yet.": ["अभी कुछ नहीं देखा.", "હજી કંઈ જોયું નથી."],
+      "Finished": ["पूरा देखा", "પૂરું જોયું"]
+    });
+    var hb = $("histTxtBtn");
+    if (hb) hb.addEventListener("click", function () {
+      if (!lib.hist.length) { toast(T("Nothing watched yet.")); return; }
+      dl(lib.hist.map(function (x, i) {
+        var s = (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id;
+        if (x.ts) { var d = new Date(x.ts); s += "\n" + T("Watched") + " " + d.toLocaleDateString() + ", " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); if (x.done) s += " - " + T("Finished"); }
+        return s;
+      }).join("\n\n") + "\n", "video-player-history.txt", "History saved as a text file");
+    });
     var sb = $("surpriseBtn");
     if (sb) sb.addEventListener("click", function () {
       var seen = {}, pool = [];
@@ -10613,6 +10633,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"]
   });
   var WNEW = [
+    ["History as text file", "#histTxtBtn"],
     ["Back pill after big jumps", "#backPillChk"],
     ["Live frame", "#liveFrameBtn"],
     ["Starlight", "#starsChk"],
@@ -10621,8 +10642,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Pick many in queue", "#qPickBtn"],
     ["Queue progress bar", "#qProg"],
     ["Speed streaks", "#streaksBtn"],
-    ["Cinema curtains", "#curtainsBtn"],
-    ["Film bars", "#filmBarsBtn"]
+    ["Cinema curtains", "#curtainsBtn"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -12825,6 +12845,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Night warm", "night warm picture sepia tint eyes late evening automatic colour", "#nightWarmBtn"],
       ["Progress line", "progress line bar bottom video fills watched mini player glance", "#progLineBtn"],
       ["Back pill after big jumps", "back pill undo seek jump return where you were before accidental skip position", "#backPillChk"],
+      ["History as text file", "history recently watched save text file export download list links dates finished record", "#histTxtBtn"],
       ["Daily watch limit", "daily limit cap stop total watch time today enough rest pause sleep", "#dlimChips"],
       ["Skip watched in queue", "skip watched finished seen queue next auto-next backlog left unwatched", "#qSkipWBtn"],
       ["Captions when muted", "captions cc subtitles auto mute muted sound off read quiet night", "#ccMuteBtn"],
