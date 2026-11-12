@@ -3853,7 +3853,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Length on Watch later rows": ["बाद में देखें की पंक्तियों में लंबाई", "પછી જુઓની પંક્તિઓમાં લંબાઈ"]
   });
   function buildItem(item, actionLabel, onAction, onOpen, isCurrent, extraAction, showAge) {
-    var li = document.createElement("li"); li.className = "lib-item";
+    var li = document.createElement("li"); li.className = "lib-item"; li.setAttribute("data-vid", item.id);
     if (item.pin) li.classList.add("pinned");
     if (isCurrent) li.classList.add("is-current");
     var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
@@ -9380,6 +9380,46 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var baseRenderLibQS = renderLib;
   renderLib = function () { baseRenderLibQS(); paintQueueStarts(); };
   (window.__relang = window.__relang || []).push(paintQueueStarts);
+  // Round 210 new 2: day headings in Recently watched. A long history was one unbroken list; now a small
+  // heading (Today, Yesterday, then 'Mon, 9 Nov') starts each day, so "what did I watch last Tuesday" is a
+  // glance. Shown only while the list is in Newest order (other sorts mix the days, headings would lie),
+  // rebuilt on every repaint and language change, nothing new is saved.
+  Object.assign(TR_MSG, {
+    "Yesterday": ["कल", "ગઈકાલે"],
+    "Earlier": ["पहले", "પહેલાં"],
+    "Day headings in history": ["इतिहास में दिन के शीर्षक", "ઇતિહાસમાં દિવસના શીર્ષક"]
+  });
+  function histDayLabel(ts) {
+    if (!(ts > 0)) return T("Earlier");
+    var d = new Date(ts), n = new Date();
+    var d0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime(), n0 = new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
+    var diff = Math.round((n0 - d0) / 86400000);
+    if (diff <= 0) return T("Today");
+    if (diff === 1) return T("Yesterday");
+    var loc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-US";
+    return d.toLocaleDateString(loc, { weekday: "short", day: "numeric", month: "short" });
+  }
+  function paintHistDays() {
+    if (!histList) return;
+    Array.prototype.forEach.call(histList.querySelectorAll(".hist-day"), function (n) { n.remove(); });
+    if (typeof histSort !== "undefined" && histSort && histSort.mode && histSort.mode() !== "new") return;
+    var last = null;
+    Array.prototype.slice.call(histList.children).forEach(function (li) {
+      var id = li.getAttribute && li.getAttribute("data-vid"); if (!id) return;
+      var hi = findIn(lib.hist, id); if (hi < 0) return;
+      var lab = histDayLabel(lib.hist[hi].ts);
+      if (lab === last) return;
+      last = lab;
+      var h = document.createElement("li"); h.className = "hist-day"; h.setAttribute("role", "presentation"); h.textContent = lab;
+      histList.insertBefore(h, li);
+    });
+  }
+  var histDaySt = document.createElement("style");
+  histDaySt.textContent = ".hist-day{list-style:none;margin:10px 2px 2px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted,#6b7280)}.hist-day:first-child{margin-top:2px}:root[data-theme=\"dark\"] .hist-day,:root[data-theme=\"midnight\"] .hist-day{color:#aab2bd}";
+  document.head.appendChild(histDaySt);
+  var baseRenderLibHD = renderLib;
+  renderLib = function () { baseRenderLibHD(); paintHistDays(); };
+  (window.__relang = window.__relang || []).push(paintHistDays);
   // Round 210 fix: the queue's total time, its 'ends ~' clock and the '~time' tags on the rows were worked out
   // only when the list was repainted, so after a pause, a seek, a speed change or just minutes of playing
   // they quietly drifted away from the truth (a paused queue still promised the old finish time). They are
@@ -14516,6 +14556,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Day headings in history", "#lhHist"],
     ["Queue chip on every list row", "#favList"],
     ["Queue rows show when each video starts", "#lhQueue"],
     ["Clear upcoming but keep the playing video", "#clearUpcomingBtn"],
@@ -14524,8 +14565,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Tell a friend", "#tellFriendBtn"],
     ["Copy my stats", "#statsCopyBtn"],
     ["Fade out at the end", "#fadeOutRow"],
-    ["Search on YouTube", "#ytSearchBtn"],
-    ["Repeat this video N times", "#vidRepRow"]
+    ["Search on YouTube", "#ytSearchBtn"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -14552,6 +14592,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Heading tiles": ["हेडिंग टाइल", "હેડિંગ ટાઇલ"],
     "Card float": ["कार्ड फ़्लोट", "કાર્ડ ફ્લોટ"],
     "Accent bloom": ["ऐक्सेंट ब्लूम", "એક્સેન્ટ બ્લૂમ"],
+    "Day headings in history": ["इतिहास में दिन के शीर्षक", "ઇતિહાસમાં દિવસના શીર્ષક"],
     "Remove played videos in queue": ["कतार से चले हुए वीडियो हटाएं", "કતારમાંથી ચલાવેલા વિડિયો કાઢો"],
     "Queue chip on every list row": ["हर लिस्ट पंक्ति पर कतार चिप", "દરેક યાદી પંક્તિ પર કતાર ચિપ"]
   });
@@ -20829,6 +20870,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Day headings in history", "day headings history recently watched today yesterday date group days when watched last tuesday", "#lhHist"],
       ["Queue chip on every list row", "queue chip add row favourites watch later history without playing plus button append end", "#favList"],
       ["Tell a friend", "tell a friend share app link recommend invite send whatsapp pitch about", "#tellFriendBtn"],
       ["Copy my stats", "copy my stats watch time today week total top channel share paste chat summary", "#statsCopyBtn"],
