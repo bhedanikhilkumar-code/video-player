@@ -2353,6 +2353,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button></span></div>
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
+      <p class="hint" id="favTime" role="status"></p>
       <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="histQueueBtn" type="button">Queue unfinished</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
@@ -12590,6 +12591,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Favourites total time", "#favTime"],
     ["Play picked next", "#qPickBtn"],
     ["Glass selection", "#lhQueue"],
     ["Glass scrollbar", "#lhQueue"],
@@ -12599,7 +12601,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Switch ring", "#saverData"],
     ["E to queue the playing video", "#sc25"],
     ["Queue unfinished", "#histQueueBtn"],
-    ["Copied tick", "#infoCopyBtn"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -16015,6 +16016,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     document.head.appendChild(st);
   })();
 
+  // Favourites total time (round 170): Watch later already sums its learned lengths into
+  // a total-length line; Favourites had none, so planning a rewatch evening from a starred
+  // list meant guessing. A quiet line under the Favourites list now sums the lengths the
+  // app has learned for those videos the same way, saying honestly how many lengths are
+  // known, staying empty while the list is empty or no length is known yet. The line
+  // refreshes with the lists, on every learned length and on language change, nothing new
+  // is saved, works on YouTube videos, translated in Hindi and Gujarati, listed in the
+  // feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Favourites total time": ["पसंदीदा कुल समय", "મનપસંદ કુલ સમય"]
+  });
+  function updateFavTime() {
+    var el = $("favTime"); if (!el) return;
+    if (!lib.favs.length) { el.textContent = ""; return; }
+    var known = 0, secs = 0;
+    lib.favs.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { known++; secs += d; } });
+    if (!known) { el.textContent = ""; return; }
+    var t = Math.round(secs), h = Math.floor(t / 3600), m = h ? Math.round((t % 3600) / 60) : Math.max(1, Math.round(t / 60));
+    el.textContent = T("Total length") + ": ~ " + (h ? h + " " + T("hr") + " " + m + " " + T("min") : m + " " + T("min")) + (known < lib.favs.length ? " · " + known + "/" + lib.favs.length + " " + T("lengths known") : "");
+  }
+  var baseRenderLib170 = renderLib;
+  renderLib = function () { baseRenderLib170(); updateFavTime(); };
+  (window.__relang = window.__relang || []).push(updateFavTime);
+  updateFavTime();
+
 })();
 </script>
 <script>
@@ -18204,6 +18230,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Progress line", "progress line bar bottom video fills watched mini player glance", "#progLineBtn"],
       ["History as text file", "history recently watched save text file export download list links dates finished record", "#histTxtBtn"],
       ["Watch later total time", "watch later total time length duration how long backlog saved list plan evening", "#laterTime"],
+      ["Favourites total time", "favourites total time length duration how long starred saved heart list rewatch evening plan", "#favTime"],
       ["Daily watch limit", "daily limit cap stop total watch time today enough rest pause sleep", "#dlimChips"],
       ["Skip watched in queue", "skip watched finished seen queue next auto-next backlog left unwatched", "#qSkipWBtn"],
       ["Captions when muted", "captions cc subtitles auto mute muted sound off read quiet night", "#ccMuteBtn"],
