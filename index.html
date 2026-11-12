@@ -1802,6 +1802,8 @@ setTimeout(done,3000);})();
             <label class="label" for="vol"><span id="volLabT">Volume: </span><span id="volLabel">80%</span></label>
           </div>
           <input class="slider" id="vol" type="range" min="0" max="100" step="1" value="80">
+          <div class="row" id="muteBreakRow" role="group" aria-label="Mute for a while" style="margin-top:8px"><span class="label" id="muteBreakLab">Mute for</span><span class="chips" id="muteBreakChips"></span></div>
+          <p class="hint" id="muteBreakHint">Mutes the sound and brings it back by itself after the time you pick - handy for a loud ad or intro. Tap the counting chip again to bring the sound back sooner.</p>
           <div class="row" id="nightVolRow" style="margin-top:8px"><span class="label" id="nightVolLab">Night volume</span><span class="chips" id="nightVolChips"></span></div>
           <p class="hint" id="nightVolHint">Between 10 pm and 7 am the volume is capped at the level you pick. Your normal volume stays saved for the day.</p>
           <div class="row" style="margin-top:8px"><button class="chip" id="pvVolBtn" type="button" aria-pressed="false">Per-video volume: off</button> <button class="chip" id="chVolBtn" type="button" aria-pressed="false">🔊 Channel volume: off</button></div>
@@ -11437,6 +11439,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Mute break", "#muteBreakRow"],
     ["Rotate picture", "#rotRow"],
     ["Mute pop", "#muteBtn"],
     ["Loop pulse", "#abLabel"],
@@ -13325,6 +13328,78 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   window.addEventListener("orientationchange", function () { setTimeout(rotApply, 300); });
   (window.__relang = window.__relang || []).push(rotRender);
   rotApply(); rotRender();
+
+  // Mute break (round 136): a timed mute in the Sound card next to the volume slider - tap
+  // 15, 30 or 60 seconds and the sound mutes, the chip counts down, and the sound comes back
+  // by itself when the time is up; handy for a loud ad or intro you cannot skip. Tapping the
+  // counting chip again brings the sound back sooner, and unmuting by hand (the Mute button,
+  // the M key) ends the break quietly. If the sound was already muted the chip says so and
+  // starts nothing. A new video loading ends the break and restores the sound, so the next
+  // video never starts silent by surprise. The end is checked against the clock, not tick
+  // counts, so a throttled background tab still restores - just possibly a few seconds late.
+  // Session-only (nothing is saved), works on YouTube videos, translated in Hindi and
+  // Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Mute for": ["कुछ देर म्यूट", "થોડી વાર મ્યૂટ"],
+    "Mute break": ["म्यूट ब्रेक", "મ્યૂટ બ્રેક"],
+    "Mute for {n}s": ["{n} सेकंड म्यूट", "{n} સેકંડ મ્યૂટ"],
+    "Sound back in {n}s": ["आवाज़ {n} सेकंड में वापस", "અવાજ {n} સેકંડમાં પાછો"],
+    "Sound is back.": ["आवाज़ वापस आ गई.", "અવાજ પાછો આવી ગયો."],
+    "The sound is already muted.": ["आवाज़ पहले से म्यूट है.", "અવાજ પહેલેથી મ્યૂટ છે."],
+    "Play a YouTube video first, then use Mute for.": ["पहले कोई YouTube वीडियो चलाएं, फिर कुछ देर म्यूट इस्तेमाल करें.", "પહેલાં કોઈ YouTube વીડિયો ચલાવો, પછી થોડી વાર મ્યૂટ વાપરો."],
+    "Mutes the sound and brings it back by itself after the time you pick - handy for a loud ad or intro. Tap the counting chip again to bring the sound back sooner.": ["चुने हुए समय के लिए आवाज़ म्यूट करता है, फिर अपने आप वापस लाता है - तेज़ विज्ञापन या इंट्रो के लिए काम का. गिनती वाली चिप फिर दबाएं तो आवाज़ पहले वापस आ जाती है.", "પસંદ કરેલા સમય માટે અવાજ મ્યૂટ કરે છે, પછી આપોઆપ પાછો લાવે છે - મોટા એડ કે ઇન્ટ્રો માટે ઉપયોગી. ગણતરીવાળી ચિપ ફરી દબાવો તો અવાજ વહેલો પાછો આવે."]
+  });
+  var mbrSt = document.createElement("style");
+  mbrSt.textContent = ".mbr-chip{padding:5px 11px;font-size:13px}.mbr-chip.active{outline:2px solid rgba(10,132,255,.75);outline-offset:1px;font-weight:700}";
+  document.head.appendChild(mbrSt);
+  var mbrBox = $("muteBreakChips"), mbrLab = $("muteBreakLab"), mbrHint = $("muteBreakHint");
+  var MBR_LENS = [15, 30, 60], mbrBtns = [], mbrEndAt = 0, mbrWeMuted = false, mbrTimer = 0, mbrActiveLen = 0;
+  function mbrPaint(left) {
+    mbrBtns.forEach(function (b, i) {
+      var n = MBR_LENS[i], on = mbrEndAt > 0 && mbrActiveLen === n;
+      b.textContent = on ? T("Sound back in {n}s").replace("{n}", Math.max(0, left)) : T("Mute for {n}s").replace("{n}", n);
+      b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+  function mbrRestore(say) {
+    if (mbrTimer) { clearInterval(mbrTimer); mbrTimer = 0; }
+    var was = mbrWeMuted; mbrEndAt = 0; mbrWeMuted = false; mbrActiveLen = 0;
+    if (was && muted) send("unMute");
+    mbrPaint(0);
+    if (say) toast(T("Sound is back."));
+  }
+  function mbrTickFn() {
+    var left = Math.ceil((mbrEndAt - Date.now()) / 1000);
+    if (mbrWeMuted && !muted) { mbrRestore(false); return; }
+    if (left <= 0) { mbrRestore(true); return; }
+    mbrPaint(left);
+  }
+  function mbrStart(n) {
+    if (!curId || !ready) { toast(T("Play a YouTube video first, then use Mute for.")); return; }
+    if (mbrEndAt) { mbrRestore(true); return; }
+    if (muted) { toast(T("The sound is already muted.")); return; }
+    mbrWeMuted = true; mbrActiveLen = n;
+    send("mute");
+    mbrEndAt = Date.now() + n * 1000;
+    mbrTimer = setInterval(mbrTickFn, 500);
+    mbrPaint(n);
+  }
+  function mbrRender() {
+    if (!mbrBox) return;
+    if (mbrLab) mbrLab.textContent = T("Mute for");
+    if (mbrHint) mbrHint.textContent = T("Mutes the sound and brings it back by itself after the time you pick - handy for a loud ad or intro. Tap the counting chip again to bring the sound back sooner.");
+    if (!mbrBtns.length) {
+      MBR_LENS.forEach(function (n) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip mbr-chip"; b.setAttribute("aria-pressed", "false");
+        b.addEventListener("click", function () { mbrStart(n); });
+        mbrBox.appendChild(b); mbrBtns.push(b);
+      });
+    }
+    mbrPaint(mbrEndAt ? Math.ceil((mbrEndAt - Date.now()) / 1000) : 0);
+  }
+  document.addEventListener("vp-video-loaded", function () { if (mbrEndAt) mbrRestore(true); });
+  (window.__relang = window.__relang || []).push(mbrRender);
+  mbrRender();
 
 })();
 </script>
@@ -15569,7 +15644,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Channel volume", "channel volume remember always this channel creator auto apply sound loud quiet level per channel", "#chVolBtn"],
       ["Loop pulse", "loop pulse a-b repeat wrap again ring count practice loop full video repeat turning feedback", "#abLabel"],
       ["Mute pop", "mute pop sound on off unmute icon centre frame confirm feedback speaker waves", "#muteBtn"],
-      ["Rotate picture", "rotate picture turn sideways 90 180 270 degrees phone video orientation portrait landscape tilted straighten", "#rotRow"]
+      ["Rotate picture", "rotate picture turn sideways 90 180 270 degrees phone video orientation portrait landscape tilted straighten", "#rotRow"],
+      ["Mute break", "mute break timed mute for seconds ad loud intro restore sound automatically temporary quiet", "#muteBreakRow"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
