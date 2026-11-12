@@ -3765,7 +3765,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     infoCard.hidden = false;
     infoThumb.classList.add("skel-img");
     infoThumb.onload = function () { infoThumb.classList.remove("skel-img"); };
-    infoThumb.onerror = function () { infoThumb.classList.remove("skel-img"); };
+    infoThumb.onerror = function () { infoThumb.classList.remove("skel-img"); if (typeof THUMB_FALLBACK === "string" && infoThumb.src !== THUMB_FALLBACK) { infoThumb.onerror = null; infoThumb.src = THUMB_FALLBACK; } };
     infoThumb.src = "https://i.ytimg.com/vi/" + id + "/mqdefault.jpg";
     if (typeof videoAccentPick === "function") videoAccentPick(id);
     if (typeof endedCardHide === "function") endedCardHide();
@@ -11378,6 +11378,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // picture skips the shimmer (checked right after the src is set), Data saver keeps its
   // no-thumbnail behaviour, and the page-wide Calm/reduced-motion and Low-end rules still
   // the sweep. Nothing new is saved, listed in the feature finder and the What's new card.
+  // Round 211 fix: a deleted, private or never-thumbnailed video makes i.ytimg.com answer 404,
+  // and the row kept a broken-image tile in every list (verified with a made-up id in Favourites:
+  // the img never completed and the row showed an empty broken tile). A failed thumbnail now
+  // falls back to a quiet glass tile with the app's play mark, so old favourites and parked
+  // videos whose source vanished still look tidy. One retry at a smaller size is not useful
+  // here (mqdefault/default 404 together for dead videos), so the swap is immediate.
+  var THUMB_FALLBACK = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180"><rect width="320" height="180" rx="12" fill="#e8e6f0"/><circle cx="160" cy="90" r="34" fill="#ffffff" opacity="0.85"/><path d="M148 72 L188 90 L148 108 Z" fill="#8a87a0"/></svg>');
   function thumbSet(img, id, size) {
     if (!img) return;
     if (prefs.dataSaver) { img.hidden = true; img.removeAttribute("src"); img.classList.remove("skel-img"); }
@@ -11385,7 +11392,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       img.hidden = false;
       img.classList.add("skel-img");
       img.onload = function () { img.classList.remove("skel-img"); };
-      img.onerror = function () { img.classList.remove("skel-img"); };
+      img.onerror = function () {
+        img.classList.remove("skel-img");
+        if (img.src !== THUMB_FALLBACK) { img.onerror = null; img.src = THUMB_FALLBACK; }
+      };
       img.src = "https://i.ytimg.com/vi/" + id + "/" + size;
       if (img.complete && img.naturalWidth > 0) img.classList.remove("skel-img");
     }
