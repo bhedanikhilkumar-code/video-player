@@ -2324,6 +2324,7 @@ setTimeout(done,3000);})();
           <button class="chip" id="qPickAllBtn" type="button">All</button>
           <button class="chip" id="qPickNoneBtn" type="button">None</button>
           <button class="chip" id="qPickInvertBtn" type="button">Invert picks</button>
+          <button class="chip" id="qPickCopyBtn" type="button">Copy picked</button>
           <button class="chip" id="qPickTopBtn" type="button">Move to top</button>
           <button class="chip" id="qPickEndBtn" type="button">Move to end</button>
           <button class="chip" id="qPickLaterBtn" type="button">Watch later</button>
@@ -8473,6 +8474,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // with YouTube videos, are translated in Hindi and Gujarati, and sit in the feature finder
   // and the What's new card.
   Object.assign(TR_MSG, {
+    "Copy picked": ["चुने हुए कॉपी करें", "પસંદ કરેલા કોપી કરો"],
+    "Picked videos copied": ["चुने हुए वीडियो कॉपी हुए", "પસંદ કરેલા વીડિયો કોપી થયા"],
+    "Copy picked queue videos": ["कतार के चुने वीडियो कॉपी करें", "કતારના પસંદ કરેલા વીડિયો કોપી કરો"],
     "Invert picks": ["चयन उलटें", "પસંદગી ઉલટાવો"],
     "Swap picked and unpicked videos in the whole queue": ["पूरी कतार में चुने और न चुने वीडियो का चयन बदलें", "આખી કતારમાં પસંદ કરેલા અને ન કરેલા વીડિયો બદલો"],
     "Invert queue picks": ["कतार का चयन उलटें", "કતારની પસંદગી ઉલટાવો"],
@@ -8555,7 +8559,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       qPickPrune();
       qPickCount.textContent = qPicked.length ? qPicked.length + " " + T("picked") : T("Tap videos to pick them.");
     }
-    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickInvertBtn", "Invert picks"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickLaterBtn", "Watch later"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
+    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickInvertBtn", "Invert picks"], ["qPickCopyBtn", "Copy picked"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickLaterBtn", "Watch later"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
   }
   function qPickNeed() { if (!qPicked.length) { toast(T("Pick some videos first.")); return false; } return true; }
   if (qPickBtn) qPickBtn.addEventListener("click", function () {
@@ -8564,6 +8568,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   if ($("qPickAllBtn")) $("qPickAllBtn").addEventListener("click", function () { qPicked = lib.queue.slice(); renderLib(); });
   if ($("qPickNoneBtn")) $("qPickNoneBtn").addEventListener("click", function () { qPicked = []; renderLib(); });
+  // Copy only picked titles and links, in queue order rather than selection order.
+  // Reuse the clipboard fallback and honest success/failure feedback from Copy list.
+  if ($("qPickCopyBtn")) $("qPickCopyBtn").addEventListener("click", function () {
+    qPickPrune();
+    if (!qPickNeed()) return;
+    var pickedInOrder = lib.queue.filter(function (it) { return qPicked.indexOf(it) >= 0; });
+    copyLibList(pickedInOrder, "Pick some videos first.", "Picked videos copied", $("qPickCopyBtn"));
+  });
   // Round 168: invert only the temporary picks, never the queue or current video.
   if ($("qPickInvertBtn")) $("qPickInvertBtn").addEventListener("click", function () {
     qPickPrune();
@@ -12513,6 +12525,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Copy picked queue videos", "#qPickBtn"],
     ["Invert queue picks", "#qPickBtn"],
     ["Empty breath", "#lhQueue"],
     ["Switch ring", "#saverData"],
@@ -12522,7 +12535,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Drag lift", "#lhQueue"],
     ["I to copy title and link", "#sc23"],
     ["Z to skip and remove", "#sc24"],
-    ["Play-pause pop", "#playBtn"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -18073,6 +18085,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Add current video to a playlist", "add current video playlist now playing save", "#plAddCurBtn"],
       ["Play Music (saved music queue)", "play music saved", "#playMusicBtn"],
       ["Up next queue", "queue next upnext order", "#lhQueue"],
+      ["Copy picked queue videos", "copy picked selected queue titles links clipboard subset share list selection", "#qPickBtn"],
       ["Invert queue picks", "invert picks selection opposite swap selected unselected bulk queue all except", "#qPickBtn"],
       ["Pick many in queue", "pick many select multiple bulk queue organise tidy move top remove watch later", "#qPickBtn"],
       ["Remove played videos in queue", "remove played finished auto clear queue consume tidy shrink podcast clean automatic", "#qConsumeBtn"],
