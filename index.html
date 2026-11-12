@@ -2046,6 +2046,7 @@ setTimeout(done,3000);})();
             <li id="sc14"><b>&lt;</b> / <b>&gt;</b>: slower / faster playback speed</li>
             <li id="sc15"><b>P</b>: previous in queue</li>
             <li id="sc16"><b>W</b>: save the playing video to Watch later (press again to remove)</li>
+            <li id="sc17"><b>Y</b>: copy a link that opens this video at the current time</li>
           </ul>
           <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
         </details>
@@ -6119,6 +6120,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (k === ".") { var mNx = $("markNextBtn"); if (mNx && !mNx.disabled) mNx.click(); else handled = false; }
     else if (/^[0-9]$/.test(k) && duration > 0) { var t = duration * Number(k) / 10; manualSeek(t); }
     else if (k === "<" || k === ">") speedKeyStep(k === ">" ? 1 : -1);
+    else if (k === "y" || k === "Y") yCopyLink();
     else if (k === "w" || k === "W") { var wlB = $("laterBtn"); if (wlB && curId) wlB.click(); else handled = false; }
     else handled = false;
     if (handled) e.preventDefault();
@@ -6143,6 +6145,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   Object.assign(TR_MSG, {
     "W for Watch later": ["बाद में देखें के लिए W", "પછી જુઓ માટે W"]
   });
+  // Y to copy link (round 152): press Y to copy a link that opens this video at the time
+  // you are at now (or the A-B range when one is set) - the same link the Share at this time
+  // chip builds, but straight to the clipboard with a toast, no share sheet in the way, so
+  // you can paste it into a chat without leaving the keyboard. Never fires while typing in a
+  // box. Nothing is saved; listed in the Keyboard shortcuts list (and the ? overlay), works
+  // on YouTube videos, translated in Hindi and Gujarati, in the feature finder and What's new.
+  Object.assign(TR_MSG, {
+    "Y to copy link": ["लिंक कॉपी के लिए Y", "લિંક કૉપી માટે Y"],
+    "Load a video first, then copy its link.": ["पहले वीडियो लोड करें, फिर उसकी लिंक कॉपी करें।", "પહેલા વીડિયો લોડ કરો, પછી તેની લિંક કૉપી કરો."],
+    "Link copied - opens at ": ["लिंक कॉपी हुई - खुलेगी ", "લિંક કૉપી થઈ - ખુલશે "],
+    "Could not copy - use Share at this time": ["कॉपी नहीं हुआ - Share at this time इस्तेमाल करें", "કૉપી ન થયું - Share at this time વાપરો"]
+  });
+  function yCopyLink() {
+    if (!curId) { toast(T("Load a video first, then copy its link.")); return; }
+    var link = shareLink(), at = fmt(Math.floor(curTime));
+    function ok() { toast(T("Link copied - opens at ") + at); }
+    function bad() { toast(T("Could not copy - use Share at this time")); }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok, bad); else bad();
+  }
   // Speed keys (round 148): press < or > (Shift+comma / Shift+period) to step the playback
   // speed down or up one notch along the speed chips - 0.25x to 2x - without touching the
   // mouse. It clicks the matching chip, so the saved speed, the active chip and the Speed
@@ -10417,6 +10438,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#sc14", "<b>&lt;</b> / <b>&gt;</b>: slower / faster playback speed", "<b>&lt;</b> / <b>&gt;</b>: धीमी / तेज़ स्पीड"],
     ["#sc15", "<b>P</b>: previous in queue", "<b>P</b>: कतार में पिछला"],
     ["#sc16", "<b>W</b>: save the playing video to Watch later (press again to remove)", "<b>W</b>: चल रहा वीडियो बाद में देखें में सेव करें (दोबारा दबाने पर हटेगा)"],
+    ["#sc17", "<b>Y</b>: copy a link that opens this video at the current time", "<b>Y</b>: इसी समय से खुलने वाली वीडियो लिंक कॉपी करें"],
     ["#faq7a", "See the <a href=\"#backgroundHelp\">Listening help card</a> below the player for simple steps and the screen-off limits.", "सरल steps और screen-off सीमाओं के लिए प्लेयर के नीचे <a href=\"#backgroundHelp\">Listening help कार्ड</a> देखें."]
   ];
   var I18N_GU_HTML = {
@@ -10425,6 +10447,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#sc14": "<b>&lt;</b> / <b>&gt;</b>: ધીમી / ઝડપી સ્પીડ",
  "#sc15": "<b>P</b>: કતારમાં પાછલો",
  "#sc16": "<b>W</b>: ચાલતો વીડિયો પછી જુઓમાં સેવ કરો (ફરી દબાવતાં દૂર થશે)",
+ "#sc17": "<b>Y</b>: આ સમયથી ખુલતી વીડિયો લિંક કૉપી કરો",
  "#sc1": "<b>Space</b> અથવા <b>K</b>: ચલાવો / રોકો",
  "#sc2": "<b>Left / Right</b>: 5 સેકંડ પાછળ / આગળ",
  "#sc3": "<b>J / L</b>: 10 સેકંડ પાછળ / આગળ",
@@ -11804,6 +11827,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Y to copy link", "#sc17"],
     ["W for Watch later", "#sc16"],
     ["Glass hints", "#cinemaBtn"],
     ["Menu lift", "#featNav"],
@@ -11813,7 +11837,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Glass switches", "#autoPauseChk"],
     ["Speed keys", "#sc14"],
     ["Stats grow", "#lhStats"],
-    ["Dock glide", "#playerDock"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -17179,7 +17202,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Menu lift", "menu lift floating top bar feature menu scroll shadow glass sticky navigation raise", "#featNav"],
       ["Queue remembers its place", "queue remembers place current row reload reopen app continue where you left off next auto-next previous marker saved", "#lhQueue"],
       ["P for previous video", "previous video key p keyboard shortcut queue back last played before", "#sc15"],
-      ["W for Watch later", "watch later key w keyboard shortcut save for later add remove toggle playing video backlog", "#sc16"]
+      ["W for Watch later", "watch later key w keyboard shortcut save for later add remove toggle playing video backlog", "#sc16"],
+      ["Y to copy link", "copy link key y keyboard shortcut share at this time current time timestamp clipboard", "#sc17"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
