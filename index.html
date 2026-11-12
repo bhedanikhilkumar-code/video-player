@@ -5087,13 +5087,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   /* Same title sort for Watch later and Recently watched. Newest first stays the default. */
   function makeSortView(key) {
     var mode = "new";
-    try { var sm = localStorage.getItem(key); mode = (sm === "az" || sm === "rate" || sm === "short") ? sm : "new"; } catch (e) {}
+    try { var sm = localStorage.getItem(key); mode = (sm === "az" || sm === "rate" || sm === "short" || sm === "old") ? sm : "new"; } catch (e) {}
     return {
       isAZ: function () { return mode === "az"; },
       mode: function () { return mode; },
-      toggle: function () { mode = mode === "new" ? "az" : (mode === "az" ? "rate" : (mode === "rate" ? "short" : "new")); try { localStorage.setItem(key, mode); } catch (e) {} },
+      toggle: function () { mode = mode === "new" ? "az" : (mode === "az" ? "rate" : (mode === "rate" ? "short" : (mode === "short" ? "old" : "new"))); try { localStorage.setItem(key, mode); } catch (e) {} },
       view: function (items) {
         if (mode === "new") return items;
+        // Round 213 new: Oldest first - the one natural order the cycle did not have. Rows
+        // carry a saved time (history: when watched, Watch later: when parked); rows with no
+        // saved time (older backups) sink to the end instead of pretending to be old.
+        if (mode === "old") return items.slice().sort(function (a, b) { var ta = a && a.ts > 0 ? a.ts : 9e15, tb = b && b.ts > 0 ? b.ts : 9e15; return ta - tb; });
         if (mode === "az") return items.slice().sort(function (a, b) { return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase()); });
         if (mode === "short") return items.slice().sort(function (a, b) {
           var da = infoCache[a.id] && infoCache[a.id].dur, db = infoCache[b.id] && infoCache[b.id].dur;
@@ -5150,7 +5154,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     b.addEventListener("click", function () { sort.toggle(); renderLib(); });
     (function () { var r = document.querySelector('.lib-listtools[data-for="' + headingId + '"]'); if (r) r.appendChild(b); })();
     b.refresh = function () {
-      b.textContent = T(sort.mode() === "az" ? "Sort: A to Z" : (sort.mode() === "rate" ? "Sort: Top rated" : (sort.mode() === "short" ? "Sort: Shortest" : "Sort: Newest")));
+      b.textContent = T(sort.mode() === "az" ? "Sort: A to Z" : (sort.mode() === "rate" ? "Sort: Top rated" : (sort.mode() === "short" ? "Sort: Shortest" : (sort.mode() === "old" ? "Sort: Oldest" : "Sort: Newest"))));
       b.setAttribute("aria-label", T(labelKey));
       b.hidden = items().length < 2;
     };
