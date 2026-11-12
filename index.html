@@ -11462,6 +11462,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Quality shine", "#qualityChips"],
     ["Home stretch glow", "#seek"],
     ["Snooze in Watch later", "#lhLater"],
     ["Check a backup", "#libCheck"],
@@ -11471,7 +11472,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Rotate picture", "#rotRow"],
     ["Mute pop", "#muteBtn"],
     ["Loop pulse", "#abLabel"],
-    ["Channel volume", "#chVolBtn"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -13687,6 +13687,70 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (hsgOn) hsgApply(false);
   }, 700);
   document.addEventListener("vp-video-loaded", function () { hsgApply(false); });
+
+  // Quality shine (round 139): tapping a picture-quality chip sweeps a crisp
+  // glass sheen across the frame with a quick sharpen pulse, and a small glass
+  // pill at the bottom names the quality you picked - so a quality change
+  // lands with a little ceremony instead of a silent menu state, the way the
+  // Speed pill confirms a speed change. One-shot interaction feedback, not a
+  // setting: it fires only on your tap (the player's own quality reports on
+  // load stay quiet) and it never changes the quality itself. Works on YouTube
+  // videos on the main player (the sheen and pill are plain overlays and the
+  // pulse rides the iframe's filter, so the rotate/flip/zoom transform line
+  // stays untouched and every control stays tappable), a plain pill without
+  // the sweep or pulse under Calm/reduced motion and Low-end mode, the sheen
+  // is stronger and blur-free in High contrast, hidden in the mini player and
+  // Simple mode, translated in Hindi and Gujarati, listed in the feature
+  // finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Quality shine": ["क्वालिटी शाइन", "ક્વાલિટી શાઇન"]
+  });
+  var qshSt = document.createElement("style");
+  qshSt.textContent = ".vp-qshine{position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden;border-radius:inherit;opacity:0}"
+    + ".vp-qshine.qs-go{animation:vpQshFade 1.1s ease-out}"
+    + ".vp-qshine::after{content:\"\";position:absolute;top:-60%;bottom:-60%;left:-35%;width:36%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-14deg)}"
+    + ".vp-qshine.qs-go::after{animation:vpQshSheen 1.05s ease-out}"
+    + "@keyframes vpQshFade{0%{opacity:0}15%{opacity:1}100%{opacity:0}}"
+    + "@keyframes vpQshSheen{0%{left:-35%}100%{left:118%}}"
+    + "#frameBox iframe.qs-pulse{animation:vpQshSharp .7s ease-out}"
+    + "@keyframes vpQshSharp{0%{filter:none}30%{filter:contrast(1.14) saturate(1.2) brightness(1.05)}100%{filter:none}}"
+    + ".vp-qpill{position:absolute;left:50%;bottom:12%;transform:translateX(-50%) translateY(10px);z-index:8;pointer-events:none;padding:7px 16px;border-radius:999px;font-size:13px;font-weight:700;color:#fff;background:rgba(20,22,34,.55);border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);box-shadow:0 8px 28px rgba(0,0,0,.35);opacity:0;transition:opacity .25s ease,transform .25s cubic-bezier(.2,.9,.3,1.2);white-space:nowrap;max-width:80%;overflow:hidden;text-overflow:ellipsis}"
+    + ".vp-qpill.qs-on{opacity:1;transform:translateX(-50%) translateY(0)}"
+    + "html.calm-motion .vp-qshine.qs-go,html.low-fx .vp-qshine.qs-go{animation:none}"
+    + "html.calm-motion .vp-qshine.qs-go::after,html.low-fx .vp-qshine.qs-go::after{display:none}"
+    + "html.calm-motion #frameBox iframe.qs-pulse,html.low-fx #frameBox iframe.qs-pulse{animation:none}"
+    + "@media (prefers-reduced-motion:reduce){.vp-qshine.qs-go{animation:none}.vp-qshine.qs-go::after{display:none}#frameBox iframe.qs-pulse{animation:none}}"
+    + "html.high-contrast .vp-qshine.qs-go::after{background:linear-gradient(100deg,transparent,rgba(255,255,255,.8),transparent)}"
+    + "#playerDock.is-mini .vp-qshine,#playerDock.is-mini .vp-qpill,html.simple-mode .vp-qshine,html.simple-mode .vp-qpill{display:none}";
+  document.head.appendChild(qshSt);
+  var qshEl = document.createElement("div"), qshPill = document.createElement("div"), qshT = 0;
+  qshEl.className = "vp-qshine"; qshEl.setAttribute("aria-hidden", "true");
+  qshPill.className = "vp-qpill"; qshPill.setAttribute("aria-hidden", "true");
+  if (frameBox) { frameBox.appendChild(qshEl); frameBox.appendChild(qshPill); }
+  function qshClear() {
+    if (qshT) { clearTimeout(qshT); qshT = 0; }
+    qshEl.classList.remove("qs-go"); qshPill.classList.remove("qs-on");
+    if (iframe) iframe.classList.remove("qs-pulse");
+  }
+  function qshFire(label) {
+    if (!frameBox || !iframe || !controls || controls.hidden || !curId) return;
+    if (document.documentElement.classList.contains("mini-on")) return;
+    if (!label) return;
+    if (qshT) clearTimeout(qshT);
+    qshEl.classList.remove("qs-go"); if (iframe) iframe.classList.remove("qs-pulse");
+    void qshEl.offsetWidth;
+    qshEl.classList.add("qs-go"); if (iframe) iframe.classList.add("qs-pulse");
+    qshPill.textContent = T("Quality") + " · " + label;
+    qshPill.classList.add("qs-on");
+    qshT = setTimeout(qshClear, 1300);
+  }
+  window.__vpQualityShine = qshFire;
+  if (qualityChips) qualityChips.addEventListener("click", function (e) {
+    var b = e.target && e.target.closest ? e.target.closest("button") : null;
+    if (!b) return;
+    qshFire((b.textContent || "").trim());
+  });
+  document.addEventListener("vp-video-loaded", qshClear);
 
 })();
 </script>
@@ -15937,7 +16001,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Full screen bloom", "full screen bloom zoom spring light sweep sheen entering leaving fullscreen big picture glass ceremony", "#fsBtn"],
       ["Snooze in Watch later", "snooze watch later park hide till tomorrow 3 days week wake backlog not now postpone dim bottom", "#lhLater"],
       ["Check a backup", "check backup look inside file before import verify valid what is in safe counts exported date", "#libCheck"],
-      ["Home stretch glow", "home stretch glow ending soon almost over finish warm golden embers sunset final seconds approaching end video about to end", "#seek"]
+      ["Home stretch glow", "home stretch glow ending soon almost over finish warm golden embers sunset final seconds approaching end video about to end", "#seek"],
+      ["Quality shine", "quality shine picture hd 1080 720 4k crisp sharpen sheen sweep change resolution clear auto best", "#qualityChips"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
