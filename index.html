@@ -3379,6 +3379,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!id) return 0;
     try { var m = JSON.parse(localStorage.getItem("vp-rate.v1") || "{}") || {}; var r = m[id] | 0; return r >= 1 && r <= 5 ? r : 0; } catch (e) { return 0; }
   }
+  // Length on Watch later rows (round 130): every Watch later row shows the
+  // learned length under the title when the app knows it - the same number Pick
+  // for me, Line up my evening and the total-time line already use, taken from
+  // the session's learned-length cache or the length saved in Recently watched -
+  // so picking what fits a break takes one glance instead of opening each video.
+  // Rows whose length is not learned yet stay silent instead of guessing, the
+  // line retranslates with every list repaint, works on YouTube videos, adds no
+  // setting, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Length": ["लंबाई", "લંબાઈ"],
+    "Length on Watch later rows": ["बाद में देखें की पंक्तियों में लंबाई", "પછી જુઓની પંક્તિઓમાં લંબાઈ"]
+  });
   function buildItem(item, actionLabel, onAction, onOpen, isCurrent, extraAction, showAge) {
     var li = document.createElement("li"); li.className = "lib-item";
     if (item.pin) li.classList.add("pinned");
@@ -3401,6 +3413,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var ageEl = document.createElement("span"); ageEl.className = "later-age";
       ageEl.textContent = ageDays <= 0 ? T("Added today") : ageDays === 1 ? T("Added yesterday") : T("Added") + " " + ageDays + T(" days ago");
       box.appendChild(ageEl);
+    }
+    // Round 130: the learned length on Watch later rows, silent while unknown.
+    if (showAge) {
+      var lenSec = (typeof infoCache === "object" && infoCache && infoCache[item.id] && infoCache[item.id].dur) || (hInfo && hInfo.dur) || 0;
+      if (typeof lenSec === "number" && lenSec > 0) {
+        var lenEl = document.createElement("span"); lenEl.className = "later-age later-len";
+        lenEl.textContent = T("Length") + " " + fmt(lenSec);
+        box.appendChild(lenEl);
+      }
     }
     open.appendChild(img); open.appendChild(box);
     if (item.done || (hInfo && hInfo.done)) { var wb = document.createElement("i"); wb.className = "watched-badge"; wb.textContent = "\u2713 " + T("Watched"); open.appendChild(wb); }
@@ -11306,6 +11327,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Length on Watch later rows", "#lhLater"],
     ["Pin in Watch later", "#lhLater"],
     ["Magnetic moments", "#seek"],
     ["Fine scrub", "#seek"],
@@ -11315,7 +11337,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Volume waves", "#vwaveChk"],
     ["Add to playlist from any list", "#lhLater"],
     ["Finish rate", "#lhStats"],
-    ["Dream orbs", "#orbsChk"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -14788,6 +14809,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Listening help (screen off)", "screen off background listen premium", "#backgroundHelp"],
       ["What's new", "new latest recent additions updates features whats new", "#whatsNewCard"],
       ["Watch later added date", "watch later added date when saved how old days ago", "#lhLater"],
+      ["Length on Watch later rows", "watch later length duration minutes how long each row pick fit break short", "#lhLater"],
       ["Pin favourites to the top", "pin favourite top keep important first p pinned", "#lhFavs"],
       ["Pin in Watch later", "pin watch later top keep important first must watch next saved", "#lhLater"],
       ["Pause when headphones disconnect", "pause headphones unplug disconnect bluetooth earphones wire out", "#unplugChk"],
