@@ -11601,6 +11601,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Finder cascade", "#palBtn"],
     ["Toast spring", "#vpToast"],
     ["Time in the tab title", "#tabTimeChk"],
     ["Pause at a time", "#pauseAtForm"],
@@ -11610,7 +11611,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Videos in a playlist", "#lhPlaylists"],
     ["Save pop", "#favBtn"],
     ["Find in all moments", "#markFindSum"],
-    ["Recent searches", "#libSearch"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -14362,6 +14362,38 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   Object.assign(TR_MSG, {
     "Toast spring": ["टोस्ट स्प्रिंग", "ટોસ્ટ સ્પ્રિંગ"]
   });
+  // Finder cascade (round 145): opening Search (Ctrl+K or the Search chip) rises
+  // its results in one after another on a quick stagger - like the Library
+  // cascade does for video lists, now for the feature finder itself - so the
+  // palette lands with a soft cascade instead of a hard pop-in. Interaction
+  // feedback, not a setting: nothing new is saved, it fires on the palette's
+  // opening paint only (typing to filter refines the list instantly, without
+  // motion), only the first ten rows take part, and under Calm/reduced motion
+  // and Low-end mode the rows simply appear as before. Works on YouTube videos,
+  // translated in Hindi and Gujarati, listed in the feature finder and the
+  // What's new card.
+  Object.assign(TR_MSG, {
+    "Finder cascade": ["फ़ाइंडर कैस्केड", "ફાઇન્ડર કેસ્કેડ"]
+  });
+  var palCascadeSt = document.createElement("style");
+  palCascadeSt.textContent = ".vp-pal-item.vpPalIn{animation:vpPalRise .38s cubic-bezier(.2,.8,.3,1.06) both}"
+    + "@keyframes vpPalRise{0%{opacity:0;transform:translateY(8px) scale(.99)}100%{opacity:1;transform:none}}"
+    + "html.calm-motion .vp-pal-item.vpPalIn,html.low-fx .vp-pal-item.vpPalIn{animation:none}"
+    + "@media (prefers-reduced-motion:reduce){.vp-pal-item.vpPalIn{animation:none}}";
+  document.head.appendChild(palCascadeSt);
+  window.__vpPalCascade = function () {
+    var calm = window.vpReducedMotion() || document.documentElement.classList.contains("low-fx");
+    if (calm) return;
+    var l = document.getElementById("vpPalList");
+    if (!l || !l.querySelectorAll) return;
+    var rows = l.querySelectorAll(".vp-pal-item");
+    Array.prototype.forEach.call(rows, function (d, i) {
+      if (i > 9) return;
+      d.style.animationDelay = (i * 45) + "ms";
+      d.classList.add("vpPalIn");
+    });
+  };
+
   var toastSpringSt = document.createElement("style");
   toastSpringSt.textContent = "#vpToast{overflow:hidden}"
     + "#vpToast.show{animation:vpToastIn .52s cubic-bezier(.2,.9,.3,1.22) 1}"
@@ -16639,7 +16671,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Pause at a time", "pause at time stop timer part segment minute second watch only stop before ending jump seek one shot", "#pauseAtForm"],
       ["Library cascade", "library cascade rows rise stagger list repaint appear animation queue up next watch later favourites recently watched sort filter soft entrance", "#lhQueue"],
       ["Now playing lift", "now playing lift card spring sheen glass sweep info title channel new video load arrival entrance under frame ceremony", "#infoCard"],
-      ["Toast spring", "toast spring notification bottom message confirm confirmation pop up springy sheen glass feedback saved cleared", "#vpToast"]
+      ["Toast spring", "toast spring notification bottom message confirm confirmation pop up springy sheen glass feedback saved cleared", "#vpToast"],
+      ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
@@ -16719,6 +16752,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     act = 0;
     relabel();
     render();
+    // Round 145 (Finder cascade): rise the first rows in on a quick stagger.
+    if (window.__vpPalCascade) { try { window.__vpPalCascade(); } catch (e) {} }
     input.addEventListener("input", function () { act = 0; render(); });
     input.addEventListener("keydown", function (e) {
       if (e.key === "ArrowDown") { e.preventDefault(); e.stopPropagation(); if (act < shown.length - 1) { act++; paint(); } }
