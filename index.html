@@ -4205,7 +4205,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (idx < qPos) qPos--; else if (idx === qPos) qPos = -1;
       saveLib(); renderLib();
       toastUndo(T("Removed from queue"), function () { lib.queue = snapQ; qPos = snapP; saveLib(); renderLib(); }, T("Queue restored"));
-    }, function (item, idx) { playQueueAt(idx); }, { label: T("Play next"), fn: function (item) { queuePlayNext(item); } }, "queue", [
+    }, function (item, idx) { playQueueAt(idx); }, [{ label: T("Play next"), fn: function (item) { queuePlayNext(item); } }, favRowAction()], "queue", [
       { label: T("Paste a link"), fn: function () { var lb = $("pasteLinkBtn"); if (lb) lb.click(); var li2 = $("link"); if (li2) li2.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); var inp = $("linkInput"); if (inp) setTimeout(function () { inp.focus(); }, 350); } },
       { label: T("Import playlist"), fn: function () { var pb = $("plImportBtn"); if (pb) pb.click(); } }
     ]);
@@ -4215,7 +4215,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var snapLat = lib.later.slice();
       lib.later.splice(lIdx, 1); saveLib(); renderLib();
       toastUndo(T("Removed from Watch later."), function () { lib.later = snapLat; saveLib(); renderLib(); }, T("Watch later list restored"));
-    }, null, [{ label: "📌", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinLater(item.id); } }, { label: function (item) { return laterSnoozed(item) ? "😴 " + Math.max(1, Math.round((item.snoozeUntil - Date.now()) / 864e5)) + "d" : "😴"; }, aria: function (item) { return laterSnoozed(item) ? T("Snoozed - tap to wake it sooner") : T("Snooze this video for later"); }, cls: "snooze-chip", on: function (item) { return laterSnoozed(item); }, fn: function (item) { laterSnoozeCycle(item.id); } }, plRowAction(), queueRowAction()], "later", undefined, true);
+    }, null, [{ label: "📌", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinLater(item.id); } }, { label: function (item) { return laterSnoozed(item) ? "😴 " + Math.max(1, Math.round((item.snoozeUntil - Date.now()) / 864e5)) + "d" : "😴"; }, aria: function (item) { return laterSnoozed(item) ? T("Snoozed - tap to wake it sooner") : T("Snooze this video for later"); }, cls: "snooze-chip", on: function (item) { return laterSnoozed(item); }, fn: function (item) { laterSnoozeCycle(item.id); } }, plRowAction(), favRowAction(), queueRowAction()], "later", undefined, true);
     // Round 206 new 4: Favourites fold - a long favourites list made the library card heavy
     // to draw and scroll on phones. Show the first 30 with a Show all row; the full list is
     // one tap away and folds back with Show less. Session-only - nothing new is saved.
@@ -4289,6 +4289,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Already in the queue": ["पहले से कतार में है", "પહેલેથી કતારમાં છે"],
     "Add to queue": ["कतार में जोड़ें", "કતારમાં ઉમેરો"]
   });
+  // Round 210 new 4: a star on Queue and Watch later rows. Favourites could be set only
+  // from the playing video or from history rows; a queued or parked video had to be played first. The star
+  // fills when the video is a favourite and toggles it, through the same path as the Favourite button.
+  Object.assign(TR_MSG, {
+    "Add to favourites": ["पसंदीदा में डालें", "મનપસંદમાં ઉમેરો"],
+    "Remove from favourites": ["पसंदीदा से हटाएं", "મનપસંદમાંથી કાઢો"]
+  });
+  function favRowAction() {
+    return { label: function (item) { return findIn(lib.favs, item.id) >= 0 ? "\u2605" : "\u2606"; },
+      aria: function (item) { return findIn(lib.favs, item.id) >= 0 ? T("Remove from favourites") : T("Add to favourites"); },
+      cls: "fav-row-chip", on: function (item) { return findIn(lib.favs, item.id) >= 0; },
+      fn: function (item) { toggleFav(item.id); } };
+  }
   function queueRowAction() {
     return { label: "\u2795", aria: function () { return T("Add to queue"); }, cls: "q-add-chip", fn: function (item) {
       if (findIn(lib.queue, item.id) >= 0) { toast(T("Already in the queue")); return; }
@@ -14577,6 +14590,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Star on queue and Watch later rows", "#queueList"],
     ["Save all queue videos to favourites", "#queueToFavBtn"],
     ["Day headings in history", "#lhHist"],
     ["Queue chip on every list row", "#favList"],
@@ -14585,8 +14599,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["O to open on YouTube", "#sc27"],
     ["Drop a YouTube link", "#link"],
     ["Tell a friend", "#tellFriendBtn"],
-    ["Copy my stats", "#statsCopyBtn"],
-    ["Fade out at the end", "#fadeOutRow"]
+    ["Copy my stats", "#statsCopyBtn"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -14615,6 +14628,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Accent bloom": ["ऐक्सेंट ब्लूम", "એક્સેન્ટ બ્લૂમ"],
     "Day headings in history": ["इतिहास में दिन के शीर्षक", "ઇતિહાસમાં દિવસના શીર્ષક"],
     "Save all queue videos to favourites": ["पूरी कतार पसंदीदा में सेव करें", "આખી કતાર મનપસંદમાં સાચવો"],
+    "Star on queue and Watch later rows": ["कतार और बाद में देखें पंक्तियों पर स्टार", "કતાર અને પછી જુઓ પંક્તિઓ પર સ્ટાર"],
     "Remove played videos in queue": ["कतार से चले हुए वीडियो हटाएं", "કતારમાંથી ચલાવેલા વિડિયો કાઢો"],
     "Queue chip on every list row": ["हर लिस्ट पंक्ति पर कतार चिप", "દરેક યાદી પંક્તિ પર કતાર ચિપ"]
   });
@@ -20892,6 +20906,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Star on queue and Watch later rows", "star favourite queue watch later rows toggle without playing fill heart like save", "#queueList"],
       ["Save all queue videos to favourites", "save all queue videos to favourites keep liked starred one tap undo duplicates skipped hearts", "#queueToFavBtn"],
       ["Day headings in history", "day headings history recently watched today yesterday date group days when watched last tuesday", "#lhHist"],
       ["Queue chip on every list row", "queue chip add row favourites watch later history without playing plus button append end", "#favList"],
