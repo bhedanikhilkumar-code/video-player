@@ -3283,6 +3283,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
   } catch (e) {}
   function validItem(x) { return x && typeof x.id === "string" && /^[a-zA-Z0-9_-]{11}$/.test(x.id); }
+  // Round 138: a Watch later video parked with its snooze chip stays dimmed at the
+  // bottom of the list until its wake-up time passes.
+  function laterSnoozed(x) { return !!(x && typeof x.snoozeUntil === "number" && x.snoozeUntil > Date.now()); }
   function saveLib() { try { localStorage.setItem(LIB_KEY, JSON.stringify(lib)); } catch (e) {} }
   function findIn(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return i; return -1; }
   function titleFor(id) {
@@ -3435,6 +3438,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         lenEl.textContent = T("Length") + " " + fmt(lenSec);
         box.appendChild(lenEl);
       }
+    }
+    // Round 138: a snoozed Watch later row dims and says when it comes back.
+    if (typeof item.snoozeUntil === "number" && item.snoozeUntil > Date.now()) {
+      li.classList.add("snoozed");
+      var locSn = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-US";
+      var snzEl = document.createElement("span"); snzEl.className = "later-age later-snooze";
+      snzEl.textContent = "😴 " + T("Snoozed - back") + " " + new Date(item.snoozeUntil).toLocaleDateString(locSn, { weekday: "short", day: "numeric", month: "short" });
+      box.appendChild(snzEl);
     }
     open.appendChild(img); open.appendChild(box);
     if (item.done || (hInfo && hInfo.done)) { var wb = document.createElement("i"); wb.className = "watched-badge"; wb.textContent = "\u2713 " + T("Watched"); open.appendChild(wb); }
@@ -3614,11 +3625,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function updateLaterTime() {
     var el = $("laterTime"); if (!el) return;
     if (!lib.later.length) { el.textContent = ""; return; }
-    var known = 0, secs = 0;
-    lib.later.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { known++; secs += d; } });
-    if (!known) { el.textContent = ""; return; }
+    // Round 138: snoozed videos sit out of the total and show as their own count.
+    var known = 0, secs = 0, snzN = 0, active = 0;
+    lib.later.forEach(function (x) { if (laterSnoozed(x)) { snzN++; return; } active++; var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { known++; secs += d; } });
+    if (!known) { el.textContent = snzN ? "😴 " + snzN + " " + T("snoozed") : ""; return; }
     var t = Math.round(secs), h = Math.floor(t / 3600), m = h ? Math.round((t % 3600) / 60) : Math.max(1, Math.round(t / 60));
-    el.textContent = T("Total length") + ": ~ " + (h ? h + " " + T("hr") + " " + m + " " + T("min") : m + " " + T("min")) + (known < lib.later.length ? " · " + known + "/" + lib.later.length + " " + T("lengths known") : "");
+    el.textContent = T("Total length") + ": ~ " + (h ? h + " " + T("hr") + " " + m + " " + T("min") : m + " " + T("min")) + (known < active ? " · " + known + "/" + active + " " + T("lengths known") : "") + (snzN ? " · 😴 " + snzN + " " + T("snoozed") : "");
   }
   (window.__relang = window.__relang || []).push(updateLaterTime);
 
@@ -3687,10 +3699,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!msg || !act) return;
     var budget = parseInt(inp && inp.value, 10); if (!(budget >= 1)) budget = 20; if (budget > 600) budget = 600;
     var pool = lib.later.filter(function (it) {
+      if (laterSnoozed(it)) return false;
       if (prefs.laterUnwatched) { var hi = findIn(lib.hist, it.id); if (hi >= 0 && lib.hist[hi].done) return false; }
       return true;
     });
-    if (!pool.length) { laterPickState = null; act.hidden = true; msg.textContent = T("Nothing saved for later yet. Load a video and tap Watch later."); return; }
+    if (!pool.length) { laterPickState = null; act.hidden = true; msg.textContent = (lib.later.length && lib.later.every(laterSnoozed)) ? T("Everything saved is snoozed right now - wake a video with its snooze chip first.") : T("Nothing saved for later yet. Load a video and tap Watch later."); return; }
     var known = pool.filter(function (it) { var d = infoCache[it.id] && infoCache[it.id].dur; return typeof d === "number" && d > 0; });
     if (!known.length) { laterPickState = null; act.hidden = true; msg.textContent = T("Lengths are not learned yet - play a saved video once, then Pick for me can fit it to your time."); return; }
     var dur = function (it) { return infoCache[it.id].dur; };
@@ -3728,7 +3741,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var snapLat = lib.later.slice();
       lib.later.splice(lIdx, 1); saveLib(); renderLib();
       toastUndo(T("Removed from Watch later."), function () { lib.later = snapLat; saveLib(); renderLib(); }, T("Watch later list restored"));
-    }, null, [{ label: "📌", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinLater(item.id); } }, plRowAction()], "later", undefined, true);
+    }, null, [{ label: "📌", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinLater(item.id); } }, { label: function (item) { return laterSnoozed(item) ? "😴 " + Math.max(1, Math.round((item.snoozeUntil - Date.now()) / 864e5)) + "d" : "😴"; }, aria: function (item) { return laterSnoozed(item) ? T("Snoozed - tap to wake it sooner") : T("Snooze this video for later"); }, cls: "snooze-chip", on: function (item) { return laterSnoozed(item); }, fn: function (item) { laterSnoozeCycle(item.id); } }, plRowAction()], "later", undefined, true);
     fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) {
       // Round 118: removing a favourite row offers Undo too - the pin flag rides along in the snapshot.
       var fIdx = findIn(lib.favs, item.id); if (fIdx < 0) return;
@@ -4067,6 +4080,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (laterQueueBtn) laterQueueBtn.addEventListener("click", function () {
     var snap = lib.queue.slice(), sp = qPos, add = [];
     lib.later.forEach(function (it) {
+      if (laterSnoozed(it)) return;
       var hi = findIn(lib.hist, it.id);
       var watched = it.done === true || (hi >= 0 && lib.hist[hi].done === true);
       if (watched || findIn(lib.queue, it.id) >= 0) return;
@@ -4329,7 +4343,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // Round 132: the length filter chip narrows the list by learned length.
     if (laterLenActive()) v = v.filter(function (it) { return laterLenOk(it.id); });
     // Round 130: pinned Watch later rows float to the top, whatever the sort - like pinned favourites.
-    return v.sort(function (a, b) { return (b.pin ? 1 : 0) - (a.pin ? 1 : 0); });
+    // Round 138: snoozed rows sink below everything active, soonest wake-up first.
+    return v.sort(function (a, b) {
+      var sa = laterSnoozed(a) ? 1 : 0, sb = laterSnoozed(b) ? 1 : 0;
+      if (sa !== sb) return sa - sb;
+      if (sa) return (a.snoozeUntil || 0) - (b.snoozeUntil || 0);
+      return (b.pin ? 1 : 0) - (a.pin ? 1 : 0);
+    });
   }
   // Length filter for Watch later (round 132): a cycling chip next to the sort button
   // narrows the saved list by learned length - All, under 10 minutes, 10-30 minutes or
@@ -8258,7 +8278,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var data = { app: "hd-video-player", version: 2, exportedAt: new Date().toISOString(),
       queue: lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }),
       favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "", pin: x.pin === true }; }),
-      later: lib.later.map(function (x) { return { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; }),
+      later: lib.later.map(function (x) { var o = { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (laterSnoozed(x)) o.snoozeUntil = x.snoozeUntil; return o; }),
       playlists: playlists.map(function (p) { return { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; }),
       moments: (function () { var o = {}; Object.keys(marks).forEach(function (id) { if (Array.isArray(marks[id]) && marks[id].length) o[id] = marks[id].map(function (m) { return { t: m.t, name: m.name || "" }; }); }); return o; })(),
       notes: (function () { var o = {}; if (typeof notes === "object" && notes) Object.keys(notes).forEach(function (id) { if (typeof notes[id] === "string" && notes[id].trim()) o[id] = notes[id]; }); return o; })(),
@@ -8317,7 +8337,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           playlists.push({ name: nm, items: items }); pn++;
         });
         var ln = 0;
-        (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { lib.later.push({ id: x.id, title: typeof x.title === "string" ? x.title : "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }); ln++; } });
+        (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { var li2 = { id: x.id, title: typeof x.title === "string" ? x.title : "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (typeof x.snoozeUntil === "number" && x.snoozeUntil > Date.now() && x.snoozeUntil < Date.now() + 30 * 864e5) li2.snoozeUntil = x.snoozeUntil; lib.later.push(li2); ln++; } });
         var cn = 0;
         if (Array.isArray(d.channels) && typeof vpChans !== "undefined") {
           d.channels.forEach(function (c) {
@@ -11439,6 +11459,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Snooze in Watch later", "#lhLater"],
     ["Full screen bloom", "#fsBtn"],
     ["Slow-mo drift", "#speedChips"],
     ["Mute break", "#muteBreakRow"],
@@ -11447,8 +11468,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Loop pulse", "#abLabel"],
     ["Channel volume", "#chVolBtn"],
     ["Skip seen parts", "#sskipBtn"],
-    ["Moment beacon", "#markAddBtn"],
-    ["Whip pan", "#seek"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -11889,10 +11908,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!msg) return;
     var budget = parseInt(inp && inp.value, 10); if (!(budget >= 1)) budget = 20; if (budget > 600) budget = 600;
     var pool = lib.later.filter(function (it) {
+      if (laterSnoozed(it)) return false;
       if (prefs.laterUnwatched) { var hi = findIn(lib.hist, it.id); if (hi >= 0 && lib.hist[hi].done) return false; }
       return true;
     });
-    if (!pool.length) { planState = null; laterPlanPaint(); msg.textContent = T("Nothing saved for later yet. Load a video and tap Watch later."); return; }
+    if (!pool.length) { planState = null; laterPlanPaint(); msg.textContent = (lib.later.length && lib.later.every(laterSnoozed)) ? T("Everything saved is snoozed right now - wake a video with its snooze chip first.") : T("Nothing saved for later yet. Load a video and tap Watch later."); return; }
     var known = pool.filter(function (it) { var d = infoCache[it.id] && infoCache[it.id].dur; return typeof d === "number" && d > 0; });
     if (!known.length) { planState = null; laterPlanPaint(); msg.textContent = T("Lengths are not learned yet - play a saved video once, then Line up my evening can fit videos to your time."); return; }
     var queued = {}; lib.queue.forEach(function (q) { if (q && q.id) queued[q.id] = 1; });
@@ -12170,6 +12190,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function laterBacklogSecs() {
     var left = 0, known = 0;
     lib.later.forEach(function (x) {
+      if (laterSnoozed(x)) return;
       var hi = findIn(lib.hist, x.id), hInfo = hi >= 0 ? lib.hist[hi] : null;
       if (hInfo && hInfo.done) return;
       var d = infoCache[x.id] && infoCache[x.id].dur;
@@ -13511,6 +13532,59 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   document.addEventListener("webkitfullscreenchange", fsbChange);
   document.addEventListener("vp-video-loaded", fsbClear);
 
+  // Snooze in Watch later (round 138): every Watch later row gets a snooze chip -
+  // one tap parks the video till tomorrow, more taps stretch it to 3 days or a week,
+  // one more wakes it. A parked row sinks to the bottom of the list, dims and shows
+  // its wake-up date; Pick for me, Line up my evening, Queue unwatched, the
+  // total-time line and the Backlog forecast all skip parked videos, so the backlog
+  // you see and get suggestions from is the one you actually plan to watch. When
+  // the time passes the video wakes by itself on the next list repaint and a toast
+  // says so; the snooze flag rides the backup export/import. No setting, works on
+  // YouTube videos, translated in Hindi and Gujarati, listed in the feature finder
+  // and the What's new card.
+  //
+  Object.assign(TR_MSG, {
+    "Snooze": ["स्नूज़", "સ્નૂઝ"],
+    "Snooze in Watch later": ["वॉच लेटर में स्नूज़", "વોચ લેટરમાં સ્નૂઝ"],
+    "Snooze this video for later": ["इस वीडियो को बाद के लिए स्नूज़ करें", "આ વીડિયોને પછી માટે સ્નૂઝ કરો"],
+    "Snoozed - tap to wake it sooner": ["स्नूज़ है - पहले जगाने के लिए टैप करें", "સ્નૂઝ છે - વહેલું જગાડવા ટૅપ કરો"],
+    "Snoozed - back": ["स्नूज़ - वापस", "સ્નૂઝ - પાછું"],
+    "Snoozed for a day": ["एक दिन के लिए स्नूज़ किया", "એક દિવસ માટે સ્નૂઝ કર્યું"],
+    "Snoozed for 3 days": ["3 दिन के लिए स्नूज़ किया", "3 દિવસ માટે સ્નૂઝ કર્યું"],
+    "Snoozed for a week": ["एक हफ़्ते के लिए स्नूज़ किया", "એક અઠવાડિયા માટે સ્નૂઝ કર્યું"],
+    "Back in Watch later": ["वॉच लेटर में वापस आया", "વોચ લેટરમાં પાછું આવ્યું"],
+    "A snoozed video is back in Watch later": ["स्नूज़ किया एक वीडियो वॉच लेटर में वापस आ गया", "સ્નૂઝ કરેલો એક વીડિયો વોચ લેટરમાં પાછો આવ્યો"],
+    "snoozed videos are back in Watch later": ["स्नूज़ किए वीडियो वॉच लेटर में वापस आ गए", "સ્નૂઝ કરેલા વીડિયો વોચ લેટરમાં પાછા આવ્યા"],
+    "snoozed": ["स्नूज़ में", "સ્નૂઝમાં"],
+    "Everything saved is snoozed right now - wake a video with its snooze chip first.": ["अभी सेव किए सब वीडियो स्नूज़ में हैं - पहले किसी वीडियो को उसकी स्नूज़ चिप से जगाएं.", "હમણાં સેવ કરેલા બધા વીડિયો સ્નૂઝમાં છે - પહેલા કોઈ વીડિયોને તેની સ્નૂઝ ચિપથી જગાડો."]
+  });
+  var snzSt = document.createElement("style");
+  snzSt.textContent = ".lib-item.snoozed{opacity:.58}"
+    + ".lib-item.snoozed .lib-open img{filter:saturate(.55)}"
+    + ".later-snooze{color:var(--teal,#3a8a77)}"
+    + ".snooze-chip.active{border-color:var(--teal,#3a8a77);color:var(--teal,#3a8a77)}"
+    + "html.high-contrast .lib-item.snoozed{opacity:.85}";
+  document.head.appendChild(snzSt);
+  function laterSnoozeCycle(id) {
+    var i = findIn(lib.later, id); if (i < 0) return;
+    var it = lib.later[i], now = Date.now(), cur = laterSnoozed(it) ? it.snoozeUntil : 0;
+    var step = 1;
+    if (cur) { var left = (cur - now) / 864e5; step = left <= 1.5 ? 3 : (left <= 4.5 ? 7 : 0); }
+    if (!step) { delete it.snoozeUntil; saveLib(); renderLib(); toast(T("Back in Watch later")); return; }
+    it.snoozeUntil = now + step * 864e5; saveLib(); renderLib();
+    toast(step === 1 ? T("Snoozed for a day") : step === 3 ? T("Snoozed for 3 days") : T("Snoozed for a week"));
+  }
+  window.__vpSnoozeCycle = laterSnoozeCycle;
+  // Wake-up check rides every list repaint, so a parked video comes back by itself
+  // the first time the app is opened after its time - no timer needed.
+  var baseRenderLibSnz = renderLib;
+  renderLib = function () {
+    var woken = 0, now = Date.now();
+    lib.later.forEach(function (it) { if (typeof it.snoozeUntil === "number" && it.snoozeUntil > 0 && it.snoozeUntil <= now) { delete it.snoozeUntil; woken++; } });
+    if (woken) { saveLib(); setTimeout(function () { toast(woken === 1 ? T("A snoozed video is back in Watch later") : woken + " " + T("snoozed videos are back in Watch later")); }, 80); }
+    baseRenderLibSnz();
+  };
+  renderLib();
 })();
 </script>
 <script>
@@ -15757,7 +15831,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Rotate picture", "rotate picture turn sideways 90 180 270 degrees phone video orientation portrait landscape tilted straighten", "#rotRow"],
       ["Mute break", "mute break timed mute for seconds ad loud intro restore sound automatically temporary quiet", "#muteBreakRow"],
       ["Slow-mo drift", "slow mo slow motion drift dreamy haze blobs floating lights slow speed 0.25 0.5 0.75 playback dream calm glass", "#speedChips"],
-      ["Full screen bloom", "full screen bloom zoom spring light sweep sheen entering leaving fullscreen big picture glass ceremony", "#fsBtn"]
+      ["Full screen bloom", "full screen bloom zoom spring light sweep sheen entering leaving fullscreen big picture glass ceremony", "#fsBtn"],
+      ["Snooze in Watch later", "snooze watch later park hide till tomorrow 3 days week wake backlog not now postpone dim bottom", "#lhLater"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
