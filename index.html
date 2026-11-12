@@ -2356,7 +2356,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
-      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button></span></div>
+      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button></span></div>
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
       <p class="hint" id="favTime" role="status"></p>
@@ -10192,6 +10192,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   renderPlaylists();
 
+  // Save a list as a playlist (round 201): Favourites could be queued or copied, but not kept as a
+  // playlist - queue them, then Save queue as playlist, then clear the queue. One tap now saves the
+  // whole list (the first 50) as a new saved playlist, named after the list; a name already taken
+  // gets (2), (3)... Undo removes it again. Nothing in the list itself changes.
+  Object.assign(TR_MSG, {
+    "Save as playlist": ["प्लेलिस्ट बनाएं", "પ્લેલિસ્ટ બનાવો"],
+    "Saved as playlist:": ["प्लेलिस्ट बनी:", "પ્લેલિસ્ટ બની:"],
+    "Nothing to save yet.": ["अभी सेव करने को कुछ नहीं.", "હજી સેવ કરવા કંઈ નથી."],
+    "Only the first 50 were saved.": ["सिर्फ़ पहले 50 सेव हुए.", "ફક્ત પહેલા 50 સેવ થયા."],
+    "Playlist removed": ["प्लेलिस्ट हटाई", "પ્લેલિસ્ટ કાઢી"]
+  });
+  function libToPlaylist(list, base) {
+    if (!list || !list.length) { toast(T("Nothing to save yet.")); return; }
+    if (playlists.length >= PL_MAX) { toast(T("Your saved playlists are full. Delete one first.")); return; }
+    var nm = cleanName(base), root = nm, k = 2; while (plFind(nm) >= 0) { nm = root.slice(0, 34) + " (" + k + ")"; k++; }
+    var items = list.slice(0, 50).map(function (x) { return { id: x.id, title: x.title || "" }; });
+    var pl = { name: nm, items: items };
+    playlists.push(pl); savePlaylists(); renderPlaylists();
+    var extra = list.length > 50 ? " " + T("Only the first 50 were saved.") : "";
+    plSay(T("Saved as playlist:") + " \"" + nm + "\" (" + items.length + ")." + extra);
+    toastUndo(T("Saved as playlist:") + " " + nm + extra, function () { var at = playlists.indexOf(pl); if (at >= 0) { playlists.splice(at, 1); savePlaylists(); renderPlaylists(); } }, T("Playlist removed"));
+  }
+  var favPlBtn = $("favPlBtn");
+  function favPlPaint() { if (favPlBtn) favPlBtn.textContent = T("Save as playlist"); }
+  if (favPlBtn) favPlBtn.addEventListener("click", function () { libToPlaylist(lib.favs, T("Favourites")); });
+  (window.__relang = window.__relang || []).push(favPlPaint);
+  favPlPaint();
+
   // ---- Library backup: export and import queue + favourites as a file ----
   var libBackupMsg = $("libBackupMsg");
   $("libExport").addEventListener("click", function () {
@@ -13604,7 +13632,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   (window.__relang = window.__relang || []).push(trLeftApply);
   trLeftApply();
+  Object.assign(TR_MSG, {
+    "Save favourites as playlist": ["पसंदीदा से प्लेलिस्ट", "મનપસંદમાંથી પ્લેલિસ્ટ"]
+  });
   var WNEW = [
+    ["Save favourites as playlist", "#favPlBtn"],
     ["History in backups", "#libExport"],
     ["Playlist to top", "#plList"],
     ["Glass playlist progress", "#plList"],
@@ -13613,8 +13645,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Open on YouTube", "#infoYtBtn"],
     ["Glass keycaps", "#scBox"],
     ["Glass toasts", "#vpToast"],
-    ["Sort a playlist by length", "#plList"],
-    ["Glass tour dots", "#tourReplayBtn"]
+    ["Sort a playlist by length", "#plList"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -19515,6 +19546,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Split a playlist", "split playlist divide cut half two parts long course mix new list part 2 undo songs lectures", "#plList"],
       ["Glass tour dots", "glass tour dots welcome tour progress dots steps capsule pill bead frosted first run replay intro", "#tourReplayBtn"],
       ["History in backups", "history backups export import recently watched resume spot watch stats streak new phone restore move device keep", "#libExport"],
+      ["Save favourites as playlist", "save favourites as playlist keep liked starred hearts list turn into playlist new playlist one tap queue undo", "#favPlBtn"],
       ["Playlist to top", "playlist to top first move up favourite everyday pin order priority reorder saved list undo", "#plList"],
       ["Keep first N in a playlist", "keep first trim playlist cut shorten long course mix top N only opening part remove rest undo", "#plList"],
       ["Open on YouTube", "open youtube website app watch page new tab like comment subscribe description share original official", "#infoYtBtn"],
