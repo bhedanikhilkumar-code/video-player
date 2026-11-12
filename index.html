@@ -20229,10 +20229,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if ("serviceWorker" in navigator && location.protocol === "https:") {
     var pendingUpdate = false, updateToastShown = false;
     var T0 = window.T || function (x) { return x; };
+    // Round 215 fix: when the new worker took over, the toast claimed "App updated to
+    // the latest version." - but the page keeps running the code it was loaded with
+    // until a reload, so the promise was premature (and the Check for updates chip
+    // already words the same state honestly). The note now says a reload is needed
+    // and carries a Reload now chip. The chip is not a vp-undo, so the toast's Undo
+    // carry logic never rides it onto an unrelated note (the round 207 lesson).
     navigator.serviceWorker.addEventListener("controllerchange", function () {
       if (!pendingUpdate || updateToastShown) return;
       updateToastShown = true;
-      if (window.toast) window.toast(T0("App updated to the latest version."));
+      if (!window.toast) return;
+      window.toast(T0("A new version is ready - reload the page to use it."), 20000);
+      var tEl = document.getElementById("vpToast");
+      if (!tEl) return;
+      var rb = document.createElement("button");
+      rb.type = "button"; rb.className = "chip vp-offer";
+      rb.textContent = T0("Reload now");
+      rb.addEventListener("click", function () { location.reload(); });
+      tEl.appendChild(rb);
     });
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("/sw.js").then(function (reg) {
@@ -20246,6 +20260,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       }).catch(function () {});
     });
   }
+  if (typeof TR_MSG !== "undefined") Object.assign(TR_MSG, {
+    "Reload now": ["\u0905\u092d\u0940 \u0930\u0940\u0932\u094b\u0921 \u0915\u0930\u0947\u0902", "\u0ab9\u0aae\u0aa3\u0abe\u0a82 \u0ab0\u0ac0\u0ab2\u0acb\u0aa1 \u0a95\u0ab0\u0acb"]
+  });
   var btn = document.getElementById("installBtn"), ev = null;
   var help = document.getElementById("installHelp");
   var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
