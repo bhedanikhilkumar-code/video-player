@@ -7512,10 +7512,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   })();
 
   if (!document.documentElement.requestFullscreen && !document.documentElement.webkitRequestFullscreen) fsBtn.hidden = true;
+  // Round 206 fix 3: where the browser refuses full screen (permission policy, an
+  // embedded window, some iPhone modes), the request used to reject unhandled - a
+  // console error and a tap that looked dead. Now the refusal is caught and said
+  // out loud in the page's language. The local-file F key below gets the same care.
+  Object.assign(TR_MSG, { "Full screen is not available in this browser.": ["इस ब्राउज़र में फुल स्क्रीन नहीं मिलती.", "આ બ્રાઉઝરમાં ફુલ સ્ક્રીન મળતી નથી."] });
   fsBtn.addEventListener("click", function () {
     var el = frameBox;
-    if (el.requestFullscreen) el.requestFullscreen();
-    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    function noFs() { toast(T("Full screen is not available in this browser.")); }
+    try {
+      var p = el.requestFullscreen ? el.requestFullscreen() : (el.webkitRequestFullscreen ? el.webkitRequestFullscreen() : null);
+      if (p && p.catch) p.catch(noFs);
+    } catch (e) { noFs(); }
   });
 
   /* Exit at end: full screen closes by itself when the video finishes, so the
@@ -20495,7 +20503,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   else if(k==="j"||k==="J")v.currentTime=Math.max(0,v.currentTime-10);
   else if(k==="l"||k==="L")v.currentTime=Math.min(v.duration||1e9,v.currentTime+10);
   else if(k==="m"||k==="M"){v.muted=!v.muted;window.toast(T(v.muted?"Muted":"Sound on"),1000);}
-  else if(k==="f"||k==="F"){if(document.fullscreenElement)document.exitFullscreen();else if(v.requestFullscreen)v.requestFullscreen();}
+  else if(k==="f"||k==="F"){if(document.fullscreenElement)document.exitFullscreen();else if(v.requestFullscreen){var fp;try{fp=v.requestFullscreen();}catch(fx){fp=null;}if(fp&&fp.catch)fp.catch(function(){window.toast(T("Full screen is not available in this browser."));});}}
   else done=false;
   if(done)e.preventDefault();
  });
