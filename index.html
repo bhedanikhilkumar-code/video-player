@@ -9921,6 +9921,63 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     plSay(message);
     toastUndo(message, function () { lib.queue = snap; qPos = sp; resetShuffle(); saveLib(); renderLib(); }, T("Queue restored"));
   }
+  // Compare without editing: membership uses unique video IDs, never titles or row indexes.
+  Object.assign(TR_MSG, {
+    "Compare playlists": ["प्लेलिस्ट की तुलना", "પ્લેલિસ્ટની સરખામણી"],
+    "Compare": ["तुलना करें", "સરખાવો"],
+    "Choose another playlist": ["दूसरी प्लेलिस्ट चुनें", "બીજી પ્લેલિસ્ટ પસંદ કરો"],
+    "Create another playlist first.": ["पहले दूसरी प्लेलिस्ट बनाएं.", "પહેલાં બીજી પ્લેલિસ્ટ બનાવો."],
+    "In both": ["दोनों में", "બંનેમાં"],
+    "Only in": ["सिर्फ़ इसमें", "ફક્ત આમાં"],
+    "No videos in this group.": ["इस समूह में कोई वीडियो नहीं.", "આ જૂથમાં કોઈ વિડિયો નથી."],
+    "Unique videos only. Neither playlist is changed.": ["सिर्फ़ अलग वीडियो गिने हैं. कोई प्लेलिस्ट नहीं बदली.", "ફક્ત અલગ વિડિયો ગણ્યા છે. કોઈ પ્લેલિસ્ટ બદલાઈ નથી."],
+    "Close comparison": ["तुलना बंद करें", "સરખામણી બંધ કરો"]
+  });
+  var compareDlg202 = null, comparePaint202 = null;
+  var cmpStyle202 = document.createElement("style");
+  cmpStyle202.textContent = "#plCompare202{box-sizing:border-box;width:min(560px,calc(100vw - 24px));max-height:80dvh;overflow:auto;padding:22px;border:1px solid rgba(255,255,255,.8);border-radius:24px;color:var(--ink);background:linear-gradient(150deg,rgba(255,255,255,.94),rgba(245,249,248,.82));box-shadow:0 24px 70px #0004,inset 0 1px 0 #fff;backdrop-filter:blur(22px) saturate(1.5)}"
+    + "#plCompare202::backdrop{background:rgba(10,15,20,.45);backdrop-filter:blur(8px)}"
+    + "#plCompare202 h2{margin:0 0 14px;font-size:22px}#plCompare202 h3{font-size:15px;overflow-wrap:anywhere;margin:18px 0 8px}#plCompare202 label{display:block;font-size:13px;color:var(--ink2);margin-bottom:6px}#plCompare202 select{box-sizing:border-box;width:100%;max-width:100%;min-height:48px;font:inherit;color:inherit;border:1px solid var(--hairline);border-radius:14px;padding:10px 32px 10px 12px;background-color:var(--soft)}"
+    + "#plCompare202 ul{padding-left:22px;margin:0;font-size:14px;line-height:1.6;overflow-wrap:anywhere}#plCompare202 .cmp-close{width:100%;margin-top:18px}"
+    + ":root[data-theme=dark] #plCompare202{background:linear-gradient(150deg,rgba(40,42,50,.96),rgba(25,30,36,.9));border-color:rgba(255,255,255,.2);box-shadow:0 24px 70px #0009,inset 0 1px 0 #ffffff33}"
+    + ":root.high-contrast #plCompare202{background:var(--card);border:2px solid currentColor;box-shadow:none;backdrop-filter:none}"
+    + ":root.low-fx #plCompare202,:root.low-fx #plCompare202::backdrop{backdrop-filter:none}"
+    + ":root.low-fx #plCompare202{background:var(--card)}";
+  document.head.appendChild(cmpStyle202);
+  function plCompareOpen202(pl) {
+    if (playlists.length < 2) { plSay(T("Create another playlist first.")); return; }
+    if (compareDlg202) compareDlg202.close();
+    var dlg = document.createElement("dialog"); dlg.id = "plCompare202"; dlg.setAttribute("aria-labelledby", "plCompareTitle202");
+    var title = document.createElement("h2"); title.id = "plCompareTitle202";
+    var lab = document.createElement("label"); lab.htmlFor = "plCompareSelect202";
+    var select = document.createElement("select"); select.id = "plCompareSelect202";
+    playlists.forEach(function (other, i) { if (other === pl) return; var op = document.createElement("option"); op.value = String(i); op.textContent = other.name; select.appendChild(op); });
+    var hint = document.createElement("p"); hint.className = "hint";
+    var results = document.createElement("div"); results.setAttribute("aria-live", "polite");
+    var close = document.createElement("button"); close.type = "button"; close.className = "chip cmp-close";
+    dlg.append(title, lab, select, hint, results, close);
+    function unique(items) { var seen = {}; return items.filter(function (x) { if (!x || !x.id || seen[x.id]) return false; seen[x.id] = true; return true; }); }
+    function paint() {
+      title.textContent = T("Compare playlists"); lab.textContent = T("Choose another playlist"); hint.textContent = T("Unique videos only. Neither playlist is changed."); close.textContent = T("Close comparison");
+      var other = playlists[Number(select.value)]; results.textContent = ""; if (!other) return;
+      var aa = unique(pl.items), bb = unique(other.items), aid = {}, bid = {};
+      aa.forEach(function(x){aid[x.id]=true;}); bb.forEach(function(x){bid[x.id]=true;});
+      function group(name, items) {
+        var h = document.createElement("h3"); h.textContent = name + " (" + items.length + ")"; results.appendChild(h);
+        var ul = document.createElement("ul");
+        if (!items.length) { var li = document.createElement("li"); li.textContent = T("No videos in this group."); ul.appendChild(li); }
+        items.forEach(function (x) { var li = document.createElement("li"); li.textContent = x.title || titleFor(x.id) || x.id; ul.appendChild(li); }); results.appendChild(ul);
+      }
+      group(T("In both"), aa.filter(function(x){return bid[x.id];}));
+      group(T("Only in") + " " + pl.name, aa.filter(function(x){return !bid[x.id];}));
+      group(T("Only in") + " " + other.name, bb.filter(function(x){return !aid[x.id];}));
+    }
+    select.addEventListener("change", paint); close.addEventListener("click", function(){dlg.close();});
+    dlg.addEventListener("click", function(e){if(e.target===dlg){var r=dlg.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dlg.close();}});
+    dlg.addEventListener("close", function(){ if(compareDlg202===dlg){compareDlg202=null;comparePaint202=null;} dlg.remove(); var idx=playlists.indexOf(pl);var origin=plList.querySelector('[data-playlist-index="'+idx+'"] .pl-more-btn');if(origin)origin.focus({preventScroll:true}); });
+    compareDlg202 = dlg; comparePaint202 = paint; document.body.appendChild(dlg); paint(); dlg.showModal(); select.focus();
+  }
+  (window.__relang = window.__relang || []).push(function(){if(comparePaint202)comparePaint202();});
   function renderPlaylists() {
     plList.textContent = "";
     plSortRefresh();
@@ -9992,6 +10049,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         saveLib(); renderLib(); plSay(n ? T("Added ") + n + " " + (n === 1 ? T("video") : T("videos")) + T(" to the queue.") : T("Those videos are already in the queue (or the queue is full at 50)."));
       });
       btn(T("Queue playlist next"), "", function () { plQueueNext202(pl); });
+      btn(T("Compare"), "", function () { plCompareOpen202(pl); });
       btn(T("Update"), "", async function () {
         if (!lib.queue.length) { plSay(T("The queue is empty, so there is nothing to save.")); return; }
         if (!await vpConfirm(T("Replace the videos in") + " \"" + pl.name + "\"" + T(" with the current queue?"), T("Replace"))) return;
@@ -13830,7 +13888,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   Object.assign(TR_MSG, {"Save unfinished history as playlist": ["अधूरी हिस्ट्री की प्लेलिस्ट बनाएं", "અધૂરી હિસ્ટ્રીની પ્લેલિસ્ટ બનાવો"]});
   Object.assign(TR_MSG, {"Study sheet export": ["पढ़ाई शीट निर्यात", "અભ્યાસ શીટ નિકાસ"]});
   Object.assign(TR_MSG, {"Search notes in Library": ["लाइब्रेरी से नोट्स खोजें", "લાઇબ્રેરીથી નોંધો શોધો"]});
+  Object.assign(TR_MSG, {"Compare playlists": ["प्लेलिस्ट की तुलना", "પ્લેલિસ્ટની સરખામણી"]});
   var WNEW = [
+    ["Compare playlists", "#plList"],
     ["Search notes in Library", "#libNotesBtn"],
     ["Study sheet export", "#studySheetBtn"],
     ["Save unfinished history as playlist", "#histPlBtn"],
@@ -13839,8 +13899,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Sort queue A to Z", "#sortAzQueueBtn"],
     ["Save Watch later as playlist", "#laterPlBtn"],
     ["Save favourites as playlist", "#favPlBtn"],
-    ["History in backups", "#libExport"],
-    ["Playlist to top", "#plList"]
+    ["History in backups", "#libExport"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -19781,6 +19840,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Save unfinished history as playlist", "save unfinished history as playlist started resume continue watching half finished course keep queue unchanged undo", "#histPlBtn"],
       ["Study sheet export", "study sheet export markdown md notes saved moments timestamp links lesson revision portable download personal annotations", "#studySheetBtn"],
       ["Search notes in Library", "search notes library include private annotations written words find video topic titles ids queue matches pick matches", "#libNotesBtn"],
+      ["Compare playlists", "compare playlists overlap common shared unique differences both only course duplicate videos read only", "#plList"],
       ["Clear finished from history", "clear finished history recently watched remove watched done completed tidy keep unfinished resume undo", "#histDoneBtn"],
       ["Playlist to top", "playlist to top first move up favourite everyday pin order priority reorder saved list undo", "#plList"],
       ["Keep first N in a playlist", "keep first trim playlist cut shorten long course mix top N only opening part remove rest undo", "#plList"],
