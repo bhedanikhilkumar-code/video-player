@@ -2318,7 +2318,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
       <div id="musicQueue">
-      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="sortLenQueueBtn" type="button">Sort by length</button><button class="chip" id="queueToLaterBtn" type="button">Save all to Watch later</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="qSkipWBtn" type="button" aria-pressed="false">Skip watched: off</button><button class="chip" id="qConsumeBtn" type="button" aria-pressed="false">Remove played: off</button><button class="chip" id="qFeedBtn" type="button" aria-pressed="false">Watch later feed: off</button><button class="chip" id="qPickBtn" type="button" aria-pressed="false">☑ Pick many: off</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="sortLenQueueBtn" type="button">Sort by length</button><button class="chip" id="sortAzQueueBtn" type="button">Sort A to Z</button><button class="chip" id="queueToLaterBtn" type="button">Save all to Watch later</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="qSkipWBtn" type="button" aria-pressed="false">Skip watched: off</button><button class="chip" id="qConsumeBtn" type="button" aria-pressed="false">Remove played: off</button><button class="chip" id="qFeedBtn" type="button" aria-pressed="false">Watch later feed: off</button><button class="chip" id="qPickBtn" type="button" aria-pressed="false">☑ Pick many: off</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <div class="q-pick-bar" id="qPickBar" hidden>
         <div class="hint q-pick-count" role="status"><span id="qPickCount"></span><span id="qPickTime" style="display:block;margin-top:4px"></span></div>
         <span class="row">
@@ -4714,6 +4714,37 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   (window.__relang = window.__relang || []).push(sortLenPaint);
   sortLenPaint();
+  // Sort the queue by title (round 201): the queue could be mixed, reversed or sorted by length, but not
+  // by name, so an album or a course listed out of order stayed that way. Sort A to Z orders the videos
+  // after the current one by title (numbers read as numbers: Part 2 before Part 10; case ignored);
+  // videos whose title is not known yet stay at the end. Tap again for Z to A. Undo restores the order.
+  Object.assign(TR_MSG, {
+    "Sort A to Z": ["A से Z क्रम", "A થી Z ક્રમ"],
+    "Sort: Z to A": ["क्रम: Z से A", "ક્રમ: Z થી A"],
+    "Queue sorted: A to Z": ["कतार क्रमित: A से Z", "કતાર ગોઠવાઈ: A થી Z"],
+    "Queue sorted: Z to A": ["कतार क्रमित: Z से A", "કતાર ગોઠવાઈ: Z થી A"],
+    "Need at least 2 videos with known titles after the current one to sort.": ["सॉर्ट के लिए मौजूदा के बाद कम से कम 2 ज्ञात शीर्षक वाले वीडियो चाहिए.", "સૉર્ટ માટે હાલના પછી ઓછામાં ઓછા 2 જાણીતા શીર્ષકવાળા વિડિયો જોઈએ."],
+    "videos with no title yet stayed at the end": ["वीडियो जिनका शीर्षक अभी नहीं मिला, अंत में रहे", "વિડિયો જેમનું શીર્ષક હજી નથી, અંતે રહ્યા"]
+  });
+  var sortAzQueueBtn = $("sortAzQueueBtn"), sortAzNextAz = true;
+  function sortAzPaint() { if (sortAzQueueBtn) sortAzQueueBtn.textContent = sortAzNextAz ? T("Sort A to Z") : T("Sort: Z to A"); }
+  function sortAzTitle(x) { var t = (x.title || "").trim(); if (!t && typeof titleFor === "function") t = (titleFor(x.id) || "").trim(); return t; }
+  if (sortAzQueueBtn) sortAzQueueBtn.addEventListener("click", function () {
+    var start = qPos + 1;
+    var named = [], unnamed = [];
+    lib.queue.slice(start).forEach(function (x) { if (sortAzTitle(x)) named.push(x); else unnamed.push(x); });
+    if (named.length < 2) { showLibErr(T("Need at least 2 videos with known titles after the current one to sort.")); return; }
+    var snap = lib.queue.slice(), sp = qPos, dir = sortAzNextAz ? 1 : -1;
+    var coll = (typeof Intl !== "undefined" && Intl.Collator) ? new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }) : null;
+    named.sort(function (a, b) { var x = sortAzTitle(a), y = sortAzTitle(b); return dir * (coll ? coll.compare(x, y) : (x.toLowerCase() < y.toLowerCase() ? -1 : x.toLowerCase() > y.toLowerCase() ? 1 : 0)); });
+    lib.queue = lib.queue.slice(0, start).concat(named, unnamed);
+    resetShuffle(); saveLib(); renderLib(); showLibErr("");
+    toastUndo(dir === 1 ? T("Queue sorted: A to Z") : T("Queue sorted: Z to A"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    if (unnamed.length) showLibErr(unnamed.length + " " + T("videos with no title yet stayed at the end"));
+    sortAzNextAz = !sortAzNextAz; sortAzPaint();
+  });
+  (window.__relang = window.__relang || []).push(sortAzPaint);
+  sortAzPaint();
   // Translations for round 158 (inside the main app closure, so TR_MSG takes them).
   Object.assign(TR_MSG, {
     "+ Queue as next": ["+ \u0905\u0917\u0932\u0947 \u0928\u0902\u092c\u0930 \u092a\u0930 \u0921\u093e\u0932\u0947\u0902", "+ \u0a86\u0a97\u0ab3\u0aa8\u0abe \u0aa8\u0a82\u0aac\u0ab0\u0ac7 \u0a89\u0aae\u0ac7\u0ab0\u0acb"],
@@ -13645,7 +13676,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   Object.assign(TR_MSG, {
     "Save Watch later as playlist": ["बाद में देखें से प्लेलिस्ट", "પછી જુઓમાંથી પ્લેલિસ્ટ"]
   });
+  Object.assign(TR_MSG, {
+    "Sort queue A to Z": ["कतार A से Z क्रम में", "કતાર A થી Z ક્રમમાં"]
+  });
   var WNEW = [
+    ["Sort queue A to Z", "#sortAzQueueBtn"],
     ["Save Watch later as playlist", "#laterPlBtn"],
     ["Save favourites as playlist", "#favPlBtn"],
     ["History in backups", "#libExport"],
@@ -13654,8 +13689,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Playlist actions More menu", "#plList"],
     ["Keep first N in a playlist", "#plList"],
     ["Open on YouTube", "#infoYtBtn"],
-    ["Glass keycaps", "#scBox"],
-    ["Glass toasts", "#vpToast"]
+    ["Glass keycaps", "#scBox"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -19558,6 +19592,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["History in backups", "history backups export import recently watched resume spot watch stats streak new phone restore move device keep", "#libExport"],
       ["Save favourites as playlist", "save favourites as playlist keep liked starred hearts list turn into playlist new playlist one tap queue undo", "#favPlBtn"],
       ["Save Watch later as playlist", "save watch later as playlist keep parked videos list turn into playlist new playlist one tap undo evening backlog", "#laterPlBtn"],
+      ["Sort queue A to Z", "sort queue a to z alphabetical title name order album course parts numbers undo z to a", "#sortAzQueueBtn"],
       ["Playlist to top", "playlist to top first move up favourite everyday pin order priority reorder saved list undo", "#plList"],
       ["Keep first N in a playlist", "keep first trim playlist cut shorten long course mix top N only opening part remove rest undo", "#plList"],
       ["Open on YouTube", "open youtube website app watch page new tab like comment subscribe description share original official", "#infoYtBtn"],
