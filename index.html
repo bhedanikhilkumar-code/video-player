@@ -5005,9 +5005,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Re-paint the theme button when the app language changes (its label is translated now).
   (window.__relang = window.__relang || []).push(applyTheme);
 
+  // Link detection (round 201 fix): a link pasted with words around it (a WhatsApp share like
+  // "Watch this https://youtu.be/..."), a link wrapped in < > or quotes, an old /watch/ID or /e/ID
+  // style link, or a link with a trailing space code was refused as "no YouTube link", and any
+  // plain 11-letter word (for example "programming") was taken for a video id. Now the first
+  // YouTube link found inside the text is used, and a bare 11-character word counts as an id only
+  // if it has a digit, a capital, a dash or an underscore (real ids always do in practice).
   function parseVideoId(input) {
-    var text = input.trim().replace(/[)\]>"'`,.;!?]+$/g, "");
-    if (/^[a-zA-Z0-9_-]{11}$/.test(text)) return text;
+    var whole = parseVideoIdOne(String(input == null ? "" : input));
+    if (whole) return whole;
+    var txt = String(input == null ? "" : input).replace(/%20|%0A|%0D/gi, " ");
+    var found = txt.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*(?:youtube(?:-nocookie)?\.com|youtu\.be)\/[^\s<>"'`]+/gi) || [];
+    for (var fi = 0; fi < found.length; fi++) { var got = parseVideoIdOne(found[fi]); if (got) return got; }
+    return null;
+  }
+  function parseVideoIdOne(input) {
+    var text = input.trim().replace(/^[<(\[{"'`]+/, "").replace(/[)\]>}"'`,.;!?]+$/g, "");
+    if (/^[a-zA-Z0-9_-]{11}$/.test(text)) return /^[a-z]{11}$/.test(text) ? null : text;
     try {
       var url = new URL(text.indexOf("://") >= 0 ? text : "https://" + text);
       var host = url.hostname.replace(/^(www|m)\./, "");
@@ -5019,8 +5033,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var v = url.searchParams.get("v");
         if (v && /^[a-zA-Z0-9_-]{11}$/.test(v)) return v;
         var parts = url.pathname.split("/").filter(Boolean);
+        var innerU = url.searchParams.get("u");
+        if (innerU && /^\/watch\?/.test(innerU)) { var uv = new URLSearchParams(innerU.split("?")[1]).get("v"); if (uv && /^[a-zA-Z0-9_-]{11}$/.test(uv)) return uv; }
         for (var i = 0; i < parts.length; i++) {
-          if (["embed", "shorts", "live", "v"].indexOf(parts[i]) >= 0 && /^[a-zA-Z0-9_-]{11}$/.test(parts[i + 1] || "")) return parts[i + 1];
+          if (["embed", "shorts", "live", "v", "e", "vi", "watch"].indexOf(parts[i]) >= 0 && /^[a-zA-Z0-9_-]{11}$/.test(parts[i + 1] || "")) return parts[i + 1];
         }
       }
     } catch (e) {}
