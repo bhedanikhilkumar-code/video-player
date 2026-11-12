@@ -3394,16 +3394,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     act.textContent = actionLabel; act.setAttribute("aria-label", actionLabel + ": " + (item.title || item.id));
     act.addEventListener("click", onAction);
     li.appendChild(open); li.appendChild(act);
-    if (extraAction) {
+    var extraActs = extraAction ? (Array.isArray(extraAction) ? extraAction : [extraAction]) : [];
+    extraActs.forEach(function (extraAction) {
+      if (!extraAction) return;
       var act2 = document.createElement("button"); act2.className = "chip"; act2.type = "button";
       var lab2 = typeof extraAction.label === "function" ? extraAction.label(item) : extraAction.label;
       var aria2 = typeof extraAction.aria === "function" ? extraAction.aria(item) : lab2;
       act2.textContent = lab2; act2.setAttribute("aria-label", aria2 + ": " + (item.title || item.id)); act2.title = aria2;
       if (extraAction.cls) act2.classList.add(extraAction.cls);
       if (extraAction.on) { var on2 = !!extraAction.on(item); act2.classList.toggle("active", on2); act2.setAttribute("aria-pressed", String(on2)); }
-      act2.addEventListener("click", function () { extraAction.fn(item); });
+      act2.addEventListener("click", function () { extraAction.fn(item, act2); });
       li.appendChild(act2);
-    }
+    });
     return li;
   }
   var LIB_ICONS = {
@@ -3669,22 +3671,134 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var snapLat = lib.later.slice();
       lib.later.splice(lIdx, 1); saveLib(); renderLib();
       toastUndo(T("Removed from Watch later."), function () { lib.later = snapLat; saveLib(); renderLib(); }, T("Watch later list restored"));
-    }, null, null, "later", undefined, true);
+    }, null, plRowAction(), "later", undefined, true);
     fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) {
       // Round 118: removing a favourite row offers Undo too - the pin flag rides along in the snapshot.
       var fIdx = findIn(lib.favs, item.id); if (fIdx < 0) return;
       var snapFv = lib.favs.slice();
       lib.favs.splice(fIdx, 1); saveLib(); renderLib();
       toastUndo(T("Removed from favourites"), function () { lib.favs = snapFv; saveLib(); renderLib(); }, T("Favourites restored"));
-    }, null, { label: "\ud83d\udccc", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinFav(item.id); } }, "fav");
-    fillList(histList, histView(), T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, { label: T("Remove"), fn: function (item) {
+    }, null, [{ label: "\ud83d\udccc", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinFav(item.id); } }, plRowAction()], "fav");
+    fillList(histList, histView(), T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, [{ label: T("Remove"), fn: function (item) {
       var i = findIn(lib.hist, item.id);
       if (i >= 0) { var snapH = lib.hist.slice(); lib.hist.splice(i, 1); saveLib(); renderLib(); if (typeof libSay === "function") libSay(T("Removed from history.")); toastUndo(T("Removed from history."), function () { lib.hist = snapH; saveLib(); renderLib(); }, T("History restored")); }
-    } }, "hist");
+    } }, plRowAction()], "hist");
     updateFavBtn(); updateLaterBtn();
     updateQueueTime();
     if (typeof updateLaterTime === "function") updateLaterTime();
     if (typeof window.__vpBadgesTick === "function") window.__vpBadgesTick();
+  }
+
+  // Add to playlist from any list (round 126): every Watch later, Favourites and
+  // Recently watched row grows a small folder button that files that video into a
+  // saved playlist without playing it first - before this only the currently
+  // playing video could be added, so tidying a backlog into playlists meant
+  // loading every video one by one. The button opens a small glass picker next to
+  // the row: tap a playlist to add the video (duplicates and full playlists say so
+  // honestly), or type a name to make a new playlist with the video as its first
+  // entry. No setting, works on YouTube videos, translated in Hindi and Gujarati,
+  // listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Add to playlist": ["प्लेलिस्ट में जोड़ें", "પ્લેલિસ્ટમાં ઉમેરો"],
+    "Add to playlist from any list": ["किसी भी लिस्ट से प्लेलिस्ट में जोड़ें", "કોઈપણ યાદીમાંથી પ્લેલિસ્ટમાં ઉમેરો"],
+    "Pick a playlist": ["प्लेलिस्ट चुनें", "પ્લેલિસ્ટ પસંદ કરો"],
+    "New playlist": ["नई प्लेलिस्ट", "નવી પ્લેલિસ્ટ"],
+    "Playlist name": ["प्लेलिस्ट का नाम", "પ્લેલિસ્ટનું નામ"],
+    "Create": ["बनाएं", "બનાવો"],
+    "No playlists yet - type a name to make one.": ["अभी कोई प्लेलिस्ट नहीं - नाम लिखकर एक बनाएं.", "હજી કોઈ પ્લેલિસ્ટ નથી - નામ લખીને એક બનાવો."],
+    "already has this video.": ["में यह वीडियो पहले से है.", "માં આ વિડિયો પહેલેથી છે."],
+    "is full (50 videos).": ["भरी है (50 वीडियो).", "ભરાઈ ગઈ છે (50 વિડિયો)."]
+  });
+  var plPopEl = null, plPopItem = null;
+  var plPopStyle = document.createElement("style");
+  plPopStyle.textContent = ".pl-pop{position:fixed;z-index:6000;width:min(300px,92vw);padding:12px;border-radius:16px;border:1px solid var(--hairline,rgba(120,130,160,.25));background:var(--card,#fff);color:var(--ink,#111);box-shadow:var(--shadow,0 12px 40px rgba(0,0,0,.35));backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);animation:mp-pop .25s cubic-bezier(.34,1.56,.5,1) both;}"
+    + ".pl-pop-head{display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:14px;margin-bottom:8px;}"
+    + ".pl-pop-x{flex:none;border:0;background:transparent;color:var(--ink2,#555);font-size:16px;cursor:pointer;min-width:44px;min-height:44px;margin:-10px -10px -10px 0;}"
+    + ".pl-pop-list{display:grid;gap:6px;max-height:220px;overflow:auto;}"
+    + ".pl-pop-row{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:44px;padding:8px 12px;border-radius:12px;border:1px solid var(--hairline,rgba(120,130,160,.25));background:var(--soft,rgba(120,130,160,.08));color:var(--ink,#111);font:inherit;font-weight:600;text-align:left;cursor:pointer;}"
+    + ".pl-pop-row:hover{border-color:var(--accent,#4a7dff);}"
+    + ".pl-pop-row .pl-pop-n{flex:none;font-weight:500;font-size:12px;color:var(--ink2,#555);}"
+    + ".pl-pop-row.on{opacity:.6;}"
+    + ".pl-pop-new{display:flex;gap:8px;margin-top:10px;}"
+    + ".pl-pop-new input{flex:1;min-width:0;min-height:44px;padding:8px 12px;border-radius:12px;border:1px solid var(--hairline,rgba(120,130,160,.25));background:var(--soft,rgba(120,130,160,.08));color:var(--ink,#111);font:inherit;}"
+    + ".pl-pop-hint{margin:6px 0 0;font-size:12px;color:var(--ink2,#555);}"
+    + ".pl-add-chip{padding-left:10px;padding-right:10px;}";
+  document.head.appendChild(plPopStyle);
+  function plRowAction() {
+    return { label: "📁", aria: T("Add to playlist"), cls: "pl-add-chip", fn: function (item, btn) { plRowOpen(item, btn); } };
+  }
+  function plPopClose() {
+    if (plPopEl && plPopEl.parentNode) plPopEl.parentNode.removeChild(plPopEl);
+    plPopEl = null; plPopItem = null;
+    document.removeEventListener("pointerdown", plPopOutside, true);
+    document.removeEventListener("keydown", plPopKey, true);
+    window.removeEventListener("scroll", plPopClose, true);
+    window.removeEventListener("resize", plPopClose);
+  }
+  function plPopOutside(e) { if (plPopEl && !plPopEl.contains(e.target)) plPopClose(); }
+  function plPopKey(e) { if (e.key === "Escape") plPopClose(); }
+  function plRowOpen(item, btn) {
+    if (plPopEl && plPopItem === item) { plPopClose(); return; }
+    plPopClose();
+    plPopItem = item;
+    var pop = document.createElement("div"); pop.className = "pl-pop"; pop.setAttribute("role", "dialog"); pop.setAttribute("aria-label", T("Add to playlist"));
+    var head = document.createElement("div"); head.className = "pl-pop-head";
+    var ht = document.createElement("span"); ht.textContent = T("Add to playlist");
+    var hx = document.createElement("button"); hx.type = "button"; hx.className = "pl-pop-x"; hx.textContent = "✕"; hx.setAttribute("aria-label", T("Close"));
+    hx.addEventListener("click", plPopClose);
+    head.appendChild(ht); head.appendChild(hx); pop.appendChild(head);
+    var list = document.createElement("div"); list.className = "pl-pop-list";
+    (playlists || []).forEach(function (p, i) {
+      var row = document.createElement("button"); row.type = "button"; row.className = "pl-pop-row";
+      var has = findIn(p.items, item.id) >= 0;
+      if (has) row.classList.add("on");
+      var nm = document.createElement("span"); nm.textContent = (has ? "✓ " : "") + p.name;
+      var nn = document.createElement("span"); nn.className = "pl-pop-n"; nn.textContent = p.items.length + "/50";
+      row.appendChild(nm); row.appendChild(nn);
+      row.addEventListener("click", function () { plRowAddTo(i); });
+      list.appendChild(row);
+    });
+    pop.appendChild(list);
+    if (!playlists || !playlists.length) {
+      var hint = document.createElement("p"); hint.className = "pl-pop-hint"; hint.textContent = T("No playlists yet - type a name to make one."); pop.appendChild(hint);
+    }
+    var nw = document.createElement("div"); nw.className = "pl-pop-new";
+    var inp = document.createElement("input"); inp.type = "text"; inp.maxLength = 40; inp.placeholder = T("Playlist name"); inp.setAttribute("aria-label", T("New playlist") + " - " + T("Playlist name"));
+    var mk = document.createElement("button"); mk.type = "button"; mk.className = "chip"; mk.textContent = T("Create");
+    function make() { plRowCreate(inp.value); }
+    mk.addEventListener("click", make);
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); make(); } });
+    nw.appendChild(inp); nw.appendChild(mk); pop.appendChild(nw);
+    document.body.appendChild(pop);
+    plPopEl = pop;
+    var r = btn.getBoundingClientRect ? btn.getBoundingClientRect() : { left: 8, right: 80, top: 80, bottom: 120 };
+    var w = pop.offsetWidth, h = pop.offsetHeight;
+    var left = Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8));
+    var top = r.bottom + 6;
+    if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 6);
+    pop.style.left = left + "px"; pop.style.top = top + "px";
+    document.addEventListener("pointerdown", plPopOutside, true);
+    document.addEventListener("keydown", plPopKey, true);
+    window.addEventListener("scroll", plPopClose, true);
+    window.addEventListener("resize", plPopClose);
+  }
+  function plRowAddTo(i) {
+    var item = plPopItem; if (!item) { plPopClose(); return; }
+    var pl = playlists[i]; if (!pl) { plPopClose(); return; }
+    if (findIn(pl.items, item.id) >= 0) { toast("\"" + pl.name + "\" " + T("already has this video.")); plPopClose(); return; }
+    if (pl.items.length >= 50) { toast("\"" + pl.name + "\" " + T("is full (50 videos).")); plPopClose(); return; }
+    pl.items.push({ id: item.id, title: item.title || titleFor(item.id) || "" });
+    savePlaylists(); renderPlaylists();
+    toast(T("Added to ") + "\"" + pl.name + "\".");
+    plPopClose();
+  }
+  function plRowCreate(name) {
+    var item = plPopItem; if (!item) { plPopClose(); return; }
+    name = (name || "").trim().slice(0, 40); if (!name) return;
+    playlists.push({ name: name, items: [{ id: item.id, title: item.title || titleFor(item.id) || "" }] });
+    savePlaylists(); renderPlaylists();
+    toast(T("Added to ") + "\"" + name + "\".");
+    plPopClose();
   }
   function updateLaterBtn() {
     var lb2 = $("laterBtn"); if (!lb2) return;
@@ -11152,6 +11266,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Moment comet": ["पल कॉमेट", "ક્ષણ કૉમેટ"]
   });
   var WNEW = [
+    ["Add to playlist from any list", "#lhLater"],
     ["Dream orbs", "#orbsChk"],
     ["Rain glass", "#rainChk"],
     ["Playlist watched progress", "#lhPlaylists"],
@@ -11160,8 +11275,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["React on video", "#reactChk"],
     ["Today at a glance", "#todayStrip"],
     ["Line up my evening", "#laterPlanBtn"],
-    ["Premiere countdown", "#premRow"],
-    ["Title card", "#titleChk"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -14376,7 +14489,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Backlog forecast", "backlog forecast watch later pace days clears estimate when done finish plan saved list", "#laterPace"],
       ["Playlist watched progress", "playlist watched progress how many finished seen done track study course season", "#lhPlaylists"],
       ["Rain glass", "rain glass raindrops trickle window weather cozy water drops glass video pretty ambience", "#rainChk"],
-      ["Dream orbs", "dream orbs soft lights bokeh drift paused video glow pretty calm breathe", "#orbsChk"]
+      ["Dream orbs", "dream orbs soft lights bokeh drift paused video glow pretty calm breathe", "#orbsChk"],
+      ["Add to playlist from any list", "add to playlist file organise folder any list row watch later favourites history save into playlist collection tidy", "#lhLater"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
