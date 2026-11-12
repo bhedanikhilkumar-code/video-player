@@ -11585,6 +11585,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Videos in a playlist", "#lhPlaylists"],
     ["Save pop", "#favBtn"],
     ["Find in all moments", "#markFindSum"],
     ["Recent searches", "#libSearch"],
@@ -11594,7 +11595,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Check a backup", "#libCheck"],
     ["Full screen bloom", "#fsBtn"],
     ["Slow-mo drift", "#speedChips"],
-    ["Mute break", "#muteBreakRow"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -13927,6 +13927,139 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   document.addEventListener("vp-video-loaded", qshClear);
 
+  // Playlist videos (round 142): every saved playlist grows a Videos chip that opens its
+  // item list right in the playlist card - until now a saved playlist showed only its name,
+  // cover and counts, so checking what is inside, tidying the order or dropping one video
+  // meant rebuilding the whole list from the queue. Each row plays the playlist from that
+  // video, moves one spot up or down, or leaves the list with a 10-second Undo, and shows
+  // the learned length and the Watched pill like the other lists. Which playlists are open
+  // is remembered only for the visit (nothing new is saved), the rows retranslate on every
+  // repaint and language switch, works on YouTube videos, listed in the feature finder and
+  // the What's new card.
+  Object.assign(TR_MSG, {
+    "Videos in a playlist": ["प्लेलिस्ट के वीडियो", "પ્લેલિસ્ટના વીડિયો"],
+    "Videos": ["वीडियो", "વિડિયો"],
+    "Show the videos in this playlist": ["इस प्लेलिस्ट के वीडियो दिखाएं", "આ પ્લેલિસ્ટના વીડિયો બતાવો"],
+    "Hide the videos in this playlist": ["इस प्लेलिस्ट के वीडियो छुपाएं", "આ પ્લેલિસ્ટના વીડિયો છુપાવો"],
+    "Play the playlist from this video": ["इस वीडियो से प्लेलिस्ट चलाएं", "આ વીડિયોથી પ્લેલિસ્ટ ચલાવો"],
+    "Remove from playlist": ["प्लेलिस्ट से हटाएं", "પ્લેલિસ્ટમાંથી હટાવો"],
+    "Removed from the playlist.": ["प्लेलिस्ट से हटाया गया.", "પ્લેલિસ્ટમાંથી હટાવાયું."],
+    "Back in the playlist.": ["प्लेलिस्ट में वापस आया.", "પ્લેલિસ્ટમાં પાછું આવ્યું."]
+  });
+  var plvSt = document.createElement("style");
+  plvSt.textContent = ".plv-box{display:flex;flex-direction:column;gap:4px;max-height:280px;overflow:auto;padding:8px;border:1px solid var(--hairline);border-radius:12px;background:var(--soft)}"
+    + ".plv-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:2px}"
+    + ".plv-num{flex:none;font-size:12px;opacity:.6;min-width:18px;text-align:right;font-variant-numeric:tabular-nums}"
+    + ".plv-open{flex:1 1 140px;min-width:0;display:flex;align-items:center;gap:6px;text-align:left;padding:6px 8px;border-radius:10px;border:1px solid transparent;background:transparent;color:inherit;font:inherit;font-size:13px;cursor:pointer;-webkit-tap-highlight-color:transparent}"
+    + ".plv-open:hover{background:rgba(127,127,127,.12)}"
+    + ".plv-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}"
+    + ".plv-len{flex:none;font-size:11px;opacity:.65;font-variant-numeric:tabular-nums}"
+    + ".plv-done{flex:none;font-size:11px;font-weight:700;color:#22c55e}"
+    + ".plv-acts{display:flex;gap:4px;flex:none;margin-left:auto}"
+    + ".plv-acts .chip{padding:4px 9px;font-size:13px;min-height:30px}"
+    + ".plv-empty{font-size:13px;opacity:.7;padding:4px 2px}";
+  document.head.appendChild(plvSt);
+  var plvOpen = {};
+  function plvPaint() {
+    var list = $("plList");
+    if (!list) return;
+    Array.prototype.forEach.call(list.querySelectorAll(".pl-item"), function (li) {
+      var nmEl = li.querySelector(".pl-name");
+      if (!nmEl) return;
+      var idx = plFind(nmEl.textContent || "");
+      if (idx < 0) return;
+      var pl = playlists[idx];
+      var acts = li.querySelector(".pl-acts");
+      if (!acts) return;
+      var oldBox = li.querySelector(".plv-box"); if (oldBox) oldBox.remove();
+      var chip = li.querySelector(".plv-chip");
+      if (!chip) {
+        chip = document.createElement("button");
+        chip.type = "button"; chip.className = "chip plv-chip";
+        acts.appendChild(chip);
+        chip.addEventListener("click", function () {
+          var k = pl.name.toLowerCase();
+          if (plvOpen[k]) delete plvOpen[k]; else plvOpen[k] = 1;
+          plvPaint();
+        });
+      }
+      var isOpen = !!plvOpen[pl.name.toLowerCase()];
+      chip.textContent = "🎬 " + T("Videos") + " (" + pl.items.length + ")";
+      chip.setAttribute("aria-expanded", isOpen ? "true" : "false");
+      chip.setAttribute("aria-label", (isOpen ? T("Hide the videos in this playlist") : T("Show the videos in this playlist")) + ": " + pl.name);
+      if (!isOpen) return;
+      var box = document.createElement("div");
+      box.className = "plv-box";
+      box.setAttribute("role", "list");
+      if (!pl.items.length) {
+        var em = document.createElement("div"); em.className = "plv-empty"; em.textContent = T("No videos in this playlist yet.");
+        box.appendChild(em);
+      }
+      pl.items.forEach(function (x, i) {
+        var row = document.createElement("div"); row.className = "plv-row"; row.setAttribute("role", "listitem");
+        var num = document.createElement("span"); num.className = "plv-num"; num.textContent = (i + 1) + ".";
+        var open = document.createElement("button");
+        open.type = "button"; open.className = "plv-open";
+        open.setAttribute("aria-label", T("Play the playlist from this video") + ": " + (x.title || x.id));
+        open.title = T("Play the playlist from this video");
+        var tt = document.createElement("span"); tt.className = "plv-title"; tt.textContent = x.title || ("Video " + x.id);
+        open.appendChild(tt);
+        var d = infoCache[x.id] && infoCache[x.id].dur;
+        if (!(typeof d === "number" && d > 0)) { var hi0 = findIn(lib.hist, x.id); if (hi0 >= 0 && lib.hist[hi0].dur > 0) d = lib.hist[hi0].dur; }
+        if (typeof d === "number" && d > 0) { var ln = document.createElement("span"); ln.className = "plv-len"; ln.textContent = fmt(d); open.appendChild(ln); }
+        var hi = findIn(lib.hist, x.id);
+        if (hi >= 0 && lib.hist[hi].done) { var wd = document.createElement("span"); wd.className = "plv-done"; wd.textContent = "✓ " + T("Watched"); open.appendChild(wd); }
+        open.addEventListener("click", function () {
+          if (!pl.items.length) return;
+          lib.queue = pl.items.map(function (y) { return { id: y.id, title: y.title }; }); qPos = -1;
+          saveLib(); renderLib(); showLibErr("");
+          plSay(T("Playing") + " \"" + pl.name + "\" (" + (i + 1) + "/" + pl.items.length + ").");
+          playQueueAt(i);
+          if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+        });
+        var ac = document.createElement("span"); ac.className = "plv-acts";
+        [["▲", -1], ["▼", 1]].forEach(function (o) {
+          var mv = document.createElement("button");
+          mv.type = "button"; mv.className = "chip"; mv.textContent = o[0];
+          var tgt = i + o[1];
+          mv.disabled = tgt < 0 || tgt >= pl.items.length;
+          mv.setAttribute("aria-label", T(o[1] < 0 ? "Move up" : "Move down") + ": " + (x.title || x.id));
+          mv.addEventListener("click", function () {
+            if (tgt < 0 || tgt >= pl.items.length) return;
+            var tmp = pl.items[i]; pl.items[i] = pl.items[tgt]; pl.items[tgt] = tmp;
+            savePlaylists(); renderPlaylists();
+          });
+          ac.appendChild(mv);
+        });
+        var rm = document.createElement("button");
+        rm.type = "button"; rm.className = "chip"; rm.textContent = "✕";
+        rm.setAttribute("aria-label", T("Remove from playlist") + ": " + (x.title || x.id));
+        rm.addEventListener("click", function () {
+          var gone = pl.items.splice(i, 1)[0];
+          savePlaylists(); renderPlaylists();
+          toastUndo(T("Removed from the playlist."), function () {
+            var at = Math.min(i, pl.items.length);
+            pl.items.splice(at, 0, gone);
+            savePlaylists(); renderPlaylists();
+          }, T("Back in the playlist."));
+        });
+        ac.appendChild(rm);
+        row.appendChild(num); row.appendChild(open); row.appendChild(ac);
+        box.appendChild(row);
+      });
+      li.appendChild(box);
+    });
+  }
+  renderPlaylists = (function (orig) {
+    return function () { var r = orig.apply(this, arguments); try { plvPaint(); } catch (e) {} return r; };
+  })(renderPlaylists);
+  renderLib = (function (orig) {
+    return function () { var r = orig.apply(this, arguments); try { plvPaint(); } catch (e) {} return r; };
+  })(renderLib);
+  (window.__relang = window.__relang || []).push(plvPaint);
+  plvPaint();
+
+
 })();
 </script>
 <script>
@@ -16180,7 +16313,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Home stretch glow", "home stretch glow ending soon almost over finish warm golden embers sunset final seconds approaching end video about to end", "#seek"],
       ["Quality shine", "quality shine picture hd 1080 720 4k crisp sharpen sheen sweep change resolution clear auto best", "#qualityChips"],
       ["Recent searches", "recent searches history search again library chips repeat last words quick retype", "#libSearch"],
-      ["Find in all moments", "find moments search saved moment name all videos jump bookmark marked spot chapter", "#markFindSum"]
+      ["Find in all moments", "find moments search saved moment name all videos jump bookmark marked spot chapter", "#markFindSum"],
+      ["Videos in a playlist", "playlist videos items list inside see view reorder arrange order move up down remove play from position manage tidy contents", "#lhPlaylists"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
