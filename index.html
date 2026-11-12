@@ -2307,7 +2307,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
       <div id="musicQueue">
-      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="queueToLaterBtn" type="button">Save all to Watch later</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="qSkipWBtn" type="button" aria-pressed="false">Skip watched: off</button><button class="chip" id="qConsumeBtn" type="button" aria-pressed="false">Remove played: off</button><button class="chip" id="qPickBtn" type="button" aria-pressed="false">☑ Pick many: off</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="sortLenQueueBtn" type="button">Sort by length</button><button class="chip" id="queueToLaterBtn" type="button">Save all to Watch later</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="qSkipWBtn" type="button" aria-pressed="false">Skip watched: off</button><button class="chip" id="qConsumeBtn" type="button" aria-pressed="false">Remove played: off</button><button class="chip" id="qPickBtn" type="button" aria-pressed="false">☑ Pick many: off</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <div class="q-pick-bar" id="qPickBar" hidden>
         <span class="hint q-pick-count" id="qPickCount" role="status"></span>
         <span class="row">
@@ -3393,7 +3393,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // carry no place, no new setting, works on YouTube videos, translated in Hindi and
   // Gujarati, listed in the feature finder and the What's new card.
   Object.assign(TR_MSG, {
-
+    "Queue remembers its place": ["कतार अपनी जगह याद रखती है", "કતાર પોતાની જગહ યાદ રાખે છે"],
+    "Queue continues from where you left it": ["कतार वहीं से जारी है जहां छोड़ा था", "કતાર ત્યાંથી ચાલુ છે જ્યાં છોડ્યું હતું"]
   });
   if (qPlaceRestored) setTimeout(function () { toast(T("Queue continues from where you left it") + " - " + (qPos + 1) + "/" + lib.queue.length); }, 1600);
   // Round 138: a Watch later video parked with its snooze chip stays dimmed at the
@@ -4384,6 +4385,30 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     lib.queue = lib.queue.slice(0, start).concat(lib.queue.slice(start).reverse()); resetShuffle(); saveLib(); renderLib(); showLibErr("");
     toastUndo(T("Queue order reversed"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
   });
+  // Sort by length (round 158): order the videos after the current one by the
+  // lengths the app has learned - shortest first, tap again for longest first -
+  // so a short-on-time evening can start with the quick ones. What is playing
+  // stays put, videos with an unknown length keep their relative order at the
+  // end (lengths are learned once a video plays here), and every sort offers
+  // Undo, like Mix order and Reverse order. Nothing new is saved.
+  var sortLenQueueBtn = $("sortLenQueueBtn"), sortLenNextShort = true;
+  function sortLenPaint() { if (sortLenQueueBtn) sortLenQueueBtn.textContent = sortLenNextShort ? T("Sort by length") : T("Sort: longest first"); }
+  if (sortLenQueueBtn) sortLenQueueBtn.addEventListener("click", function () {
+    var start = qPos + 1;
+    if (lib.queue.length - start < 2) { showLibErr(T("Need at least 2 more videos after the current one to sort.")); return; }
+    var known = [], unknown = [];
+    lib.queue.slice(start).forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) known.push(x); else unknown.push(x); });
+    if (known.length < 2) { showLibErr(T("Lengths are learned once a video plays here - at least 2 known lengths are needed to sort.")); return; }
+    var snap = lib.queue.slice(), sp = qPos, dir = sortLenNextShort ? 1 : -1;
+    known.sort(function (a, b) { var da = infoCache[a.id].dur || 0, db = infoCache[b.id].dur || 0; return dir * (da - db); });
+    lib.queue = lib.queue.slice(0, start).concat(known, unknown);
+    resetShuffle(); saveLib(); renderLib(); showLibErr("");
+    toastUndo(dir === 1 ? T("Queue sorted: shortest first") : T("Queue sorted: longest first"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    if (unknown.length) showLibErr(unknown.length === 1 ? T("1 video with unknown length stayed at the end") : unknown.length + " " + T("videos with unknown length stayed at the end"));
+    sortLenNextShort = !sortLenNextShort; sortLenPaint();
+  });
+  (window.__relang = window.__relang || []).push(sortLenPaint);
+  sortLenPaint();
   // Translations for round 158 (inside the main app closure, so TR_MSG takes them).
   Object.assign(TR_MSG, {
     "+ Queue as next": ["+ \u0905\u0917\u0932\u0947 \u0928\u0902\u092c\u0930 \u092a\u0930 \u0921\u093e\u0932\u0947\u0902", "+ \u0a86\u0a97\u0ab3\u0aa8\u0abe \u0aa8\u0a82\u0aac\u0ab0\u0ac7 \u0a89\u0aae\u0ac7\u0ab0\u0acb"],
@@ -12015,6 +12040,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Sort queue by length", "#sortLenQueueBtn"],
     ["Queue as next", "#queueNextBtn"],
     ["Glass sliders", "#vol"],
     ["Heading tiles", "#linkHeading"],
@@ -17552,7 +17578,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Search frost", "search frost palette ctrl k frosted glass backdrop blur dim behind search spring entrance card veil", "#palBtn"],
       ["Glass sliders", "glass sliders volume slider fill liquid accent track frosted thumb dimmer equalizer balance boost iphone drag glow", "#vol"],
       ["Heading tiles", "heading tiles section icons frosted glass tile heading icon settings style iphone tinted squares link player downloader file help library", "#linkHeading"],
-      ["Queue as next", "queue as next insert after current play next up first link add before rest lined up", "#queueNextBtn"]
+      ["Queue as next", "queue as next insert after current play next up first link add before rest lined up", "#queueNextBtn"],
+      ["Sort queue by length", "sort queue length shortest longest first order duration arrange quick short evening long", "#sortLenQueueBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
