@@ -4172,13 +4172,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       lib.later.splice(lIdx, 1); saveLib(); renderLib();
       toastUndo(T("Removed from Watch later."), function () { lib.later = snapLat; saveLib(); renderLib(); }, T("Watch later list restored"));
     }, null, [{ label: "📌", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinLater(item.id); } }, { label: function (item) { return laterSnoozed(item) ? "😴 " + Math.max(1, Math.round((item.snoozeUntil - Date.now()) / 864e5)) + "d" : "😴"; }, aria: function (item) { return laterSnoozed(item) ? T("Snoozed - tap to wake it sooner") : T("Snooze this video for later"); }, cls: "snooze-chip", on: function (item) { return laterSnoozed(item); }, fn: function (item) { laterSnoozeCycle(item.id); } }, plRowAction()], "later", undefined, true);
-    fillList(favList, favView(), T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) {
+    // Round 206 new 4: Favourites fold - a long favourites list made the library card heavy
+    // to draw and scroll on phones. Show the first 30 with a Show all row; the full list is
+    // one tap away and folds back with Show less. Session-only - nothing new is saved.
+    var fvAll206 = favView(), fvShow206 = (favFoldOpen || fvAll206.length <= 30) ? fvAll206 : fvAll206.slice(0, 30);
+    fillList(favList, fvShow206, T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) {
       // Round 118: removing a favourite row offers Undo too - the pin flag rides along in the snapshot.
       var fIdx = findIn(lib.favs, item.id); if (fIdx < 0) return;
       var snapFv = lib.favs.slice();
       lib.favs.splice(fIdx, 1); saveLib(); renderLib();
       toastUndo(T("Removed from favourites"), function () { lib.favs = snapFv; saveLib(); renderLib(); }, T("Favourites restored"));
     }, null, [{ label: "\ud83d\udccc", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinFav(item.id); } }, plRowAction()], "fav");
+    if (fvAll206.length > 30) {
+      var foldLi = document.createElement("li"); foldLi.className = "lib-empty";
+      var foldBtn = document.createElement("button"); foldBtn.className = "chip"; foldBtn.type = "button";
+      foldBtn.textContent = favFoldOpen ? T("Show less") : T("Show all") + " (" + (fvAll206.length - 30) + " " + T("more") + ")";
+      foldBtn.addEventListener("click", function () { favFoldOpen = !favFoldOpen; renderLib(); });
+      foldLi.appendChild(foldBtn); favList.appendChild(foldLi);
+    }
     fillList(histList, histView(), T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, [{ label: T("Remove"), fn: function (item) {
       var i = findIn(lib.hist, item.id);
       if (i >= 0) { var snapH = lib.hist.slice(); lib.hist.splice(i, 1); saveLib(); renderLib(); if (typeof libSay === "function") libSay(T("Removed from history.")); toastUndo(T("Removed from history."), function () { lib.hist = snapH; saveLib(); renderLib(); }, T("History restored")); }
@@ -14152,6 +14163,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   Object.assign(TR_MSG, {"A (sec or 1:23)": ["A (सेकंड या 1:23)", "A (સેકંડ કે 1:23)"]});
   Object.assign(TR_MSG, {"B (sec or 1:23)": ["B (सेकंड या 1:23)", "B (સેકંડ કે 1:23)"]});
   var WNEW = [
+    ["Favourites fold", "#favList"],
     ["Copy as Markdown link", "#mdLinkBtn"],
     ["Copy embed code", "#embedBtn"],
     ["Private viewing", "#privChk"],
@@ -17959,6 +17971,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       copy(text, function () { toast(T("Lyrics copied")); });
     });
   })();
+
+  // Round 206 new 4 (state and words): the fold is session-only, so this flag lives in
+  // memory, not in prefs. The Show all / Show less button is rebuilt by renderLib, which
+  // also runs on a language switch, so its label follows the language.
+  var favFoldOpen = false;
+  Object.assign(TR_MSG, {
+    "Show all": ["सभी दिखाएं", "બધું બતાવો"],
+    "Show less": ["कम दिखाएं", "ઓછું બતાવો"],
+    "more": ["और", "વધુ"]
+  });
 })();
 </script>
 <script>
@@ -20162,6 +20184,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     }
     var FEATS = [
       ["Retry failed downloads", "retry failed downloads queue again error batch redownload server cold start", "#dl"],
+      ["Favourites fold", "favourites fold show all show less long list first 30 library", "#favList"],
       ["Watch stats as spreadsheet", "watch stats csv spreadsheet excel sheets export per day per video seconds plays download", "#statsCsvBtn"],
       ["Subtitle background style", "subtitle background style box outline solid black readable cue shade captions local video", "#lpSubBgs"],
       ["Pause after an amount of video", "pause after plus minutes +5m timer stop video in minutes relative from now pause at", "#pauseAtInput"],
