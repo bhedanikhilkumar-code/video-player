@@ -15293,6 +15293,90 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   document.head.appendChild(searchFrostSt);
   window.__vpSearchFrost = function () { return true; };
 
+  // Round 159 polish lives inside the main app closure.
+/* Card float (round 159): on a desktop, hovering one of the app's glass control cards floats it
+   up a touch with a deeper soft shadow and a brighter accent edge - like lifting a glass card on
+   a Mac - so the card under the pointer answers before a single click. Pure look on the existing
+   .ctl-card glass: no setting, nothing new is saved, touch devices never see it (it lives behind
+   a hover/pointer media check), the Now playing card is an .info-card (not a .ctl-card) so its
+   load spring is untouched, and the mini player's docked cards stay put. Under Calm/reduced
+   motion and Low-end mode the float and shadow sit out and only the accent edge answers, High
+   contrast swaps the shadow for a stronger border, and the dark theme gets its own shadow.
+   Listed in the feature finder and the What's new card (round 159). */
+(function () {
+  "use strict";
+  var st = document.createElement("style");
+  st.textContent = "@media (hover:hover) and (pointer:fine){"
+    + ".ctl-card{transition:transform .28s cubic-bezier(.2,.9,.3,1.25),box-shadow .28s ease,border-color .28s ease}"
+    + ".ctl-card:hover{transform:translateY(-2px);border-color:var(--teal);box-shadow:0 14px 34px rgba(22,38,52,.16),0 3px 10px rgba(22,38,52,.10),inset 0 1px 0 rgba(255,255,255,.55)}"
+    + ":root[data-theme='dark'] .ctl-card:hover{box-shadow:0 14px 34px rgba(0,0,0,.55),0 3px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.14)}"
+    + "html.calm-motion .ctl-card,html.low-fx .ctl-card{transition:none !important}"
+    + "html.calm-motion .ctl-card:hover,html.low-fx .ctl-card:hover{transform:none;box-shadow:none !important}"
+    + "html.high-contrast .ctl-card:hover{transform:none;box-shadow:none !important;border-width:2px}"
+    + "#playerDock.is-mini .ctl-card:hover{transform:none;box-shadow:none !important}"
+    + "}"
+    + "@media (prefers-reduced-motion:reduce){.ctl-card:hover{transform:none;box-shadow:none !important}}";
+  document.head.appendChild(st);
+})();
+/* Accent bloom (round 159): tapping an App colour dot pops the dot on a little spring and blooms
+   a soft glass ring out of it in the new colour, and the picked dot keeps a quiet glow halo in the
+   app's accent colour - like the coloured halo a picked swatch wears on an iPhone - so the active
+   colour reads at a glance, where before the only marker was the thin outline. The ring and pop
+   are one-shot interaction feedback that rides the existing dot clicks (presets, pick-your-own and
+   Match video all bloom, and the custom colour wheel blooms its dot as it pours), the colour is
+   read from the live --teal variable after the theme applies so it is always the colour the app
+   just took, and the steady glow is plain CSS on the dot's own active state, so it stays honest
+   however the accent changes - a tap, a backup restore, or Match video following a new thumbnail.
+   Pure look: no setting, nothing new is saved, the ring and pop sit out under Calm/reduced motion
+   and Low-end mode (the glow stays, it does not move), High contrast drops the glow and the ring
+   keeps a strong solid border, and the dark theme gets its own halo. Works on YouTube videos,
+   translated in Hindi and Gujarati, listed in the feature finder and the What's new card (round 159). */
+(function () {
+  "use strict";
+  var row = document.getElementById("accentRow");
+  var st = document.createElement("style");
+  st.textContent = ".accent-dot.active{box-shadow:0 0 0 2px rgba(255,255,255,.28),0 0 16px 2px var(--teal),0 2px 6px rgba(0,0,0,.18)}"
+    + ":root[data-theme='dark'] .accent-dot.active{box-shadow:0 0 18px 3px var(--teal),0 2px 6px rgba(0,0,0,.4)}"
+    + "html.high-contrast .accent-dot.active{box-shadow:none !important}"
+    + ".accent-dot.vp-bloom-pop{animation:vpAccentPop .5s cubic-bezier(.2,.9,.3,1.4) 1}"
+    + "@keyframes vpAccentPop{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}"
+    + ".vp-accent-bloom{position:absolute;inset:-9px;border-radius:50%;border:2px solid var(--vp-bloom-c,var(--teal));opacity:.85;pointer-events:none;animation:vpAccentBloom .8s ease-out forwards}"
+    + "html.high-contrast .vp-accent-bloom{border-width:3px;opacity:1}"
+    + "@keyframes vpAccentBloom{from{transform:scale(.55);opacity:.85}to{transform:scale(2.4);opacity:0}}"
+    + "html.calm-motion .accent-dot.vp-bloom-pop,html.low-fx .accent-dot.vp-bloom-pop{animation:none !important}";
+  document.head.appendChild(st);
+  if (!row) return;
+  function calm() { try { return !!(window.vpReducedMotion && window.vpReducedMotion()) || document.documentElement.classList.contains("low-fx"); } catch (e) { return false; } }
+  var last = 0;
+  function bloom(dot) {
+    if (!dot) return;
+    var now = Date.now();
+    if (now - last < 700) return; // one bloom per breath, so dragging the colour wheel never floods
+    last = now;
+    if (calm()) return; // the steady glow already says it
+    var c = "";
+    try { c = getComputedStyle(document.documentElement).getPropertyValue("--teal").trim(); } catch (e) {}
+    dot.classList.remove("vp-bloom-pop"); void dot.offsetWidth; dot.classList.add("vp-bloom-pop");
+    var ring = document.createElement("span");
+    ring.className = "vp-accent-bloom"; ring.setAttribute("aria-hidden", "true");
+    if (c) ring.style.setProperty("--vp-bloom-c", c);
+    dot.appendChild(ring);
+    setTimeout(function () { if (ring.parentNode) ring.parentNode.removeChild(ring); dot.classList.remove("vp-bloom-pop"); }, 900);
+  }
+  // Bubble phase: the dot's own click handler has already applied the new accent,
+  // so --teal read here is the colour the app just took.
+  row.addEventListener("click", function (ev) {
+    var t = ev.target;
+    var dot = t && t.closest ? t.closest(".accent-dot") : null;
+    if (dot) bloom(dot);
+  });
+  var ci = document.getElementById("accentCustom");
+  if (ci) ci.addEventListener("input", function () {
+    var d = row.querySelector('.accent-dot[data-value="custom"]');
+    bloom(d);
+  });
+})();
+
 })();
 </script>
 <script>
@@ -19489,92 +19573,6 @@ html.high-contrast #linkHeading::before, html.high-contrast #playerHeading::befo
   });
   paintAll();
   setInterval(function () { if (!document.hidden) paintAll(); }, 900);
-})();
-</script>
-<script id="r159-card-float-js">
-/* Card float (round 159): on a desktop, hovering one of the app's glass control cards floats it
-   up a touch with a deeper soft shadow and a brighter accent edge - like lifting a glass card on
-   a Mac - so the card under the pointer answers before a single click. Pure look on the existing
-   .ctl-card glass: no setting, nothing new is saved, touch devices never see it (it lives behind
-   a hover/pointer media check), the Now playing card is an .info-card (not a .ctl-card) so its
-   load spring is untouched, and the mini player's docked cards stay put. Under Calm/reduced
-   motion and Low-end mode the float and shadow sit out and only the accent edge answers, High
-   contrast swaps the shadow for a stronger border, and the dark theme gets its own shadow.
-   Listed in the feature finder and the What's new card (round 159). */
-(function () {
-  "use strict";
-  var st = document.createElement("style");
-  st.textContent = "@media (hover:hover) and (pointer:fine){"
-    + ".ctl-card{transition:transform .28s cubic-bezier(.2,.9,.3,1.25),box-shadow .28s ease,border-color .28s ease}"
-    + ".ctl-card:hover{transform:translateY(-2px);border-color:var(--teal);box-shadow:0 14px 34px rgba(22,38,52,.16),0 3px 10px rgba(22,38,52,.10),inset 0 1px 0 rgba(255,255,255,.55)}"
-    + ":root[data-theme='dark'] .ctl-card:hover{box-shadow:0 14px 34px rgba(0,0,0,.55),0 3px 10px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.14)}"
-    + "html.calm-motion .ctl-card,html.low-fx .ctl-card{transition:none !important}"
-    + "html.calm-motion .ctl-card:hover,html.low-fx .ctl-card:hover{transform:none;box-shadow:none}"
-    + "html.high-contrast .ctl-card:hover{transform:none;box-shadow:none !important;border-width:2px}"
-    + "#playerDock.is-mini .ctl-card:hover{transform:none;box-shadow:none}"
-    + "}"
-    + "@media (prefers-reduced-motion:reduce){.ctl-card:hover{transform:none}}";
-  document.head.appendChild(st);
-})();
-</script>
-<script id="r159-accent-bloom-js">
-/* Accent bloom (round 159): tapping an App colour dot pops the dot on a little spring and blooms
-   a soft glass ring out of it in the new colour, and the picked dot keeps a quiet glow halo in the
-   app's accent colour - like the coloured halo a picked swatch wears on an iPhone - so the active
-   colour reads at a glance, where before the only marker was the thin outline. The ring and pop
-   are one-shot interaction feedback that rides the existing dot clicks (presets, pick-your-own and
-   Match video all bloom, and the custom colour wheel blooms its dot as it pours), the colour is
-   read from the live --teal variable after the theme applies so it is always the colour the app
-   just took, and the steady glow is plain CSS on the dot's own active state, so it stays honest
-   however the accent changes - a tap, a backup restore, or Match video following a new thumbnail.
-   Pure look: no setting, nothing new is saved, the ring and pop sit out under Calm/reduced motion
-   and Low-end mode (the glow stays, it does not move), High contrast drops the glow and the ring
-   keeps a strong solid border, and the dark theme gets its own halo. Works on YouTube videos,
-   translated in Hindi and Gujarati, listed in the feature finder and the What's new card (round 159). */
-(function () {
-  "use strict";
-  var row = document.getElementById("accentRow");
-  var st = document.createElement("style");
-  st.textContent = ".accent-dot.active{box-shadow:0 0 0 2px rgba(255,255,255,.28),0 0 16px 2px var(--teal),0 2px 6px rgba(0,0,0,.18)}"
-    + ":root[data-theme='dark'] .accent-dot.active{box-shadow:0 0 18px 3px var(--teal),0 2px 6px rgba(0,0,0,.4)}"
-    + "html.high-contrast .accent-dot.active{box-shadow:none}"
-    + ".accent-dot.vp-bloom-pop{animation:vpAccentPop .5s cubic-bezier(.2,.9,.3,1.4) 1}"
-    + "@keyframes vpAccentPop{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}"
-    + ".vp-accent-bloom{position:absolute;inset:-9px;border-radius:50%;border:2px solid var(--vp-bloom-c,var(--teal));opacity:.85;pointer-events:none;animation:vpAccentBloom .8s ease-out forwards}"
-    + "html.high-contrast .vp-accent-bloom{border-width:3px;opacity:1}"
-    + "@keyframes vpAccentBloom{from{transform:scale(.55);opacity:.85}to{transform:scale(2.4);opacity:0}}"
-    + "html.calm-motion .accent-dot.vp-bloom-pop,html.low-fx .accent-dot.vp-bloom-pop{animation:none !important}";
-  document.head.appendChild(st);
-  if (!row) return;
-  function calm() { try { return !!(window.vpReducedMotion && window.vpReducedMotion()) || document.documentElement.classList.contains("low-fx"); } catch (e) { return false; } }
-  var last = 0;
-  function bloom(dot) {
-    if (!dot) return;
-    var now = Date.now();
-    if (now - last < 700) return; // one bloom per breath, so dragging the colour wheel never floods
-    last = now;
-    if (calm()) return; // the steady glow already says it
-    var c = "";
-    try { c = getComputedStyle(document.documentElement).getPropertyValue("--teal").trim(); } catch (e) {}
-    dot.classList.remove("vp-bloom-pop"); void dot.offsetWidth; dot.classList.add("vp-bloom-pop");
-    var ring = document.createElement("span");
-    ring.className = "vp-accent-bloom"; ring.setAttribute("aria-hidden", "true");
-    if (c) ring.style.setProperty("--vp-bloom-c", c);
-    dot.appendChild(ring);
-    setTimeout(function () { if (ring.parentNode) ring.parentNode.removeChild(ring); dot.classList.remove("vp-bloom-pop"); }, 900);
-  }
-  // Bubble phase: the dot's own click handler has already applied the new accent,
-  // so --teal read here is the colour the app just took.
-  row.addEventListener("click", function (ev) {
-    var t = ev.target;
-    var dot = t && t.closest ? t.closest(".accent-dot") : null;
-    if (dot) bloom(dot);
-  });
-  var ci = document.getElementById("accentCustom");
-  if (ci) ci.addEventListener("input", function () {
-    var d = row.querySelector('.accent-dot[data-value="custom"]');
-    bloom(d);
-  });
 })();
 </script>
 </body>
