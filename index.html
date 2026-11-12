@@ -19718,7 +19718,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (!standalone) btn.hidden = false;
   window.addEventListener("beforeinstallprompt", function (e) { e.preventDefault(); ev = e; if (!standalone) btn.hidden = false; });
   btn.addEventListener("click", function () {
-    if (ev) { ev.prompt(); ev.userChoice.finally(function () { ev = null; }); return; }
+    // Round 210 fix: prompt() can refuse (a used-up or not-allowed install event) and then the tap did
+    // nothing - the error escaped the handler and the help card never opened; a rejected userChoice also
+    // escaped as an unhandled error. Now a refused prompt drops the stale event and shows the help card.
+    if (ev) {
+      try { ev.prompt(); ev.userChoice.then(function () { ev = null; }, function () { ev = null; }); return; }
+      catch (err) { ev = null; }
+    }
     if (!help) return;
     var iosP = document.getElementById("installHelpIos"), otherP = document.getElementById("installHelpOther");
     if (iosP) iosP.hidden = !isIOS;
