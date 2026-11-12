@@ -719,6 +719,9 @@ body{overflow-x:clip}
 .lib-search input { width: 100%; min-height: 44px; font-size: 16px; box-sizing: border-box; }
 .lib-search .vs-row { display: flex; gap: 8px; align-items: center; }
 .lib-search .vs-row input { flex: 1; min-width: 0; }
+#rsRow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+#rsRow[hidden] { display: none; }
+#rsRow .rs-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
 .vs-mic { flex: none; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 12px; box-sizing: border-box; }
 .vs-mic[hidden] { display: none; }
 .vs-mic svg { width: 17px; height: 17px; fill: currentColor; display: block; }
@@ -2176,6 +2179,7 @@ setTimeout(done,3000);})();
           <button class="chip vs-mic" id="vsMic" type="button" aria-label="Voice search" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button>
         </div>
         <span class="hint" id="libSearchMsg" role="status"></span>
+        <div id="rsRow" hidden><span class="hint" id="rsLab">Recent:</span><span class="rs-chips" id="rsChips"></span><button class="chip" id="rsClear" type="button">Clear</button></div>
       </div>
       <div class="lib-scope" id="libScope" role="group" aria-label="Search in">
         <span class="hint" id="libScopeLab">Search in:</span>
@@ -7909,6 +7913,60 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     libSearch.addEventListener("input", applyLibSearch);
     libSearch.addEventListener("keydown", function (e) { if (e.key === "Escape") { libSearch.value = ""; applyLibSearch(); } });
   }
+
+  // Recent searches (round 140): the library search box remembers the last few searches on
+  // this device. While the box is empty they show as chips under it - one tap types the word
+  // back and runs the search, so a search you run often (a course, a creator, a mood) is one
+  // tap instead of retyping. At most 6, newest first; Clear empties the list. Saved on this
+  // device and riding the backup export/import. No setting.
+  Object.assign(TR_MSG, {
+    "Recent:": ["\u0939\u093e\u0932 \u0915\u0947:", "\u0aa4\u0abe\u0a9c\u0ac7\u0aa4\u0ab0\u0aa8\u0abe:"],
+    "Recent searches": ["\u0939\u093e\u0932 \u0915\u0940 \u0916\u094b\u091c\u0947\u0902", "\u0aa4\u0abe\u0a9c\u0ac7\u0aa4\u0ab0\u0aa8\u0ac0 \u0ab6\u0acb\u0aa7\u0acb"],
+    "Recent searches cleared.": ["\u0939\u093e\u0932 \u0915\u0940 \u0916\u094b\u091c\u0947\u0902 \u0938\u093e\u092b\u093c \u0939\u0941\u0908\u0902.", "\u0aa4\u0abe\u0a9c\u0ac7\u0aa4\u0ab0\u0aa8\u0ac0 \u0ab6\u0acb\u0aa7\u0acb \u0ab8\u0abe\u0aab \u0aa5\u0a88."],
+    "Search again for": ["\u092b\u093f\u0930 \u0938\u0947 \u0916\u094b\u091c\u0947\u0902:", "\u0aab\u0ab0\u0ac0 \u0ab6\u0acb\u0aa7\u0acb:"]
+  });
+  var RS_KEY = "vp-search-hist.v1", rsList = [];
+  try { var rs0 = JSON.parse(localStorage.getItem(RS_KEY) || "null"); if (Array.isArray(rs0)) rsList = rs0.filter(function (x) { return typeof x === "string" && x.trim(); }).slice(0, 6); } catch (e) {}
+  function rsSave() { try { localStorage.setItem(RS_KEY, JSON.stringify(rsList)); } catch (e) {} }
+  function rsRender() {
+    var row = $("rsRow"), chips = $("rsChips"); if (!row || !chips) return;
+    var lab = $("rsLab"); if (lab) lab.textContent = T("Recent:");
+    var clr = $("rsClear"); if (clr) clr.textContent = T("Clear");
+    chips.innerHTML = "";
+    var show = !!(libSearch && !libSearch.value.trim() && rsList.length);
+    row.hidden = !show;
+    if (!show) return;
+    rsList.forEach(function (term) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip";
+      b.textContent = term;
+      b.setAttribute("aria-label", T("Search again for") + " " + term);
+      b.addEventListener("click", function () {
+        libSearch.value = term; applyLibSearch(); rsRemember(term);
+        try { libSearch.focus(); } catch (e) {}
+      });
+      chips.appendChild(b);
+    });
+  }
+  function rsRemember(q) {
+    q = (q || "").trim(); if (q.length < 2) return;
+    q = q.slice(0, 40);
+    rsList = [q].concat(rsList.filter(function (x) { return x.toLowerCase() !== q.toLowerCase(); })).slice(0, 6);
+    rsSave(); rsRender();
+  }
+  var rsDeb = null;
+  if (libSearch) {
+    libSearch.addEventListener("input", function () {
+      if (rsDeb) clearTimeout(rsDeb);
+      rsRender();
+      rsDeb = setTimeout(function () { rsRemember(libSearch.value); }, 1200);
+    });
+    libSearch.addEventListener("focus", rsRender);
+    var rsClrBtn = $("rsClear");
+    if (rsClrBtn) rsClrBtn.addEventListener("click", function () { rsList = []; rsSave(); rsRender(); toast(T("Recent searches cleared.")); });
+  }
+  (window.__relang = window.__relang || []).push(rsRender);
+  rsRender();
   // Voice search: tap the mic, speak a video or feature name, and the words land in the
   // search box as if typed. The button stays hidden where the browser has no speech
   // recognition (some iPhones), so the feature never shows up broken.
@@ -8291,7 +8349,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       chanSpeeds: (function () { var o = {}; Object.keys(chSpeed).forEach(function (k) { o[k] = chSpeed[k]; }); return o; })(),
       chanVols: (function () { var o = {}; Object.keys(chVol).forEach(function (k) { o[k] = chVol[k]; }); return o; })(),
       settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
-    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1"].forEach(function (k) {
+    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
     });
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -8427,7 +8485,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           if (s.prefs && typeof s.prefs === "object") { Object.keys(s.prefs).forEach(function (k) { if (k in prefs && typeof s.prefs[k] === typeof prefs[k]) prefs[k] = s.prefs[k]; }); if ([5, 10, 15, 30].indexOf(prefs.seekStep) < 0) prefs.seekStep = 10; savePrefs(); gotSettings = true; }
           if (s.queueModes && typeof s.queueModes === "object") { ["shuffle", "repeat", "auto"].forEach(function (k) { if (typeof s.queueModes[k] === "boolean") queueModes[k] = s.queueModes[k]; }); try { localStorage.setItem("vp-queue-modes.v1", JSON.stringify(queueModes)); } catch (e) {} gotSettings = true; }
           if (s.vmem && typeof s.vmem === "object") { Object.keys(s.vmem).forEach(function (k) { vmem[k] = s.vmem[k]; }); vmemSave(); gotSettings = true; }
-          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1"].forEach(function (k) {
+          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1"].forEach(function (k) {
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
         }
@@ -11462,6 +11520,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Recent searches", "#libSearch"],
     ["Quality shine", "#qualityChips"],
     ["Home stretch glow", "#seek"],
     ["Snooze in Watch later", "#lhLater"],
@@ -11471,7 +11530,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Mute break", "#muteBreakRow"],
     ["Rotate picture", "#rotRow"],
     ["Mute pop", "#muteBtn"],
-    ["Loop pulse", "#abLabel"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -16003,7 +16061,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Snooze in Watch later", "snooze watch later park hide till tomorrow 3 days week wake backlog not now postpone dim bottom", "#lhLater"],
       ["Check a backup", "check backup look inside file before import verify valid what is in safe counts exported date", "#libCheck"],
       ["Home stretch glow", "home stretch glow ending soon almost over finish warm golden embers sunset final seconds approaching end video about to end", "#seek"],
-      ["Quality shine", "quality shine picture hd 1080 720 4k crisp sharpen sheen sweep change resolution clear auto best", "#qualityChips"]
+      ["Quality shine", "quality shine picture hd 1080 720 4k crisp sharpen sheen sweep change resolution clear auto best", "#qualityChips"],
+      ["Recent searches", "recent searches history search again library chips repeat last words quick retype", "#libSearch"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
