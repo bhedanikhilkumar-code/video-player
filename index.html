@@ -5622,7 +5622,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     armLoadWatch(id);
   }
   document.addEventListener("vp-local-playing", function(){ send("pauseVideo"); miniDismissed = true; setMini(false); });
-  loadBtn.addEventListener("click", function () { loadVideo(null, null, undefined, true); });
+  // Link time (round 201 fix): a pasted link that carries a time (youtu.be/ID?t=90, ...&t=1m30s,
+  // ?start=90 or #t=90) loaded from 0:00 and dropped the time - only the page's own ?from= worked.
+  // Load now starts there (from 5 seconds on) and says so, unless the page was opened with ?from=.
+  function linkStartSeconds(text) {
+    var m = String(text || "").match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*(?:youtube(?:-nocookie)?\.com|youtu\.be)\/[^\s<>"'`]+/i);
+    if (!m) return null;
+    var raw = null;
+    try {
+      var u = new URL(m[0].indexOf("://") >= 0 ? m[0] : "https://" + m[0]);
+      raw = u.searchParams.get("t") || u.searchParams.get("start") || (u.hash.match(/[#&]t=([^&]+)/) || [])[1] || null;
+    } catch (e) { return null; }
+    if (!raw) return null;
+    var s = 0, x = String(raw).match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/i);
+    if (!x || !(x[1] || x[2] || x[3])) return null;
+    s = (parseInt(x[1] || "0", 10) * 3600) + (parseInt(x[2] || "0", 10) * 60) + parseInt(x[3] || "0", 10);
+    return isFinite(s) && s >= 5 && s < 86400 ? s : null;
+  }
+  Object.assign(TR_MSG, {
+    "Starting at {t} from your link.": ["आपके लिंक के अनुसार {t} से शुरू.", "તમારી લિંક મુજબ {t} થી શરૂ."]
+  });
+  loadBtn.addEventListener("click", function () {
+    var ls = linkStartSeconds(linkInput.value);
+    loadVideo(ls, null, undefined, true);
+    if (ls != null && curId && linkError.hidden) toast(T("Starting at {t} from your link.").replace("{t}", fmt(ls)));
+  });
 
   // Link shortcuts: ?url= (or ?v=) loads a video, ?text= picks the last link out of shared text,
   // ?from= and ?to= (seconds) set a start and end time.
