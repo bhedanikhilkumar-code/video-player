@@ -13337,6 +13337,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // starts nothing. A new video loading ends the break and restores the sound, so the next
   // video never starts silent by surprise. The end is checked against the clock, not tick
   // counts, so a throttled background tab still restores - just possibly a few seconds late.
+  // The shared muted flag is set along with each command, because the player's own report can
+  // take a beat to arrive and the already-muted check reads it.
   // Session-only (nothing is saved), works on YouTube videos, translated in Hindi and
   // Gujarati, listed in the feature finder and the What's new card.
   Object.assign(TR_MSG, {
@@ -13364,7 +13366,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function mbrRestore(say) {
     if (mbrTimer) { clearInterval(mbrTimer); mbrTimer = 0; }
     var was = mbrWeMuted; mbrEndAt = 0; mbrWeMuted = false; mbrActiveLen = 0;
-    if (was && muted) send("unMute");
+    if (was && muted) { send("unMute"); muted = false; }
     mbrPaint(0);
     if (say) toast(T("Sound is back."));
   }
@@ -13379,7 +13381,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (mbrEndAt) { mbrRestore(true); return; }
     if (muted) { toast(T("The sound is already muted.")); return; }
     mbrWeMuted = true; mbrActiveLen = n;
-    send("mute");
+    send("mute"); muted = true;
     mbrEndAt = Date.now() + n * 1000;
     mbrTimer = setInterval(mbrTickFn, 500);
     mbrPaint(n);
