@@ -3578,6 +3578,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     + ":root.high-contrast body .tour-dots .tour-dot.on{background:currentColor}"
     + "@media (prefers-reduced-motion:reduce){body .tour-dots .tour-dot,body .tour-dots .tour-dot.on{animation:none;transition:none}}";
   document.head.appendChild(tourDotSt);
+  // The docked mini player sits in the browser's top layer, above any z-index, so on
+  // a phone it covered the Welcome tour's Next button. The tour overlay now joins the
+  // top layer after it each time it opens (same move the rest cards made).
+  var tourTopSt = document.createElement("style");
+  tourTopSt.textContent = "#tourOverlay[popover]{inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;overflow:visible;color:inherit}";
+  document.head.appendChild(tourTopSt);
+  new MutationObserver(function (muts) {
+    muts.forEach(function (m) {
+      [].forEach.call(m.addedNodes, function (n) {
+        if (n && n.id === "tourOverlay" && typeof n.showPopover === "function") {
+          var promote = function () { try { if (n.isConnected) { n.removeAttribute("popover"); n.setAttribute("popover", "manual"); n.showPopover(); } } catch (e) { n.removeAttribute("popover"); } };
+          promote(); setTimeout(promote, 260);
+        }
+      });
+    });
+  }).observe(document.body, { childList: true });
 
   window.T = T;
   window.__vpIsPlaying = function () { return !!(playing && iframe && ready); };
@@ -17890,6 +17906,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function open() {
     if (ov.parentNode) return;
     prevFocus = document.activeElement;
+    ov.classList.remove("tour-out");
     document.addEventListener("keydown", onKey, true);
     document.body.appendChild(ov);
     render();
