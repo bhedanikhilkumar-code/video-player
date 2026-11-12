@@ -1942,7 +1942,7 @@ setTimeout(done,3000);})();
           <textarea class="note-box" id="noteBox" maxlength="600" rows="4" disabled aria-labelledby="notesH"></textarea>
           <div class="note-meta"><span id="noteStatus" role="status"></span><span id="noteCount">0 / 600</span></div>
           <div class="marks-list" id="noteTimes"></div>
-          <div class="row"><button class="chip" id="noteTimeBtn" type="button" disabled>⏱ Add current time</button> <button class="chip" id="noteCopyBtn" type="button" disabled>📋 Copy note</button> <button class="chip" id="noteClearBtn" type="button" disabled>🗑 Clear note</button></div>
+          <div class="row"><button class="chip" id="noteTimeBtn" type="button" disabled>⏱ Add current time</button> <button class="chip vs-mic" id="noteMicBtn" type="button" aria-label="Speak your note" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button> <button class="chip" id="noteCopyBtn" type="button" disabled>📋 Copy note</button> <button class="chip" id="noteClearBtn" type="button" disabled>🗑 Clear note</button></div>
           <p class="hint" id="notesHint">Write what you want to remember. Times like 1:23 in your note become buttons that jump there. Saved on this device, for each video.</p>
           <details class="note-find" id="noteFindBox">
             <summary id="noteFindSum">Find in all notes</summary>
@@ -11585,6 +11585,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Speak your note", "#noteMicBtn"],
     ["Videos in a playlist", "#lhPlaylists"],
     ["Save pop", "#favBtn"],
     ["Find in all moments", "#markFindSum"],
@@ -11594,7 +11595,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Snooze in Watch later", "#lhLater"],
     ["Check a backup", "#libCheck"],
     ["Full screen bloom", "#fsBtn"],
-    ["Slow-mo drift", "#speedChips"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -14059,6 +14059,89 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   (window.__relang = window.__relang || []).push(plvPaint);
   plvPaint();
 
+  // Speak your note (round 142): a mic button in the Notes card dictates into this video's
+  // note - the words land where the cursor sits, so a long thought on the phone is spoken
+  // instead of typed. It uses the same speech recognition as Voice search, so the button
+  // stays hidden where the browser has none (some iPhones) and the feature never shows up
+  // broken; the dictation language follows the app language, the 600-letter cap still
+  // holds, the note saves through the usual as-you-type save, and times spoken as 1:23
+  // become jump buttons like typed ones. Nothing new is saved, works on YouTube videos,
+  // translated in Hindi and Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Speak your note": ["नोट बोलकर लिखें", "નોંધ બોલીને લખો"],
+    "Speak your note: dictate into this video's note": ["नोट बोलकर लिखें: इस वीडियो के नोट में बोलें", "નોંધ બોલીને લખો: આ વીડિયોની નોંધમાં બોલો"]
+  });
+  (function () {
+    var b = $("noteBox"), mic = $("noteMicBtn");
+    if (!b || !mic) return;
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    mic.hidden = false;
+    var rec = null, busy = false;
+    function nmStatus(m) { var st = $("noteStatus"); if (st) st.textContent = m; }
+    function nmState(on, note) {
+      busy = on;
+      mic.classList.toggle("listening", on);
+      mic.setAttribute("aria-pressed", on ? "true" : "false");
+      if (note != null) nmStatus(note);
+    }
+    mic.addEventListener("click", function () {
+      if (b.disabled) return;
+      if (busy) { try { if (rec) rec.stop(); } catch (e) {} return; }
+      try { rec = new SR(); } catch (e) { nmStatus(T("Voice search did not work - type instead.")); return; }
+      rec.lang = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-IN";
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      var heard = false, timer = 0;
+      function nmTimeout() {
+        if (heard) return;
+        heard = true;
+        try { rec.stop(); } catch (e) {}
+        nmState(false, null);
+        nmStatus(T("Didn't catch that - tap the mic and try again."));
+      }
+      rec.onresult = function (ev) {
+        heard = true;
+        if (timer) { clearTimeout(timer); timer = 0; }
+        var text = "";
+        try { text = ev.results[0][0].transcript || ""; } catch (e2) {}
+        text = text.trim();
+        if (text) {
+          var a = typeof b.selectionStart === "number" ? b.selectionStart : b.value.length,
+              e = typeof b.selectionEnd === "number" ? b.selectionEnd : a;
+          var lead = b.value.slice(0, a), tail = b.value.slice(e), add = text;
+          if (lead && !/\s$/.test(lead)) add = " " + add;
+          if (tail && !/^\s/.test(tail)) add = add + " ";
+          var room = 600 - lead.length - tail.length;
+          add = add.slice(0, Math.max(0, room));
+          b.value = lead + add + tail;
+          var caret = (lead + add).length;
+          try { b.focus(); b.setSelectionRange(caret, caret); } catch (x) {}
+          b.dispatchEvent(new Event("input", { bubbles: true }));
+          nmStatus(T("Heard: ") + text);
+        } else nmStatus(T("Didn't catch that - tap the mic and try again."));
+      };
+      rec.onerror = function (ev) {
+        heard = true;
+        if (timer) { clearTimeout(timer); timer = 0; }
+        nmStatus((ev && ev.error === "not-allowed") ? T("Microphone permission is off - allow it to use voice search.") : T("Voice search did not work - type instead."));
+      };
+      rec.onend = function () { nmState(false, null); };
+      nmState(true, T("Listening - speak now"));
+      try { rec.start(); timer = setTimeout(nmTimeout, 8000); } catch (e) { nmState(false, null); }
+    });
+    renderNotes = (function (orig) {
+      return function () { var r = orig.apply(this, arguments); mic.disabled = b.disabled; return r; };
+    })(renderNotes);
+    mic.disabled = b.disabled;
+    function nmLang() {
+      mic.setAttribute("aria-label", T("Speak your note"));
+      mic.title = T("Speak your note: dictate into this video's note");
+    }
+    (window.__relang = window.__relang || []).push(nmLang);
+    nmLang();
+  })();
+
 
 })();
 </script>
@@ -16314,7 +16397,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Quality shine", "quality shine picture hd 1080 720 4k crisp sharpen sheen sweep change resolution clear auto best", "#qualityChips"],
       ["Recent searches", "recent searches history search again library chips repeat last words quick retype", "#libSearch"],
       ["Find in all moments", "find moments search saved moment name all videos jump bookmark marked spot chapter", "#markFindSum"],
-      ["Videos in a playlist", "playlist videos items list inside see view reorder arrange order move up down remove play from position manage tidy contents", "#lhPlaylists"]
+      ["Videos in a playlist", "playlist videos items list inside see view reorder arrange order move up down remove play from position manage tidy contents", "#lhPlaylists"],
+      ["Speak your note", "speak note voice dictate microphone talk hands free write words typing notes", "#noteMicBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
