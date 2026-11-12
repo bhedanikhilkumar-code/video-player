@@ -3266,6 +3266,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     toastEl.textContent = msg;
     toastEl._undo = null;
+    // Round 145 (Toast spring): re-adding .show with a forced reflow restarts the
+    // entrance animation when a new toast lands while one is already up. The
+    // animation itself is opt-out under Calm/reduced motion, Low-end and High
+    // contrast in the round 145 style block below.
+    toastEl.classList.remove("show"); void toastEl.offsetWidth;
     toastEl.classList.add("show");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, ms || 2200);
@@ -5367,6 +5372,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     return d.sel.replace(/^#(ctl-|lh)/, "").replace(/-/g, " ");
   }
   function favCtlJump(sel) {
+    // Round 145 (Toast spring): the toast only exists while it shows, so its
+    // finder and What's new entries pop a real one as the demo instead.
+    if (sel === "#vpToast") { toast(T("Toast spring")); return; }
     var el = null; try { el = document.querySelector(sel); } catch (e) {}
     if (!el) return;
     var sec = el.closest ? el.closest("section.sec-collapsed") : null;
@@ -11593,6 +11601,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Toast spring", "#vpToast"],
     ["Time in the tab title", "#tabTimeChk"],
     ["Pause at a time", "#pauseAtForm"],
     ["Now playing lift", "#infoCard"],
@@ -11602,7 +11611,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Save pop", "#favBtn"],
     ["Find in all moments", "#markFindSum"],
     ["Recent searches", "#libSearch"],
-    ["Quality shine", "#qualityChips"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -14342,6 +14350,33 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     render();
   })();
 
+  // Toast spring (round 145): a toast lands with an iPhone-style spring up and a
+  // soft glass sheen sweeps across it once, so every confirmation - a save, a
+  // clear, a setting flip - arrives with a little ceremony instead of a plain
+  // fade. Interaction feedback, not a setting: nothing new is saved, under
+  // Calm/reduced motion and Low-end mode the toast keeps its old quick fade and
+  // slide, in High contrast the sheen drops and the spring becomes a plain fade
+  // (the exit always uses the original transition). Works on YouTube videos,
+  // translated in Hindi and Gujarati, listed in the feature finder and the
+  // What's new card.
+  Object.assign(TR_MSG, {
+    "Toast spring": ["टोस्ट स्प्रिंग", "ટોસ્ટ સ્પ્રિંગ"]
+  });
+  var toastSpringSt = document.createElement("style");
+  toastSpringSt.textContent = "#vpToast{overflow:hidden}"
+    + "#vpToast.show{animation:vpToastIn .52s cubic-bezier(.2,.9,.3,1.22) 1}"
+    + "@keyframes vpToastIn{0%{opacity:0;transform:translate(-50%,22px) scale(.94)}58%{opacity:1;transform:translate(-50%,-3px) scale(1.012)}100%{opacity:1;transform:translate(-50%,0) scale(1)}}"
+    + "#vpToast::after{content:\"\";position:absolute;top:0;bottom:0;left:-70%;width:42%;pointer-events:none;background:linear-gradient(100deg,transparent,rgba(255,255,255,.30),transparent);transform:skewX(-14deg);opacity:0}"
+    + "#vpToast.show::after{animation:vpToastSheen .85s ease-out .1s 1}"
+    + "@keyframes vpToastSheen{0%{left:-70%;opacity:0}14%{opacity:1}100%{left:135%;opacity:0}}"
+    + "html.high-contrast #vpToast::after{display:none}"
+    + "html.high-contrast #vpToast.show{animation:vpToastFade .3s ease 1}"
+    + "@keyframes vpToastFade{from{opacity:0}to{opacity:1}}"
+    + "html.calm-motion #vpToast.show,html.low-fx #vpToast.show{animation:none}"
+    + "html.calm-motion #vpToast::after,html.low-fx #vpToast::after{display:none}"
+    + "@media (prefers-reduced-motion:reduce){#vpToast.show{animation:none}#vpToast::after{display:none}}";
+  document.head.appendChild(toastSpringSt);
+
 })();
 </script>
 <script>
@@ -16414,6 +16449,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     // Picking one opens its folded section if needed, scrolls it into view and flashes it.
     function jump(sel) {
       return function () {
+        // Round 145 (Toast spring): pop a real toast as the demo (see favCtlJump).
+        if (sel === "#vpToast") { if (window.toast) window.toast(T("Toast spring")); return; }
         var el = document.querySelector(sel); if (!el) return;
         var sec = el.closest ? el.closest("section.sec-collapsed") : null;
         if (sec && window.vpExpandSection) window.vpExpandSection(sec.id);
@@ -16601,7 +16638,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Time in the tab title", "tab title time left remaining playing paused browser tab bar another tab glance background switch window name", "#tabTimeChk"],
       ["Pause at a time", "pause at time stop timer part segment minute second watch only stop before ending jump seek one shot", "#pauseAtForm"],
       ["Library cascade", "library cascade rows rise stagger list repaint appear animation queue up next watch later favourites recently watched sort filter soft entrance", "#lhQueue"],
-      ["Now playing lift", "now playing lift card spring sheen glass sweep info title channel new video load arrival entrance under frame ceremony", "#infoCard"]
+      ["Now playing lift", "now playing lift card spring sheen glass sweep info title channel new video load arrival entrance under frame ceremony", "#infoCard"],
+      ["Toast spring", "toast spring notification bottom message confirm confirmation pop up springy sheen glass feedback saved cleared", "#vpToast"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
