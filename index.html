@@ -2350,7 +2350,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
-      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button></span></div>
+      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button></span></div>
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
       <p class="hint" id="favTime" role="status"></p>
@@ -12636,6 +12636,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Queue favourites", "#favQueueBtn"],
     ["Landing glow", "#lhQueue"],
     ["Favourites total time", "#favTime"],
     ["Play picked next", "#qPickBtn"],
@@ -12645,7 +12646,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Invert queue picks", "#qPickBtn"],
     ["Empty breath", "#lhQueue"],
     ["Switch ring", "#saverData"],
-    ["E to queue the playing video", "#sc25"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -16086,6 +16086,39 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   (window.__relang = window.__relang || []).push(updateFavTime);
   updateFavTime();
 
+  // Queue favourites (round 172): Queue unwatched and Queue unfinished fill the queue from
+  // Watch later and Recently watched in one tap, but a starred Favourites list could only
+  // be queued one row at a time. A chip in the Favourites header now adds every favourite
+  // to the end of the queue in list order, skipping videos already queued and respecting
+  // the 50-video cap (the toast says how many were left out). The toast offers Undo that
+  // restores the queue and its playing spot. Nothing new is saved beyond the queue itself.
+  // Works on YouTube videos, translated in Hindi and Gujarati, listed in the feature
+  // finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Queue favourites": ["पसंदीदा कतार में", "મનપસંદ કતારમાં"],
+    "➕ Queue favourites": ["➕ पसंदीदा कतार में", "➕ મનપસંદ કતારમાં"],
+    "Add every Favourites video to the end of the queue": ["हर पसंदीदा वीडियो कतार के अंत में जोड़ें", "દરેક મનપસંદ વીડિયો કતારના અંતે ઉમેરો"],
+    "No favourites to add to the queue.": ["कतार में डालने के लिए कोई नया पसंदीदा नहीं.", "કતારમાં નાખવા કોઈ નવું મનપસંદ નથી."],
+    "left out - queue is full": ["छूट गए - कतार भरी है", "રહી ગયા - કતાર ભરાઈ ગઈ છે"]
+  });
+  var favQueueBtn = $("favQueueBtn");
+  function favQueuePaint() { if (favQueueBtn) { favQueueBtn.textContent = T("➕ Queue favourites"); favQueueBtn.setAttribute("aria-label", T("Add every Favourites video to the end of the queue")); } }
+  (window.__relang = window.__relang || []).push(favQueuePaint);
+  favQueuePaint();
+  if (favQueueBtn) favQueueBtn.addEventListener("click", function () {
+    var snap = lib.queue.slice(), sp = qPos, add = [], full = 0;
+    lib.favs.forEach(function (it) {
+      if (!it || !it.id || findIn(lib.queue, it.id) >= 0) return;
+      if (lib.queue.length + add.length >= 50) { full++; return; }
+      add.push({ id: it.id, title: it.title || "" });
+    });
+    if (!add.length) { showLibErr(T(full ? "The queue is full (50 videos)." : "No favourites to add to the queue.")); return; }
+    showLibErr("");
+    add.forEach(function (x) { lib.queue.push(x); });
+    saveLib(); renderLib();
+    toastUndo((add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue")) + (full ? " · " + full + " " + T("left out - queue is full") : ""), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+  });
+
 })();
 </script>
 <script>
@@ -18399,6 +18432,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["E to queue the playing video", "queue this video playing now key e keyboard shortcut add end of queue current chip now playing link opened from history", "#sc25"],
       ["Empty breath", "empty breath list icon tile pulse glow idle alive queue watch later favourites history nothing here ios widget", "#lhQueue"],
       ["Switch ring", "switch ring toggle switch ring pulse flip on off settings saver accessibility checkbox confirmation glass ios haptic", "#saverData"],
+      ["Queue favourites", "queue favourites starred hearts add all favourite list evening rewatch play every liked bulk saved", "#favQueueBtn"],
       ["Queue unfinished", "queue unfinished started half watched finish what i began history recently watched continue resume add all partly incomplete", "#histQueueBtn"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
