@@ -9562,6 +9562,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (added) { resetShuffle(); saveLib(); renderLib(); }
     toast(added ? (added === 1 ? T("1 video added to queue") : added + " " + T("videos added to queue")) + (skipped ? " - " + skipped + " " + T("skipped") : "") : T("Already in the queue, or the queue is full at 50."));
   }
+  // Clear this day (round 211 new 5): a binge day or a borrowed-phone day can leave a whole
+  // date in history that the viewer wants gone, and removing its videos one by one is slow.
+  // A Clear this day chip on each day heading removes just that day's entries, with the same
+  // Undo toast every other history removal offers, so a wrong tap costs nothing.
+  Object.assign(TR_MSG, {
+    "Clear this day": ["यह दिन हटाएं", "આ દિવસ હટાવો"],
+    "Day removed from history.": ["दिन हिस्ट्री से हटाया गया.", "દિવસ હિસ્ટ્રીમાંથી હટાવાયો."]
+  });
+  function histDayClear() {
+    var ids = this._ids || []; if (!ids.length) return;
+    var drop = {}; ids.forEach(function (id) { drop[id] = 1; });
+    var snapH = lib.hist.slice();
+    lib.hist = lib.hist.filter(function (x) { return !(x && x.id && drop[x.id]); });
+    if (lib.hist.length === snapH.length) return;
+    saveLib(); renderLib();
+    toastUndo(T("Day removed from history."), function () { lib.hist = snapH; saveLib(); renderLib(); }, T("History restored"));
+  }
   function paintHistDays() {
     if (!histList) return;
     Array.prototype.forEach.call(histList.querySelectorAll(".hist-day"), function (n) { n.remove(); });
@@ -9580,6 +9597,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       curIds = [id]; hb._ids = curIds;
       hb.addEventListener("click", histDayQueue);
       h.appendChild(hb);
+      var hc = document.createElement("button"); hc.type = "button"; hc.className = "chip hist-day-x"; hc.textContent = T("Clear this day");
+      hc.setAttribute("aria-label", T("Clear this day") + ": " + lab);
+      hc._ids = curIds;
+      hc.addEventListener("click", histDayClear);
+      h.appendChild(hc);
       histList.insertBefore(h, li);
     });
   }
