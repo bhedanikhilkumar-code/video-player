@@ -11462,6 +11462,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Home stretch glow", "#seek"],
     ["Snooze in Watch later", "#lhLater"],
     ["Check a backup", "#libCheck"],
     ["Full screen bloom", "#fsBtn"],
@@ -11471,7 +11472,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Mute pop", "#muteBtn"],
     ["Loop pulse", "#abLabel"],
     ["Channel volume", "#chVolBtn"],
-    ["Skip seen parts", "#sskipBtn"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -13633,6 +13633,60 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     rd.onerror = function () { libBackupMsg.textContent = T("That file could not be read. Use a backup file made by this app."); };
     rd.readAsText(f);
   });
+
+  // Home stretch glow (round 139): as a video nears its end - the last stretch,
+  // eight percent of its length, always between about 6 and 30 seconds - a warm
+  // golden light rises from the bottom of the frame and soft embers drift
+  // upward, growing as the finish comes closer, so the ending announces itself
+  // a few breaths before it lands; Finish burst celebrates the end itself, this
+  // glow is the sunset just before it, and Milestone cheers mark the quarter,
+  // half and three-quarter points instead. State feedback, not a setting: it
+  // simply follows the playback position and fades away on a seek back, a new
+  // video or the end. Works on YouTube videos on the main player, a plain
+  // overlay on the frame (the video itself is untouched and every control stays
+  // tappable), a still warm glow without the drifting embers under
+  // Calm/reduced motion and Low-end mode, the embers drop in High contrast,
+  // hidden in the mini player and Simple mode, translated in Hindi and
+  // Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Home stretch glow": ["होम स्ट्रेच ग्लो", "હોમ સ્ટ્રેચ ગ્લો"]
+  });
+  var hsgSt = document.createElement("style");
+  hsgSt.textContent = ".vp-hstretch{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden;border-radius:inherit;opacity:0;transition:opacity .6s ease}"
+    + ".vp-hstretch.hsg-on{opacity:var(--hsgInt,.5)}"
+    + ".vp-hstretch::before{content:\"\";position:absolute;inset:0;background:linear-gradient(to top,rgba(255,166,64,.32),rgba(255,120,80,.10) 42%,transparent 62%)}"
+    + ".vp-hstretch::after{content:\"\";position:absolute;inset:0;background:radial-gradient(120% 90% at 50% 110%,rgba(255,190,90,.38),transparent 62%)}"
+    + ".vp-hstretch b{position:absolute;bottom:-6%;width:6px;height:6px;border-radius:50%;background:radial-gradient(circle,#ffdca6,#ff9a3c);box-shadow:0 0 8px 2px rgba(255,170,80,.65);opacity:0;animation:vpHsgEmber 3.6s ease-in infinite}"
+    + ".vp-hstretch b:nth-of-type(1){left:16%}"
+    + ".vp-hstretch b:nth-of-type(2){left:38%;animation-delay:.9s;animation-duration:4.2s}"
+    + ".vp-hstretch b:nth-of-type(3){left:61%;animation-delay:1.7s}"
+    + ".vp-hstretch b:nth-of-type(4){left:80%;animation-delay:2.5s;animation-duration:4.6s}"
+    + "@keyframes vpHsgEmber{0%{transform:translate(0,0) scale(.6);opacity:0}12%{opacity:.95}70%{opacity:.5}100%{transform:translate(2.4vw,-320px) scale(1.05);opacity:0}}"
+    + "html.calm-motion .vp-hstretch b,html.low-fx .vp-hstretch b{display:none}"
+    + "@media (prefers-reduced-motion:reduce){.vp-hstretch b{display:none}}"
+    + "html.high-contrast .vp-hstretch b{display:none}"
+    + "#playerDock.is-mini .vp-hstretch,html.simple-mode .vp-hstretch{display:none}";
+  document.head.appendChild(hsgSt);
+  var hsgEl = document.createElement("div"), hsgOn = false, hsgInt = 0;
+  hsgEl.className = "vp-hstretch"; hsgEl.setAttribute("aria-hidden", "true");
+  hsgEl.appendChild(document.createElement("b")); hsgEl.appendChild(document.createElement("b"));
+  hsgEl.appendChild(document.createElement("b")); hsgEl.appendChild(document.createElement("b"));
+  if (frameBox) frameBox.appendChild(hsgEl);
+  function hsgApply(on, int) {
+    on = on === true;
+    int = typeof int === "number" && isFinite(int) ? Math.max(.15, Math.min(1, int)) : 0;
+    if (on !== hsgOn) { hsgOn = on; hsgEl.classList.toggle("hsg-on", hsgOn); }
+    if (hsgOn && Math.abs(int - hsgInt) > .03) { hsgInt = int; hsgEl.style.setProperty("--hsgInt", int.toFixed(2)); }
+  }
+  window.__vpHomeStretch = hsgApply;
+  setInterval(function () {
+    if (!controls || controls.hidden || !curId || !ready || !(duration > 0)) { if (hsgOn) hsgApply(false); return; }
+    var left = duration - (curTime || 0);
+    var win = Math.min(30, Math.max(6, duration * 0.08));
+    if (left > 0.4 && left <= win) hsgApply(true, 1 - left / win);
+    else if (hsgOn) hsgApply(false);
+  }, 700);
+  document.addEventListener("vp-video-loaded", function () { hsgApply(false); });
 
 })();
 </script>
@@ -15882,7 +15936,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Slow-mo drift", "slow mo slow motion drift dreamy haze blobs floating lights slow speed 0.25 0.5 0.75 playback dream calm glass", "#speedChips"],
       ["Full screen bloom", "full screen bloom zoom spring light sweep sheen entering leaving fullscreen big picture glass ceremony", "#fsBtn"],
       ["Snooze in Watch later", "snooze watch later park hide till tomorrow 3 days week wake backlog not now postpone dim bottom", "#lhLater"],
-      ["Check a backup", "check backup look inside file before import verify valid what is in safe counts exported date", "#libCheck"]
+      ["Check a backup", "check backup look inside file before import verify valid what is in safe counts exported date", "#libCheck"],
+      ["Home stretch glow", "home stretch glow ending soon almost over finish warm golden embers sunset final seconds approaching end video about to end", "#seek"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
