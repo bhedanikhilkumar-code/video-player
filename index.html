@@ -2349,7 +2349,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button></span></div>
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
-      <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="histQueueBtn" type="button">Queue unfinished</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsClear" type="button">Clear</button></div>
@@ -4242,6 +4242,37 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   (window.__relang = window.__relang || []).push(function () { if (laterQueueBtn) { laterQueueBtn.textContent = T("➕ Queue unwatched"); laterQueueBtn.setAttribute("aria-label", T("Add every unwatched Watch-later video to the queue")); } });
   if (laterQueueBtn) laterQueueBtn.setAttribute("aria-label", T("Add every unwatched Watch-later video to the queue"));
+  // Queue unfinished (round 166): a chip in the Recently watched header that puts every
+  // video you started but did not finish into the queue in one tap, newest first, so an
+  // evening can start with "finish what I began". A video counts as unfinished when its
+  // history row is not marked done and has a saved spot of at least 10 seconds. Videos
+  // already in the queue are skipped, the 50-video cap is respected, and the toast
+  // offers Undo that restores the queue. Nothing new is saved beyond the queue itself.
+  // Works on YouTube videos, translated in Hindi and Gujarati, listed in the feature
+  // finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Queue unfinished": ["अधूरे कतार में डालें", "અધૂરા કતારમાં નાખો"],
+    "Add every started but unfinished video from Recently watched to the queue": ["Recently watched के हर शुरू किए पर अधूरे वीडियो को कतार में डालें", "Recently watched ના દરેક શરૂ કરેલા પણ અધૂરા વીડિયોને કતારમાં નાખો"],
+    "No unfinished videos to add to the queue.": ["कतार में डालने के लिए कोई अधूरा वीडियो नहीं.", "કતારમાં નાખવા કોઈ અધૂરો વીડિયો નથી."]
+  });
+  var histQueueBtn = $("histQueueBtn");
+  function histQueuePaint() { if (histQueueBtn) { histQueueBtn.textContent = T("Queue unfinished"); histQueueBtn.setAttribute("aria-label", T("Add every started but unfinished video from Recently watched to the queue")); } }
+  (window.__relang = window.__relang || []).push(histQueuePaint);
+  histQueuePaint();
+  if (histQueueBtn) histQueueBtn.addEventListener("click", function () {
+    var snap = lib.queue.slice(), sp = qPos, add = [];
+    lib.hist.forEach(function (h) {
+      if (!h || !h.id || h.done === true || !(h.t >= 10)) return;
+      if (findIn(lib.queue, h.id) >= 0) return;
+      if (lib.queue.length + add.length >= 50) return;
+      add.push({ id: h.id, title: h.title || "" });
+    });
+    if (!add.length) { showLibErr(T("No unfinished videos to add to the queue.")); return; }
+    showLibErr("");
+    add.forEach(function (x) { lib.queue.push(x); });
+    saveLib(); renderLib();
+    toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+  });
   clearHistBtn.addEventListener("click", function () {
     var snap = lib.hist.slice(), res = null;
     try { res = localStorage.getItem("vp-resume.v1"); } catch (e) {}
@@ -12382,6 +12413,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Queue unfinished", "#histQueueBtn"],
     ["Copied tick", "#infoCopyBtn"],
     ["Drag lift", "#lhQueue"],
     ["I to copy title and link", "#sc23"],
@@ -12391,7 +12423,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Q to find it in the queue", "#sc22"],
     ["Move to end", "#qPickBtn"],
     ["Row hover lift", "#lhQueue"],
-    ["Menu edge fade", "#featNav"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -18110,6 +18141,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Row hover lift", "row hover lift library rows queue favourites watch later history playlist raise float shadow thumbnail zoom desktop mouse pointer poster", "#lhQueue"],
       ["Drag lift", "drag lift queue row reorder pick up move grip float shadow glass edge iphone icon grab grabbing", "#lhQueue"],
       ["Copied tick", "copied tick copy confirmation green check pop chip button clipboard feedback receipt copy list title link", "#infoCopyBtn"]
+      ["Queue unfinished", "queue unfinished started half watched finish what i began history recently watched continue resume add all partly incomplete", "#histQueueBtn"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
