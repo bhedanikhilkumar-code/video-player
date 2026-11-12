@@ -3367,6 +3367,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (i >= 0) lib.favs.splice(i, 1); else lib.favs.unshift({ id: id, title: titleFor(id) });
     saveLib(); renderLib(); if (i < 0) fetchTitle(id);
     vpPop(favBtn);
+    if (i < 0 && typeof window.__vpSavePop === "function") window.__vpSavePop("fav", id);
     toast(i >= 0 ? T("Removed from favourites") : T("Added to favourites"));
   }
   // Round 94: pin a favourite so it stays at the top of the list, whatever the sort.
@@ -3404,6 +3405,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (i >= 0) lib.later.splice(i, 1); else lib.later.unshift({ id: id, title: titleFor(id), ts: Date.now() });
     saveLib(); renderLib(); if (i < 0) fetchTitle(id);
     vpPop(laterBtn);
+    if (i < 0 && typeof window.__vpSavePop === "function") window.__vpSavePop("later", id);
     toast(i >= 0 ? T("Removed from Watch later.") : T("Saved to Watch later."));
   }
   function vpRateOf(id) {
@@ -11583,6 +11585,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Save pop", "#favBtn"],
     ["Find in all moments", "#markFindSum"],
     ["Recent searches", "#libSearch"],
     ["Quality shine", "#qualityChips"],
@@ -11592,7 +11595,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Full screen bloom", "#fsBtn"],
     ["Slow-mo drift", "#speedChips"],
     ["Mute break", "#muteBreakRow"],
-    ["Rotate picture", "#rotRow"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -13419,6 +13421,57 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       for (var w = 0; w < 2; w++) {
         var wv = document.createElement("div"); wv.className = "vp-mutewave" + (w ? " w2" : ""); mpopBox.appendChild(wv);
         (function (x) { setTimeout(function () { x.remove(); }, 1000); })(wv);
+      }
+    }
+  };
+
+  // Save pop (round 141): adding the video playing now to Favourites pops a big glass heart
+  // at the centre of the frame on a spring while a few small hearts float up and out of it,
+  // and saving it to Watch later pops a glass clock with a soft ring - so a save lands with a
+  // little ceremony instead of only a toast, the way Mute pop confirms sound. Interaction
+  // feedback, not a setting: it fires only when you add the video that is playing (removing a
+  // save, or saving a row in a list, stays quiet). Works on YouTube videos on the main player,
+  // a plain overlay on the frame (the video itself is untouched and every control stays
+  // tappable), a plain fade without the spring or floating hearts under Calm/reduced motion
+  // and Low-end mode, solid in High contrast, hidden in the mini player and Simple mode,
+  // translated in Hindi and Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Save pop": ["सेव पॉप", "સેવ પૉપ"]
+  });
+  var spopSt = document.createElement("style");
+  spopSt.textContent = ".vp-savepop{position:absolute;left:50%;top:50%;width:92px;height:92px;margin:-46px 0 0 -46px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,rgba(255,255,255,.28),rgba(255,120,160,.22));color:#fff;border:1px solid rgba(255,255,255,.4);box-shadow:0 10px 36px rgba(255,80,130,.38),inset 0 1px 0 rgba(255,255,255,.5);backdrop-filter:blur(14px) saturate(1.6);-webkit-backdrop-filter:blur(14px) saturate(1.6);font-size:40px;line-height:1;pointer-events:none;z-index:6;animation:vpSavePop .95s cubic-bezier(.2,.9,.3,1) both}"
+    + ".vp-savepop.sp-later{background:linear-gradient(145deg,rgba(255,255,255,.28),rgba(120,180,255,.22));box-shadow:0 10px 36px rgba(90,150,255,.38),inset 0 1px 0 rgba(255,255,255,.5)}"
+    + "@keyframes vpSavePop{0%{opacity:0;transform:scale(.4)}18%{opacity:1;transform:scale(1.18)}32%{transform:scale(.94)}46%{transform:scale(1.04)}60%{transform:scale(1)}82%{opacity:1}100%{opacity:0;transform:scale(1.08) translateY(-8px)}}"
+    + ".vp-savepop.sp-fav{animation-name:vpSavePop,vpSaveBeat}"
+    + "@keyframes vpSaveBeat{0%,100%{filter:none}30%{filter:drop-shadow(0 0 10px rgba(255,90,140,.9))}}"
+    + ".vp-savering{position:absolute;left:50%;top:50%;width:92px;height:92px;margin:-46px 0 0 -46px;border-radius:50%;border:2px solid rgba(255,140,175,.8);pointer-events:none;z-index:6;opacity:0;animation:vpSaveRing .9s ease-out both}"
+    + ".vp-savering.sp-later{border-color:rgba(140,190,255,.85)}"
+    + "@keyframes vpSaveRing{0%{opacity:.85;transform:scale(1)}100%{opacity:0;transform:scale(2)}}"
+    + ".vp-savepetal{position:absolute;left:50%;top:50%;margin:-9px 0 0 -9px;font-size:18px;line-height:1;pointer-events:none;z-index:6;opacity:0;animation:vpSavePetal 1.05s cubic-bezier(.2,.8,.3,1) both;text-shadow:0 2px 8px rgba(255,60,120,.6)}"
+    + "@keyframes vpSavePetal{0%{opacity:0;transform:translate(0,0) scale(.3)}15%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1)}}"
+    + "html.low-fx .vp-savepop,html.calm-motion .vp-savepop{animation:vpSavePopStill .8s ease both}"
+    + "html.low-fx .vp-savering,html.calm-motion .vp-savering,html.low-fx .vp-savepetal,html.calm-motion .vp-savepetal{display:none}"
+    + "@keyframes vpSavePopStill{0%{opacity:0}15%{opacity:1}80%{opacity:1}100%{opacity:0}}"
+    + "@media (prefers-reduced-motion:reduce){.vp-savepop{animation:vpSavePopStill .8s ease both}.vp-savering,.vp-savepetal{display:none}}"
+    + "html.high-contrast .vp-savepop{backdrop-filter:none;-webkit-backdrop-filter:none;background:#000;box-shadow:none}"
+    + "#playerDock.is-mini .vp-savepop,#playerDock.is-mini .vp-savering,#playerDock.is-mini .vp-savepetal,html.simple-mode .vp-savepop,html.simple-mode .vp-savering,html.simple-mode .vp-savepetal{display:none}";
+  document.head.appendChild(spopSt);
+  var spopBox = null;
+  window.__vpSavePop = function (kind, id) {
+    if (!curId || !ready || !frameBox || (id && id !== curId)) return;
+    if (!spopBox) { spopBox = document.createElement("div"); spopBox.setAttribute("aria-hidden", "true"); frameBox.appendChild(spopBox); }
+    var fav = kind !== "later", cls = fav ? "sp-fav" : "sp-later";
+    var d = document.createElement("div"); d.className = "vp-savepop " + cls; d.textContent = fav ? "\u2764\uFE0F" : "\uD83D\uDD52"; spopBox.appendChild(d);
+    setTimeout(function () { d.remove(); }, 1000);
+    var r = document.createElement("div"); r.className = "vp-savering " + cls; spopBox.appendChild(r);
+    setTimeout(function () { r.remove(); }, 1000);
+    if (fav && !(window.vpReducedMotion && window.vpReducedMotion())) {
+      for (var k = 0; k < 7; k++) {
+        var a = (-90 + (k - 3) * 28) * Math.PI / 180, dist = 70 + (k % 3) * 22;
+        var pt = document.createElement("div"); pt.className = "vp-savepetal"; pt.textContent = k % 2 ? "\uD83D\uDC96" : "\u2764\uFE0F";
+        pt.style.setProperty("--dx", Math.round(Math.cos(a) * dist) + "px"); pt.style.setProperty("--dy", Math.round(Math.sin(a) * dist - 18) + "px");
+        pt.style.animationDelay = (k * 0.04) + "s"; spopBox.appendChild(pt);
+        (function (x) { setTimeout(function () { x.remove(); }, 1300); })(pt);
       }
     }
   };
@@ -16116,6 +16169,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Skip seen parts", "skip seen parts rewatch already watched watched part section skip ahead seen before watch map chip jump past second time", "#sskipBtn"],
       ["Channel volume", "channel volume remember always this channel creator auto apply sound loud quiet level per channel", "#chVolBtn"],
       ["Loop pulse", "loop pulse a-b repeat wrap again ring count practice loop full video repeat turning feedback", "#abLabel"],
+      ["Save pop", "save pop favourite favorite heart watch later clock saved confirm feedback bookmark glass ring hearts floating", "#favBtn"],
       ["Mute pop", "mute pop sound on off unmute icon centre frame confirm feedback speaker waves", "#muteBtn"],
       ["Rotate picture", "rotate picture turn sideways 90 180 270 degrees phone video orientation portrait landscape tilted straighten", "#rotRow"],
       ["Mute break", "mute break timed mute for seconds ad loud intro restore sound automatically temporary quiet", "#muteBreakRow"],
