@@ -966,7 +966,7 @@ html.cinema-on #cinemaVeil{opacity:1;pointer-events:auto;}
 html.cinema-on #player{position:relative;z-index:65;}
 html.cinema-on .frame{box-shadow:0 24px 90px rgba(0,0,0,.6);}
 @media (prefers-reduced-motion:reduce){#cinemaVeil{transition:none;}}
-#vpToastUndo{margin-left:10px;}
+#vpToastUndo,.vp-undo{margin-left:10px;}
 #vpToast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,16px);max-width:min(92vw,420px);padding:10px 16px;border-radius:14px;border:1px solid var(--hairline);background:var(--card);color:var(--ink);box-shadow:0 10px 30px rgba(0,0,0,.18);font-size:14px;line-height:1.35;text-align:center;opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;z-index:9500;}
 #vpToast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
 @media (prefers-reduced-motion:reduce){#vpToast{transition:none;}}
@@ -3342,8 +3342,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       toastEl.setAttribute("aria-live", "polite");
       document.body.appendChild(toastEl);
     }
+    // Round 165 fix: a fresh toast used to wipe a still-live Undo button with the
+    // old text (textContent replaces every child), so an Undo that a follow-up note
+    // replaced within a second - say Z's queue Undo replaced by the "Started 10
+    // seconds early" note - was nearly impossible to hit. Now a live, unused Undo
+    // rides onto the new toast instead of dying with the old text, and a carried
+    // Undo keeps the note up at least six seconds so the button stays reachable.
+    // A used Undo removes itself first, so it never carries.
+    var carry = [];
+    if (toastEl.classList.contains("show")) {
+      carry = Array.prototype.slice.call(toastEl.querySelectorAll(".vp-undo"));
+    }
     toastEl.textContent = msg;
     toastEl._undo = null;
+    carry.forEach(function (cb) { toastEl.appendChild(cb); });
+    toastEl._undo = carry[0] || null;
     // Round 145 (Toast spring): re-adding .show with a forced reflow restarts the
     // entrance animation when a new toast lands while one is already up. The
     // animation itself is opt-out under Calm/reduced motion, Low-end and High
@@ -3351,7 +3364,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toastEl.classList.remove("show"); void toastEl.offsetWidth;
     toastEl.classList.add("show");
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, ms || 2200);
+    var showMs = ms || 2200;
+    if (carry.length && showMs < 6000) showMs = 6000;
+    toastTimer = setTimeout(function () { toastEl.classList.remove("show"); }, showMs);
   }
   window.toast = toast;
 
@@ -3360,11 +3375,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toast(msg, 10000);
     if (!toastEl) return;
     var b = document.createElement("button");
-    b.type = "button"; b.className = "chip"; b.id = "vpToastUndo";
+    b.type = "button"; b.className = "chip vp-undo";
     b.textContent = T("Undo");
+    // A carried Undo can share a toast with another, so each names what it undoes.
+    b.title = T("Undo") + ": " + msg;
+    b.setAttribute("aria-label", T("Undo") + ": " + msg);
     b.addEventListener("click", function () {
       clearTimeout(toastTimer);
       if (toastEl) toastEl.classList.remove("show");
+      try { b.remove(); } catch (e0) {}
       try { undoFn(); } catch (e) {}
       if (doneMsg) toast(doneMsg);
     });
