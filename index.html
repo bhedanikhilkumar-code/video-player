@@ -11347,6 +11347,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       channels: vpChans.map(function (c) { return { n: c.n, u: c.u }; }),
       chanSpeeds: (function () { var o = {}; Object.keys(chSpeed).forEach(function (k) { o[k] = chSpeed[k]; }); return o; })(),
       chanVols: (function () { var o = {}; Object.keys(chVol).forEach(function (k) { o[k] = chVol[k]; }); return o; })(),
+      // Round 215 fix: star ratings rode no backup - a device change silently lost every
+      // rating while queue, notes and even channel volumes moved over. Export them like
+      // the other maps (valid 11-character ids, whole 1-5 values only).
+      ratings: (function () { var o = {}; try { var m = JSON.parse(localStorage.getItem("vp-rate.v1") || "{}"); if (m && typeof m === "object") Object.keys(m).forEach(function (k) { var v = Math.round(Number(m[k])); if (/^[a-zA-Z0-9_-]{11}$/.test(k) && v >= 1 && v <= 5) o[k] = v; }); } catch (e) {} return o; })(),
       settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
     ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
@@ -11373,7 +11377,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (nChSpd) libBackupMsg.textContent += " " + T("Channel speeds included: ") + nChSpd + ".";
     var nChVol = Object.keys(data.chanVols).length;
     if (nChVol) libBackupMsg.textContent += " " + T("Channel volumes included: ") + nChVol + ".";
+    var nRate = Object.keys(data.ratings || {}).length;
+    if (nRate) libBackupMsg.textContent += " " + T("Ratings included: ") + nRate + ".";
     bkMark();
+  });
+  Object.assign(TR_MSG, {
+    "Ratings included: ": ["\u0930\u0947\u091f\u093f\u0902\u0917 \u0936\u093e\u092e\u093f\u0932: ", "\u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97 \u0ab8\u0abe\u0aae\u0ac7\u0ab2: "],
+    "Ratings restored: ": ["\u0930\u0947\u091f\u093f\u0902\u0917 \u0935\u093e\u092a\u0938 \u092e\u093f\u0932\u0940\u0902: ", "\u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97 \u0aaa\u0abe\u0a9b\u0ac0 \u0aae\u0ab3\u0ac0: "]
   });
   Object.assign(TR_MSG, { "Not added because the list holds 50 at most: ": ["जोड़े नहीं गए क्योंकि सूची में अधिकतम 50 आते हैं: ", "ઉમેર્યા નથી કારણ કે યાદીમાં વધુમાં વધુ 50 આવે છે: "] });
   $("libImport").addEventListener("click", function () { $("libImportFile").click(); });
@@ -11436,6 +11446,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             chVol[k.trim().slice(0, 60)] = Math.round(v); cvn++;
           });
           if (cvn) { chVolSave(); chVolRender(); }
+        }
+        // Round 215 fix: restore ratings the same way - a rating already made on this
+        // device wins, missing ones are added, and the stars repaint right away.
+        var rtn = 0;
+        if (d.ratings && typeof d.ratings === "object" && !Array.isArray(d.ratings)) {
+          var rmap = {}; try { rmap = JSON.parse(localStorage.getItem("vp-rate.v1") || "{}") || {}; } catch (e) { rmap = {}; }
+          Object.keys(d.ratings).forEach(function (k) {
+            var v = Math.round(Number(d.ratings[k]));
+            if (!/^[a-zA-Z0-9_-]{11}$/.test(k) || !isFinite(v) || v < 1 || v > 5) return;
+            if (rmap[k]) return;
+            if (Object.keys(rmap).length >= 500) return;
+            rmap[k] = v; rtn++;
+          });
+          if (rtn) { try { localStorage.setItem("vp-rate.v1", JSON.stringify(rmap)); } catch (e) {} try { window.dispatchEvent(new Event("vp-rate-changed")); } catch (e) {} }
         }
         var mn = 0;
         if (d.moments && typeof d.moments === "object" && !Array.isArray(d.moments)) {
@@ -11533,7 +11557,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
         }
-        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !cn && !csn && !cvn && !hn && !sn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app.") + (capN ? " " + T("Not added because the list holds 50 at most: ") + capN + "." : ""); return; }
+        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !cn && !csn && !cvn && !rtn && !hn && !sn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app.") + (capN ? " " + T("Not added because the list holds 50 at most: ") + capN + "." : ""); return; }
         saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
         bkMark();
         if (typeof window.__vpImportSnap === "function") window.__vpImportSnap(impSnap);
@@ -11548,6 +11572,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (cn) libBackupMsg.textContent += " " + T("Channels restored: ") + cn + ".";
         if (csn) libBackupMsg.textContent += " " + T("Channel speeds restored: ") + csn + ".";
         if (cvn) libBackupMsg.textContent += " " + T("Channel volumes restored: ") + cvn + ".";
+        if (rtn) libBackupMsg.textContent += " " + T("Ratings restored: ") + rtn + ".";
         if (gotSettings) { libBackupMsg.textContent += " " + T("Settings restored. Reloading to apply\u2026"); setTimeout(function () { location.reload(); }, 1200); }
       } catch (e) { libBackupMsg.textContent = T("That file could not be read. Use a backup file made by this app."); }
     };
