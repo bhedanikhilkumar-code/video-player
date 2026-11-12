@@ -3499,6 +3499,42 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     + "@media (prefers-reduced-motion:reduce){#vpAskBg .vp-ask-card{animation:none}}";
   document.head.appendChild(askGlassSt);
 
+  // Glass rest cards (round 191): the Break reminder card and the Daily limit
+  // card were the last flat overlay cards in the app - solid boxes with a plain
+  // shadow popping up at the bottom of the page, while the dialogs, Search and
+  // the shortcuts sheet all went glass. Both are now frosted glass with a bright
+  // top edge, rounder corners and a deeper shadow, and they spring up from below
+  // like an iPhone sheet instead of appearing at once. Pure look: no setting,
+  // nothing new is saved, the messages, buttons and timers are untouched. The
+  // dark theme gets dark glass, High contrast a solid card with a strong border,
+  // Calm/reduced motion drops only the spring (the glass stays), and Low-end
+  // mode drops the spring and the blur. Hindi and Gujarati names, feature finder
+  // and ten-item What's new included.
+  Object.assign(TR_MSG, {
+    "Glass rest cards": ["ग्लास रेस्ट कार्ड", "ગ્લાસ રેસ્ટ કાર્ડ"]
+  });
+  var restGlassSt = document.createElement("style");
+  restGlassSt.textContent = "body #vpBreak,body #vpLimit{background:linear-gradient(165deg,rgba(255,255,255,.84),rgba(255,255,255,.62));-webkit-backdrop-filter:blur(22px) saturate(1.6);backdrop-filter:blur(22px) saturate(1.6);border:1px solid rgba(255,255,255,.7);border-radius:24px;box-shadow:0 30px 70px rgba(10,8,20,.30),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(255,255,255,.25)}"
+    + ":root[data-theme=\"dark\"] #vpBreak,:root[data-theme=\"dark\"] #vpLimit{background:linear-gradient(165deg,rgba(42,40,52,.85),rgba(28,26,38,.7));border-color:rgba(255,255,255,.16);box-shadow:0 30px 70px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.22),inset 0 -1px 0 rgba(255,255,255,.05)}"
+    + "@media (prefers-reduced-motion:no-preference){body #vpBreak,body #vpLimit{animation:vpRestIn .4s cubic-bezier(.2,.9,.3,1.18)}}"
+    + "@keyframes vpRestIn{0%{transform:translate(-50%,18px) scale(.96);opacity:0}60%{transform:translate(-50%,-2px) scale(1.01);opacity:1}100%{transform:translate(-50%,0) scale(1);opacity:1}}"
+    + ":root.calm-motion #vpBreak,:root.calm-motion #vpLimit{animation:none}"
+    + ":root.low-fx #vpBreak,:root.low-fx #vpLimit{animation:none !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;background:var(--card,#fff)}"
+    + ":root.high-contrast #vpBreak,:root.high-contrast #vpLimit{animation:none;-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card,#fff);border:2px solid currentColor;box-shadow:none}"
+    + "@media (prefers-reduced-motion:reduce){#vpBreak,#vpLimit{animation:none}}";
+  document.head.appendChild(restGlassSt);
+  // The rest cards only exist while they are up, so the feature finder and the
+  // What's new card pop a demo one instead of scrolling to nothing.
+  window.__vpRestCardDemo = function () {
+    if (document.getElementById("vpBreak")) return;
+    var dc = document.createElement("section"); dc.id = "vpBreak";
+    dc.innerHTML = '<h3 role="status"></h3><p></p><div class="row"><button class="chip" type="button"></button></div>';
+    dc.querySelector("h3").textContent = T("Glass rest cards");
+    dc.querySelector("p").textContent = T("Time for a short break?") + " " + T("Rest your eyes for a minute.");
+    var db = dc.querySelector("button"); db.textContent = T("Got it"); db.onclick = function () { dc.remove(); };
+    document.body.append(dc);
+  };
+
   window.T = T;
   window.__vpIsPlaying = function () { return !!(playing && iframe && ready); };
   window.__vpPauseForBreak = function () { if (iframe && ready) send("pauseVideo"); };
@@ -5772,6 +5808,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // Round 189 (Glass dialogs): the dialog only exists while it is open, so its
     // finder and What's new entries pop a real one as the demo instead.
     if (sel === "#vpAskBg") { if (window.vpConfirm) window.vpConfirm(T("Glass dialogs"), T("Got it")); return; }
+    if (sel === "#vpBreak") { if (window.__vpRestCardDemo) window.__vpRestCardDemo(); return; }
     var el = null; try { el = document.querySelector(sel); } catch (e) {}
     if (!el) return;
     var sec = el.closest ? el.closest("section.sec-collapsed") : null;
@@ -13143,6 +13180,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Glass rest cards", "#vpBreak"],
     ["Split a playlist", "#plList"],
     ["Glass dialogs", "#vpAskBg"],
     ["Merge playlists", "#plList"],
@@ -13152,7 +13190,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Remove duplicates from a playlist", "#plList"],
     ["Glass file picker", "#lpFile"],
     ["Glass text fields", "#linkInput"],
-    ["Remove watched from a playlist", "#plList"],
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -18748,6 +18785,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
         // Round 145 (Toast spring): pop a real toast as the demo (see favCtlJump).
         if (sel === "#vpToast") { if (window.toast) window.toast(T("Toast spring") + " \u00b7 " + T("Toast timer line")); return; }
         if (sel === "#vpAskBg") { if (window.vpConfirm) window.vpConfirm(T("Glass dialogs"), T("Got it")); return; }
+    if (sel === "#vpBreak") { if (window.__vpRestCardDemo) window.__vpRestCardDemo(); return; }
         var el = document.querySelector(sel); if (!el) return;
         var sec = el.closest ? el.closest("section.sec-collapsed") : null;
         if (sec && window.vpExpandSection) window.vpExpandSection(sec.id);
@@ -19008,6 +19046,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Glass text fields", "glass text fields link box input search playlist name notes textarea well inset frosted focus glow lift typing field iphone", "#linkInput"],
       ["Glass file picker", "glass file picker choose files button local file pill gloss spring press hover lift drop box iphone", "#lpFile"],
       ["Split a playlist", "split playlist divide cut half two parts long course mix new list part 2 undo songs lectures", "#plList"],
+      ["Glass rest cards", "glass rest cards break reminder daily watch limit pause eyes tired card frosted sheet bottom popup spring sleep", "#vpBreak"],
       ["Merge playlists", "merge playlists combine join two lists together add one playlist into another same topic courses songs undo", "#plList"],
       ["Sort a playlist A to Z", "sort playlist a to z alphabetical alphabet title name order tidy arrange undo songs lectures", "#plList"],
       ["Reverse a playlist", "reverse playlist order flip backwards newest first oldest first course lecture series upside down undo", "#plList"],
