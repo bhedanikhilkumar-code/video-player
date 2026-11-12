@@ -2120,7 +2120,7 @@ setTimeout(done,3000);})();
         <div id="dlSubs"></div>
       </div>
       <div id="dlQWrap" hidden>
-        <div class="lib-head"><h3 id="lhDlQ">Download queue</h3><button class="chip" id="dlQClear" type="button">Clear</button></div>
+        <div class="lib-head"><h3 id="lhDlQ">Download queue</h3><button class="chip" id="dlQRetry" type="button" hidden>Retry failed</button><button class="chip" id="dlQClear" type="button">Clear</button></div>
         <ul class="lib-list" id="dlQ"></ul>
         <p class="hint">Items download one after another. Your browser may ask once to allow multiple downloads. Each finished file also gets a Save link (kept for 15 minutes).</p>
       </div>
@@ -2490,6 +2490,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   } catch (e) {}
   function savePrefs() { try { localStorage.setItem("vp-prefs.v1", JSON.stringify(prefs)); } catch (e) { if (typeof storageWarn === "function") storageWarn(); } }
   var TR_MSG = {
+    "Retry failed": ["\u092b\u093f\u0930 \u0915\u094b\u0936\u093f\u0936 \u0915\u0930\u0947\u0902", "\u0aab\u0ac7\u0ab0\u0ac0 \u0aaa\u0acd\u0ab0\u0aaf\u0abe\u0ab8 \u0a95\u0ab0\u0acb"],
+    "Retrying ": ["\u0926\u094b\u092c\u093e\u0930\u093e \u0915\u094b\u0936\u093f\u0936: ", "\u0aab\u0ac7\u0ab0\u0ac0 \u0aaa\u0acd\u0ab0\u0aaf\u0abe\u0ab8: "],
+    "failed downloads.": ["\u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u092b\u093f\u0930 \u0915\u0940 \u091c\u093e \u0930\u0939\u0947 \u0939\u0948\u0902.", "\u0aa1\u0abe\u0a89\u0aa8\u0ab2\u0acb\u0aa1 \u0aab\u0ac7\u0ab0\u0ac0 \u0aa5\u0a88 \u0ab0\u0ab9\u0acd\u0aaf\u0abe \u0a9b\u0ac7."],
+    "Retry failed downloads": ["\u0928\u0939\u0940\u0902 \u0939\u0941\u090f \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0926\u094b\u092c\u093e\u0930\u093e \u0915\u0930\u0947\u0902", "\u0aa8 \u0aa5\u0aaf\u0ac7\u0ab2\u0abe \u0aa1\u0abe\u0a89\u0aa8\u0ab2\u0acb\u0aa1 \u0aab\u0ac7\u0ab0\u0ac0 \u0a95\u0ab0\u0acb"],
     "Watch from ": ["यहाँ से देखें ", "અહીંથી જુઓ "],
     "Opening WhatsApp with this video at ": ["इस समय से वीडियो के साथ व्हाट्सऐप खुल रहा है ", "આ સમયથી વીડિયો સાથે WhatsApp ખુલી રહ્યું છે "],
     "Nothing is sent until you tap send there.": ["व्हाट्सऐप में send दबाने तक कुछ नहीं भेजा जाता.", "WhatsApp માં send દબાવો ત્યાં સુધી કંઈ મોકલાતું નથી."],
@@ -13946,6 +13950,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   Object.assign(TR_MSG, {"Subtitle background style": ["सबटाइटल बैकग्राउंड स्टाइल", "સબટાઇટલ બેકગ્રાઉન્ડ સ્ટાઇલ"]});
   Object.assign(TR_MSG, {"Watch stats as spreadsheet": ["वॉच स्टैट्स स्प्रेडशीट में", "વોચ સ્ટેટ્સ સ્પ્રેડશીટમાં"]});
   var WNEW = [
+    ["Retry failed downloads", "#dl"],
     ["Watch stats as spreadsheet", "#statsCsvBtn"],
     ["Subtitle background style", "#lpSubBgs"],
     ["Pause after an amount of video", "#pauseAtInput"],
@@ -13954,8 +13959,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Compare playlists", "#plList"],
     ["Search notes in Library", "#libNotesBtn"],
     ["Study sheet export", "#studySheetBtn"],
-    ["Save unfinished history as playlist", "#histPlBtn"],
-    ["Queue a playlist next", "#plList"]
+    ["Save unfinished history as playlist", "#histPlBtn"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -17765,6 +17769,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (it.status !== "running") { var xb = document.createElement("button"); xb.className = "chip"; xb.type = "button"; xb.textContent = "x"; xb.setAttribute("aria-label", T("Remove from queue")); xb.addEventListener("click", function () { Q = Q.filter(function (q) { return q !== it; }); qRender(); }); right.appendChild(xb); }
       li.appendChild(l); li.appendChild(right); qEl.appendChild(li);
     });
+    qRetryRender();
   }
   function qAdd(body, title) {
     if (Q.length >= 20) { showErr("The queue is full (20 items). Clear finished items first."); return false; }
@@ -17787,6 +17792,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       it.err = ERR[c] || (c === "net" || e instanceof TypeError ? "Could not reach the server." : "Failed");
     }).then(function () { qRun = false; qRender(); qNext(); });
   }
+  // Round 204 new: one chip retries every failed download at once - a cold-started free server
+  // used to mean tapping Retry on each row of a failed batch.
+  var qRetryBtn = $("dlQRetry");
+  function qRetryRender() { if (!qRetryBtn) return; qRetryBtn.hidden = !Q.some(function (q) { return q.status === "error"; }); qRetryBtn.textContent = T("Retry failed"); }
+  if (qRetryBtn) qRetryBtn.addEventListener("click", function () {
+    var n = 0;
+    Q.forEach(function (q) { if (q.status === "error") { q.status = "waiting"; q.err = ""; q.progress = 0; n++; } });
+    qRender();
+    if (n) { statusEl.textContent = T("Retrying ") + n + " " + T("failed downloads."); qNext(); }
+  });
+  (window.__relang = window.__relang || []).push(qRetryRender);
   $("dlQClear").addEventListener("click", function () {
     var snap = Q.slice();
     Q = Q.filter(function (q) { return q.status === "running"; }); qRender();
@@ -19696,6 +19712,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Retry failed downloads", "retry failed downloads queue again error batch redownload server cold start", "#dl"],
       ["Watch stats as spreadsheet", "watch stats csv spreadsheet excel sheets export per day per video seconds plays download", "#statsCsvBtn"],
       ["Subtitle background style", "subtitle background style box outline solid black readable cue shade captions local video", "#lpSubBgs"],
       ["Pause after an amount of video", "pause after plus minutes +5m timer stop video in minutes relative from now pause at", "#pauseAtInput"],
