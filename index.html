@@ -2212,13 +2212,13 @@ setTimeout(done,3000);})();
       <p class="hint" id="queueTime" role="status"></p>
       </div>
       <p class="hint" id="libListMsg" role="status"></p>
-      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
-      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button></span></div>
+      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button></span></div>
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
-      <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsClear" type="button">Clear</button></div>
@@ -3943,6 +3943,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       toast(T("Queue saved as a text file"));
     } catch (e) { toast(T("Could not copy. Try again.")); }
   });
+  // Copy list for Watch later, Favourites and Recently watched (round 116): one tap puts the
+  // numbered titles and links on the clipboard, ready to paste into a chat or a note app.
+  function copyLibList(items, emptyMsg, okMsg) {
+    if (!items.length) { showLibErr(T(emptyMsg)); return; }
+    var text = items.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n");
+    function done(ok) { toast(ok ? T(okMsg) : T("Could not copy. Try again.")); }
+    function fallback() {
+      try { var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var ok2 = document.execCommand("copy"); ta.remove(); done(!!ok2); } catch (e) { done(false); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback); else fallback();
+  }
+  var laterCopyBtn = $("laterCopyBtn"), favCopyBtn = $("favCopyBtn"), histCopyBtn = $("histCopyBtn");
+  if (laterCopyBtn) laterCopyBtn.addEventListener("click", function () { copyLibList(lib.later, "Nothing saved for later yet. Load a video and tap Watch later.", "Watch later list copied"); });
+  if (favCopyBtn) favCopyBtn.addEventListener("click", function () { copyLibList(lib.favs, "No favourites yet. Load a video and tap Add to favourites.", "Favourites list copied"); });
+  if (histCopyBtn) histCopyBtn.addEventListener("click", function () { copyLibList(lib.hist, "Videos you play will show up here.", "History list copied"); });
+  function copyListBtnsPaint() { [laterCopyBtn, favCopyBtn, histCopyBtn].forEach(function (bb) { if (bb) bb.textContent = T("Copy list"); }); }
+  (window.__relang = window.__relang || []).push(copyListBtnsPaint);
+  copyListBtnsPaint();
   (window.__relang = window.__relang || []).push(function () { if (copyQueueBtn) copyQueueBtn.textContent = T("Copy list"); });
   if (copyQueueBtn) copyQueueBtn.textContent = T("Copy list");
   clearQueueBtn.addEventListener("click", function () { var snap = lib.queue.slice(), sp = qPos; lib.queue = []; qPos = -1; showLibErr(""); saveLib(); renderLib(); if (snap.length) toastUndo(T("Queue cleared"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored")); });
@@ -10921,9 +10939,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"],
     "Note": ["नोट", "નોંધ"],
     "This video has a note": ["इस वीडियो पर एक नोट है", "આ વીડિયો પર નોંધ છે"],
-    "Note mark on lists": ["लिस्ट में नोट का निशान", "યાદીમાં નોંધનું નિશાન"]
+    "Note mark on lists": ["लिस्ट में नोट का निशान", "યાદીમાં નોંધનું નિશાન"],
+    "Copy your lists": ["अपनी लिस्ट कॉपी करें", "તમારી યાદીઓ કોપી કરો"],
+    "Watch later list copied": ["बाद में देखें वाली लिस्ट कॉपी हुई", "પછી જુઓ યાદી કોપી થઈ"],
+    "Favourites list copied": ["पसंदीदा लिस्ट कॉपी हुई", "પસંદગીઓની યાદી કોપી થઈ"],
+    "History list copied": ["हिस्ट्री लिस्ट कॉपी हुई", "હિસ્ટ્રી યાદી કોપી થઈ"]
   });
   var WNEW = [
+    ["Copy your lists", "#laterCopyBtn"],
     ["Note mark on lists", "#notesH"],
     ["Tap ripples", "#tapRipChk"],
     ["Fireflies", "#fflyChk"],
@@ -10932,8 +10955,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Snowfall", "#snowChk"],
     ["Video reflection", "#reflChk"],
     ["Watch later total time", "#laterTime"],
-    ["History as text file", "#histTxtBtn"],
-    ["Live frame", "#liveFrameBtn"]
+    ["History as text file", "#histTxtBtn"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -13158,7 +13180,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Shortest first sort", "sort shortest first length quick short small video watch later history order organise", "#lhLaterSortBtn"],
       ["Fireflies", "fireflies firefly glow glowing wanderers lights garden night page background pretty ambient", "#fflyChk"],
       ["Tap ripples", "tap ripples rings touch pond water circle feedback page glass alive", "#tapRipChk"],
-      ["Note mark on lists", "note mark pill lists rows library favourites watch later history queue search written remember see glance", "#notesH"]
+      ["Note mark on lists", "note mark pill lists rows library favourites watch later history queue search written remember see glance", "#notesH"],
+      ["Copy your lists", "copy list watch later favourites history clipboard paste share chat titles links", "#laterCopyBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
