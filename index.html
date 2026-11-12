@@ -14686,7 +14686,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Sync the lyrics first (Auto lyrics or Sync lines).": ["पहले लिरिक्स सिंक करें (Auto lyrics या Sync lines).", "પહેલા લિરિક્સ સિંક કરો (Auto lyrics કે Sync lines)."],
     "Sync nudge": ["सिंक आगे-पीछे", "સિંક આગળ-પાછળ"]
   });
-  var lyrAutoBusy = false, lyrAutoB = null, lyrNudgeBackB = null, lyrNudgeFwdB = null;
+  var lyrAutoBusy = false, lyrAutoB = null, lyrNudgeBackB = null, lyrNudgeFwdB = null, lyrLineB = null;
   function lyrStatus(m) { var s = $("lyricsStatus"); if (s) s.textContent = m; }
   // Turns a YouTube title like "Coldplay - Yellow (Official Video)" into artist + track,
   // using the channel name when the title has no "Artist - Track" split.
@@ -14723,6 +14723,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       lyrAutoB.setAttribute("aria-label", T("Fetch this song's lyrics from the free LRCLIB library"));
     }
     var ok = lyrSyncValid(curId);
+    // Round 213 new: Copy this line grabs the sing-along line under the playhead.
+    if (lyrLineB) { lyrLineB.disabled = !ok; lyrLineB.textContent = T("Copy this line"); lyrLineB.setAttribute("aria-label", T("Copy the current lyric line")); lyrLineB.title = T("Copy the current lyric line"); }
     if (lyrNudgeBackB) { lyrNudgeBackB.disabled = !ok; lyrNudgeBackB.textContent = "⏪ −0.5s"; lyrNudgeBackB.setAttribute("aria-label", T("Lines earlier") + " - " + T("Shift every lyric line by half a second")); lyrNudgeBackB.title = T("Lines earlier"); }
     if (lyrNudgeFwdB) { lyrNudgeFwdB.disabled = !ok; lyrNudgeFwdB.textContent = "+0.5s ⏩"; lyrNudgeFwdB.setAttribute("aria-label", T("Lines later") + " - " + T("Shift every lyric line by half a second")); lyrNudgeFwdB.title = T("Lines later"); }
   }
@@ -14801,11 +14803,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     lyrAutoB = document.createElement("button"); lyrAutoB.type = "button"; lyrAutoB.className = "chip"; lyrAutoB.id = "lyricsAutoBtn";
     lyrNudgeBackB = document.createElement("button"); lyrNudgeBackB.type = "button"; lyrNudgeBackB.className = "chip"; lyrNudgeBackB.id = "lyrNudgeBack";
     lyrNudgeFwdB = document.createElement("button"); lyrNudgeFwdB.type = "button"; lyrNudgeFwdB.className = "chip"; lyrNudgeFwdB.id = "lyrNudgeFwd";
+    lyrLineB = document.createElement("button"); lyrLineB.type = "button"; lyrLineB.className = "chip"; lyrLineB.id = "lyrLineBtn";
     var r2 = document.createElement("div"); r2.className = "row"; r2.style.marginTop = "6px"; r2.id = "lyrAutoRow";
-    r2.appendChild(lyrAutoB); r2.appendChild(lyrNudgeBackB); r2.appendChild(lyrNudgeFwdB);
+    r2.appendChild(lyrAutoB); r2.appendChild(lyrNudgeBackB); r2.appendChild(lyrNudgeFwdB); r2.appendChild(lyrLineB);
     var hint = $("lyricsSyncHint");
     row.parentNode.insertBefore(r2, hint || row.nextSibling);
     lyrAutoB.addEventListener("click", lyrAutoFetch);
+    lyrLineB.addEventListener("click", function () {
+      if (!curId || !lyrSyncValid(curId)) { toast(T("Sync the lyrics first (Auto lyrics or Sync lines).")); return; }
+      var times = lyrSync[curId], lines = lyricsLinesFor(curId), now = (typeof curTime === "number" ? curTime : 0) + 0.15, idx = -1;
+      for (var li = 0; li < times.length; li++) { if (times[li] <= now) idx = li; else break; }
+      if (idx < 0 || !lines[idx]) { toast(T("No synced line at this moment.")); return; }
+      var text = lines[idx];
+      function done(ok2) { toast(ok2 ? T("Line copied") + ": " + (text.length > 60 ? text.slice(0, 57) + "..." : text) : T("Could not copy. Try again.")); }
+      function fb() { try { var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var okc = document.execCommand("copy"); ta.remove(); done(!!okc); } catch (e2) { done(false); } }
+      // A clipboard promise that never settles falls back to select-and-copy after 1.5s.
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        var settled = false, guard = setTimeout(function () { if (!settled) { settled = true; fb(); } }, 1500);
+        navigator.clipboard.writeText(text).then(function () { if (!settled) { settled = true; clearTimeout(guard); done(true); } }, function () { if (!settled) { settled = true; clearTimeout(guard); fb(); } });
+      } else fb();
+    });
     lyrNudgeBackB.addEventListener("click", function () { lyrNudge(-1); });
     lyrNudgeFwdB.addEventListener("click", function () { lyrNudge(1); });
   })();
