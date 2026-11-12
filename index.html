@@ -2049,6 +2049,7 @@ setTimeout(done,3000);})();
             <li id="sc17"><b>Y</b>: copy a link that opens this video at the current time</li>
             <li id="sc18"><b>G</b>: jump to the Jump to time box, type a time and press Enter</li>
             <li id="sc19"><b>H</b>: add the playing video to Favourites (press again to remove)</li>
+            <li id="sc20"><b>U</b>: jump back to where you were before the last seek</li>
           </ul>
           <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
         </details>
@@ -4747,6 +4748,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (window.__vpHeroProg) window.__vpHeroProg(t);
       if (window.__vpBeaconTick) window.__vpBeaconTick(t);
       if (window.__vpSkipSeenTick) window.__vpSkipSeenTick(t);
+      if (typeof usSeekTick === "function") usSeekTick(t);
       introOvTick();
       if (typeof outroTick === "function") outroTick();
       statsTick();
@@ -6126,9 +6128,54 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (k === "w" || k === "W") { var wlB = $("laterBtn"); if (wlB && curId) wlB.click(); else handled = false; }
     else if (k === "h" || k === "H") { var fvB = $("favBtn"); if (fvB && curId) fvB.click(); else handled = false; }
     else if (k === "g" || k === "G") { var gjI = $("jumpInput"); if (gjI && curId) { try { gjI.scrollIntoView({block: "center"}); } catch (err) {} gjI.focus(); gjI.select(); toast(T("Type a time like 1:23, then press Enter")); } else handled = false; }
+    else if (k === "u" || k === "U") usUndoSeek();
     else handled = false;
     if (handled) e.preventDefault();
   });
+
+  // U to undo a seek (round 156): a tap on the seek bar or a mistimed number key can
+  // fling the video far from where you were. The app remembers the spot you were at just
+  // before the last big jump - press U and you are back, and press U again to flip forward
+  // to the spot you undid from, so the two places toggle. Every jump larger than about
+  // four seconds counts: the arrow and J/L keys, number keys, the seek bar, saved moments
+  // and jump-to-time. Small steps are left alone, an A-B loop landing back on A is the loop
+  // working (not a lost place) and is ignored, a fresh video starts with nothing to undo,
+  // and the spot is kept in memory only - nothing new is saved. U with nothing to undo
+  // says so honestly in a toast. Never fires while typing in a box, works on YouTube
+  // videos, listed in the Keyboard shortcuts list (and the ? overlay, which mirrors that
+  // list), translated in Hindi and Gujarati, in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "U to undo a seek": ["सीक पूर्ववत करने के लिए U", "સીક પૂર્વવત કરવા U"],
+    "Back to ": ["वापस ", "પાછળ "],
+    "Nothing to jump back to yet.": ["अभी वापस जाने के लिए कुछ नहीं.", "હજી પાછળ જવા જેવું કંઈ નથી."]
+  });
+  var usLastT = 0, usLastAt = 0, usLastId = null, usUndo = -1, usIgnoreUntil = 0;
+  function usSeekTick(t) {
+    if (seeking) return;
+    var now = Date.now();
+    if (curId !== usLastId) { usLastId = curId; usLastT = t; usLastAt = now; usUndo = -1; return; }
+    if (!usLastAt) { usLastT = t; usLastAt = now; return; }
+    var elapsed = (now - usLastAt) / 1000;
+    // While playing, a long gap between reports means the tab slept: re-anchor instead of
+    // reading the catch-up as a jump. While paused the video cannot drift, so any change
+    // is a real seek no matter how old the anchor is.
+    if (playing && elapsed > 8) { usLastT = t; usLastAt = now; return; }
+    var pred = usLastT + (playing ? elapsed * (prefs.speed > 0 ? prefs.speed : 1) : 0);
+    var jumped = Math.abs(t - pred) > 4 && Math.abs(t - usLastT) > 4;
+    if (jumped && now >= usIgnoreUntil) {
+      var isLoopBack = abEnabled && abA != null && Math.abs(t - abA) < 2.5;
+      if (!isLoopBack) usUndo = usLastT;
+    }
+    usLastT = t; usLastAt = now;
+  }
+  function usUndoSeek() {
+    if (!curId || usUndo < 0) { toast(T("Nothing to jump back to yet.")); return; }
+    var back = usUndo;
+    usUndo = curTime; usIgnoreUntil = Date.now() + 1500;
+    usLastT = curTime; usLastAt = Date.now();
+    send("seekTo", [Math.max(0, back), true]);
+    toast(T("Back to ") + fmt(Math.floor(back)));
+  }
 
   // P for previous video (round 150): press P to go back to the previous video in the
   // queue - the same as tapping the Previous chip, so shuffle history and Repeat queue
@@ -10480,6 +10527,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#sc17", "<b>Y</b>: copy a link that opens this video at the current time", "<b>Y</b>: इसी समय से खुलने वाली वीडियो लिंक कॉपी करें"],
     ["#sc18", "<b>G</b>: jump to the Jump to time box, type a time and press Enter", "<b>G</b>: समय पर जाएं बॉक्स में जाएं, समय लिखें और Enter दबाएं"],
     ["#sc19", "<b>H</b>: add the playing video to Favourites (press again to remove)", "<b>H</b>: चल रहा वीडियो पसंदीदा में जोड़ें (दोबारा दबाने पर हटेगा)"],
+    ["#sc20", "<b>U</b>: jump back to where you were before the last seek", "<b>U</b>: आखिरी सीक से पहले जहां थे वहां वापस जाएं"],
     ["#faq7a", "See the <a href=\"#backgroundHelp\">Listening help card</a> below the player for simple steps and the screen-off limits.", "सरल steps और screen-off सीमाओं के लिए प्लेयर के नीचे <a href=\"#backgroundHelp\">Listening help कार्ड</a> देखें."]
   ];
   var I18N_GU_HTML = {
@@ -10491,6 +10539,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#sc17": "<b>Y</b>: આ સમયથી ખુલતી વીડિયો લિંક કૉપી કરો",
  "#sc18": "<b>G</b>: સમય પર જાઓ બૉક્સમાં જાઓ, સમય લખો અને Enter દબાવો",
  "#sc19": "<b>H</b>: ચાલતો વીડિયો મનપસંદમાં ઉમેરો (ફરી દબાવતાં દૂર થશે)",
+ "#sc20": "<b>U</b>: છેલ્લી સીક પહેલાં જ્યાં હતા ત્યાં પાછા જાઓ",
  "#sc1": "<b>Space</b> અથવા <b>K</b>: ચલાવો / રોકો",
  "#sc2": "<b>Left / Right</b>: 5 સેકંડ પાછળ / આગળ",
  "#sc3": "<b>J / L</b>: 10 સેકંડ પાછળ / આગળ",
@@ -11870,6 +11919,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["U to undo a seek", "#sc20"],
     ["Ready glow", "#linkInput"],
     ["Search frost", "#palBtn"],
     ["H for Favourites", "#sc19"],
@@ -11879,7 +11929,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Y to copy link", "#sc17"],
     ["W for Watch later", "#sc16"],
     ["Glass hints", "#cinemaBtn"],
-    ["Menu lift", "#featNav"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -17399,6 +17448,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Y to copy link", "copy link key y keyboard shortcut share at this time current time timestamp clipboard", "#sc17"],
       ["G to jump to a time", "go to time key g keyboard shortcut jump seek focus box type minutes seconds timestamp", "#sc18"],
       ["H for Favourites", "favourites key h keyboard shortcut heart star favorite save like add remove playing video", "#sc19"],
+      ["U to undo a seek", "undo seek back jump mistake wrong place oops return lost place keyboard shortcut u toggle", "#sc20"],
       ["Ready glow", "ready glow link box input ring accent edge turning siri glow load video button breathe pulse valid link pasted waiting next tap obvious", "#linkInput"],
       ["Search frost", "search frost palette ctrl k frosted glass backdrop blur dim behind search spring entrance card veil", "#palBtn"]
     ];
