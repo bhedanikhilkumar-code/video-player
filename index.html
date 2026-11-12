@@ -1979,7 +1979,7 @@ setTimeout(done,3000);})();
             <button class="chip" id="bBtn">Set B</button>
             <button class="chip" id="abClearBtn">Clear</button><button class="chip" id="abLast10Btn" type="button">⏪ Last 10s</button>
           </div>
-          <div class="row" id="abNudgeRow" style="margin-top:8px"><span class="label" id="abNudgeLab">Fine-tune:</span><button class="chip" id="abAmBtn" type="button">A -1s</button><button class="chip" id="abApBtn" type="button">A +1s</button><button class="chip" id="abBmBtn" type="button">B -1s</button><button class="chip" id="abBpBtn" type="button">B +1s</button><span class="label" id="abShiftLab" style="margin-left:6px">Shift loop:</span><button class="chip" id="abShiftMBtn" type="button">-1s</button><button class="chip" id="abShiftPBtn" type="button">+1s</button></div>
+          <div class="row" id="abNudgeRow" style="margin-top:8px"><span class="label" id="abNudgeLab">Fine-tune:</span><button class="chip" id="abAmBtn" type="button">A -1s</button><button class="chip" id="abApBtn" type="button">A +1s</button><button class="chip" id="abBmBtn" type="button">B -1s</button><button class="chip" id="abBpBtn" type="button">B +1s</button><span class="label" id="abShiftLab" style="margin-left:6px">Shift loop:</span><button class="chip" id="abShiftMBtn" type="button">-1s</button><button class="chip" id="abShiftPBtn" type="button">+1s</button><span class="label" id="abScaleLab" style="margin-left:6px">Loop length:</span><button class="chip" id="abHalfBtn" type="button">&frac12;</button><button class="chip" id="abDoubleBtn" type="button">2&times;</button></div>
           <span class="label" id="abLabel" role="status">Off</span>
         </div>
 
@@ -7011,6 +7011,36 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   if (abShiftMBtn) abShiftMBtn.addEventListener("click", function () { abShiftBoth(-1); });
   if (abShiftPBtn) abShiftPBtn.addEventListener("click", function () { abShiftBoth(1); });
+
+  // Halve or double the loop (round 215 new): a drilled loop that runs a touch long
+  // wants "same middle, half the length", and a phrase you nearly have wants twice the
+  // window - rebuilding both ends by hand is eight taps. The two chips scale the A-B
+  // window around its centre in half-second steps, clamped to the video and never
+  // shorter than a second, and the label and seekbar band repaint like any A-B change.
+  Object.assign(TR_MSG, {
+    "Loop length:": ["\u0932\u0942\u092a \u0932\u0902\u092c\u093e\u0908:", "\u0ab2\u0ac2\u0aaa \u0ab2\u0a82\u0aac\u0abe\u0a88:"],
+    "Halve the A-B loop": ["\u090f-\u092c\u0940 \u0932\u0942\u092a \u0906\u0927\u093e \u0915\u0930\u0947\u0902", "A-B \u0ab2\u0ac2\u0aaa \u0a85\u0aa1\u0aa7\u0acb \u0a95\u0ab0\u0acb"],
+    "Double the A-B loop": ["\u090f-\u092c\u0940 \u0932\u0942\u092a \u0926\u094b\u0917\u0941\u0928\u093e \u0915\u0930\u0947\u0902", "A-B \u0ab2\u0ac2\u0aaa \u0aac\u0aae\u0aa3\u0acb \u0a95\u0ab0\u0acb"],
+    "Set A and B first, then scale the loop.": ["\u092a\u0939\u0932\u0947 A \u0914\u0930 B \u0932\u0917\u093e\u090f\u0902, \u092b\u093f\u0930 \u0932\u0942\u092a \u092c\u0926\u0932\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe A \u0a85\u0aa8\u0ac7 B \u0ab2\u0a97\u0abe\u0ab5\u0acb, \u0aaa\u0a9b\u0ac0 \u0ab2\u0ac2\u0aaa \u0aac\u0aa6\u0ab2\u0acb."],
+    "Halve or double the loop": ["\u0932\u0942\u092a \u0906\u0927\u093e \u092f\u093e \u0926\u094b\u0917\u0941\u0928\u093e \u0915\u0930\u0947\u0902", "\u0ab2\u0ac2\u0aaa \u0a85\u0aa1\u0aa7\u0acb \u0a95\u0ac7 \u0aac\u0aae\u0aa3\u0acb \u0a95\u0ab0\u0acb"]
+  });
+  function abScale(f) {
+    if (abA == null || abB == null) { abLabel.textContent = T("Set A and B first, then scale the loop."); return; }
+    var c = (abA + abB) / 2, len = abB - abA, nl = Math.max(1, Math.round(len * f * 2) / 2);
+    var na = Math.round((c - nl / 2) * 2) / 2;
+    if (na < 0) na = 0;
+    if (duration > 0 && na + nl > Math.floor(duration)) na = Math.floor(duration) - nl;
+    if (na < 0) na = 0;
+    if (na !== abA || na + nl !== abB) { abA = na; abB = na + nl; abLoopCount = 0; updateAB(); }
+  }
+  var abHalfBtn = $("abHalfBtn"), abDoubleBtn = $("abDoubleBtn"), abScaleLab = $("abScaleLab");
+  if (abHalfBtn) abHalfBtn.addEventListener("click", function () { abScale(0.5); });
+  if (abDoubleBtn) abDoubleBtn.addEventListener("click", function () { abScale(2); });
+  (window.__relang = window.__relang || []).push(function () {
+    if (abScaleLab) abScaleLab.textContent = T("Loop length:");
+    if (abHalfBtn) abHalfBtn.setAttribute("aria-label", T("Halve the A-B loop"));
+    if (abDoubleBtn) abDoubleBtn.setAttribute("aria-label", T("Double the A-B loop"));
+  });
   (window.__relang = window.__relang || []).push(function () {
     if (abShiftLab) abShiftLab.textContent = T("Shift loop:");
     if (abShiftMBtn) abShiftMBtn.setAttribute("aria-label", T("Shift the whole A-B loop one second") + " -1");
@@ -15138,6 +15168,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Halve or double the loop", "#abNudgeRow"],
     ["Copy all notes", "#notesCopyAllBtn"],
     ["Wake all snoozed videos", "#laterWakeBtn"],
     ["Shuffle play Watch later", "#laterShufBtn"],
@@ -15151,7 +15182,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Enter opens the first search match", "#libSearch"],
     ["Tap a note to dismiss it", "#vpToast"],
     ["Shuffle play from the queue", "#shufflePlayBtn"],
-    ["Shift+Arrow fine seek", "#sc28"],
+    ["Shift+Arrow fine seek", "#sc28"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -21532,6 +21563,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Enter opens the first search match", "enter return open first search match result library keyboard play top hit", "#libSearch"],
       ["Tap a note to dismiss it", "tap toast note dismiss close early notification banner bottom controls hide", "#vpToast"],
       ["Shuffle play from the queue", "shuffle play random queue video pick any luck dice mix now playing", "#shufflePlayBtn"],
+      ["Halve or double the loop", "halve double loop length scale a-b repeat window half twice longer shorter same middle practice", "#abNudgeRow"],
       ["Shift+Arrow fine seek", "shift arrow fine seek one second precise keyboard arrow keys exact frame practice", "#sc28"],
       ["Shift the whole loop", "shift whole loop ab window move both ends together second slide practice section", "#abShiftMBtn"],
       ["Copy time", "copy time current second timestamp paste note chat chapter list clipboard jump to time", "#copyTimeBtn"],
