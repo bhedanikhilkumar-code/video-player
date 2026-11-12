@@ -4893,6 +4893,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     saveResume(true);
     var previous = findIn(lib.hist, id);
     if (startSec == null && previous >= 0 && lib.hist[previous].t >= 5) startSec = resumeStart(lib.hist[previous].t);
+    // Start over (round 128): remember a partway start so the Start over chip can offer one tap back to 0:00. Clip loads (endSec set) stay out.
+    window.__vpStartAt = (startSec != null && isFinite(startSec) && startSec >= 1 && endSec == null) ? Math.round(startSec) : 0;
     document.dispatchEvent(new Event("vp-youtube-selected"));
     curId = id; curTime = startSec || 0; lastResumeSave = 0; clearAB(); mileFired = {}; if (typeof vinylApply === "function") vinylApply(); if (typeof wmapReset === "function") wmapReset(); if (typeof reflApply === "function") reflApply(); if ($("practiceName")) { $("practiceName").value = ""; renderPracticeLoops(); } if (typeof vmemNote === "function") vmemNote("");
     dsAppliedFor = null;
@@ -11269,9 +11271,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Copy a playlist": ["प्लेलिस्ट कॉपी करें", "પ્લેલિસ્ટ કોપી કરો"],
     "Sort favourites by length": ["पसंदीदा लंबाई से क्रम में", "મનપસંદ લંબાઈ મુજબ ક્રમમાં"],
     "React on video": ["वीडियो पर रिएक्ट", "વિડિયો પર રિએક્ટ"],
-    "Moment comet": ["पल कॉमेट", "ક્ષણ કૉમેટ"]
+    "Moment comet": ["पल कॉमेट", "ક્ષણ કૉમેટ"],
+    "Start over": ["शुरू से चलाएं", "શરૂઆતથી ચલાવો"]
   });
   var WNEW = [
+    ["Start over", "#infoCard"],
     ["Aurora glow", "#auroraChk"],
     ["Volume waves", "#vwaveChk"],
     ["Add to playlist from any list", "#lhLater"],
@@ -11281,7 +11285,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Playlist watched progress", "#lhPlaylists"],
     ["Backlog forecast", "#laterPace"],
     ["Moment comet", "#markAddBtn"],
-    ["React on video", "#reactChk"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -12411,6 +12414,64 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function vwRender() { var st = $("vwaveT"); if (st) st.textContent = T("Volume waves (ripples follow the volume you set)"); }
   (window.__relang = window.__relang || []).push(vwRender);
   vwRender(); vwApply();
+})();
+
+(function () {
+  "use strict";
+  // Start over (round 128): when a video begins partway - resumed from where you
+  // left off, opened from Continue watching, or started at a shared timestamp - a
+  // small glass line under the video info says where it began and offers one tap
+  // back to the very beginning. Tapping Start over seeks to 0:00 and clears the
+  // saved spot for this video, so the next open starts at the beginning too. Works
+  // on YouTube videos, adds no setting, retranslates on language switch, hides on
+  // the next video load, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Start over": ["शुरू से चलाएं", "શરૂઆતથી ચલાવો"],
+    "Started at ": ["शुरू हुआ ", "શરૂ થયું "],
+    "Started from the beginning.": ["अब शुरुआत से चल रहा है.", "હવે શરૂઆતથી ચાલે છે."],
+    "Still loading - try again in a moment.": ["अभी लोड हो रहा है - एक पल में फिर कोशिश करें.", "હજી લોડ થઈ રહ્યું છે - થોડી વારમાં ફરી પ્રયાસ કરો."],
+    "Start the video from the beginning": ["वीडियो शुरुआत से चलाएं", "વિડિયો શરૂઆતથી ચલાવો"]
+  });
+  var soSt = document.createElement("style");
+  soSt.textContent = ".vpStartOver{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:12px;font-weight:600;color:var(--teal)}"
+    + ":root[data-theme=\"dark\"] .vpStartOver{color:#7fd2bf}"
+    + ".vpStartOver[hidden]{display:none}"
+    + ".vpStartOver .so-btn{padding:3px 10px;font-size:12px}";
+  document.head.appendChild(soSt);
+  var soRow = null, soTxt = null, soBtn = null, soAt = 0;
+  function soBuild() {
+    if (soRow) return;
+    var meta = document.querySelector("#infoCard .info-meta");
+    if (!meta) return;
+    soRow = document.createElement("div"); soRow.className = "vpStartOver"; soRow.id = "startOverRow"; soRow.hidden = true;
+    soTxt = document.createElement("span");
+    soBtn = document.createElement("button"); soBtn.type = "button"; soBtn.className = "chip so-btn";
+    soBtn.addEventListener("click", function () {
+      if (!(ready && iframe)) { toast(T("Still loading - try again in a moment.")); return; }
+      manualSeek(0);
+      var hi = findIn(lib.hist, curId);
+      if (hi >= 0) { lib.hist[hi].t = 0; saveLib(); renderLib(); }
+      try { localStorage.removeItem(RK); } catch (e) {}
+      soHide();
+      toast(T("Started from the beginning."));
+    });
+    soRow.appendChild(soTxt); soRow.appendChild(soBtn);
+    meta.parentNode.insertBefore(soRow, meta.nextSibling);
+  }
+  function soPaint() {
+    if (!soRow) return;
+    soTxt.textContent = "\u21BA " + T("Started at ") + fmt(soAt);
+    soBtn.textContent = T("Start over");
+    soBtn.setAttribute("aria-label", T("Start the video from the beginning"));
+  }
+  function soHide() { if (soRow) soRow.hidden = true; }
+  document.addEventListener("vp-video-loaded", function () {
+    soAt = Math.round(Number(window.__vpStartAt) || 0); window.__vpStartAt = 0;
+    if (soAt < 30) { soHide(); return; }
+    soBuild(); if (!soRow) return;
+    soRow.hidden = false; soPaint();
+  });
+  (window.__relang = window.__relang || []).push(function () { if (soRow && !soRow.hidden) soPaint(); });
 })();
 
 })();
@@ -14639,7 +14700,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Add to playlist from any list", "add to playlist file organise folder any list row watch later favourites history save into playlist collection tidy", "#lhLater"],
       ["Finish rate", "finish rate percent completed watched started videos stats insight how many finish end completion", "#lhStats"],
       ["Aurora glow", "aurora glow northern lights colours ribbons drift video frame pretty ambience sky", "#auroraChk"],
-      ["Volume waves", "volume waves ripples rings sound level loud quiet feedback glass frame", "#vwaveChk"]
+      ["Volume waves", "volume waves ripples rings sound level loud quiet feedback glass frame", "#vwaveChk"],
+      ["Start over", "start over beginning restart from zero resumed partway video watch again fresh", "#infoCard"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
