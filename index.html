@@ -20028,7 +20028,11 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   document.body.appendChild(b);
   var on = false;
   function relabel() { b.setAttribute("aria-label", T("Back to top")); }
-  function upd() { var s = window.scrollY > 900; if (s !== on) { on = s; b.classList.toggle("show", on); } }
+  // Round 207 fix: the button was only transparent when hidden (scrolled near the top, or the mini player
+  // docked), yet still a Tab stop and announced by screen readers - now it is inert unless it can be seen.
+  function reach() { var shown = on && !document.documentElement.classList.contains("mini-on"); b.inert = !shown; b.tabIndex = shown ? 0 : -1; b.setAttribute("aria-hidden", shown ? "false" : "true"); }
+  function upd() { var s = window.scrollY > 900; if (s !== on) { on = s; b.classList.toggle("show", on); } reach(); }
+  new MutationObserver(reach).observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
   window.addEventListener("scroll", upd, { passive: true });
   b.addEventListener("click", function () {
     var r = window.vpReducedMotion();
@@ -21168,6 +21172,10 @@ html.low-fx #sleepPill .sp-dot{animation:none}
     plus.textContent = extend.textContent || "+10 min";
     plus.setAttribute("aria-label", (extend.textContent || "+10 min") + " - " + (label.textContent || ""));
     pill.classList.toggle("show", on);
+    // Round 207 fix: while no timer ran the pill was only transparent - its two buttons (one with no
+    // name at all) stayed in the Tab order and the screen-reader tree as invisible stops.
+    pill.inert = !on; pill.setAttribute("aria-hidden", on ? "false" : "true");
+    go.tabIndex = plus.tabIndex = on ? 0 : -1;
     if (on) place();
   }
   new MutationObserver(update).observe(label, { childList: true, characterData: true, subtree: true });
