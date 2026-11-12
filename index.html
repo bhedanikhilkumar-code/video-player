@@ -11439,6 +11439,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Full screen bloom", "#fsBtn"],
     ["Slow-mo drift", "#speedChips"],
     ["Mute break", "#muteBreakRow"],
     ["Rotate picture", "#rotRow"],
@@ -11448,7 +11449,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Skip seen parts", "#sskipBtn"],
     ["Moment beacon", "#markAddBtn"],
     ["Whip pan", "#seek"],
-    ["Play unwatched from a playlist", "#lhPlaylists"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -13447,6 +13447,69 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     slomoApply(document.documentElement.classList.contains("vp-playing") && prefs.speed < 0.95, prefs.speed);
   }, 700);
   document.addEventListener("vp-video-loaded", function () { slomoApply(false); });
+
+  // Full screen bloom (round 137): entering full screen blooms a soft white-glass
+  // light from the centre of the frame while the picture springs in with an
+  // iPhone-style zoom, and a diagonal sheen sweeps across the glass; leaving full
+  // screen settles back with a smaller, quicker bloom - so the jump to the big
+  // picture lands like opening an iPhone app instead of a hard cut. Interaction
+  // feedback, not a setting, works on YouTube videos on the main player (the spring
+  // rides the standalone scale property, so the Tilt lean, the Whip pan slide and
+  // the picture rotate/flip/zoom transforms keep working - the video itself is
+  // untouched and every control stays tappable), the spring sits out under
+  // Calm/reduced motion and Low-end mode where the bloom becomes a plain soft fade,
+  // the bloom's blur drops in High contrast, translated in Hindi and Gujarati,
+  // listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Full screen bloom": ["फ़ुल स्क्रीन ब्लूम", "ફુલ સ્ક્રીન બ્લૂમ"]
+  });
+  var fsbSt = document.createElement("style");
+  fsbSt.textContent = "@keyframes vpFsbIn{0%{scale:1;filter:none}28%{scale:.965;filter:saturate(1.15) brightness(1.06)}62%{scale:1.008;filter:none}100%{scale:1;filter:none}}"
+    + "@keyframes vpFsbOut{0%{scale:1}35%{scale:.985}100%{scale:1}}"
+    + "#frameBox.fsb-in{animation:vpFsbIn .65s cubic-bezier(.3,.9,.3,1)}"
+    + "#frameBox.fsb-out{animation:vpFsbOut .4s ease}"
+    + ".vp-fsbloom{position:absolute;inset:0;z-index:7;pointer-events:none;overflow:hidden;border-radius:inherit;opacity:0}"
+    + ".vp-fsbloom.fsb-go{animation:vpFsbGlow .9s ease-out}"
+    + ".vp-fsbloom::before{content:\"\";position:absolute;inset:-20%;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.55),rgba(255,255,255,.12) 38%,transparent 62%);filter:blur(6px)}"
+    + ".vp-fsbloom::after{content:\"\";position:absolute;top:-60%;bottom:-60%;left:-30%;width:38%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);transform:skewX(-14deg);animation:vpFsbSheen .9s ease-out}"
+    + "@keyframes vpFsbGlow{0%{opacity:0}18%{opacity:1}100%{opacity:0}}"
+    + "@keyframes vpFsbSheen{0%{left:-30%}100%{left:115%}}"
+    + ".vp-fsbloom.fsb-soft::after{animation-duration:.5s}"
+    + "html.high-contrast .vp-fsbloom::before{filter:none;background:radial-gradient(circle at 50% 50%,rgba(255,255,255,.7),transparent 60%)}"
+    + "html.calm-motion #frameBox.fsb-in,html.calm-motion #frameBox.fsb-out,html.low-fx #frameBox.fsb-in,html.low-fx #frameBox.fsb-out{animation:none}"
+    + "html.calm-motion .vp-fsbloom.fsb-go,html.low-fx .vp-fsbloom.fsb-go{animation:vpFsbGlow .6s ease-out}"
+    + "html.calm-motion .vp-fsbloom::after,html.low-fx .vp-fsbloom::after{display:none}"
+    + "@media (prefers-reduced-motion:reduce){#frameBox.fsb-in,#frameBox.fsb-out{animation:none}.vp-fsbloom.fsb-go{animation:vpFsbGlow .6s ease-out}.vp-fsbloom::after{display:none}}";
+  document.head.appendChild(fsbSt);
+  var fsbEl = document.createElement("div"), fsbWas = false, fsbT = 0;
+  fsbEl.className = "vp-fsbloom"; fsbEl.setAttribute("aria-hidden", "true");
+  if (frameBox) frameBox.appendChild(fsbEl);
+  function fsbClear() {
+    if (fsbT) { clearTimeout(fsbT); fsbT = 0; }
+    if (frameBox) { frameBox.classList.remove("fsb-in"); frameBox.classList.remove("fsb-out"); }
+    fsbEl.classList.remove("fsb-go"); fsbEl.classList.remove("fsb-soft");
+  }
+  function fsbFire(entering) {
+    if (!frameBox || !iframe || controls.hidden || !curId) return;
+    if (document.documentElement.classList.contains("mini-on")) return;
+    if (fsbT) clearTimeout(fsbT);
+    frameBox.classList.remove("fsb-in"); frameBox.classList.remove("fsb-out");
+    fsbEl.classList.remove("fsb-go"); fsbEl.classList.remove("fsb-soft");
+    void frameBox.offsetWidth;
+    frameBox.classList.add(entering ? "fsb-in" : "fsb-out");
+    fsbEl.classList.add("fsb-go"); if (!entering) fsbEl.classList.add("fsb-soft");
+    fsbT = setTimeout(fsbClear, 950);
+  }
+  window.__vpFsBloom = fsbFire;
+  function fsbChange() {
+    var isFs = document.fullscreenElement === frameBox || document.webkitFullscreenElement === frameBox;
+    if (isFs === fsbWas) return;
+    fsbWas = isFs;
+    fsbFire(isFs);
+  }
+  document.addEventListener("fullscreenchange", fsbChange);
+  document.addEventListener("webkitfullscreenchange", fsbChange);
+  document.addEventListener("vp-video-loaded", fsbClear);
 
 })();
 </script>
@@ -15693,7 +15756,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Mute pop", "mute pop sound on off unmute icon centre frame confirm feedback speaker waves", "#muteBtn"],
       ["Rotate picture", "rotate picture turn sideways 90 180 270 degrees phone video orientation portrait landscape tilted straighten", "#rotRow"],
       ["Mute break", "mute break timed mute for seconds ad loud intro restore sound automatically temporary quiet", "#muteBreakRow"],
-      ["Slow-mo drift", "slow mo slow motion drift dreamy haze blobs floating lights slow speed 0.25 0.5 0.75 playback dream calm glass", "#speedChips"]
+      ["Slow-mo drift", "slow mo slow motion drift dreamy haze blobs floating lights slow speed 0.25 0.5 0.75 playback dream calm glass", "#speedChips"],
+      ["Full screen bloom", "full screen bloom zoom spring light sweep sheen entering leaving fullscreen big picture glass ceremony", "#fsBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
