@@ -9510,6 +9510,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Videos merged:": ["मिलाए गए वीडियो:", "ભેળવેલા વીડિયો:"],
     "Nothing new to merge. Those videos are already there, or the playlist is full at 50.": ["मिलाने को कुछ नया नहीं. ये वीडियो पहले से हैं, या प्लेलिस्ट 50 पर भरी है.", "ભેળવવા માટે કંઈ નવું નથી. આ વીડિયો પહેલેથી છે, અથવા પ્લેલિસ્ટ 50 પર ભરેલી છે."]
   });
+  // Split a playlist (round 190): a long course or mix could only be cut up by rebuilding it by hand.
+  // Split asks how many videos stay in the first part (half by default) and moves the rest into a new
+  // playlist named "<name> part 2". Undo puts the list back and removes the new one. No setting.
+  Object.assign(TR_MSG, {
+    "Split a playlist": ["प्लेलिस्ट बांटें", "પ્લેલિસ્ટ વહેંચો"],
+    "Split": ["बांटें", "વહેંચો"],
+    "How many videos stay in the first part? The rest go to a new playlist": ["पहले हिस्से में कितने वीडियो रहें? बाकी नई प्लेलिस्ट में जाएंगे", "પહેલા ભાગમાં કેટલા વિડિયો રહે? બાકીના નવી પ્લેલિસ્ટમાં જશે"],
+    "Type a whole number that leaves at least one video in each part.": ["ऐसी पूरी संख्या लिखें कि हर हिस्से में कम से कम एक वीडियो रहे.", "એવો પૂર્ણ આંક લખો કે દરેક ભાગમાં ઓછામાં ઓછો એક વિડિયો રહે."],
+    "A playlist needs at least two videos to split.": ["बांटने के लिए प्लेलिस्ट में कम से कम दो वीडियो चाहिए.", "વહેંચવા માટે પ્લેલિસ્ટમાં ઓછામાં ઓછા બે વિડિયો જોઈએ."],
+    "Playlist split:": ["प्लेलिस्ट बंटी:", "પ્લેલિસ્ટ વહેંચાઈ:"]
+  });
   // Sort a playlist A to Z (round 188): playlists could be reversed but not alphabetised, so a
   // list built in the order videos were found could not be tidied by title. The Sort A-Z button
   // orders one playlist by title (untitled videos last, equal titles keep their order); Undo
@@ -9668,6 +9679,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         savePlaylists(); renderPlaylists();
         plSay(T("Videos merged:") + " " + n + " (\"" + pl.name + "\" > \"" + tgt.name + "\").");
         toastUndo(T("Videos merged:") + " " + n + " > " + tgt.name, function () { tgt.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
+      });
+      btn(T("Split"), "", async function () {
+        if (pl.items.length < 2) { plSay(T("A playlist needs at least two videos to split.")); return; }
+        if (playlists.length >= PL_MAX) { plSay(T("You can keep up to ") + PL_MAX + T(" playlists. Delete one first.")); return; }
+        var raw = await vpAsk(T("How many videos stay in the first part? The rest go to a new playlist"), String(Math.ceil(pl.items.length / 2)));
+        if (raw === null || raw === undefined || String(raw).trim() === "") return;
+        var keepN = Number(String(raw).trim());
+        if (!isFinite(keepN) || Math.floor(keepN) !== keepN || keepN < 1 || keepN > pl.items.length - 1) { plSay(T("Type a whole number that leaves at least one video in each part.")); return; }
+        var snap = pl.items.slice(), base = pl.name.slice(0, 33) + " part 2", nm = base, k = 2;
+        while (plFind(nm) >= 0) { nm = base + " " + k; k++; }
+        nm = nm.slice(0, 40);
+        var np = { name: nm, items: snap.slice(keepN).map(function (x) { return { id: x.id, title: x.title || "" }; }) };
+        pl.items = snap.slice(0, keepN);
+        playlists.splice(idx + 1, 0, np);
+        savePlaylists(); renderPlaylists();
+        plSay(T("Playlist split:") + " \"" + pl.name + "\" " + keepN + " + \"" + nm + "\" " + np.items.length + ".");
+        toastUndo(T("Playlist split:") + " " + pl.name, function () { var at = playlists.indexOf(np); if (at >= 0) playlists.splice(at, 1); pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
       });
       btn(T("Sort A-Z"), "", function () {
         if (pl.items.length < 2) { plSay(T("A playlist with one video has no order to reverse.")); return; }
@@ -13115,6 +13143,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Split a playlist", "#plList"],
     ["Glass dialogs", "#vpAskBg"],
     ["Merge playlists", "#plList"],
     ["Sort a playlist A to Z", "#plList"],
@@ -13124,7 +13153,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Glass file picker", "#lpFile"],
     ["Glass text fields", "#linkInput"],
     ["Remove watched from a playlist", "#plList"],
-    ["Shuffle play", "#plList"],
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -18979,6 +19007,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Glass pick boxes", "glass pick boxes pick many queue select circle tick check orb bead picked row wash glow bulk iphone", "#qPickBtn"],
       ["Glass text fields", "glass text fields link box input search playlist name notes textarea well inset frosted focus glow lift typing field iphone", "#linkInput"],
       ["Glass file picker", "glass file picker choose files button local file pill gloss spring press hover lift drop box iphone", "#lpFile"],
+      ["Split a playlist", "split playlist divide cut half two parts long course mix new list part 2 undo songs lectures", "#plList"],
       ["Merge playlists", "merge playlists combine join two lists together add one playlist into another same topic courses songs undo", "#plList"],
       ["Sort a playlist A to Z", "sort playlist a to z alphabetical alphabet title name order tidy arrange undo songs lectures", "#plList"],
       ["Reverse a playlist", "reverse playlist order flip backwards newest first oldest first course lecture series upside down undo", "#plList"],
