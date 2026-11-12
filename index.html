@@ -2365,7 +2365,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
       <div id="musicQueue">
-      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="sortLenQueueBtn" type="button">Sort by length</button><button class="chip" id="sortAzQueueBtn" type="button">Sort A to Z</button><button class="chip" id="queueToLaterBtn" type="button">Save all to Watch later</button><button class="chip" id="queueToFavBtn" type="button">Save all to favourites</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="qSkipWBtn" type="button" aria-pressed="false">Skip watched: off</button><button class="chip" id="qConsumeBtn" type="button" aria-pressed="false">Remove played: off</button><button class="chip" id="qFeedBtn" type="button" aria-pressed="false">Watch later feed: off</button><button class="chip" id="qPickBtn" type="button" aria-pressed="false">☑ Pick many: off</button><button class="chip" id="clearUpcomingBtn" type="button">Clear upcoming</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="shufflePlayBtn" type="button">🎲 Shuffle play</button><button class="chip" id="sortLenQueueBtn" type="button">Sort by length</button><button class="chip" id="sortAzQueueBtn" type="button">Sort A to Z</button><button class="chip" id="queueToLaterBtn" type="button">Save all to Watch later</button><button class="chip" id="queueToFavBtn" type="button">Save all to favourites</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="qSkipWBtn" type="button" aria-pressed="false">Skip watched: off</button><button class="chip" id="qConsumeBtn" type="button" aria-pressed="false">Remove played: off</button><button class="chip" id="qFeedBtn" type="button" aria-pressed="false">Watch later feed: off</button><button class="chip" id="qPickBtn" type="button" aria-pressed="false">☑ Pick many: off</button><button class="chip" id="clearUpcomingBtn" type="button">Clear upcoming</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <div class="q-pick-bar" id="qPickBar" hidden>
         <div class="hint q-pick-count" role="status"><span id="qPickCount"></span><span id="qPickTime" style="display:block;margin-top:4px"></span></div>
         <span class="row">
@@ -4040,6 +4040,28 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     b.textContent = T("Stop after this track") + ": " + T(stopAfter ? "on" : "off");
     b.setAttribute("aria-pressed", String(stopAfter)); b.classList.toggle("active", stopAfter);
   }
+  // Shuffle play (round 212 new 2): Mix order shuffles the list and Surprise me picks from
+  // saved videos, but "just play something from my queue" needed ordering changes or a detour.
+  // One chip plays a random queue video now, never the one already playing unless it is the
+  // only one, and toasts what it picked. Hindi and Gujarati text, What's new and feature
+  // finder included.
+  Object.assign(TR_MSG, {
+    "🎲 Shuffle play": ["🎲 शफ़ल चलाएं", "🎲 શફલ ચલાવો"],
+    "Play a random video from the queue": ["कतार से कोई भी वीडियो चलाएं", "કતારમાંથી કોઈપણ વિડિયો ચલાવો"],
+    "Shuffle play: ": ["शफ़ल: ", "શફલ: "]
+  });
+  var shufflePlayBtn = $("shufflePlayBtn");
+  if (shufflePlayBtn) shufflePlayBtn.addEventListener("click", function () {
+    if (!lib.queue.length) { toast(T("Queue is empty. Add links with Add to queue.")); return; }
+    var pool = [];
+    for (var si = 0; si < lib.queue.length; si++) if (si !== qPos) pool.push(si);
+    if (!pool.length) pool.push(0);
+    var idx = pool[Math.floor(Math.random() * pool.length)];
+    toast(T("Shuffle play: ") + (lib.queue[idx].title || lib.queue[idx].id));
+    playQueueAt(idx);
+  });
+  (window.__relang = window.__relang || []).push(function () { if (shufflePlayBtn) { shufflePlayBtn.textContent = T("🎲 Shuffle play"); shufflePlayBtn.setAttribute("aria-label", T("Play a random video from the queue")); } });
+
   function playQueueAt(i, advancing) {
     if (typeof upnextCancel === "function") upnextCancel(true);
     if (i < 0 || i >= lib.queue.length) return;
@@ -14852,6 +14874,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Shuffle play from the queue", "#shufflePlayBtn"],
     ["Shift+Arrow fine seek", "#sc28"],
     ["Shift the whole loop", "#abShiftMBtn"],
     ["Weekly goal", "#wgoalRow"],
@@ -21186,6 +21209,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Shuffle play from the queue", "shuffle play random queue video pick any luck dice mix now playing", "#shufflePlayBtn"],
       ["Shift+Arrow fine seek", "shift arrow fine seek one second precise keyboard arrow keys exact frame practice", "#sc28"],
       ["Shift the whole loop", "shift whole loop ab window move both ends together second slide practice section", "#abShiftMBtn"],
       ["Copy time", "copy time current second timestamp paste note chat chapter list clipboard jump to time", "#copyTimeBtn"],
