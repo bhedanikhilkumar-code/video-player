@@ -6174,7 +6174,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       document.body.removeChild(ta);
     } catch (err) { done = false; }
     if (done) { ok(); return; }
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok, bad); else bad();
+    // If the browser neither copies nor refuses within a moment, say so instead of staying silent.
+    var settled = false;
+    function once(fn) { return function () { if (settled) return; settled = true; fn(); }; }
+    var okOnce = once(ok), badOnce = once(bad);
+    setTimeout(badOnce, 1500);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(okOnce, badOnce); else badOnce();
   }
   // Speed keys (round 148): press < or > (Shift+comma / Shift+period) to step the playback
   // speed down or up one notch along the speed chips - 0.25x to 2x - without touching the
