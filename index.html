@@ -2196,6 +2196,7 @@ setTimeout(done,3000);})();
       </div>
       <div class="row" style="margin-top:10px" id="upnextSecsRow"><span class="label" id="upnextSecsLab">Up-next countdown:</span><span class="chips" id="upnextSecsChips"></span></div>
       <p class="hint" id="queueModeMsg" role="status">Auto-next is on. Video repeat and A-B repeat take priority.</p>
+      <div class="qprog" id="qProg" role="img" hidden><div class="qprog-track"><i class="qprog-fill" id="qProgFill"></i></div><span class="qprog-txt" id="qProgTxt"></span></div>
       <ul class="lib-list" id="queueList"></ul>
       <p class="hint" id="queueTime" role="status"></p>
       </div>
@@ -6717,13 +6718,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   renderLib = function () { baseRenderLib(); decorateQueue(); };
   decorateQueue();
 
-  // ---- Round 109: Pick many in the queue ----
-  // A "Pick many" chip in the queue header turns on pick mode - every queue row grows a
-  // round tick box, tapping rows marks them, and a glass bar offers the bulk actions
-  // (All, None, Move to top, Watch later, Remove, Done) so tidying a long queue takes a
-  // few taps instead of one-by-one removes; Remove has an Undo toast; off by default,
-  // remembered on this device in prefs and riding the backup, translated in Hindi and
-  // Gujarati, listed in the feature finder and the What's new card.
+  // ---- Round 109: Pick many in the queue + Queue progress bar ----
+  // Pick many: a "Pick many" chip in the queue header turns on pick mode - every queue row
+  // grows a round tick box, tapping rows marks them, and a glass bar offers the bulk actions
+  // (All, None, Move to top, Watch later, Remove, Done) so tidying a long queue takes a few
+  // taps instead of one-by-one removes; Remove has an Undo toast; off by default, remembered
+  // on this device in prefs and riding the backup. Queue progress: a slim accent bar above
+  // the list fills as the queue advances (3 / 12), hidden when the queue is empty. Both work
+  // with YouTube videos, are translated in Hindi and Gujarati, and sit in the feature finder
+  // and the What's new card.
   Object.assign(TR_MSG, {
     "Pick many": ["\u0915\u0908 \u091a\u0941\u0928\u0947\u0902", "\u0a98\u0aa3\u0abe\u0a82 \u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0ab0\u0acb"],
     "Pick": ["\u091a\u0941\u0928\u0947\u0902", "\u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0ab0\u0acb"],
@@ -6735,7 +6738,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Pick some videos first.": ["\u092a\u0939\u0932\u0947 \u0915\u0941\u091b \u0935\u0940\u0921\u093f\u092f\u094b \u091a\u0941\u0928\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0aa5\u0acb\u0aa1\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0ab0\u0acb."],
     "Moved to the top of the queue.": ["\u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0938\u092c\u0938\u0947 \u090a\u092a\u0930 \u0932\u093e\u090f \u0917\u090f.", "\u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0ab8\u0acc\u0aa5\u0ac0 \u0a8a\u0aaa\u0ab0 \u0ab2\u0abe\u0ab5\u0acd\u0aaf\u0abe\u0a82."],
     "Already in Watch later.": ["\u092a\u0939\u0932\u0947 \u0938\u0947 Watch later \u092e\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0ac7\u0aa5\u0ac0 Watch later \u0aae\u0abe\u0a82."],
-    "Pick many in queue": ["\u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0915\u0908 \u091a\u0941\u0928\u0947\u0902", "\u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0a98\u0aa3\u0abe\u0a82 \u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0ab0\u0acb"]
+    "Queue progress": ["\u0915\u0924\u093e\u0930 \u0915\u0940 \u092a\u094d\u0930\u0917\u0924\u093f", "\u0a95\u0aa4\u0abe\u0ab0\u0aa8\u0ac0 \u0aaa\u0acd\u0ab0\u0a97\u0aa4\u0abf"],
+    "Pick many in queue": ["\u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0915\u0908 \u091a\u0941\u0928\u0947\u0902", "\u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0a98\u0aa3\u0abe\u0a82 \u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0ab0\u0acb"],
+    "Queue progress bar": ["\u0915\u0924\u093e\u0930 \u092a\u094d\u0930\u0917\u0924\u093f \u092a\u091f\u094d\u091f\u0940", "\u0a95\u0aa4\u0abe\u0ab0 \u0aaa\u0acd\u0ab0\u0a97\u0aa4\u0abf \u0aaa\u0a9f\u0acd\u0a9f\u0ac0"]
   });
   var qPickSt = document.createElement("style");
   qPickSt.textContent =
@@ -6744,9 +6749,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     + ".q-pick-box{flex:0 0 auto;width:30px;height:30px;min-width:30px;border-radius:50%;border:2px solid var(--teal);background:transparent;color:#fff;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}"
     + ".q-pick-box.on{background:var(--teal);box-shadow:0 0 10px var(--teal)}"
     + ".lib-item.q-picked{outline:2px solid var(--teal);outline-offset:-2px;border-radius:14px}"
-    + "#queueList.q-picking .q-move{display:none}";
+    + "#queueList.q-picking .q-move{display:none}"
+    + ".qprog{display:flex;align-items:center;gap:10px;margin:2px 0 10px}"
+    + ".qprog-track{flex:1;height:6px;border-radius:999px;background:var(--hairline);overflow:hidden}"
+    + ".qprog-fill{display:block;height:100%;width:0;border-radius:999px;background:var(--accent,#7c5cff);box-shadow:0 0 8px var(--accent,#7c5cff);transition:width .45s ease}"
+    + ".qprog-txt{font-size:12px;opacity:.75;white-space:nowrap;font-variant-numeric:tabular-nums}"
+    + "@media (prefers-reduced-motion: reduce){.qprog-fill{transition:none}}";
   document.head.appendChild(qPickSt);
   var qPickBtn = $("qPickBtn"), qPickBar = $("qPickBar"), qPickCount = $("qPickCount");
+  var qProg = $("qProg"), qProgFill = $("qProgFill"), qProgTxt = $("qProgTxt");
   var qPicked = [];
   function qPickOn() { return prefs.qPick === true; }
   function qPickPrune() { qPicked = qPicked.filter(function (it) { return lib.queue.indexOf(it) >= 0; }); }
@@ -6830,11 +6841,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     qPicked = []; resetShuffle(); saveLib(); renderLib();
     toastUndo(T("Removed from queue"), function () { lib.queue = snapQ; qPos = snapP; qPicked = snapSel; saveLib(); renderLib(); }, T("Queue restored"));
   });
+  function updateQProg() {
+    if (!qProg) return;
+    var n = lib.queue.length;
+    if (!n) { qProg.hidden = true; return; }
+    qProg.hidden = false;
+    var cur = (qPos >= 0 && qPos < n) ? qPos + 1 : 0;
+    qProgFill.style.width = Math.round(cur / n * 100) + "%";
+    var txt = cur + " / " + n;
+    qProgTxt.textContent = txt;
+    qProg.setAttribute("aria-label", T("Queue progress") + ": " + txt);
+  }
   var baseRenderLibQ109 = renderLib;
-  renderLib = function () { baseRenderLibQ109(); qPickDecorate(); renderQPick(); };
-  (window.__relang = window.__relang || []).push(renderQPick);
+  renderLib = function () { baseRenderLibQ109(); qPickDecorate(); renderQPick(); updateQProg(); };
+  (window.__relang = window.__relang || []).push(renderQPick, updateQProg);
   window.__vpQPickState = function () { return { on: qPickOn(), picked: qPicked.length }; };
-  renderQPick();
+  window.__vpQProgTick = updateQProg;
+  renderQPick(); updateQProg();
 
   // ---- Library search: filters queue, playlists, favourites and recently watched as you type ----
   var libSearch = $("libSearch"), libSearchMsg = $("libSearchMsg");
@@ -10277,6 +10300,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   var WNEW = [
     ["Pick many in queue", "#qPickBtn"],
+    ["Queue progress bar", "#qProg"],
     ["Speed streaks", "#streaksBtn"],
     ["Cinema curtains", "#curtainsBtn"],
     ["Film bars", "#filmBarsBtn"],
@@ -10284,8 +10308,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Watch badges", "#badgesWrap"],
     ["Daily goal ring", "#goalRingBtn"],
     ["Paused clock", "#pauseClockBtn"],
-    ["Captions when muted", "#ccMuteBtn"],
-    ["Skip watched in queue", "#qSkipWBtn"]
+    ["Captions when muted", "#ccMuteBtn"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -12441,6 +12464,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Play Music (saved music queue)", "play music saved", "#playMusicBtn"],
       ["Up next queue", "queue next upnext order", "#lhQueue"],
       ["Pick many in queue", "pick many select multiple bulk queue organise tidy move top remove watch later", "#qPickBtn"],
+      ["Queue progress bar", "queue progress bar position how far through playing", "#qProg"],
       ["Queue total time", "queue total time how long length duration", "#queueTime"],
       ["Queue finish clock time", "queue finish ends clock time done when over", "#queueTime"],
       ["Share on WhatsApp", "whatsapp share send chat forward wa message", "#waBtn"],
