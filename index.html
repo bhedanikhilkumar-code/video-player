@@ -11409,6 +11409,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Whip pan", "#seek"],
     ["Play unwatched from a playlist", "#lhPlaylists"],
     ["Watch later length filter", "#laterLenBtn"],
     ["Seek comet", "#scometChk"],
@@ -11418,7 +11419,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Magnetic moments", "#seek"],
     ["Fine scrub", "#seek"],
     ["Time left in Continue watching", "#lhContinue"],
-    ["Start over", "#infoCard"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -12850,6 +12850,60 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   ["pointerup", "pointercancel", "blur", "change"].forEach(function (ev) { seek.addEventListener(ev, function () { eeEdge = 0; }); });
   document.addEventListener("vp-video-loaded", eeClear);
 })();
+
+(function () {
+  "use strict";
+  // Whip pan (round 133): landing a seek - releasing a scrub, a double-tap
+  // skip, a J/L or arrow jump, a moment-dot tap - makes the frame whip a
+  // short sideways slide with a breath of motion blur and spring back, the
+  // way an iPhone album flicks between photos, so a jump feels like travel
+  // instead of a teleport. Direction follows the jump: forward seeks fling
+  // the frame left, backward seeks fling it right. Interaction feedback,
+  // not a setting, works on YouTube videos on the main player (the slide
+  // rides the standalone translate property, so the Tilt lean and the
+  // Cinema settle rest keep working - the video itself is untouched and
+  // every control stays tappable), small seeks under 3 seconds stay quiet,
+  // it sits out under Calm/reduced motion, Low-end mode, Simple mode and
+  // the mini player, the blur drops in High contrast, translated in Hindi
+  // and Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Whip pan": ["व्हिप पैन", "વ્હિપ પૅન"]
+  });
+  var wpSt = document.createElement("style");
+  wpSt.textContent = "@keyframes vpWhipF{0%{translate:0 0;filter:none}22%{translate:-16px 0;filter:blur(2.5px) saturate(1.12)}58%{translate:6px 0;filter:blur(1px)}100%{translate:0 0;filter:none}}"
+    + "@keyframes vpWhipB{0%{translate:0 0;filter:none}22%{translate:16px 0;filter:blur(2.5px) saturate(1.12)}58%{translate:-6px 0;filter:blur(1px)}100%{translate:0 0;filter:none}}"
+    + "#frameBox.wp-f{animation:vpWhipF .5s cubic-bezier(.3,.9,.3,1)}"
+    + "#frameBox.wp-b{animation:vpWhipB .5s cubic-bezier(.3,.9,.3,1)}"
+    + "html.high-contrast #frameBox.wp-f,html.high-contrast #frameBox.wp-b{filter:none!important}"
+    + "html.calm-motion #frameBox.wp-f,html.calm-motion #frameBox.wp-b,html.low-fx #frameBox.wp-f,html.low-fx #frameBox.wp-b{animation:none}"
+    + "@media (prefers-reduced-motion:reduce){#frameBox.wp-f,#frameBox.wp-b{animation:none}}";
+  document.head.appendChild(wpSt);
+  var wpT = 0, wpCool = 0;
+  function wpClear() { if (wpT) { clearTimeout(wpT); wpT = 0; } if (frameBox) { frameBox.classList.remove("wp-f"); frameBox.classList.remove("wp-b"); } }
+  function wpWhip(dir) {
+    if (!frameBox || !iframe || controls.hidden) return;
+    if (document.documentElement.classList.contains("mini-on")) return;
+    if (document.documentElement.classList.contains("simple-mode")) return;
+    if (window.vpReducedMotion && window.vpReducedMotion()) return;
+    if (prefs.lowFx === true) return;
+    var now = Date.now();
+    if (now - wpCool < 250) return;
+    wpCool = now;
+    if (wpT) clearTimeout(wpT);
+    frameBox.classList.remove("wp-f"); frameBox.classList.remove("wp-b");
+    void frameBox.offsetWidth;
+    frameBox.classList.add(dir > 0 ? "wp-f" : "wp-b");
+    wpT = setTimeout(wpClear, 520);
+  }
+  var wpSeek = manualSeek;
+  manualSeek = function (t, origin) {
+    var from = typeof origin === "number" ? origin : curTime;
+    wpSeek(t, origin);
+    if (typeof t === "number" && typeof from === "number" && Math.abs(t - from) >= 3) wpWhip(t > from ? 1 : -1);
+  };
+  document.addEventListener("vp-video-loaded", wpClear);
+})();
+
 })();
 </script>
 <script>
@@ -15086,7 +15140,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Play unwatched from a playlist", "playlist play unwatched only left to watch course continue fresh unseen skip finished remaining", "#lhPlaylists"],
       ["Watch later length filter", "watch later length filter under 10 minutes 10-30 over 30 short medium long video fit time break quick", "#laterLenBtn"],
       ["Seek comet", "seek comet trail glow sparks follow scrub drag bar pretty tail light", "#scometChk"],
-      ["Elastic edges", "elastic edges rubber band bounce spring seek bar start end edge scrub overshoot", "#seek"]
+      ["Elastic edges", "elastic edges rubber band bounce spring seek bar start end edge scrub overshoot", "#seek"],
+      ["Whip pan", "whip pan seek jump travel motion blur frame slide spring landing forward rewind fling", "#seek"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
