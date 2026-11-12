@@ -2400,7 +2400,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="histQueueBtn" type="button">Queue unfinished</button><button class="chip" id="histPlBtn" type="button">Save unfinished as playlist</button><button class="chip" id="histTrimBtn" type="button">Trim old history</button><button class="chip" id="histDoneBtn" type="button">Clear finished</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
-      <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsCsvBtn" type="button">Save as spreadsheet (.csv)</button><button class="chip" id="statsClear" type="button">Clear</button></div>
+      <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsCsvBtn" type="button">Save as spreadsheet (.csv)</button><button class="chip" id="statsCopyBtn" type="button">Copy my stats</button><button class="chip" id="statsClear" type="button">Clear</button></div>
       <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsWeek" role="status"></p><p class="hint" id="statsTopChan" role="status" hidden></p><div class="stats-days" id="statsDays"></div><div class="stats-hours-wrap" id="statsHoursWrap" hidden><p class="hint stats-hours-lab" id="statsHoursLab"></p><div class="stats-hours" id="statsHours"></div><p class="hint" id="statsHoursSum" role="status"></p></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><div class="badges-wrap" id="badgesWrap" hidden><p class="hint badges-lab" id="badgesLab"></p><div class="badges" id="badges"></div></div><ul class="lib-list" id="statsList"></ul>
       <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
       <div class="goal-row" id="storRow"><p class="hint" id="storInfo" role="status"></p><button class="chip" id="storBtn" type="button">Refresh</button><button class="chip" id="storKeepBtn" type="button">Protect my data</button></div>
@@ -6053,6 +6053,37 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var h = $("fadeOutHint"); if (h) h.textContent = T("In the last seconds of a video the sound sinks slowly to silence, so a song never cuts off mid-note. Your normal volume comes back for the next video.");
   }
   (window.__relang = window.__relang || []).push(renderFadeOut); renderFadeOut();
+
+  /* Copy my stats (round 208 new 4): Watch stats could be saved as a text file or a
+     spreadsheet, but there was no quick way to paste them into a chat. A chip in Watch
+     stats copies exactly the summary lines on screen (total, today, this week, top
+     channel and the daily-goal line when it shows) in the language the app is speaking,
+     with the clipboard fallback the other copy chips use. Nothing new is saved. */
+  Object.assign(TR_MSG, {
+    "Copy my stats": ["मेरे आंकड़े कॉपी करें", "મારા આંકડા કૉપી કરો"],
+    "My watch stats": ["मेरे वॉच आंकड़े", "મારા વૉચ આંકડા"],
+    "Watch some videos first, then copy your stats.": ["पहले कुछ वीडियो देखें, फिर आंकड़े कॉपी करें.", "પહેલા થોડા વિડિયો જુઓ, પછી આંકડા કૉપી કરો."],
+    "Stats copied": ["आंकड़े कॉपी हुए", "આંકડા કૉપી થયા"],
+    "Could not copy. Try again.": ["कॉपी नहीं हो सका. फिर कोशिश करें.", "કૉપી થઈ શક્યું નહીં. ફરી પ્રયાસ કરો."]
+  });
+  var statsCopyBtn = $("statsCopyBtn");
+  if (statsCopyBtn) {
+    statsCopyBtn.addEventListener("click", function () {
+      var lines = [];
+      ["statsTotal", "statsToday", "statsWeek", "statsTopChan", "goalStatus"].forEach(function (id) { var el = $(id); if (el && !el.hidden && el.textContent.trim()) lines.push(el.textContent.trim()); });
+      if (!lines.length) { toast(T("Watch some videos first, then copy your stats.")); return; }
+      var text = "📊 " + T("My watch stats") + "
+" + lines.join("
+");
+      function done(ok) { toast(ok ? T("Stats copied") : T("Could not copy. Try again.")); }
+      function fallback() {
+        try { var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var ok2 = document.execCommand("copy"); ta.remove(); done(!!ok2); } catch (e) { done(false); }
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback); else fallback();
+    });
+    (window.__relang = window.__relang || []).push(function () { statsCopyBtn.textContent = T("Copy my stats"); });
+    statsCopyBtn.textContent = T("Copy my stats");
+  }
 
   /* Rewind after a pause (round 78): like a podcast app - when a pause lasts 30 seconds or
      more, pressing Play first jumps back a few seconds so the thread of the video comes back.
@@ -14291,7 +14322,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Favourites fold": ["पसंदीदा सूची छोटी-बड़ी करें", "મનપસંદ યાદી નાની-મોટી કરો"],
     "Repeat this video N times": ["वीडियो N बार दोहराएं", "વિડિયો N વાર ફરી ચલાવો"],
     "Search on YouTube": ["YouTube पर खोजें", "YouTube પર શોધો"],
-    "Fade out at the end": ["अंत में आवाज़ धीरे-धीरे घटाएं", "અંતે અવાજ ધીમે ધીમે ઘટાડો"]
+    "Fade out at the end": ["अंत में आवाज़ धीरे-धीरे घटाएं", "અંતે અવાજ ધીમે ધીમે ઘટાડો"],
+    "Copy my stats": ["मेरे आंकड़े कॉपी करें", "મારા આંકડા કૉપી કરો"]
   });
   Object.assign(TR_MSG, {
     "📁 Choose files": ["📁 फ़ाइलें चुनें", "📁 ફાઇલો પસંદ કરો"],
@@ -14299,6 +14331,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Copy my stats", "#statsCopyBtn"],
     ["Fade out at the end", "#fadeOutRow"],
     ["Search on YouTube", "#ytSearchBtn"],
     ["Repeat this video N times", "#vidRepRow"],
@@ -14311,7 +14344,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Save lyrics as .lrc", "#lyricsLrcBtn"],
     ["Copy lyrics", "#lyricsCopyBtn"],
     ["Favourites fold", "#favList"],
-    ["Tap the record to play or pause", "#vinylBtn"]
+    ["Protect my data", "#storKeepBtn"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -20557,6 +20590,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Copy my stats", "copy my stats watch time today week total top channel share paste chat summary", "#statsCopyBtn"],
       ["Fade out at the end", "fade out at the end sound sinks silence last seconds song gentle ending volume", "#fadeOutRow"],
       ["Search on YouTube", "search on youtube find video look for type words name results new tab discover", "#ytSearchBtn"],
       ["Repeat this video N times", "repeat this video n times play again 2 3 5 times then stop countdown not endless song drill practice", "#vidRepRow"],
