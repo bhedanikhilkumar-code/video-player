@@ -11439,6 +11439,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Slow-mo drift", "#speedChips"],
     ["Mute break", "#muteBreakRow"],
     ["Rotate picture", "#rotRow"],
     ["Mute pop", "#muteBtn"],
@@ -11448,8 +11449,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Moment beacon", "#markAddBtn"],
     ["Whip pan", "#seek"],
     ["Play unwatched from a playlist", "#lhPlaylists"],
-    ["Watch later length filter", "#laterLenBtn"],
-    ["Seek comet", "#scometChk"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -13402,6 +13401,52 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   document.addEventListener("vp-video-loaded", function () { if (mbrEndAt) mbrRestore(true); });
   (window.__relang = window.__relang || []).push(mbrRender);
   mbrRender();
+
+  // Slow-mo drift (round 137): while the video plays slower than normal speed, three
+  // soft glass light blobs drift lazily across the frame under a cool haze - the slower
+  // the playback, the lazier the drift, so a slowed video looks dreamlike at a glance.
+  // The calm counterpart of Speed streaks, which sweeps while the video plays faster
+  // than normal. Interaction feedback, not a setting: the drift simply appears while a
+  // slowed speed plays and fades away the moment normal speed returns. Works on YouTube
+  // videos on the main player, a plain overlay on the frame (the video itself is
+  // untouched and every control stays tappable), a still faint haze without the drift
+  // under Calm/reduced motion and Low-end mode, the blobs drop out in High contrast,
+  // hidden in the mini player and Simple mode, translated in Hindi and Gujarati, listed
+  // in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Slow-mo drift": ["स्लो-मो ड्रिफ्ट", "સ્લો-મો ડ્રિફ્ટ"]
+  });
+  var slomoSt = document.createElement("style");
+  slomoSt.textContent = ".vp-slomo{position:absolute;inset:0;z-index:6;pointer-events:none;overflow:hidden;border-radius:inherit;opacity:0;transition:opacity .6s ease;background:linear-gradient(180deg,rgba(140,170,255,.10),rgba(190,140,255,.08) 55%,rgba(120,200,255,.10))}"
+    + ".vp-slomo.slm-on{opacity:1}"
+    + ".vp-slomo i{position:absolute;width:46%;height:70%;border-radius:50%;filter:blur(28px);opacity:.5;animation:vpSlomoDrift var(--slmDur,10s) ease-in-out infinite alternate}"
+    + ".vp-slomo i:nth-child(1){left:-12%;top:-18%;background:radial-gradient(circle,rgba(147,197,253,.75),transparent 70%)}"
+    + ".vp-slomo i:nth-child(2){right:-14%;top:22%;background:radial-gradient(circle,rgba(196,160,255,.65),transparent 70%);animation-delay:calc(var(--slmDur,10s) / -3);animation-name:vpSlomoDriftB}"
+    + ".vp-slomo i:nth-child(3){left:22%;bottom:-30%;background:radial-gradient(circle,rgba(125,211,252,.55),transparent 70%);animation-delay:calc(var(--slmDur,10s) / -2)}"
+    + "@keyframes vpSlomoDrift{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(38%,26%,0) scale(1.25)}}"
+    + "@keyframes vpSlomoDriftB{from{transform:translate3d(0,0,0) scale(1.15)}to{transform:translate3d(-34%,-22%,0) scale(.92)}}"
+    + "html.calm-motion .vp-slomo i,html.low-fx .vp-slomo i{animation:none}"
+    + "html.calm-motion .vp-slomo.slm-on,html.low-fx .vp-slomo.slm-on{opacity:.4}"
+    + "@media (prefers-reduced-motion:reduce){.vp-slomo i{animation:none}.vp-slomo.slm-on{opacity:.4}}"
+    + "html.high-contrast .vp-slomo i{display:none}"
+    + "#playerDock.is-mini .vp-slomo,html.simple-mode .vp-slomo{display:none}";
+  document.head.appendChild(slomoSt);
+  var slomoEl = document.createElement("div"), slomoOn = false, slomoRate = 1;
+  slomoEl.className = "vp-slomo"; slomoEl.setAttribute("aria-hidden", "true");
+  slomoEl.appendChild(document.createElement("i")); slomoEl.appendChild(document.createElement("i")); slomoEl.appendChild(document.createElement("i"));
+  if (frameBox) frameBox.appendChild(slomoEl);
+  function slomoApply(on, rate) {
+    on = on === true;
+    rate = typeof rate === "number" && isFinite(rate) && rate > 0 ? rate : 1;
+    if (on !== slomoOn) { slomoOn = on; slomoEl.classList.toggle("slm-on", slomoOn); }
+    if (slomoOn && rate !== slomoRate) { slomoRate = rate; slomoEl.style.setProperty("--slmDur", (5 / rate).toFixed(2) + "s"); }
+  }
+  window.__vpSlomoDrift = slomoApply;
+  setInterval(function () {
+    if (!controls || controls.hidden || !curId || !ready) { if (slomoOn) slomoApply(false); return; }
+    slomoApply(document.documentElement.classList.contains("vp-playing") && prefs.speed < 0.95, prefs.speed);
+  }, 700);
+  document.addEventListener("vp-video-loaded", function () { slomoApply(false); });
 
 })();
 </script>
@@ -15647,7 +15692,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Loop pulse", "loop pulse a-b repeat wrap again ring count practice loop full video repeat turning feedback", "#abLabel"],
       ["Mute pop", "mute pop sound on off unmute icon centre frame confirm feedback speaker waves", "#muteBtn"],
       ["Rotate picture", "rotate picture turn sideways 90 180 270 degrees phone video orientation portrait landscape tilted straighten", "#rotRow"],
-      ["Mute break", "mute break timed mute for seconds ad loud intro restore sound automatically temporary quiet", "#muteBreakRow"]
+      ["Mute break", "mute break timed mute for seconds ad loud intro restore sound automatically temporary quiet", "#muteBreakRow"],
+      ["Slow-mo drift", "slow mo slow motion drift dreamy haze blobs floating lights slow speed 0.25 0.5 0.75 playback dream calm glass", "#speedChips"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
