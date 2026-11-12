@@ -2323,6 +2323,7 @@ setTimeout(done,3000);})();
         <span class="row">
           <button class="chip" id="qPickAllBtn" type="button">All</button>
           <button class="chip" id="qPickNoneBtn" type="button">None</button>
+          <button class="chip" id="qPickInvertBtn" type="button">Invert picks</button>
           <button class="chip" id="qPickTopBtn" type="button">Move to top</button>
           <button class="chip" id="qPickEndBtn" type="button">Move to end</button>
           <button class="chip" id="qPickLaterBtn" type="button">Watch later</button>
@@ -8472,6 +8473,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // with YouTube videos, are translated in Hindi and Gujarati, and sit in the feature finder
   // and the What's new card.
   Object.assign(TR_MSG, {
+    "Invert picks": ["चयन उलटें", "પસંદગી ઉલટાવો"],
+    "Swap picked and unpicked videos in the whole queue": ["पूरी कतार में चुने और न चुने वीडियो का चयन बदलें", "આખી કતારમાં પસંદ કરેલા અને ન કરેલા વીડિયો બદલો"],
+    "Invert queue picks": ["कतार का चयन उलटें", "કતારની પસંદગી ઉલટાવો"],
     "Pick many": ["\u0915\u0908 \u091a\u0941\u0928\u0947\u0902", "\u0a98\u0aa3\u0abe\u0a82 \u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0ab0\u0acb"],
     "Pick": ["\u091a\u0941\u0928\u0947\u0902", "\u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0ab0\u0acb"],
     "Tap videos to pick them.": ["\u0935\u0940\u0921\u093f\u092f\u094b \u091a\u0941\u0928\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u0909\u0928\u094d\u0939\u0947\u0902 \u091f\u0948\u092a \u0915\u0930\u0947\u0902.", "\u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0ab0\u0ab5\u0abe \u0aa4\u0ac7\u0aae\u0aa8\u0ac7 \u0a9f\u0ac5\u0aaa \u0a95\u0ab0\u0acb."],
@@ -8544,13 +8548,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       qPickBtn.setAttribute("aria-pressed", String(qPickOn()));
       qPickBtn.classList.toggle("active", qPickOn());
     }
+    if ($("qPickInvertBtn")) $("qPickInvertBtn").title = T("Swap picked and unpicked videos in the whole queue");
     if (!qPickBar) return;
     qPickBar.hidden = !qPickOn();
     if (qPickOn()) {
       qPickPrune();
       qPickCount.textContent = qPicked.length ? qPicked.length + " " + T("picked") : T("Tap videos to pick them.");
     }
-    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickLaterBtn", "Watch later"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
+    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickInvertBtn", "Invert picks"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickLaterBtn", "Watch later"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
   }
   function qPickNeed() { if (!qPicked.length) { toast(T("Pick some videos first.")); return false; } return true; }
   if (qPickBtn) qPickBtn.addEventListener("click", function () {
@@ -8559,6 +8564,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   if ($("qPickAllBtn")) $("qPickAllBtn").addEventListener("click", function () { qPicked = lib.queue.slice(); renderLib(); });
   if ($("qPickNoneBtn")) $("qPickNoneBtn").addEventListener("click", function () { qPicked = []; renderLib(); });
+  // Round 168: invert only the temporary picks, never the queue or current video.
+  if ($("qPickInvertBtn")) $("qPickInvertBtn").addEventListener("click", function () {
+    qPickPrune();
+    qPicked = lib.queue.filter(function (it) { return qPicked.indexOf(it) < 0; });
+    renderLib();
+  });
   if ($("qPickDoneBtn")) $("qPickDoneBtn").addEventListener("click", function () { prefs.qPick = false; qPicked = []; savePrefs(); renderLib(); });
   if ($("qPickTopBtn")) $("qPickTopBtn").addEventListener("click", function () {
     if (!qPickNeed()) return;
@@ -12502,6 +12513,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Invert queue picks", "#qPickBtn"],
     ["Empty breath", "#lhQueue"],
     ["Switch ring", "#saverData"],
     ["E to queue the playing video", "#sc25"],
@@ -12511,7 +12523,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["I to copy title and link", "#sc23"],
     ["Z to skip and remove", "#sc24"],
     ["Play-pause pop", "#playBtn"],
-    ["Theme spin", "#themeBtn"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -18062,6 +18073,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Add current video to a playlist", "add current video playlist now playing save", "#plAddCurBtn"],
       ["Play Music (saved music queue)", "play music saved", "#playMusicBtn"],
       ["Up next queue", "queue next upnext order", "#lhQueue"],
+      ["Invert queue picks", "invert picks selection opposite swap selected unselected bulk queue all except", "#qPickBtn"],
       ["Pick many in queue", "pick many select multiple bulk queue organise tidy move top remove watch later", "#qPickBtn"],
       ["Remove played videos in queue", "remove played finished auto clear queue consume tidy shrink podcast clean automatic", "#qConsumeBtn"],
       ["Queue progress bar", "queue progress bar position how far through playing", "#qProg"],
