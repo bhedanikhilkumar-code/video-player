@@ -2274,6 +2274,7 @@ setTimeout(done,3000);})();
           <button class="chip vs-mic" id="vsMic" type="button" aria-label="Voice search" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button>
         </div>
         <span class="hint" id="libSearchMsg" role="status"></span>
+        <div class="row"><button class="chip" id="libQueueMatchBtn" type="button" hidden>➕ Queue matches</button></div>
         <div id="rsRow" hidden><span class="hint" id="rsLab">Recent:</span><span class="rs-chips" id="rsChips"></span><button class="chip" id="rsClear" type="button">Clear</button></div>
       </div>
       <div class="lib-scope" id="libScope" role="group" aria-label="Search in">
@@ -8962,6 +8963,53 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     libSearch.addEventListener("keydown", function (e) { if (e.key === "Escape") { libSearch.value = ""; applyLibSearch(); } });
   }
 
+  // Queue search matches (round 176): while the library search holds a word, a small chip
+  // under the box offers to queue every saved video that matches - Favourites, Watch later,
+  // Recently watched and the saved playlists, following the same Search-in scope as the
+  // lists - so "queue all my lofi saves" is one tap instead of opening each row. Videos
+  // already in the queue are skipped, a video matching in two lists is added once, the
+  // 50-video cap is respected with an honest left-out count, and the toast's Undo puts the
+  // queue back exactly as it was. The chip hides while the search box is empty, nothing new
+  // is saved beyond the queue itself, works on YouTube videos, translated in Hindi and
+  // Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Queue search matches": ["\u0916\u094b\u091c \u092e\u093f\u0932\u093e\u0928 \u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0921\u093e\u0932\u0947\u0902", "\u0ab6\u0acb\u0aa7 \u0aae\u0ac7\u0ab3 \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0aa8\u0abe\u0a96\u0acb"],
+    "\u2795 Queue matches": ["\u2795 \u092e\u093f\u0932\u093e\u0928 \u0915\u0924\u093e\u0930 \u092e\u0947\u0902", "\u2795 \u0aae\u0ac7\u0ab3 \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82"],
+    "Add every video matching the search to the queue": ["\u0916\u094b\u091c \u0938\u0947 \u092e\u0947\u0932 \u0916\u093e\u0924\u0947 \u0938\u092d\u0940 \u0935\u0940\u0921\u093f\u092f\u094b \u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0921\u093e\u0932\u0947\u0902", "\u0ab6\u0acb\u0aa7 \u0ab8\u0abe\u0aa5\u0ac7 \u0aae\u0ac7\u0ab3 \u0a96\u0abe\u0aa4\u0abe \u0aa6\u0ab0\u0ac7\u0a95 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0a89\u0aae\u0ac7\u0ab0\u0acb"],
+    "Everything that matches is already in the queue.": ["\u092e\u0947\u0932 \u0916\u093e\u0924\u093e \u0938\u092c \u0915\u0941\u091b \u092a\u0939\u0932\u0947 \u0938\u0947 \u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0939\u0948.", "\u0aae\u0ac7\u0ab3 \u0aa5\u0aa4\u0ac1\u0a82 \u0aac\u0aa7\u0ac1\u0a82 \u0aaa\u0ab9\u0ac7\u0ab2\u0ac7\u0aa5\u0ac0 \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0a9b\u0ac7."]
+  });
+  var libQueueMatchBtn = $("libQueueMatchBtn");
+  function libQueueMatchPaint() { if (libQueueMatchBtn) { libQueueMatchBtn.textContent = T("\u2795 Queue matches"); libQueueMatchBtn.setAttribute("aria-label", T("Add every video matching the search to the queue")); } }
+  (window.__relang = window.__relang || []).push(libQueueMatchPaint);
+  libQueueMatchPaint();
+  function libQueueMatchSync() { if (libQueueMatchBtn && libSearch) libQueueMatchBtn.hidden = !libSearch.value.trim(); }
+  if (libSearch) {
+    libSearch.addEventListener("input", libQueueMatchSync);
+    libSearch.addEventListener("keydown", function (e) { if (e.key === "Escape") setTimeout(libQueueMatchSync, 0); });
+  }
+  if (libQueueMatchBtn) libQueueMatchBtn.addEventListener("click", function () {
+    var q = libSearch ? libSearch.value.trim().toLowerCase() : "";
+    if (!q) { libQueueMatchSync(); return; }
+    function hit(it) { return it && it.id && ((it.title || "") + " " + it.id).toLowerCase().indexOf(q) >= 0; }
+    var pool = [];
+    if (libScope === "all" || libScope === "favs") lib.favs.forEach(function (it) { if (hit(it)) pool.push(it); });
+    if (libScope === "all" || libScope === "later") lib.later.forEach(function (it) { if (hit(it)) pool.push(it); });
+    if (libScope === "all" || libScope === "hist") lib.hist.forEach(function (it) { if (hit(it)) pool.push(it); });
+    if ((libScope === "all" || libScope === "playlists") && typeof playlists !== "undefined" && playlists) playlists.forEach(function (pl) { pl.items.forEach(function (it) { if (hit(it)) pool.push(it); }); });
+    var snap = lib.queue.slice(), sp = qPos, add = [], seen = {}, full = 0;
+    pool.forEach(function (it) {
+      if (seen[it.id]) return; seen[it.id] = 1;
+      if (findIn(lib.queue, it.id) >= 0) return;
+      if (lib.queue.length + add.length >= 50) { full++; return; }
+      add.push({ id: it.id, title: it.title || "" });
+    });
+    if (!add.length) { showLibErr(T(full ? "The queue is full (50 videos)." : "Everything that matches is already in the queue.")); return; }
+    showLibErr("");
+    add.forEach(function (x) { lib.queue.push(x); if (!x.title && typeof fetchTitle === "function") fetchTitle(x.id); });
+    saveLib(); renderLib();
+    toastUndo((add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue")) + (full ? " \u00b7 " + full + " " + T("left out - queue is full") : ""), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+  });
+
   // Recent searches (round 140): the library search box remembers the last few searches on
   // this device. While the box is empty they show as chips under it - one tap types the word
   // back and runs the search, so a search you run often (a course, a creator, a mood) is one
@@ -12770,6 +12818,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Queue search matches", "#libQueueMatchBtn"],
     ["Length on every row", "#lhQueue"],
     ["Sleep ember", "#ctl-sleep"],
     ["Menu bubble pop", "#featNav"],
@@ -12779,7 +12828,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["New badge shine", "#whatsNewList"],
     ["Trim old history", "#histTrimBtn"],
     ["Queue favourites", "#favQueueBtn"],
-    ["Landing glow", "#lhQueue"],
   ];
   Object.assign(TR_MSG, {
     "Length on every row": ["\u0939\u0930 \u092a\u0902\u0915\u094d\u0924\u093f \u092a\u0930 \u0932\u0902\u092c\u093e\u0908", "\u0aa6\u0ab0\u0ac7\u0a95 \u0aaa\u0a82\u0a95\u0acd\u0aa4\u0abf \u0aaa\u0ab0 \u0ab2\u0a82\u0aac\u0abe\u0a88"],
@@ -18460,6 +18508,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later added date", "watch later added date when saved how old days ago", "#lhLater"],
       ["Length on Watch later rows", "watch later length duration minutes how long each row pick fit break short", "#lhLater"],
       ["Length on every row", "length duration minutes how long each row queue favourites history search", "#lhQueue"],
+      ["Queue search matches", "queue search results matches word filter bulk add saved videos", "#libQueueMatchBtn"],
       ["Pin favourites to the top", "pin favourite top keep important first p pinned", "#lhFavs"],
       ["Pin in Watch later", "pin watch later top keep important first must watch next saved", "#lhLater"],
       ["Pause when headphones disconnect", "pause headphones unplug disconnect bluetooth earphones wire out", "#unplugChk"],
