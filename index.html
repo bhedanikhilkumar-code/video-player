@@ -23144,9 +23144,17 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
   })(i);
   var txt = document.createElement("span"); txt.className = "rate-txt"; txt.id = "rateTxt"; txt.setAttribute("role", "status"); row.appendChild(txt);
   meta.appendChild(row);
+  if (typeof TR_MSG !== "undefined") Object.assign(TR_MSG, {
+    "Load a video first, then rate it.": ["\u092a\u0939\u0932\u0947 \u0935\u0940\u0921\u093f\u092f\u094b \u0932\u094b\u0921 \u0915\u0930\u0947\u0902, \u092b\u093f\u0930 \u0930\u0947\u091f\u093f\u0902\u0917 \u0926\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0ab2\u0acb\u0aa1 \u0a95\u0ab0\u0acb, \u0aaa\u0a9b\u0ac0 \u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97 \u0a86\u0aaa\u0acb."]
+  });
   var KEY = "vp-rate.v1", map = {};
   try { map = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { map = {}; }
   var id = null;
+  // Round 215 fix: the id came from the thumbnail URL alone, so when the cover image
+  // failed and swapped to the app's fallback tile (a data: address), the parse turned
+  // up nothing - the row forgot a saved rating and tapping a star did nothing at all,
+  // silently. Keep the last id that parsed (it is still the video that is loaded) and
+  // say something when there is genuinely no video yet.
   function curId() { var m = (thumb.getAttribute("src") || "").match(/\/vi\/([\w-]{11})\//); return m ? m[1] : null; }
   function paint() {
     var r = id ? (map[id] || 0) : 0;
@@ -23159,14 +23167,14 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
     txt.textContent = r ? T("Your rating") + ": " + r + "/5" : T("Rate this video");
   }
   function set(n) {
-    if (!id) return;
+    if (!id) { if (typeof window.toast === "function") window.toast(T("Load a video first, then rate it.")); return; }
     if (map[id] === n) { delete map[id]; if (typeof window.toast === "function") window.toast(T("Rating removed")); }
     else { map[id] = n; if (typeof window.toast === "function") window.toast(T("Rating saved: ") + n + "/5"); }
     try { localStorage.setItem(KEY, JSON.stringify(map)); } catch (e) {}
     try { window.dispatchEvent(new Event("vp-rate-changed")); } catch (e) {}
     paint();
   }
-  function sync() { var n = curId(); if (n !== id) { id = n; paint(); } }
+  function sync() { var n = curId(); if (n && n !== id) { id = n; paint(); } }
   new MutationObserver(sync).observe(thumb, { attributes: true, attributeFilter: ["src"] });
   setInterval(sync, 1500);
   (window.__relang = window.__relang || []).push(paint);
