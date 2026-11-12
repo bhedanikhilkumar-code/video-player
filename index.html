@@ -4081,7 +4081,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       clearTimeout(loadWatchdog); showPlayerRetry(false); playerError.hidden = true;
       send("setVolume", [effVol()]);
       ccApply();
-      if (prefs.speed !== 1) send("setPlaybackRate", [prefs.speed]);
+      if (prefs.speed !== 1) { send("setPlaybackRate", [prefs.speed]); window.__vpRateAutoT = Date.now(); }
       vmemApply();
     }
     if (data.event === "onStateChange" && typeof data.info === "number") {
@@ -4226,7 +4226,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var vm = curId && vmem[curId];
     if (!vm) { vmemNote(""); return; }
     if (typeof vm.speed === "number" && vm.speed !== prefs.speed) {
-      send("setPlaybackRate", [vm.speed]); prefs.speed = vm.speed; savePrefs(); markActive(speedChips, String(vm.speed));
+      send("setPlaybackRate", [vm.speed]); prefs.speed = vm.speed; savePrefs(); markActive(speedChips, String(vm.speed)); window.__vpRateAutoT = Date.now();
     }
     if (typeof vm.cc === "boolean" && (vm.cc !== prefs.cc || (typeof vm.ccLang === "string" && vm.ccLang !== prefs.ccLang))) {
       prefs.cc = vm.cc; if (typeof vm.ccLang === "string") prefs.ccLang = vm.ccLang;
@@ -8339,11 +8339,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var spd = chSpeed[k];
     if (spd !== prefs.speed) {
       prefs.speed = spd; savePrefs();
-      send("setPlaybackRate", [spd]); markActive(speedChips, String(spd));
+      send("setPlaybackRate", [spd]); markActive(speedChips, String(spd)); window.__vpRateAutoT = Date.now();
       toast(T("Speed {s}x for {c}.").replace("{s}", spd).replace("{c}", n));
     }
   }
   window.__vpChSpeedNote = function (rate) {
+    // A rate the app set itself (saved video/channel speed applied on load) is not the
+    // user choosing a new speed for the channel - only hand-made changes update the memory.
+    if (window.__vpRateAutoT && Date.now() - window.__vpRateAutoT < 2500) return;
     var n = chSpeedCurName(); if (!n) return;
     var k = chSpeedFind(n);
     if (k && chSpeed[k] !== rate) { chSpeed[k] = rate; chSpeedSave(); chSpeedRender(); }
