@@ -11585,6 +11585,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Now playing lift", "#infoCard"],
     ["Library cascade", "#lhQueue"],
     ["Speak your note", "#noteMicBtn"],
     ["Videos in a playlist", "#lhPlaylists"],
@@ -11594,7 +11595,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Quality shine", "#qualityChips"],
     ["Home stretch glow", "#seek"],
     ["Snooze in Watch later", "#lhLater"],
-    ["Check a backup", "#libCheck"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -14183,6 +14183,46 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     };
   })(fillList);
 
+  // Now playing lift (round 143): when a new video loads, the Now playing card
+  // under the frame springs up and a glass sheen sweeps across it once, so the
+  // video's arrival lands with a little ceremony instead of the card just
+  // blinking in. It fires once per loaded video - the card refreshing its title
+  // or channel when the video's info arrives a beat later stays still.
+  // Interaction feedback, not a setting: nothing new is saved, under
+  // Calm/reduced motion and Low-end mode the spring and sheen sit out and the
+  // card simply fades in, the sheen is stronger in High contrast, and it plays
+  // on the main page only (the mini player never shows this card). Works on
+  // YouTube videos, translated in Hindi and Gujarati, listed in the feature
+  // finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Now playing lift": ["नाउ प्लेइंग लिफ्ट", "નાઉ પ્લેઇંગ લિફ્ટ"]
+  });
+  var npLiftSt = document.createElement("style");
+  npLiftSt.textContent = "#infoCard.vp-np-enter{position:relative;overflow:hidden;animation:vpNpIn .65s cubic-bezier(.2,.9,.3,1.18) 1}"
+    + "#infoCard.vp-np-enter::after{content:\"\";position:absolute;inset:-30%;pointer-events:none;background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.30) 50%,transparent 60%);transform:translateX(-110%);animation:vpNpSheen .9s ease .12s 1 forwards}"
+    + "@keyframes vpNpIn{from{opacity:0;transform:translateY(16px) scale(.97)}60%{opacity:1}to{opacity:1;transform:none}}"
+    + "@keyframes vpNpSheen{to{transform:translateX(110%)}}"
+    + "#infoCard.vp-np-calm{animation:vpNpFade .35s ease 1}@keyframes vpNpFade{from{opacity:0}to{opacity:1}}"
+    + "html.high-contrast #infoCard.vp-np-enter::after{background:linear-gradient(105deg,transparent 42%,rgba(255,255,255,.5) 50%,transparent 58%)}";
+  document.head.appendChild(npLiftSt);
+  var npLiftLastId = null;
+  showInfo = (function (orig) {
+    return function (id) {
+      var r = orig.apply(this, arguments);
+      try {
+        if (id && id !== npLiftLastId) {
+          npLiftLastId = id;
+          var calm = window.vpReducedMotion() || document.documentElement.classList.contains("low-fx");
+          infoCard.classList.remove("vp-np-enter"); infoCard.classList.remove("vp-np-calm");
+          void infoCard.offsetHeight;
+          infoCard.classList.add(calm ? "vp-np-calm" : "vp-np-enter");
+          setTimeout(function () { infoCard.classList.remove("vp-np-enter"); infoCard.classList.remove("vp-np-calm"); }, 1800);
+        }
+      } catch (e) {}
+      return r;
+    };
+  })(showInfo);
+
 
 })();
 </script>
@@ -16440,7 +16480,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Find in all moments", "find moments search saved moment name all videos jump bookmark marked spot chapter", "#markFindSum"],
       ["Videos in a playlist", "playlist videos items list inside see view reorder arrange order move up down remove play from position manage tidy contents", "#lhPlaylists"],
       ["Speak your note", "speak note voice dictate microphone talk hands free write words typing notes", "#noteMicBtn"],
-      ["Library cascade", "library cascade rows rise stagger list repaint appear animation queue up next watch later favourites recently watched sort filter soft entrance", "#lhQueue"]
+      ["Library cascade", "library cascade rows rise stagger list repaint appear animation queue up next watch later favourites recently watched sort filter soft entrance", "#lhQueue"],
+      ["Now playing lift", "now playing lift card spring sheen glass sweep info title channel new video load arrival entrance under frame ceremony", "#infoCard"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
