@@ -3395,6 +3395,43 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toastEl._undo = b;
     toastEl.appendChild(b);
   }
+
+  // Toast timer line (round 173): every toast now carries a thin accent line
+  // along its bottom edge that drains from full to empty over exactly the time
+  // the note stays up - like the seconds bar on an iPhone banner - so a glance
+  // says how long an Undo or a confirmation still lives before it fades.
+  // Interaction feedback, not a setting: nothing new is saved, the toast text
+  // and timing are untouched (the line just rides the same lifetime, and a
+  // carried Undo's longer stay re-measures on every toast). Under Calm/reduced
+  // motion the line stays full instead of draining, in Low-end mode the same
+  // still line wins over the page-wide fast-animation rule, and High contrast
+  // gets a thicker solid line. Works on YouTube videos, translated in Hindi
+  // and Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Toast timer line": ["\u091f\u094b\u0938\u094d\u091f \u091f\u093e\u0907\u092e\u0930 \u0932\u093e\u0907\u0928", "\u0a9f\u0acb\u0ab8\u0acd\u0a9f \u0a9f\u0abe\u0a87\u0aae\u0ab0 \u0ab2\u0abe\u0a88\u0aa8"]
+  });
+  var toastDrainSt = document.createElement("style");
+  toastDrainSt.textContent = "#vpToast::before{content:\"\";position:absolute;left:0;right:0;bottom:0;height:3px;background:linear-gradient(90deg,var(--teal),#9769ff);transform-origin:left center;transform:scaleX(0);pointer-events:none}"
+    + "#vpToast.vp-drain::before{animation:vpToastDrain var(--tms,2200ms) linear 1 both}"
+    + "@keyframes vpToastDrain{0%{transform:scaleX(1)}100%{transform:scaleX(0)}}"
+    + ":root[data-theme=\"dark\"] #vpToast::before{background:linear-gradient(90deg,var(--teal),#b493ff)}"
+    + "html.high-contrast #vpToast::before{height:4px;background:#fff}"
+    + "html.calm-motion #vpToast.vp-drain::before{animation:none;transform:scaleX(1)}"
+    + "html.low-fx #vpToast.vp-drain::before{animation:none !important;transform:scaleX(1)}"
+    + "@media (prefers-reduced-motion:reduce){#vpToast.vp-drain::before{animation:none;transform:scaleX(1)}}";
+  document.head.appendChild(toastDrainSt);
+  var toastPlain = toast;
+  toast = window.toast = function (msg, ms) {
+    if (!msg) return;
+    toastPlain(msg, ms);
+    var el = document.getElementById("vpToast");
+    if (!el || !el.style) return;
+    var showMs = ms || 2200;
+    if (el.querySelector && el.querySelector(".vp-undo") && showMs < 6000) showMs = 6000;
+    el.style.setProperty("--tms", showMs + "ms");
+    el.classList.remove("vp-drain"); void el.offsetWidth; el.classList.add("vp-drain");
+  };
+
   window.T = T;
   window.__vpIsPlaying = function () { return !!(playing && iframe && ready); };
   window.__vpPauseForBreak = function () { if (iframe && ready) send("pauseVideo"); };
@@ -5634,7 +5671,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function favCtlJump(sel) {
     // Round 145 (Toast spring): the toast only exists while it shows, so its
     // finder and What's new entries pop a real one as the demo instead.
-    if (sel === "#vpToast") { toast(T("Toast spring")); return; }
+    if (sel === "#vpToast") { toast(T("Toast spring") + " \u00b7 " + T("Toast timer line")); return; }
     var el = null; try { el = document.querySelector(sel); } catch (e) {}
     if (!el) return;
     var sec = el.closest ? el.closest("section.sec-collapsed") : null;
@@ -12636,6 +12673,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Toast timer line", "#vpToast"],
     ["Trim old history", "#histTrimBtn"],
     ["Queue favourites", "#favQueueBtn"],
     ["Landing glow", "#lhQueue"],
@@ -12644,8 +12682,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Glass selection", "#lhQueue"],
     ["Glass scrollbar", "#lhQueue"],
     ["Copy picked queue videos", "#qPickBtn"],
-    ["Invert queue picks", "#qPickBtn"],
-    ["Empty breath", "#lhQueue"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -18225,7 +18261,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     function jump(sel) {
       return function () {
         // Round 145 (Toast spring): pop a real toast as the demo (see favCtlJump).
-        if (sel === "#vpToast") { if (window.toast) window.toast(T("Toast spring")); return; }
+        if (sel === "#vpToast") { if (window.toast) window.toast(T("Toast spring") + " \u00b7 " + T("Toast timer line")); return; }
         var el = document.querySelector(sel); if (!el) return;
         var sec = el.closest ? el.closest("section.sec-collapsed") : null;
         if (sec && window.vpExpandSection) window.vpExpandSection(sec.id);
@@ -18419,6 +18455,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Library cascade", "library cascade rows rise stagger list repaint appear animation queue up next watch later favourites recently watched sort filter soft entrance", "#lhQueue"],
       ["Now playing lift", "now playing lift card spring sheen glass sweep info title channel new video load arrival entrance under frame ceremony", "#infoCard"],
       ["Toast spring", "toast spring notification bottom message confirm confirmation pop up springy sheen glass feedback saved cleared", "#vpToast"],
+      ["Toast timer line", "toast timer line countdown drain bar bottom notification note how long stays visible undo time left accent", "#vpToast"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
       ["Top channels", "top channels most watched creators ranking watch time stats favourite channel who watch most", "#lhStats"],
