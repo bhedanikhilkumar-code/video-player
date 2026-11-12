@@ -1802,7 +1802,7 @@ setTimeout(done,3000);})();
           <input class="slider" id="vol" type="range" min="0" max="100" step="1" value="80">
           <div class="row" id="nightVolRow" style="margin-top:8px"><span class="label" id="nightVolLab">Night volume</span><span class="chips" id="nightVolChips"></span></div>
           <p class="hint" id="nightVolHint">Between 10 pm and 7 am the volume is capped at the level you pick. Your normal volume stays saved for the day.</p>
-          <div class="row" style="margin-top:8px"><button class="chip" id="pvVolBtn" type="button" aria-pressed="false">Per-video volume: off</button></div>
+          <div class="row" style="margin-top:8px"><button class="chip" id="pvVolBtn" type="button" aria-pressed="false">Per-video volume: off</button> <button class="chip" id="chVolBtn" type="button" aria-pressed="false">🔊 Channel volume: off</button></div>
           <p class="hint" id="pvVolHint">When on, the volume you pick is remembered for each video and comes back the next time you play it. Songs can stay loud and lectures quiet.</p>
           <div class="row" id="fadeInRow" style="margin-top:8px"><span class="label" id="fadeInLab">Fade in</span><span class="chips" id="fadeInChips"></span></div>
           <p class="hint" id="fadeInHint">When a video starts or you press Play, the sound rises slowly from silence to your volume. Gentle on the ears, especially at night.</p>
@@ -5098,6 +5098,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     send("setVolume", [effVol()]);
     if (v > 0 && muted) send("unMute");
     pvVolRec();
+    if (window.__vpChVolNote) window.__vpChVolNote(v);
   });
 
   /* Night volume: between 10 pm and 7 am the sound is capped at the level picked here.
@@ -5940,6 +5941,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     send("setVolume", [effVol()]);
     if (v > 0 && muted) send("unMute");
     pvVolRec();
+    if (window.__vpChVolNote) window.__vpChVolNote(v);
   }
   document.addEventListener("keydown", function (e) {
     if (e.ctrlKey || e.metaKey || e.altKey || !iframe || controls.hidden) return;
@@ -8255,6 +8257,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       practiceLoops: practiceLoops,
       channels: vpChans.map(function (c) { return { n: c.n, u: c.u }; }),
       chanSpeeds: (function () { var o = {}; Object.keys(chSpeed).forEach(function (k) { o[k] = chSpeed[k]; }); return o; })(),
+      chanVols: (function () { var o = {}; Object.keys(chVol).forEach(function (k) { o[k] = chVol[k]; }); return o; })(),
       settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
     ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
@@ -8277,6 +8280,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (data.channels.length) libBackupMsg.textContent += " " + T("Channels included: ") + data.channels.length + ".";
     var nChSpd = Object.keys(data.chanSpeeds).length;
     if (nChSpd) libBackupMsg.textContent += " " + T("Channel speeds included: ") + nChSpd + ".";
+    var nChVol = Object.keys(data.chanVols).length;
+    if (nChVol) libBackupMsg.textContent += " " + T("Channel volumes included: ") + nChVol + ".";
     bkMark();
   });
   $("libImport").addEventListener("click", function () { $("libImportFile").click(); });
@@ -8323,6 +8328,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             chSpeed[k.trim().slice(0, 60)] = v; csn++;
           });
           if (csn) { chSpeedSave(); chSpeedRender(); }
+        }
+        var cvn = 0;
+        if (d.chanVols && typeof d.chanVols === "object" && !Array.isArray(d.chanVols) && typeof chVol !== "undefined") {
+          Object.keys(d.chanVols).forEach(function (k) {
+            var v = Number(d.chanVols[k]);
+            if (typeof k !== "string" || !k.trim() || !isFinite(v) || v < 0 || v > 100) return;
+            if (chVolFind(k)) return;
+            if (Object.keys(chVol).length >= 30) return;
+            chVol[k.trim().slice(0, 60)] = Math.round(v); cvn++;
+          });
+          if (cvn) { chVolSave(); chVolRender(); }
         }
         var mn = 0;
         if (d.moments && typeof d.moments === "object" && !Array.isArray(d.moments)) {
@@ -8383,7 +8399,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
         }
-        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !cn && !csn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
+        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !cn && !csn && !cvn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
         saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
         bkMark();
         libBackupMsg.textContent = T("Imported ") + qn + T(" queued, ") + fn + " " + (fn === 1 ? T("favourite") : T("favourites")) + T(" and ") + pn + " " + (pn === 1 ? T("playlist") : T("playlists")) + ".";
@@ -8393,6 +8409,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (nSyn) libBackupMsg.textContent += " " + T("Lyrics sync restored: ") + nSyn + ".";
         if (cn) libBackupMsg.textContent += " " + T("Channels restored: ") + cn + ".";
         if (csn) libBackupMsg.textContent += " " + T("Channel speeds restored: ") + csn + ".";
+        if (cvn) libBackupMsg.textContent += " " + T("Channel volumes restored: ") + cvn + ".";
         if (gotSettings) { libBackupMsg.textContent += " " + T("Settings restored. Reloading to apply\u2026"); setTimeout(function () { location.reload(); }, 1200); }
       } catch (e) { libBackupMsg.textContent = T("That file could not be read. Use a backup file made by this app."); }
     };
@@ -11412,6 +11429,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Channel volume", "#chVolBtn"],
     ["Skip seen parts", "#sskipBtn"],
     ["Moment beacon", "#markAddBtn"],
     ["Whip pan", "#seek"],
@@ -11421,7 +11439,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Elastic edges", "#seek"],
     ["Length on Watch later rows", "#lhLater"],
     ["Pin in Watch later", "#lhLater"],
-    ["Magnetic moments", "#seek"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -15225,7 +15242,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Elastic edges", "elastic edges rubber band bounce spring seek bar start end edge scrub overshoot", "#seek"],
       ["Whip pan", "whip pan seek jump travel motion blur frame slide spring landing forward rewind fling", "#seek"],
       ["Moment beacon", "moment beacon saved moment pass spark pill name seek bar dot playback reaches announce", "#markAddBtn"],
-      ["Skip seen parts", "skip seen parts rewatch already watched watched part section skip ahead seen before watch map chip jump past second time", "#sskipBtn"]
+      ["Skip seen parts", "skip seen parts rewatch already watched watched part section skip ahead seen before watch map chip jump past second time", "#sskipBtn"],
+      ["Channel volume", "channel volume remember always this channel creator auto apply sound loud quiet level per channel", "#chVolBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
@@ -17051,6 +17069,91 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
   if (wmapStrip && window.MutationObserver) new MutationObserver(sskipRowPaint).observe(wmapStrip, { attributes: true, attributeFilter: ["hidden"] });
   (window.__relang = window.__relang || []).push(sskipRender);
   sskipRender();
+
+
+  // Channel volume (round 134): a chip in the Sound card next to Per-video volume remembers the
+  // volume you use for the channel of the video playing now - the next time one of its videos
+  // loads, that volume applies by itself, handy for loud music channels and quiet lecture ones.
+  // A volume saved for the video itself (Per-video volume) wins over the channel volume. Tapping
+  // the chip again forgets the channel, and changing the volume by hand while a remembered channel
+  // plays updates its memory (levels the app sets by itself do not). Up to 30 channels, saved on
+  // this device and riding the backup export/import, retranslates on language switch, listed in
+  // the feature finder and the What's new card. Mirrors Channel speed (round 110) for sound.
+  Object.assign(TR_MSG, {
+    "🔊 Channel volume": ["🔊 चैनल वॉल्यूम", "🔊 ચેનલ વોલ્યુમ"],
+    "Channel volume": ["चैनल वॉल्यूम", "ચેનલ વોલ્યુમ"],
+    "Volume {v}% remembered for {c}.": ["{c} के लिए {v}% आवाज़ याद रखी गई.", "{c} માટે {v}% અવાજ યાદ રાખ્યો."],
+    "Volume {v}% for {c}.": ["{c} के लिए {v}% आवाज़.", "{c} માટે {v}% અવાજ."],
+    "Channel volume forgotten for {c}.": ["{c} की चैनल वॉल्यूम भुला दी गई.", "{c} ની ચેનલ વોલ્યુમ ભૂલાઈ ગઈ."],
+    "Load a video first, then set a channel volume.": ["पहले वीडियो चलाएं, फिर चैनल वॉल्यूम सेट करें.", "પહેલાં વીડિયો ચલાવો, પછી ચેનલ વોલ્યુમ સેટ કરો."],
+    "Remember a volume for this channel and it applies by itself when one of its videos plays. A volume saved for the video itself wins.": ["इस चैनल के लिए आवाज़ याद रखें - उसका वीडियो चलते ही वह अपने आप लग जाती है. वीडियो के लिए अलग से सेव की गई आवाज़ पहले लगती है.", "આ ચેનલ માટે અવાજ યાદ રાખો - તેનો વીડિયો ચાલતાં જ તે આપોઆપ લાગુ થાય. વીડિયો માટે અલગથી સાચવેલો અવાજ પહેલાં લાગુ થાય."],
+    "Channel volume memory": ["चैनल वॉल्यूम मेमोरी", "ચેનલ વોલ્યુમ મેમરી"],
+    "Channel volumes included: ": ["चैनल वॉल्यूम शामिल: ", "ચેનલ વોલ્યુમ સામેલ: "],
+    "Channel volumes restored: ": ["चैनल वॉल्यूम वापस मिलीं: ", "ચેનલ વોલ્યુમ પાછી મળી: "]
+  });
+  var CHVOL_KEY = "vp-chanvol.v1", chVol = {}, chVolAppliedId = null;
+  try {
+    var _cv = JSON.parse(localStorage.getItem(CHVOL_KEY) || "null");
+    if (_cv && typeof _cv === "object" && !Array.isArray(_cv)) Object.keys(_cv).forEach(function (k) {
+      var v = Number(_cv[k]);
+      if (typeof k === "string" && k.trim() && isFinite(v) && v >= 0 && v <= 100) chVol[k] = Math.round(v);
+    });
+  } catch (e) {}
+  function chVolSave() { try { var ks = Object.keys(chVol); while (ks.length > 30) delete chVol[ks.shift()]; localStorage.setItem(CHVOL_KEY, JSON.stringify(chVol)); } catch (e) {} }
+  function chVolFind(n) { n = (n || "").toLowerCase(); var ks = Object.keys(chVol); for (var i = 0; i < ks.length; i++) if (ks[i].toLowerCase() === n) return ks[i]; return null; }
+  function chVolCurName() { var c = typeof chanCur === "function" ? chanCur() : null; return c ? c.n : ""; }
+  var chVolBtn = $("chVolBtn");
+  function chVolRender() {
+    if (!chVolBtn) return;
+    var n = chVolCurName(), k = n ? chVolFind(n) : null;
+    chVolBtn.textContent = T("🔊 Channel volume") + ": " + (k ? chVol[k] + "%" : T("off"));
+    chVolBtn.setAttribute("aria-pressed", String(!!k));
+    chVolBtn.classList.toggle("active", !!k);
+    chVolBtn.setAttribute("aria-label", T("🔊 Channel volume") + " - " + T("Remember a volume for this channel and it applies by itself when one of its videos plays. A volume saved for the video itself wins."));
+    chVolBtn.title = n ? n : "";
+  }
+  if (chVolBtn) chVolBtn.addEventListener("click", function () {
+    var n = chVolCurName();
+    if (!n) { toast(T("Load a video first, then set a channel volume.")); return; }
+    var k = chVolFind(n);
+    if (k) {
+      delete chVol[k]; chVolSave(); chVolRender();
+      toast(T("Channel volume forgotten for {c}.").replace("{c}", n));
+    } else {
+      chVol[n] = prefs.volume; chVolSave(); chVolRender();
+      toast(T("Volume {v}% remembered for {c}.").replace("{v}", prefs.volume).replace("{c}", n));
+    }
+  });
+  function chVolApply(id) {
+    if (!id || id !== curId || chVolAppliedId === id) return;
+    var n = chVolCurName(); if (!n) return; // wait for the channel name
+    chVolAppliedId = id;
+    var k = chVolFind(n); if (!k) return;
+    var vm = typeof vmem !== "undefined" ? vmem[id] : null;
+    if (prefs.pvVol && vm && typeof vm.vol === "number") return; // the video's own volume wins
+    var v = chVol[k];
+    if (v !== prefs.volume) {
+      prefs.volume = v; savePrefs(); vol.value = v;
+      window.__vpVolAutoT = Date.now();
+      if (ready && iframe) send("setVolume", [effVol()]);
+      if (v > 0 && muted) send("unMute");
+      paintVolLabel();
+      toast(T("Volume {v}% for {c}.").replace("{v}", v).replace("{c}", n));
+    }
+  }
+  window.__vpChVolNote = function (v) {
+    // A level the app set itself (a saved video/channel volume applied on load) is not the
+    // viewer choosing a new volume for the channel - only hand-made changes update the memory.
+    if (window.__vpVolAutoT && Date.now() - window.__vpVolAutoT < 2500) return;
+    var n = chVolCurName(); if (!n) return;
+    var k = chVolFind(n);
+    if (k && chVol[k] !== v) { chVol[k] = v; chVolSave(); chVolRender(); }
+  };
+  window.__vpChVolApply = chVolApply;
+  window.__vpChVolRender = chVolRender;
+  if (infoChannel) new MutationObserver(function () { chVolRender(); chVolApply(curId); }).observe(infoChannel, { childList: true, characterData: true, subtree: true });
+  (window.__relang = window.__relang || []).push(chVolRender);
+  chVolRender();
 
 </script>
 <script>
