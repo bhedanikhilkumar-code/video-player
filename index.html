@@ -2329,6 +2329,7 @@ setTimeout(done,3000);})();
           <button class="chip" id="qPickEndBtn" type="button">Move to end</button>
           <button class="chip" id="qPickNextBtn" type="button">Play next</button>
           <button class="chip" id="qPickLaterBtn" type="button">Watch later</button>
+          <button class="chip" id="qPickFavBtn" type="button">Favourite picked</button>
           <button class="chip" id="qPickRemoveBtn" type="button">Remove</button>
           <button class="chip" id="qPickDoneBtn" type="button">Done</button>
         </span>
@@ -8706,7 +8707,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       qPickPrune();
       qPickCount.textContent = qPicked.length ? qPicked.length + " " + T("picked") : T("Tap videos to pick them.");
     }
-    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickInvertBtn", "Invert picks"], ["qPickCopyBtn", "Copy picked"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickNextBtn", "Play next"], ["qPickLaterBtn", "Watch later"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
+    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickInvertBtn", "Invert picks"], ["qPickCopyBtn", "Copy picked"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickNextBtn", "Play next"], ["qPickLaterBtn", "Watch later"], ["qPickFavBtn", "Favourite picked"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
   }
   function qPickNeed() { if (!qPicked.length) { toast(T("Pick some videos first.")); return false; } return true; }
   if (qPickBtn) qPickBtn.addEventListener("click", function () {
@@ -8789,6 +8790,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
     qPicked = []; saveLib(); renderLib();
     toast(added ? T("Saved to Watch later.") : T("Already in Watch later."));
+  });
+  // Favourite picked (round 174): Pick many could already send picked videos to Watch
+  // later, but a starred Favourites list needed one tap per row. This chip stars every
+  // picked video in one go, skips the ones already starred, tells honestly how many were
+  // new, and Undo takes exactly the newly added ones back out. The picks stay on so you
+  // can go on and move or remove the same videos. Nothing new is saved beyond Favourites.
+  Object.assign(TR_MSG, {
+    "Favourite picked": ["चुने हुए पसंदीदा में", "પસંદ કરેલા મનપસંદમાં"],
+    "Added picked to favourites": ["चुने हुए पसंदीदा में जोड़े", "પસંદ કરેલા મનપસંદમાં ઉમેર્યા"],
+    "new in favourites": ["पसंदीदा में नए", "મનપસંદમાં નવા"],
+    "Already all in favourites.": ["सभी पहले से पसंदीदा में हैं.", "બધા પહેલેથી મનપસંદમાં છે."],
+    "Favourites restored": ["पसंदीदा पहले जैसे", "મનપસંદ પહેલા જેવા"],
+    "Star picked queue videos": ["कतार के चुने वीडियो पसंदीदा में जोड़ें", "કતારના પસંદ કરેલા વીડિયો મનપસંદમાં ઉમેરો"]
+  });
+  if ($("qPickFavBtn")) $("qPickFavBtn").addEventListener("click", function () {
+    qPickPrune();
+    if (!qPickNeed()) return;
+    var addedIds = [];
+    lib.queue.filter(function (it) { return qPicked.indexOf(it) >= 0; }).reverse().forEach(function (it) {
+      if (findIn(lib.favs, it.id) >= 0) return;
+      lib.favs.unshift({ id: it.id, title: it.title || titleFor(it.id) }); addedIds.push(it.id);
+    });
+    if (!addedIds.length) { toast(T("Already all in favourites.")); return; }
+    saveLib(); renderLib(); vpPop($("qPickFavBtn"));
+    toastUndo(T("Added picked to favourites") + ": " + addedIds.length + " " + T("new in favourites"), function () {
+      lib.favs = lib.favs.filter(function (f) { return addedIds.indexOf(f.id) < 0; });
+      saveLib(); renderLib();
+    }, T("Favourites restored"));
   });
   if ($("qPickRemoveBtn")) $("qPickRemoveBtn").addEventListener("click", function () {
     if (!qPickNeed()) return;
@@ -12698,6 +12727,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Star picked queue videos", "#qPickBtn"],
     ["Toast timer line", "#vpToast"],
     ["New badge shine", "#whatsNewList"],
     ["Trim old history", "#histTrimBtn"],
@@ -12707,7 +12737,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Play picked next", "#qPickBtn"],
     ["Glass selection", "#lhQueue"],
     ["Glass scrollbar", "#lhQueue"],
-    ["Copy picked queue videos", "#qPickBtn"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
@@ -18482,6 +18511,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Now playing lift", "now playing lift card spring sheen glass sweep info title channel new video load arrival entrance under frame ceremony", "#infoCard"],
       ["Toast spring", "toast spring notification bottom message confirm confirmation pop up springy sheen glass feedback saved cleared", "#vpToast"],
       ["Toast timer line", "toast timer line countdown drain bar bottom notification note how long stays visible undo time left accent", "#vpToast"],
+      ["Star picked queue videos", "star favourite picked selected queue pick many add favourites like save heart bulk many at once", "#qPickBtn"],
       ["New badge shine", "new badge shine shimmer glint light sweep whats new card latest additions sparkle gloss", "#whatsNewList"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
