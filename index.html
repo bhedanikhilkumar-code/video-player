@@ -2726,6 +2726,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Added to queue": ["कतार में जोड़ा गया", "કતારમાં ઉમેરાયું"],
    "1 was already in the queue, skipped": ["1 पहले से कतार में था, छोड़ दिया", "1 પહેલેથી કતારમાં હતો, છોડ્યો"],
    "were already in the queue, skipped": ["पहले से कतार में थे, छोड़ दिए", "પહેલેથી કતારમાં હતા, છોડ્યા"],
+   "This one shows up only when it can be used.": ["यह तभी दिखता है जब इसे इस्तेमाल किया जा सकता है.", "આ ત્યારે જ દેખાય જ્યારે તે વપરાઈ શકે."],
+   "This chip appears after you import a backup - then it can undo that import.": ["यह चिप बैकअप इम्पोर्ट करने के बाद दिखती है - तब वह उस इम्पोर्ट को पूर्ववत कर सकती है.", "આ ચિપ બેકઅપ ઇમ્પોર્ટ કર્યા પછી દેખાય - પછી તે તે ઇમ્પોર્ટ પૂર્વવત કરી શકે."],
+   "Load a video first - this one works on the playing video.": ["पहले वीडियो चलाएं - यह चल रहे वीडियो पर काम करता है.", "પહેલા વિડિયો ચલાવો - આ ચાલતા વિડિયો પર કામ કરે છે."],
    "videos added to queue": ["वीडियो कतार में जोड़े गए", "વિડિયો કતારમાં ઉમેરાયા"],
    "Queue cleared": ["कतार साफ़ हुई", "કતાર સાફ થઈ"],
    "Undo jump": ["जंप वापस लें", "જમ્પ પાછો લો"],
@@ -6196,6 +6199,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (sel === "#tourReplayBtn") { var tb = document.getElementById("tourReplayBtn"); if (tb) tb.click(); return; }
     var el = null; try { el = document.querySelector(sel); } catch (e) {}
     if (!el) return;
+    // Round 209 fix: a What's new or feature finder tap on something that is not on
+    // screen right now (player controls before a video loads, the Undo last import
+    // chip before any import) scrolled to nothing and stayed silent - it looked
+    // broken (seen locally: "Undo last import" and "Open thumbnail" jumps did
+    // nothing visible). Now the tap says plainly why nothing moved.
+    try {
+      var elVis = el.offsetParent !== null || (el.getClientRects && el.getClientRects().length > 0);
+      if (!elVis) {
+        var whyHidden = T("This one shows up only when it can be used.");
+        if (el.id === "libUndoImport") whyHidden = T("This chip appears after you import a backup - then it can undo that import.");
+        else if ((el.closest && (el.closest("#controls") || el.closest(".info-card") || el.closest("#frameBox")))) whyHidden = T("Load a video first - this one works on the playing video.");
+        toast(whyHidden);
+        return;
+      }
+    } catch (e) {}
     var sec = el.closest ? el.closest("section.sec-collapsed") : null;
     if (sec && window.vpExpandSection) window.vpExpandSection(sec.id);
     var det = el.closest ? el.closest("details:not([open])") : null;
