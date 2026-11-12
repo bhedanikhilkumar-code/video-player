@@ -11284,6 +11284,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Magnetic moments", "#seek"],
     ["Time left in Continue watching", "#lhContinue"],
     ["Start over", "#infoCard"],
     ["Aurora glow", "#auroraChk"],
@@ -11292,8 +11293,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Finish rate", "#lhStats"],
     ["Dream orbs", "#orbsChk"],
     ["Rain glass", "#rainChk"],
-    ["Playlist watched progress", "#lhPlaylists"],
-    ["Backlog forecast", "#laterPace"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -12481,6 +12480,60 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     soRow.hidden = false; soPaint();
   });
   (window.__relang = window.__relang || []).push(function () { if (soRow && !soRow.hidden) soPaint(); });
+})();
+
+(function () {
+  "use strict";
+  // Magnetic moments (round 129): while you drag the seek bar, the slider
+  // sticks to your saved moment dots when the pointer passes close - the dot
+  // pops and the time bubble shows the moment's name, so landing exactly on a
+  // saved spot takes one sweep instead of careful aiming; pull further away
+  // and the snap lets go again (the release gap is wider than the catch, so
+  // it never jitters between the two). It is interaction feedback, not a
+  // setting, works on YouTube videos on the main seek bar (keyboard arrows
+  // keep their plain stepping), the dot pop sits still under Calm/reduced
+  // motion and Low-end mode while the snap keeps working, translated in Hindi
+  // and Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Magnetic moments": ["\u091a\u0941\u0902\u092c\u0915\u0940\u092f \u092a\u0932", "\u0aaa\u0ac1\u0a82\u0aac\u0a95\u0ab0\u0aaf \u0a95\u0acd\u0ab7\u0aa3\u0acb"]
+  });
+  var mgDown = false, mgMark = null;
+  function mgItems() {
+    if (!curId || !(duration > 0) || typeof marks === "undefined" || !marks || !marks[curId]) return [];
+    return marks[curId].filter(function (m) { return m && typeof m.t === "number" && m.t >= 0 && m.t <= duration; });
+  }
+  function mgTipShow(t, name) {
+    var tip = $("seekTip"); if (!tip) return;
+    var r = seek.getBoundingClientRect(); if (!(r.width > 0) || !(duration > 0)) return;
+    tip.textContent = fmt(t) + (name ? " \u00b7 " + name : "");
+    tip.style.left = (seek.offsetLeft + Math.min(1, Math.max(0, t / duration)) * r.width) + "px";
+    tip.style.top = (seek.offsetTop - 32) + "px";
+    tip.hidden = false;
+  }
+  function mgPop(m) {
+    var box = $("seekMarks"); if (!box || box.hidden) return;
+    var want = (m.t / duration * 100).toFixed(2) + "%";
+    for (var i = 0; i < box.children.length; i++) {
+      var d = box.children[i];
+      if (d.style.left === want) { d.classList.remove("mk-pop"); void d.offsetWidth; d.classList.add("mk-pop"); setTimeout(function () { d.classList.remove("mk-pop"); }, 600); break; }
+    }
+  }
+  seek.addEventListener("pointerdown", function () { mgDown = true; });
+  ["pointerup", "pointercancel", "blur"].forEach(function (ev) { seek.addEventListener(ev, function () { mgDown = false; mgMark = null; }); });
+  seek.addEventListener("input", function () {
+    if (!mgDown || (window.__vpFineScrubOn && window.__vpFineScrubOn())) return;
+    var items = mgItems(); if (!items.length) { mgMark = null; return; }
+    var v = Number(seek.value), th = Math.min(6, Math.max(1.5, duration * 0.012));
+    if (mgMark) {
+      if (Math.abs(v - mgMark.t) > th * 1.8) mgMark = null;
+      else { seek.value = mgMark.t; paintTime(mgMark.t); paintSeekFill(); mgTipShow(mgMark.t, mgMark.name); return; }
+    }
+    var best = null, bd = th;
+    for (var i = 0; i < items.length; i++) { var dd = Math.abs(v - items[i].t); if (dd <= bd) { bd = dd; best = items[i]; } }
+    if (best) { mgMark = best; seek.value = best.t; paintTime(best.t); paintSeekFill(); mgPop(best); mgTipShow(best.t, best.name); }
+  });
+  seek.addEventListener("pointermove", function () { if (mgMark && mgDown && !(window.__vpFineScrubOn && window.__vpFineScrubOn())) mgTipShow(mgMark.t, mgMark.name); });
+  document.addEventListener("vp-video-loaded", function () { mgMark = null; });
 })();
 
 })();
@@ -14711,7 +14764,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Aurora glow", "aurora glow northern lights colours ribbons drift video frame pretty ambience sky", "#auroraChk"],
       ["Volume waves", "volume waves ripples rings sound level loud quiet feedback glass frame", "#vwaveChk"],
       ["Start over", "start over beginning restart from zero resumed partway video watch again fresh", "#infoCard"],
-      ["Time left in Continue watching", "time left remaining continue watching how much left unwatched minutes fit break", "#lhContinue"]
+      ["Time left in Continue watching", "time left remaining continue watching how much left unwatched minutes fit break", "#lhContinue"],
+      ["Magnetic moments", "magnet magnetic snap moment dot seek bar stick sticks exact saved moment scrub drag", "#seek"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
