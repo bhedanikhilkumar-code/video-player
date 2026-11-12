@@ -9619,6 +9619,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "A playlist needs at least two videos to split.": ["बांटने के लिए प्लेलिस्ट में कम से कम दो वीडियो चाहिए.", "વહેંચવા માટે પ્લેલિસ્ટમાં ઓછામાં ઓછા બે વિડિયો જોઈએ."],
     "Playlist split:": ["प्लेलिस्ट बंटी:", "પ્લેલિસ્ટ વહેંચાઈ:"]
   });
+  // Sort a playlist by length (round 194): a playlist could be sorted by title but not by how long
+  // its videos are, so a study list could not start with the quick ones. The By length button
+  // orders one playlist by the lengths the app has learned (shortest first; tap again for longest
+  // first). Videos with an unknown length keep their order at the end; Undo restores the old
+  // order. No setting, no new saved data.
+  Object.assign(TR_MSG, {
+    "Sort a playlist by length": ["प्लेलिस्ट को लंबाई से क्रम में लगाएं", "પ્લેલિસ્ટને લંબાઈ મુજબ ગોઠવો"],
+    "By length": ["लंबाई से", "લંબાઈ મુજબ"],
+    "Playlist sorted, shortest first:": ["प्लेलिस्ट क्रमित, सबसे छोटा पहले:", "પ્લેલિસ્ટ ગોઠવાઈ, સૌથી ટૂંકું પહેલા:"],
+    "Playlist sorted, longest first:": ["प्लेलिस्ट क्रमित, सबसे लंबा पहले:", "પ્લેલિસ્ટ ગોઠવાઈ, સૌથી લાંબું પહેલા:"]
+  });
   // Sort a playlist A to Z (round 188): playlists could be reversed but not alphabetised, so a
   // list built in the order videos were found could not be tidied by title. The Sort A-Z button
   // orders one playlist by title (untitled videos last, equal titles keep their order); Undo
@@ -9815,6 +9826,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         savePlaylists(); renderPlaylists();
         plSay(T("Playlist split:") + " \"" + pl.name + "\" " + keepN + " + \"" + nm + "\" " + np.items.length + ".");
         toastUndo(T("Playlist split:") + " " + pl.name, function () { var at = playlists.indexOf(np); if (at >= 0) playlists.splice(at, 1); pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
+      });
+      btn(T("By length"), "", function () {
+        if (pl.items.length < 2) { plSay(T("A playlist with one video has no order to reverse.")); return; }
+        var known = [], unknown = [];
+        pl.items.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) known.push(x); else unknown.push(x); });
+        if (known.length < 2) { plSay(T("Lengths are learned once a video plays here - at least 2 known lengths are needed to sort.")); return; }
+        window.__plLenDir = window.__plLenDir || {};
+        var dir = window.__plLenDir[pl.name] === -1 ? -1 : 1, snap = pl.items.slice();
+        known = known.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) { return dir * (infoCache[a.x.id].dur - infoCache[b.x.id].dur) || a.i - b.i; }).map(function (o) { return o.x; });
+        pl.items = known.concat(unknown);
+        window.__plLenDir[pl.name] = -dir;
+        savePlaylists(); renderPlaylists();
+        var said = T(dir === 1 ? "Playlist sorted, shortest first:" : "Playlist sorted, longest first:") + " \"" + pl.name + "\".";
+        if (unknown.length) said += " " + (unknown.length === 1 ? T("1 video with unknown length stayed at the end") : unknown.length + " " + T("videos with unknown length stayed at the end"));
+        plSay(said);
+        toastUndo(T(dir === 1 ? "Playlist sorted, shortest first:" : "Playlist sorted, longest first:") + " " + pl.name, function () { pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
       });
       btn(T("Sort A-Z"), "", function () {
         if (pl.items.length < 2) { plSay(T("A playlist with one video has no order to reverse.")); return; }
@@ -13262,6 +13289,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Sort a playlist by length", "#plList"],
     ["Glass tour dots", "#tourReplayBtn"],
     ["Shuffle a playlist's saved order", "#plList"],
     ["Glass rest cards", "#vpBreak"],
@@ -13271,7 +13299,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Sort a playlist A to Z", "#plList"],
     ["Glass pick boxes", "#qPickBtn"],
     ["Reverse a playlist", "#plList"],
-    ["Remove duplicates from a playlist", "#plList"],
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -19134,6 +19161,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Shuffle a playlist's saved order", "shuffle order playlist mix saved random jumble reorder different start course songs undo permanent", "#plList"],
       ["Glass rest cards", "glass rest cards break reminder daily watch limit pause eyes tired card frosted sheet bottom popup spring sleep", "#vpBreak"],
       ["Merge playlists", "merge playlists combine join two lists together add one playlist into another same topic courses songs undo", "#plList"],
+      ["Sort a playlist by length", "sort playlist by length duration shortest first longest first quick short videos study lectures order tidy arrange undo", "#plList"],
       ["Sort a playlist A to Z", "sort playlist a to z alphabetical alphabet title name order tidy arrange undo songs lectures", "#plList"],
       ["Reverse a playlist", "reverse playlist order flip backwards newest first oldest first course lecture series upside down undo", "#plList"],
       ["Remove duplicates from a playlist", "remove duplicates playlist same video twice repeat copies clean tidy dedupe imported pasted list undo delete extra", "#plList"],
