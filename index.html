@@ -3521,8 +3521,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     + ":root.calm-motion #vpBreak,:root.calm-motion #vpLimit{animation:none}"
     + ":root.low-fx #vpBreak,:root.low-fx #vpLimit{animation:none !important;-webkit-backdrop-filter:none !important;backdrop-filter:none !important;background:var(--card,#fff)}"
     + ":root.high-contrast #vpBreak,:root.high-contrast #vpLimit{animation:none;-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card,#fff);border:2px solid currentColor;box-shadow:none}"
-    + "@media (prefers-reduced-motion:reduce){#vpBreak,#vpLimit{animation:none}}";
+    + "@media (prefers-reduced-motion:reduce){#vpBreak,#vpLimit{animation:none}}"
+    + "#vpBreak[popover],#vpLimit[popover]{top:auto;right:auto;margin:0;max-width:none;max-height:none;overflow:visible;color:inherit}";
   document.head.appendChild(restGlassSt);
+  // The floating mini player lives in the browser's top layer, so a rest card
+  // shown while it is docked joins the top layer after it and paints on top.
+  function vpRestTopLayer(el) {
+    if (typeof el.showPopover === "function" && !el.hasAttribute("popover")) {
+      try { el.setAttribute("popover", "manual"); el.showPopover(); } catch (e) { el.removeAttribute("popover"); }
+    }
+  }
+  new MutationObserver(function (muts) {
+    muts.forEach(function (m) {
+      [].forEach.call(m.addedNodes, function (n) {
+        if (n && (n.id === "vpBreak" || n.id === "vpLimit")) vpRestTopLayer(n);
+      });
+    });
+  }).observe(document.body, { childList: true });
   // The rest cards only exist while they are up, so the feature finder and the
   // What's new card pop a demo one instead of scrolling to nothing.
   window.__vpRestCardDemo = function () {
