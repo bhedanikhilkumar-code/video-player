@@ -1979,6 +1979,7 @@ setTimeout(done,3000);})();
             <button class="chip" id="bBtn">Set B</button>
             <button class="chip" id="abClearBtn">Clear</button>
           </div>
+          <div class="row" id="abNudgeRow" style="margin-top:8px"><span class="label" id="abNudgeLab">Fine-tune:</span><button class="chip" id="abAmBtn" type="button">A -1s</button><button class="chip" id="abApBtn" type="button">A +1s</button><button class="chip" id="abBmBtn" type="button">B -1s</button><button class="chip" id="abBpBtn" type="button">B +1s</button></div>
           <span class="label" id="abLabel" role="status">Off</span>
         </div>
 
@@ -6800,6 +6801,39 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     abB = b; abLoopCount = 0; updateAB();
     if (abA != null) send("seekTo", [abA, true]);
   });
+  // A-B fine-tune nudges (round 211 new 3): setting A or B lands on the whole second under
+  // the playhead, but a guitar riff or a dance step rarely starts exactly there. Four small
+  // chips shift a set A or B by one second at a time - A never crosses B, B never runs past
+  // the end or behind A, and tapping a chip for a point that is not set yet says so instead
+  // of guessing. The label and the mini-player band repaint through updateAB like any other
+  // A-B change.
+  Object.assign(TR_MSG, {
+    "Fine-tune:": ["फ़ाइन-ट्यून:", "ફાઇન-ટ્યુન:"],
+    "Set A first, then nudge it.": ["पहले A सेट करें, फिर उसे आगे-पीछे करें.", "પહેલા A સેટ કરો, પછી તેને આગળ-પાછળ કરો."],
+    "Set B first, then nudge it.": ["पहले B सेट करें, फिर उसे आगे-पीछे करें.", "પહેલા B સેટ કરો, પછી તેને આગળ-પાછળ કરો."]
+  });
+  function abNudge(which, delta) {
+    if (which === "A") {
+      if (abA == null) { abLabel.textContent = T("Set A first, then nudge it."); return; }
+      var na = abA + delta;
+      if (na < 0) na = 0;
+      if (abB != null && na >= abB) na = abB - 1;
+      if (na < 0) na = 0;
+      if (na !== abA) { abA = na; abLoopCount = 0; updateAB(); }
+    } else {
+      if (abB == null) { abLabel.textContent = T("Set B first, then nudge it."); return; }
+      var nb = abB + delta;
+      if (duration > 0 && nb > Math.floor(duration)) nb = Math.floor(duration);
+      if (abA != null && nb <= abA) nb = abA + 1;
+      if (nb !== abB) { abB = nb; abLoopCount = 0; updateAB(); }
+    }
+  }
+  var abAmBtn = $("abAmBtn"), abApBtn = $("abApBtn"), abBmBtn = $("abBmBtn"), abBpBtn = $("abBpBtn"), abNudgeLab = $("abNudgeLab");
+  if (abAmBtn) abAmBtn.addEventListener("click", function () { abNudge("A", -1); });
+  if (abApBtn) abApBtn.addEventListener("click", function () { abNudge("A", 1); });
+  if (abBmBtn) abBmBtn.addEventListener("click", function () { abNudge("B", -1); });
+  if (abBpBtn) abBpBtn.addEventListener("click", function () { abNudge("B", 1); });
+  (window.__relang = window.__relang || []).push(function () { if (abNudgeLab) abNudgeLab.textContent = T("Fine-tune:"); });
   abClearBtn.addEventListener("click", clearAB);
   shareBtn.addEventListener("click", function () {
     if (!curId) { shareMsg.textContent = T("Load a video first, then share it at the current time."); return; }
