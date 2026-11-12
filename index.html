@@ -3584,6 +3584,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (frameBox && frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
     });
   })();
+  // The note is rebuilt from its kind on every repaint, so a language switch retranslates it too.
+  function laterPickNote(st) {
+    if (st.kind === "fit") return T("Best fit for your") + " " + st.budget + " " + T("min") + ":";
+    return T("Nothing fits in") + " " + st.budget + " " + T("min") + " - " + T("shortest here is about") + " " + st.mins + " " + T("min") + ":";
+  }
   function laterPickPaint() {
     var lab = $("laterPickLab"), go = $("laterPickBtn"), play = $("laterPickPlay"), more = $("laterPickNext"), msg = $("laterPickMsg");
     if (!lab || !go) return;
@@ -3591,7 +3596,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     go.textContent = "🎯 " + T("Pick for me");
     if (play) play.textContent = T("▶ Play");
     if (more) more.textContent = "🔁 " + T("Another");
-    if (laterPickState && msg) msg.textContent = laterPickState.note + " " + laterPickState.title + " · ~" + laterPickState.mins + " " + T("min");
+    if (laterPickState && msg) msg.textContent = laterPickNote(laterPickState) + " " + laterPickState.title + " · ~" + laterPickState.mins + " " + T("min");
   }
   function laterPickDo(excludeId) {
     var msg = $("laterPickMsg"), act = $("laterPickAct"), inp = $("laterPickMin");
@@ -3607,14 +3612,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var dur = function (it) { return infoCache[it.id].dur; };
     var fits = known.filter(function (it) { return dur(it) <= budget * 60 && it.id !== excludeId; });
     if (!fits.length) fits = known.filter(function (it) { return dur(it) <= budget * 60; });
-    var pick = null, note = "";
-    if (fits.length) { fits.sort(function (a, b) { return dur(b) - dur(a); }); pick = fits[0]; note = T("Best fit for your") + " " + budget + " " + T("min") + ":"; }
+    var pick = null, kind = "fit";
+    if (fits.length) { fits.sort(function (a, b) { return dur(b) - dur(a); }); pick = fits[0]; }
     else {
       var rest = known.filter(function (it) { return it.id !== excludeId; }); if (!rest.length) rest = known;
-      rest.sort(function (a, b) { return dur(a) - dur(b); }); pick = rest[0];
-      note = T("Nothing fits in") + " " + budget + " " + T("min") + " - " + T("shortest here is about") + " " + Math.max(1, Math.round(dur(pick) / 60)) + " " + T("min") + ":";
+      rest.sort(function (a, b) { return dur(a) - dur(b); }); pick = rest[0]; kind = "short";
     }
-    laterPickState = { id: pick.id, title: pick.title || titleFor(pick.id) || pick.id, mins: Math.max(1, Math.round(dur(pick) / 60)), note: note };
+    laterPickState = { id: pick.id, title: pick.title || titleFor(pick.id) || pick.id, mins: Math.max(1, Math.round(dur(pick) / 60)), kind: kind, budget: budget };
     act.hidden = false;
     laterPickPaint();
     libSay(T("Picked:") + " " + laterPickState.title);
