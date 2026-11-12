@@ -2320,6 +2320,7 @@ setTimeout(done,3000);})();
           <button class="chip" id="qPickAllBtn" type="button">All</button>
           <button class="chip" id="qPickNoneBtn" type="button">None</button>
           <button class="chip" id="qPickTopBtn" type="button">Move to top</button>
+          <button class="chip" id="qPickEndBtn" type="button">Move to end</button>
           <button class="chip" id="qPickLaterBtn" type="button">Watch later</button>
           <button class="chip" id="qPickRemoveBtn" type="button">Remove</button>
           <button class="chip" id="qPickDoneBtn" type="button">Done</button>
@@ -8136,6 +8137,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Pick some videos first.": ["\u092a\u0939\u0932\u0947 \u0915\u0941\u091b \u0935\u0940\u0921\u093f\u092f\u094b \u091a\u0941\u0928\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0aa5\u0acb\u0aa1\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0ab0\u0acb."],
     "Moved to the top of the queue.": ["\u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0938\u092c\u0938\u0947 \u090a\u092a\u0930 \u0932\u093e\u090f \u0917\u090f.", "\u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0ab8\u0acc\u0aa5\u0ac0 \u0a8a\u0aaa\u0ab0 \u0ab2\u0abe\u0ab5\u0acd\u0aaf\u0abe\u0a82."],
     "Already in Watch later.": ["\u092a\u0939\u0932\u0947 \u0938\u0947 Watch later \u092e\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0ac7\u0aa5\u0ac0 Watch later \u0aae\u0abe\u0a82."],
+    "Move to end": ["\u0938\u092c\u0938\u0947 \u0928\u0940\u091a\u0947 \u092d\u0947\u091c\u0947\u0902", "\u0ab8\u0acc\u0aa5\u0ac0 \u0aa8\u0ac0\u0a9a\u0ac7 \u0aae\u0acb\u0a95\u0ab2\u0acb"],
+    "Moved to the end of the queue.": ["\u0915\u0924\u093e\u0930 \u0915\u0947 \u0905\u0902\u0924 \u092e\u0947\u0902 \u092d\u0947\u091c\u0947 \u0917\u090f.", "\u0a95\u0aa4\u0abe\u0ab0\u0aa8\u0abe \u0a85\u0a82\u0aa4\u0aae\u0abe\u0a82 \u0aae\u0acb\u0a95\u0ab2\u0acd\u0aaf\u0abe."],
     "Queue progress": ["\u0915\u0924\u093e\u0930 \u0915\u0940 \u092a\u094d\u0930\u0917\u0924\u093f", "\u0a95\u0aa4\u0abe\u0ab0\u0aa8\u0ac0 \u0aaa\u0acd\u0ab0\u0a97\u0aa4\u0abf"],
     "Pick many in queue": ["\u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0915\u0908 \u091a\u0941\u0928\u0947\u0902", "\u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0a98\u0aa3\u0abe\u0a82 \u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0ab0\u0acb"],
     "Queue progress bar": ["\u0915\u0924\u093e\u0930 \u092a\u094d\u0930\u0917\u0924\u093f \u092a\u091f\u094d\u091f\u0940", "\u0a95\u0aa4\u0abe\u0ab0 \u0aaa\u0acd\u0ab0\u0a97\u0aa4\u0abf \u0aaa\u0a9f\u0acd\u0a9f\u0ac0"]
@@ -8202,7 +8205,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       qPickPrune();
       qPickCount.textContent = qPicked.length ? qPicked.length + " " + T("picked") : T("Tap videos to pick them.");
     }
-    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickTopBtn", "Move to top"], ["qPickLaterBtn", "Watch later"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
+    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickLaterBtn", "Watch later"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
   }
   function qPickNeed() { if (!qPicked.length) { toast(T("Pick some videos first.")); return false; } return true; }
   if (qPickBtn) qPickBtn.addEventListener("click", function () {
@@ -8221,6 +8224,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     qPos = cur ? lib.queue.indexOf(cur) : -1;
     qPicked = []; resetShuffle(); saveLib(); renderLib();
     toast(T("Moved to the top of the queue."));
+  });
+  // Move to end (round 162): the Pick many bar already has Move to top; this is its mirror.
+  // Pick the videos you are not in the mood for and send them to the very end of the queue,
+  // keeping their own order, so the rest plays first. The video playing now stays the
+  // current one, the shuffle bag is reset like Move to top, and an Undo restores the old order.
+  if ($("qPickEndBtn")) $("qPickEndBtn").addEventListener("click", function () {
+    if (!qPickNeed()) return;
+    var snapQ = lib.queue.slice(), snapP = qPos, snapSel = qPicked.slice();
+    var cur = qPos >= 0 ? lib.queue[qPos] : null;
+    var sel = lib.queue.filter(function (it) { return qPicked.indexOf(it) >= 0; });
+    lib.queue = lib.queue.filter(function (it) { return qPicked.indexOf(it) < 0; }).concat(sel);
+    qPos = cur ? lib.queue.indexOf(cur) : -1;
+    qPicked = []; resetShuffle(); saveLib(); renderLib();
+    toastUndo(T("Moved to the end of the queue."), function () { lib.queue = snapQ; qPos = snapP; qPicked = snapSel; resetShuffle(); saveLib(); renderLib(); }, T("Queue restored"));
   });
   if ($("qPickLaterBtn")) $("qPickLaterBtn").addEventListener("click", function () {
     if (!qPickNeed()) return;
@@ -12132,6 +12149,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Move to end", "#qPickBtn"],
     ["Row hover lift", "#lhQueue"],
     ["Menu edge fade", "#featNav"],
     ["Watch later feed", "#qFeedBtn"],
@@ -12141,10 +12159,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Sort queue by length", "#sortLenQueueBtn"],
     ["Queue as next", "#queueNextBtn"],
     ["Glass sliders", "#vol"],
-    ["Heading tiles", "#linkHeading"],
   ];
   Object.assign(TR_MSG, {
     "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
+    "Move to end": ["सबसे नीचे भेजें", "સૌથી નીચે મોકલો"],
     "Thumb shimmer": ["थंब शिमर", "થંબ શિમર"],
     "Glass sliders": ["ग्लास स्लाइडर", "ગ્લાસ સ્લાઇડર"],
     "Heading tiles": ["हेडिंग टाइल", "હેડિંગ ટાઇલ"],
@@ -17845,6 +17863,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later feed", "watch later feed auto play queue runs out finished empty continue binge unwatched next automatic keep playing backlog evening", "#qFeedBtn"],
       ["D for dark or light theme", "d key dark light theme toggle switch keyboard shortcut night day quick eyes bright dim", "#sc21"],
       ["Menu edge fade", "menu edge fade feature menu links ends soft fade melt ios carousel more links off edge scroll hint swipe", "#featNav"],
+      ["Move to end", "move to end bottom queue pick many send last later rest plays first not in the mood reorder", "#qPickBtn"],
       ["Row hover lift", "row hover lift library rows queue favourites watch later history playlist raise float shadow thumbnail zoom desktop mouse pointer poster", "#lhQueue"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
