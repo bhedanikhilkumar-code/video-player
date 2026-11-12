@@ -2401,7 +2401,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="queueTime" role="status"></p>
       </div>
       <p class="hint" id="libListMsg" role="status"></p>
-      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button></span></div>
@@ -4599,6 +4599,39 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var snapLW = lib.later.slice();
     lib.later = kept; saveLib(); renderLib();
     toastUndo(nW === 1 ? T("1 watched video removed") : nW + " " + T("watched videos removed"), function () { lib.later = snapLW; saveLib(); renderLib(); }, T("Watch later list restored"));
+  });
+  // Round 213 new: Trim old drops videos parked more than 30 days ago. Pinned and snoozed
+  // rows stay, and Undo restores the whole list exactly like Clear watched does.
+  var laterTrimBtn = $("laterTrimBtn");
+  if (laterTrimBtn) laterTrimBtn.addEventListener("click", function () {
+    var cutoff = Date.now() - 30 * 864e5, kept = [], nOld = 0;
+    lib.later.forEach(function (it) { if (it.ts > 0 && it.ts < cutoff && !it.pin && !laterSnoozed(it)) nOld++; else kept.push(it); });
+    if (!nOld) { toast(T("Nothing parked over 30 days.")); return; }
+    var snapLT = lib.later.slice();
+    lib.later = kept; saveLib(); renderLib();
+    toastUndo(nOld === 1 ? T("1 old video removed") : nOld + " " + T("old videos removed"), function () { lib.later = snapLT; saveLib(); renderLib(); }, T("Watch later list restored"));
+  });
+  Object.assign(TR_MSG, {
+    "Nothing parked over 30 days.": ["30 दिन से ज़्यादा पुराना कुछ नहीं रखा है.", "30 દિવસથી વધુ જૂનું કંઈ રાખેલું નથી."],
+    "1 old video removed": ["1 पुराना वीडियो हटाया गया", "1 જૂનો વીડિયો કાઢ્યો"],
+    "old videos removed": ["पुराने वीडियो हटाए गए", "જૂના વીડિયો કાઢ્યા"]
+  });
+  Object.assign(TR_MSG, {
+    "Stop the sleep timer": ["स्लीप टाइमर बंद करें", "સ્લીપ ટાઇમર બંધ કરો"],
+    "Sort: Oldest": ["क्रम: सबसे पुराने", "ક્રમ: સૌથી જૂના"],
+    "focus the library search": ["लाइब्रेरी खोज पर जाएं", "લાઇબ્રેરી શોધ પર જાઓ"],
+    "Copy this line": ["यह पंक्ति कॉपी करें", "આ લાઇન કૉપી કરો"],
+    "Copy the current lyric line": ["मौजूदा लिरिक पंक्ति कॉपी करें", "હાલની લિરિક લાઇન કૉપી કરો"],
+    "No synced line at this moment.": ["इस समय कोई सिंक की गई पंक्ति नहीं.", "આ સમયે કોઈ સિંક લાઇન નથી."],
+    "Line copied": ["पंक्ति कॉपी हुई", "લાઇન કૉપી થઈ"],
+    "Rename this moment": ["इस पल का नाम बदलें", "આ ક્ષણનું નામ બદલો"],
+    "Rename moment": ["पल का नाम बदलें", "ક્ષણનું નામ બદલો"],
+    "Moment renamed": ["पल का नाम बदल दिया गया", "ક્ષણનું નામ બદલાઈ ગયું"],
+    "Stop the sleep timer from the pill": ["पिल से स्लीप टाइमर बंद करें", "પિલથી સ્લીપ ટાઇમર બંધ કરો"],
+    "Sort Oldest first": ["सबसे पुराने पहले क्रम से लगाएं", "સૌથી જૂના પહેલાં ગોઠવો"],
+    "Press / to find in the library": ["लाइब्रेरी में खोजने के लिए / दबाएं", "લાઇબ્રેરીમાં શોધવા / દબાવો"],
+    "Trim old Watch later videos": ["बाद में देखें के पुराने वीडियो हटाएं", "પછી જુઓના જૂના વીડિયો કાઢો"],
+    "Rename a saved moment": ["सहेजे पल का नाम बदलें", "સાચવેલા ક્ષણનું નામ બદલો"]
   });
   Object.assign(TR_MSG, {
     "No watched videos in Watch later.": ["\u092c\u093e\u0926 \u092e\u0947\u0902 \u0926\u0947\u0916\u0947\u0902 \u092e\u0947\u0902 \u0915\u094b\u0908 \u0926\u0947\u0916\u093e \u0939\u0941\u0906 \u0935\u0940\u0921\u093f\u092f\u094b \u0928\u0939\u0940\u0902 \u0939\u0948.", "\u0aaa\u0a9b\u0ac0 \u0a9c\u0ac1\u0a93\u0aae\u0abe\u0a82 \u0a95\u0acb\u0a88 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0acb \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aa8\u0aa5\u0ac0."],
@@ -12840,6 +12873,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#lhLater", "Watch later", "बाद में देखें"],
     ["#laterClearBtn", "Clear", "साफ़ करें"],
     ["#laterClrWBtn", "Clear watched", "देखे हुए हटाएं"],
+    ["#laterTrimBtn", "Trim old (30d+)", "पुराने हटाएं (30 दिन+)"],
     ["#dtSeekLab", "Double-tap skip", "डबल-टैप स्किप"],
     ["#gpHoldHint", "Press and hold the pad for 2x speed; let go to get your speed back.", "2x स्पीड के लिए पैड दबाए रखें; छोड़ते ही अपनी स्पीड वापस."],
     ["#jumpLab", "Jump to time", "समय पर जाएं"],
@@ -13138,6 +13172,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
  "#lhLater": "પછી જુઓ",
  "#laterClearBtn": "સાફ કરો",
  "#laterClrWBtn": "જોયેલા કાઢો",
+ "#laterTrimBtn": "જૂના કાઢો (30 દિવસ+)",
  "#dtSeekLab": "ડબલ-ટૅપ સ્કિપ",
  "#gpHoldHint": "2x સ્પીડ માટે પેડ દબાવી રાખો; છોડતા જ તમારી સ્પીડ પાછળ.",
  "#jumpLab": "સમય પર જાઓ",
