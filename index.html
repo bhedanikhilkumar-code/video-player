@@ -9457,6 +9457,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // playlists did not, so a list built from a pasted or imported file could keep the same
   // video twice. This button keeps the first copy of each video in its place and drops the
   // later copies. Undo restores the old list. No setting, no new saved data.
+  // Sort a playlist A to Z (round 188): playlists could be reversed but not alphabetised, so a
+  // list built in the order videos were found could not be tidied by title. The Sort A-Z button
+  // orders one playlist by title (untitled videos last, equal titles keep their order); Undo
+  // restores the old order. No setting, no new saved data.
+  Object.assign(TR_MSG, {
+    "Sort a playlist A to Z": ["प्लेलिस्ट को A से Z क्रम में लगाएं", "પ્લેલિસ્ટને A થી Z ક્રમમાં ગોઠવો"],
+    "Sort A-Z": ["A-Z क्रम", "A-Z ક્રમ"],
+    "Playlist sorted A to Z:": ["प्लेलिस्ट A से Z क्रम में लगी:", "પ્લેલિસ્ટ A થી Z ક્રમમાં ગોઠવાઈ:"],
+    "This playlist is already in A to Z order.": ["यह प्लेलिस्ट पहले से A से Z क्रम में है.", "આ પ્લેલિસ્ટ પહેલેથી A થી Z ક્રમમાં છે."]
+  });
   // Reverse a playlist (round 186): the queue could be reversed, saved playlists could not,
   // so a course saved newest-first could not be played oldest-first without rebuilding it.
   // The Reverse order button flips the saved order of one playlist; Undo flips it back.
@@ -9591,6 +9601,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         savePlaylists(); renderPlaylists();
         plSay(T("Playlist order reversed:") + " \"" + pl.name + "\".");
         toastUndo(T("Playlist order reversed:") + " " + pl.name, function () { pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
+      });
+      btn(T("Sort A-Z"), "", function () {
+        if (pl.items.length < 2) { plSay(T("A playlist with one video has no order to reverse.")); return; }
+        var snap = pl.items.slice();
+        var srt = snap.map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) {
+          var ta = (a.x.title || "").trim(), tb = (b.x.title || "").trim();
+          if (!ta !== !tb) return ta ? -1 : 1;
+          var c = ta.localeCompare(tb, undefined, { sensitivity: "base", numeric: true });
+          return c || a.i - b.i;
+        }).map(function (o) { return o.x; });
+        if (srt.every(function (x, i) { return x === snap[i]; })) { plSay(T("This playlist is already in A to Z order.")); return; }
+        pl.items = srt;
+        savePlaylists(); renderPlaylists();
+        plSay(T("Playlist sorted A to Z:") + " \"" + pl.name + "\".");
+        toastUndo(T("Playlist sorted A to Z:") + " " + pl.name, function () { pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
       });
       btn(T("Duplicate"), "", function () {
         if (playlists.length >= PL_MAX) { plSay(T("You can keep up to ") + PL_MAX + T(" playlists. Delete one first.")); return; }
@@ -13023,6 +13048,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Sort a playlist A to Z", "#plList"],
     ["Glass pick boxes", "#qPickBtn"],
     ["Reverse a playlist", "#plList"],
     ["Remove duplicates from a playlist", "#plList"],
@@ -13032,7 +13058,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Shuffle play", "#plList"],
     ["Key echo", "#scBox"],
     ["Pick queue search matches", "#qPickBtn"],
-    ["Glass colour orb", "#accentCustom"],
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -18886,6 +18911,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Glass pick boxes", "glass pick boxes pick many queue select circle tick check orb bead picked row wash glow bulk iphone", "#qPickBtn"],
       ["Glass text fields", "glass text fields link box input search playlist name notes textarea well inset frosted focus glow lift typing field iphone", "#linkInput"],
       ["Glass file picker", "glass file picker choose files button local file pill gloss spring press hover lift drop box iphone", "#lpFile"],
+      ["Sort a playlist A to Z", "sort playlist a to z alphabetical alphabet title name order tidy arrange undo songs lectures", "#plList"],
       ["Reverse a playlist", "reverse playlist order flip backwards newest first oldest first course lecture series upside down undo", "#plList"],
       ["Remove duplicates from a playlist", "remove duplicates playlist same video twice repeat copies clean tidy dedupe imported pasted list undo delete extra", "#plList"],
       ["Remove watched from a playlist", "remove watched playlist finished seen clear tidy course done videos undo delete old", "#plList"],
