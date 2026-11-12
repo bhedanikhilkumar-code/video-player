@@ -11150,6 +11150,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Moment comet": ["पल कॉमेट", "ક્ષણ કૉમેટ"]
   });
   var WNEW = [
+    ["Backlog forecast", "#laterPace"],
     ["Moment comet", "#markAddBtn"],
     ["React on video", "#reactChk"],
     ["Today at a glance", "#todayStrip"],
@@ -11159,7 +11160,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Sort favourites by length", "#favSortBtn"],
     ["Copy a playlist", "#lhPlaylists"],
     ["Theme wave", "#waveChk"],
-    ["Cinema settle", "#settleChk"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -11850,6 +11850,86 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       setTimeout(function () { c.remove(); }, 900);
     } catch (e) {}
   };
+})();
+
+(function () {
+  "use strict";
+  // Backlog forecast (round 124): a line right under the Watch-later total time
+  // that says when the saved list will clear at your recent pace - "At your
+  // recent pace (~25 min a day), this list clears in about 9 days - around Sat,
+  // 21 Nov." - so the backlog feels plan-able, not endless. It sums the learned
+  // lengths of the unwatched saved videos, minus the part already watched of
+  // half-watched ones, and divides by the average watch time per active day over
+  // the last 14 days (falling back to the all-time average); while there is no
+  // watch history it says so honestly instead of guessing, and it hides when the
+  // list is empty, everything is watched, or no length is learned yet. Works on
+  // YouTube videos, adds no setting, translated in Hindi and Gujarati, listed in
+  // the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Backlog forecast": ["\u092c\u0948\u0915\u0932\u0949\u0917 \u0905\u0928\u0941\u092e\u093e\u0928", "\u0aac\u0ac5\u0a95\u0ab2\u0ac9\u0a97 \u0a85\u0aa8\u0ac1\u0aae\u0abe\u0aa8"],
+    "At your recent pace": ["\u0906\u092a\u0915\u0940 \u0939\u093e\u0932 \u0915\u0940 \u0930\u092b\u093c\u094d\u0924\u093e\u0930 \u0938\u0947", "\u0aa4\u0aae\u0abe\u0ab0\u0ac0 \u0aa4\u0abe\u0a9c\u0ac7\u0aa4\u0ab0\u0aa8\u0ac0 \u0a9d\u0aa1\u0aaa\u0aa5\u0ac0"],
+    "a day": ["\u0926\u093f\u0928 \u092e\u0947\u0902", "\u0aa6\u0abf\u0ab5\u0ab8\u0ac7"],
+    "this list clears in about": ["\u092f\u0939 \u0932\u093f\u0938\u094d\u091f \u0916\u0924\u094d\u092e \u0939\u094b\u0917\u0940 \u0915\u0930\u0940\u092c", "\u0a86 \u0aaf\u0abe\u0aa6\u0ac0 \u0aaa\u0ac2\u0ab0\u0ac0 \u0aa5\u0ab6\u0ac7 \u0a86\u0ab6\u0ab0\u0ac7"],
+    "around": ["\u0932\u0917\u092d\u0917", "\u0a86\u0ab8\u0aaa\u0abe\u0ab8"],
+    "more than a year": ["\u090f\u0915 \u0938\u093e\u0932 \u0938\u0947 \u091c\u093c\u094d\u092f\u093e\u0926\u093e", "\u0a8f\u0a95 \u0ab5\u0ab0\u0acd\u0ab7\u0aa5\u0ac0 \u0ab5\u0aa7\u0ac1"],
+    "Watch a little and this line will estimate when the list clears.": ["\u0925\u094b\u0921\u093c\u093e \u0926\u0947\u0916\u0947\u0902, \u092b\u093f\u0930 \u092f\u0939 \u0932\u093e\u0907\u0928 \u092c\u0924\u093e\u090f\u0917\u0940 \u0915\u093f \u0932\u093f\u0938\u094d\u091f \u0915\u092c \u0916\u0924\u094d\u092e \u0939\u094b\u0917\u0940.", "\u0aa5\u0acb\u0aa1\u0ac1\u0a82 \u0a9c\u0ac1\u0a93, \u0aaa\u0a9b\u0ac0 \u0a86 \u0ab2\u0abe\u0a88\u0aa8 \u0aac\u0aa4\u0abe\u0ab5\u0ab6\u0ac7 \u0a95\u0ac7 \u0aaf\u0abe\u0aa6\u0ac0 \u0a95\u0acd\u0aaf\u0abe\u0ab0\u0ac7 \u0aaa\u0ac2\u0ab0\u0ac0 \u0aa5\u0ab6\u0ac7."]
+  });
+  var ltAnchor = $("laterTime");
+  var paceEl = document.createElement("p");
+  paceEl.className = "hint"; paceEl.id = "laterPace"; paceEl.setAttribute("role", "status"); paceEl.hidden = true;
+  if (ltAnchor && ltAnchor.parentNode) ltAnchor.parentNode.insertBefore(paceEl, ltAnchor.nextSibling);
+  function laterBacklogSecs() {
+    var left = 0, known = 0;
+    lib.later.forEach(function (x) {
+      var hi = findIn(lib.hist, x.id), hInfo = hi >= 0 ? lib.hist[hi] : null;
+      if (hInfo && hInfo.done) return;
+      var d = infoCache[x.id] && infoCache[x.id].dur;
+      if (typeof d !== "number" || d <= 0) return;
+      known++;
+      var pos = hInfo && hInfo.t >= 5 && hInfo.t < d - 5 ? hInfo.t : 0;
+      left += Math.max(0, d - pos);
+    });
+    return { left: Math.round(left), known: known };
+  }
+  function watchPaceSecs() {
+    var now = Date.now(), sum = 0, n = 0;
+    for (var off = 0; off < 14; off++) {
+      var s = stats.days[dayKey(new Date(now - off * 86400000))] || 0;
+      if (s >= 30) { sum += s; n++; }
+    }
+    if (n) return sum / n;
+    var keys = Object.keys(stats.days).filter(function (k) { return stats.days[k] >= 30; });
+    if (!keys.length) return 0;
+    var sum2 = 0; keys.forEach(function (k) { sum2 += stats.days[k]; });
+    return sum2 / keys.length;
+  }
+  function updateLaterPace() {
+    var el = $("laterPace"); if (!el) return;
+    if (!lib.later.length) { el.hidden = true; el.textContent = ""; return; }
+    var bk = laterBacklogSecs();
+    if (!bk.known || bk.left <= 0) { el.hidden = true; el.textContent = ""; return; }
+    var pace = watchPaceSecs();
+    if (!(pace > 0)) {
+      el.hidden = false;
+      el.textContent = "\uD83D\uDCC5 " + T("Watch a little and this line will estimate when the list clears.");
+      return;
+    }
+    var days = Math.max(1, Math.ceil(bk.left / pace));
+    el.hidden = false;
+    if (days > 365) {
+      el.textContent = "\uD83D\uDCC5 " + T("At your recent pace") + " (~" + fmtWatch(pace) + " " + T("a day") + "), " + T("this list clears in about") + " " + T("more than a year") + ".";
+      return;
+    }
+    var loc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-US";
+    var dateTxt = new Date(Date.now() + days * 86400000).toLocaleDateString(loc, { weekday: "short", day: "numeric", month: "short" });
+    el.textContent = "\uD83D\uDCC5 " + T("At your recent pace") + " (~" + fmtWatch(pace) + " " + T("a day") + "), "
+      + T("this list clears in about") + " " + days + " " + (days === 1 ? T("day") : T("days")) + " - " + T("around") + " " + dateTxt + ".";
+  }
+  updateLaterTime = (function (orig) {
+    return function () { var r = orig.apply(this, arguments); try { updateLaterPace(); } catch (e) {} return r; };
+  })(updateLaterTime);
+  (window.__relang = window.__relang || []).push(updateLaterPace);
+  updateLaterPace();
 })();
 
 })();
@@ -14070,7 +14150,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Line up my evening", "line up my evening plan queue time budget minutes free watch later fill fit tonight batch several videos", "#laterPlanBtn"],
       ["Today at a glance", "today at a glance watch time goal progress strip start home stats quick peek streak", "#todayStrip"],
       ["React on video", "react on video emoji burst floating hearts fire clap laugh live stream pill video frame fun", "#reactChk"],
-      ["Moment comet", "moment comet bookmark save dot seek bar fly spark glowing feedback saved moment", "#markAddBtn"]
+      ["Moment comet", "moment comet bookmark save dot seek bar fly spark glowing feedback saved moment", "#markAddBtn"],
+      ["Backlog forecast", "backlog forecast watch later pace days clears estimate when done finish plan saved list", "#laterPace"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
