@@ -9867,6 +9867,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (a.length > 1 && items[0] && a[0].id === items[0].id) { var k = 1 + Math.floor(Math.random() * (a.length - 1)); var u = a[0]; a[0] = a[k]; a[k] = u; }
     return a;
   }
+  // Round 202: learned history survives a fresh page; the transient info cache does not.
+  function plItemDuration(x) {
+    var d = infoCache[x.id] && infoCache[x.id].dur;
+    if (!(typeof d === "number" && isFinite(d) && d > 0)) { var hi = findIn(lib.hist, x.id); d = hi >= 0 ? lib.hist[hi].dur : 0; }
+    return typeof d === "number" && isFinite(d) && d > 0 ? d : 0;
+  }
   function renderPlaylists() {
     plList.textContent = "";
     plSortRefresh();
@@ -9904,10 +9910,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         li.appendChild(cover);
       }
       var plKnown = 0, plSecs = 0;
-      pl.items.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { plKnown++; plSecs += d; } });
+      pl.items.forEach(function (x) { var d = plItemDuration(x); if (d > 0) { plKnown++; plSecs += d; } });
       if (plKnown) {
         var ln = document.createElement("span"); ln.className = "pl-len";
-        var pt = Math.round(plSecs), ph = Math.floor(pt / 3600), pm = ph ? Math.round((pt % 3600) / 60) : Math.max(1, Math.round(pt / 60));
+        var totalMinutes = Math.max(1, Math.round(plSecs / 60)), ph = Math.floor(totalMinutes / 60), pm = totalMinutes % 60;
         ln.textContent = "~ " + (ph ? ph + " " + T("hr") + " " + pm + " " + T("min") : pm + " " + T("min")) + (plKnown < pl.items.length ? " · " + plKnown + "/" + pl.items.length + " " + T("lengths known") : "");
         top.appendChild(ln);
       }
