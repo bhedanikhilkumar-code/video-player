@@ -2398,7 +2398,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="queueTime" role="status"></p>
       </div>
       <p class="hint" id="libListMsg" role="status"></p>
-      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button></span></div>
@@ -4631,6 +4631,32 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   (window.__relang = window.__relang || []).push(function () { if (laterQueueBtn) { laterQueueBtn.textContent = T("➕ Queue unwatched"); laterQueueBtn.setAttribute("aria-label", T("Add every unwatched Watch-later video to the queue")); } });
   if (laterQueueBtn) laterQueueBtn.setAttribute("aria-label", T("Add every unwatched Watch-later video to the queue"));
+
+  // Surprise me for Watch later (round 211 new 2): the global Surprise me picks from every
+  // saved video, but Watch later is the pile the viewer chose on purpose, and a long saved
+  // list makes 'what next?' its own chore. The dice chip in the Watch later header plays a
+  // random unwatched pick from that list only (unwatched means not finished in history),
+  // falling back to any saved one when all are finished, and toasts what it picked.
+  Object.assign(TR_MSG, {
+    "🎲 Surprise me": ["🎲 सरप्राइज़ मी", "🎲 સરપ્રાઇઝ મી"],
+    "Play a random unwatched video from Watch later": ["बाद में देखें से कोई भी अनदेखा वीडियो चलाएं", "બાદમાં જુઓ માંથી કોઈ પણ ન જોયેલો વિડિયો ચલાવો"],
+    "Nothing saved in Watch later yet.": ["बाद में देखें में अभी कुछ सेव नहीं है.", "બાદમાં જુઓ માં હજી કંઈ સેવ નથી."],
+    "Load a different video first - every saved one is already playing.": ["पहले कोई दूसरा वीडियो चलाएं - सेव किया हुआ वही वीडियो चल रहा है.", "પહેલા બીજો વિડિયો ચલાવો - સેવ કરેલો એ જ વિડિયો ચાલે છે."]
+  });
+  var laterSurpriseBtn = $("laterSurpriseBtn");
+  if (laterSurpriseBtn) laterSurpriseBtn.addEventListener("click", function () {
+    if (!lib.later.length) { toast(T("Nothing saved in Watch later yet.")); return; }
+    var done = {}; lib.hist.forEach(function (h) { if (h && h.id && h.done) done[h.id] = 1; });
+    var pool = lib.later.filter(function (x) { return x && x.id && x.id !== curId && !done[x.id]; });
+    if (!pool.length) pool = lib.later.filter(function (x) { return x && x.id && x.id !== curId; });
+    if (!pool.length) { toast(T("Load a different video first - every saved one is already playing.")); return; }
+    var pick = pool[Math.floor(Math.random() * pool.length)];
+    linkInput.value = "https://youtu.be/" + pick.id; loadBtn.click();
+    window.scrollTo({ top: 0, behavior: window.vpReducedMotion() ? "auto" : "smooth" });
+    toast(T("Surprise! Playing: ") + (pick.title || pick.id));
+  });
+  (window.__relang = window.__relang || []).push(function () { if (laterSurpriseBtn) { laterSurpriseBtn.textContent = T("🎲 Surprise me"); laterSurpriseBtn.setAttribute("aria-label", T("Play a random unwatched video from Watch later")); } });
+  if (laterSurpriseBtn) laterSurpriseBtn.setAttribute("aria-label", T("Play a random unwatched video from Watch later"));
   // Queue unfinished (round 166): a chip in the Recently watched header that puts every
   // video you started but did not finish into the queue in one tap, newest first, so an
   // evening can start with "finish what I began". A video counts as unfinished when its
