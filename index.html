@@ -6691,13 +6691,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Round 66: fine-tune A and B in half-second steps; labels show the half second (1:05.5).
   function fmtAB(s) { var t = fmt(s); return (isFinite(s) && Math.abs(s % 1) > 0.01) ? t + ".5" : t; }
   var abNudge = document.createElement("div"); abNudge.className = "row"; abNudge.style.marginTop = "8px"; abNudge.id = "abNudge";
-  abNudge.innerHTML = '<span class="hint" id="abNudgeLab"></span>' +
+  // Round 214 fix: this span used id="abNudgeLab", but the static one-second nudge row
+  // (line ~1982) already owns that id, so getElementById always found the static label
+  // and this half-second row's label never rendered (it sat empty in every language).
+  // Its own id, and the render below captures the element directly instead of asking
+  // the document for an id that was never unique.
+  abNudge.innerHTML = '<span class="hint" id="abNudgeHalfLab"></span>' +
     '<button class="chip" type="button" data-np="a" data-ns="-0.5">A &#8722;0.5s</button>' +
     '<button class="chip" type="button" data-np="a" data-ns="0.5">A +0.5s</button>' +
     '<button class="chip" type="button" data-np="b" data-ns="-0.5">B &#8722;0.5s</button>' +
     '<button class="chip" type="button" data-np="b" data-ns="0.5">B +0.5s</button>';
   abLabel.parentNode.appendChild(abNudge);
-  function renderAbNudge() { var l = $("abNudgeLab"); if (l) l.textContent = T("Fine-tune (half-second steps):"); }
+  function renderAbNudge() { var l = abNudge.querySelector("#abNudgeHalfLab"); if (l) l.textContent = T("Fine-tune (half-second steps):"); }
   (window.__relang = window.__relang || []).push(renderAbNudge); renderAbNudge();
   abNudge.addEventListener("click", function (e) {
     var b = e.target.closest("button[data-np]"); if (!b) return;
