@@ -2401,7 +2401,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="queueTime" role="status"></p>
       </div>
       <p class="hint" id="libListMsg" role="status"></p>
-      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterWakeBtn" type="button" hidden>⏰ Wake all</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button></span></div>
@@ -4281,6 +4281,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       lib.later.splice(lIdx, 1); saveLib(); renderLib();
       toastUndo(T("Removed from Watch later."), function () { lib.later = snapLat; saveLib(); renderLib(); }, T("Watch later list restored"));
     }, null, [{ label: "📌", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinLater(item.id); } }, { label: function (item) { return laterSnoozed(item) ? "😴 " + Math.max(1, Math.round((item.snoozeUntil - Date.now()) / 864e5)) + T("d") : "😴"; }, aria: function (item) { return laterSnoozed(item) ? T("Snoozed - tap to wake it sooner") : T("Snooze this video for later"); }, cls: "snooze-chip", on: function (item) { return laterSnoozed(item); }, fn: function (item) { laterSnoozeCycle(item.id); } }, plRowAction(), favRowAction(), queueRowAction()], "later", undefined, true);
+    if (typeof laterWakeRender === "function") laterWakeRender();
     // Round 206 new 4: Favourites fold - a long favourites list made the library card heavy
     // to draw and scroll on phones. Show the first 30 with a Show all row; the full list is
     // one tap away and folds back with Show less. Session-only - nothing new is saved.
@@ -4751,6 +4752,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   (window.__relang = window.__relang || []).push(function () { if (laterShufBtn) { laterShufBtn.textContent = T("🎲 Shuffle play"); laterShufBtn.setAttribute("aria-label", T("Shuffle play Watch later")); } });
   if (laterShufBtn) laterShufBtn.setAttribute("aria-label", T("Shuffle play Watch later"));
+
+  // Round 214 new 3: Wake all snoozed - snoozing hides a Watch-later video for days one row at a
+  // time, but after a busy stretch the only way back was tapping each snooze chip in turn. One
+  // header chip (shown only while anything is snoozed) wakes them all at once, with Undo.
+  Object.assign(TR_MSG, {
+    "⏰ Wake all": ["⏰ सब जगाएँ", "⏰ બધા જગાડો"],
+    "Wake every snoozed Watch-later video": ["स्नूज़ किए सभी बाद-में-देखें वीडियो जगाएं", "સ્નૂઝ કરેલા બધા બાદમાં-જુઓ વિડિયો જગાડો"],
+    "Snoozed videos woken: ": ["स्नूज़ किए वीडियो जगाए: ", "સ્નૂઝ કરેલા વિડિયો જગાડ્યા: "],
+    "Snoozes restored": ["स्नूज़ वापस लगे", "સ્નૂઝ પાછા લાગ્યા"]
+  });
+  var laterWakeBtn = $("laterWakeBtn");
+  function laterWakeRender() { if (laterWakeBtn) laterWakeBtn.hidden = !lib.later.some(laterSnoozed); }
+  if (laterWakeBtn) laterWakeBtn.addEventListener("click", function () {
+    var snap = lib.later.map(function (x) { return x.snoozeUntil || 0; });
+    var n = 0;
+    lib.later.forEach(function (x, i) { if (laterSnoozed(x)) { delete x.snoozeUntil; n++; } });
+    if (!n) return;
+    saveLib(); renderLib();
+    toastUndo(T("Snoozed videos woken: ") + n, function () {
+      lib.later.forEach(function (x, i) { if (snap[i]) x.snoozeUntil = snap[i]; });
+      saveLib(); renderLib();
+    }, T("Snoozes restored"));
+  });
+  (window.__relang = window.__relang || []).push(function () { if (laterWakeBtn) { laterWakeBtn.textContent = T("⏰ Wake all"); laterWakeBtn.setAttribute("aria-label", T("Wake every snoozed Watch-later video")); } laterWakeRender(); });
+  if (laterWakeBtn) laterWakeBtn.setAttribute("aria-label", T("Wake every snoozed Watch-later video"));
 
   // Surprise me for Watch later (round 211 new 2): the global Surprise me picks from every
   // saved video, but Watch later is the pile the viewer chose on purpose, and a long saved
@@ -15068,6 +15094,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Wake all snoozed videos", "#laterWakeBtn"],
     ["Shuffle play Watch later", "#laterShufBtn"],
     ["Clear finished downloads", "#dlQClearFin"],
     ["Stop the sleep timer from the pill", "#ctl-sleep"],
@@ -21427,6 +21454,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Wake all snoozed videos", "wake all snoozed watch later sleeping hidden come back unsnooze every", "#laterWakeBtn"],
       ["Shuffle play Watch later", "shuffle play watch later saved videos random mix evening start play all", "#laterShufBtn"],
       ["Clear finished downloads", "clear finished done completed failed download queue make room tidy remove", "#dlQClearFin"],
       ["Enter opens the first search match", "enter return open first search match result library keyboard play top hit", "#libSearch"],
