@@ -2283,7 +2283,7 @@ setTimeout(done,3000);})();
           <button class="chip vs-mic" id="vsMic" type="button" aria-label="Voice search" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button>
         </div>
         <span class="hint" id="libSearchMsg" role="status"></span>
-        <div class="row"><button class="chip" id="libQueueMatchBtn" type="button" hidden>➕ Queue matches</button></div>
+        <div class="row"><button class="chip" id="libNotesBtn" type="button" aria-pressed="false">Include notes: off</button><button class="chip" id="libQueueMatchBtn" type="button" hidden>➕ Queue matches</button></div>
         <div id="rsRow" hidden><span class="hint" id="rsLab">Recent:</span><span class="rs-chips" id="rsChips"></span><button class="chip" id="rsClear" type="button">Clear</button></div>
       </div>
       <div class="lib-scope" id="libScope" role="group" aria-label="Search in">
@@ -9252,6 +9252,27 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var libSearch = $("libSearch"), libSearchMsg = $("libSearchMsg");
   var libScope = "all", libScopeBtns = [];
   var LIB_SCOPE_LABELS = { all: "All", queue: "Queue", playlists: "Playlists", favs: "Favourites", later: "Watch later", hist: "History" };
+  // An opt-in search expansion, temporary for this visit, not a saved preference.
+  var libSearchNotes202 = false;
+  Object.assign(TR_MSG, {
+    "Include notes: on": ["नोट्स में भी खोजें: चालू", "નોંધોમાં પણ શોધો: ચાલુ"],
+    "Include notes: off": ["नोट्स में भी खोजें: बंद", "નોંધોમાં પણ શોધો: બંધ"],
+    "Search your private notes as well as titles and video IDs": ["शीर्षक और वीडियो ID के साथ अपने निजी नोट्स भी खोजें", "શીર્ષક અને વિડિયો ID સાથે પોતાની ખાનગી નોંધો પણ શોધો"]
+  });
+  function libSearchHit202(it, q) {
+    if (!it) return false;
+    var hay = (it.title || "") + " " + (it.id || "");
+    if (libSearchNotes202 && typeof notes !== "undefined" && notes && typeof notes[it.id] === "string") hay += " " + notes[it.id];
+    return hay.toLowerCase().indexOf(q) >= 0;
+  }
+  function libNotesPaint202() {
+    var b = $("libNotesBtn"); if (!b) return;
+    b.textContent = T(libSearchNotes202 ? "Include notes: on" : "Include notes: off");
+    b.setAttribute("aria-pressed", String(libSearchNotes202)); b.classList.toggle("active", libSearchNotes202);
+    b.title = T("Search your private notes as well as titles and video IDs");
+  }
+  $("libNotesBtn").addEventListener("click", function () { libSearchNotes202 = !libSearchNotes202; libNotesPaint202(); applyLibSearch(); });
+  (window.__relang = window.__relang || []).push(libNotesPaint202); libNotesPaint202();
   function applyLibSearch() {
     if (!libSearch) return;
     qPickSearchPaint();
@@ -9265,7 +9286,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var it = items[vi]; vi++;
         if (!it) return;
         if (scoped) total++;
-        var ok = scoped && (!q || ((it.title || "") + " " + it.id).toLowerCase().indexOf(q) >= 0);
+        var ok = scoped && (!q || libSearchHit202(it, q));
         li.style.display = ok ? "" : "none";
         if (ok) { shown++; n++; }
       });
@@ -9284,7 +9305,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (!pl) return;
         if (scoped) total++;
         var hay = pl.name.toLowerCase();
-        pl.items.forEach(function (x) { hay += " " + (x.title || "").toLowerCase() + " " + x.id; });
+        pl.items.forEach(function (x) { hay += " " + (x.title || "").toLowerCase() + " " + x.id; if (libSearchNotes202 && typeof notes !== "undefined" && notes && typeof notes[x.id] === "string") hay += " " + notes[x.id].toLowerCase(); });
         var ok = scoped && (!q || hay.indexOf(q) >= 0);
         li.style.display = ok ? "" : "none";
         if (ok) { shown++; n++; }
@@ -9298,7 +9319,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var it = continueItems[ci]; ci++;
         if (!it) return;
         if (scopedC) total++;
-        var ok = scopedC && (!q || ((it.title || "") + " " + it.id).toLowerCase().indexOf(q) >= 0);
+        var ok = scopedC && (!q || libSearchHit202(it, q));
         li.style.display = ok ? "" : "none";
         if (ok) { shown++; nc++; }
       });
@@ -9341,7 +9362,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if ($("qPickSearchBtn")) $("qPickSearchBtn").addEventListener("click", function () {
     var q = libSearch ? libSearch.value.trim().toLowerCase() : "";
     if (!qPickOn() || !q || (libScope !== "all" && libScope !== "queue")) return;
-    qPicked = lib.queue.filter(function (it) { return ((it.title || "") + " " + it.id).toLowerCase().indexOf(q) >= 0; });
+    qPicked = lib.queue.filter(function (it) { return libSearchHit202(it, q); });
     renderLib();
     if (!qPicked.length) toast(T("No queue videos match this search."));
   });
@@ -9375,7 +9396,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (libQueueMatchBtn) libQueueMatchBtn.addEventListener("click", function () {
     var q = libSearch ? libSearch.value.trim().toLowerCase() : "";
     if (!q) { libQueueMatchSync(); return; }
-    function hit(it) { return it && it.id && ((it.title || "") + " " + it.id).toLowerCase().indexOf(q) >= 0; }
+    function hit(it) { return it && it.id && libSearchHit202(it, q); }
     var pool = [];
     if (libScope === "all" || libScope === "favs") lib.favs.forEach(function (it) { if (hit(it)) pool.push(it); });
     if (libScope === "all" || libScope === "later") lib.later.forEach(function (it) { if (hit(it)) pool.push(it); });
@@ -12950,7 +12971,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var stored = notesSave();
     // Round 116: refresh the library rows only when the note's empty/full state flipped,
     // so the Note pill appears or disappears without rebuilding the lists on every keystroke.
-    if (hadNote !== !!v.trim() && typeof renderLib === "function") renderLib();
+    if ((hadNote !== !!v.trim() || libSearchNotes202) && typeof renderLib === "function") renderLib();
     if (st) st.textContent = T(stored ? "Note saved" : "Not saved - export a backup before closing.");
   }
   function renderNotes() {
@@ -13808,7 +13829,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   Object.assign(TR_MSG, {"Queue a playlist next": ["प्लेलिस्ट अगली चलाएं", "પ્લેલિસ્ટ આગળ ચલાવો"]});
   Object.assign(TR_MSG, {"Save unfinished history as playlist": ["अधूरी हिस्ट्री की प्लेलिस्ट बनाएं", "અધૂરી હિસ્ટ્રીની પ્લેલિસ્ટ બનાવો"]});
   Object.assign(TR_MSG, {"Study sheet export": ["पढ़ाई शीट निर्यात", "અભ્યાસ શીટ નિકાસ"]});
+  Object.assign(TR_MSG, {"Search notes in Library": ["लाइब्रेरी से नोट्स खोजें", "લાઇબ્રેરીથી નોંધો શોધો"]});
   var WNEW = [
+    ["Search notes in Library", "#libNotesBtn"],
     ["Study sheet export", "#studySheetBtn"],
     ["Save unfinished history as playlist", "#histPlBtn"],
     ["Queue a playlist next", "#plList"],
@@ -13817,8 +13840,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Save Watch later as playlist", "#laterPlBtn"],
     ["Save favourites as playlist", "#favPlBtn"],
     ["History in backups", "#libExport"],
-    ["Playlist to top", "#plList"],
-    ["Glass playlist progress", "#plList"]
+    ["Playlist to top", "#plList"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -19758,6 +19780,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Queue a playlist next", "queue playlist next priority insert after current preserve playing upcoming move duplicates undo", "#plList"],
       ["Save unfinished history as playlist", "save unfinished history as playlist started resume continue watching half finished course keep queue unchanged undo", "#histPlBtn"],
       ["Study sheet export", "study sheet export markdown md notes saved moments timestamp links lesson revision portable download personal annotations", "#studySheetBtn"],
+      ["Search notes in Library", "search notes library include private annotations written words find video topic titles ids queue matches pick matches", "#libNotesBtn"],
       ["Clear finished from history", "clear finished history recently watched remove watched done completed tidy keep unfinished resume undo", "#histDoneBtn"],
       ["Playlist to top", "playlist to top first move up favourite everyday pin order priority reorder saved list undo", "#plList"],
       ["Keep first N in a playlist", "keep first trim playlist cut shorten long course mix top N only opening part remove rest undo", "#plList"],
