@@ -5704,6 +5704,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
   // Link shortcuts: ?url= (or ?v=) loads a video, ?text= picks the last link out of shared text,
   // ?from= and ?to= (seconds) set a start and end time.
+  // Round 203: one reader for typed times, shared by Jump to time, Pause at and the local-file jump box.
+  // Accepts 90, 90s, 1:23, 125:30 (minutes over 99), 1:02:03(.5), 1m30s, 1h2m3s, 2h, 5m.
+  window.vpParseTime = function (raw) {
+    raw = String(raw || "").trim().toLowerCase().replace(/\s+/g, "");
+    var m;
+    if (!raw) return NaN;
+    if (/^\d+(?:\.\d+)?s?$/.test(raw)) return Number(raw.replace("s", ""));
+    if ((m = /^(\d+):([0-5]\d)(?::([0-5]\d))?(\.\d{1,3})?$/.exec(raw))) {
+      return m[3] === undefined ? Number(m[1]) * 60 + Number(m[2]) + Number(m[4] || 0) : Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number(m[4] || 0);
+    }
+    if ((m = /^(?:(\d+)h)?(?:(\d+)m(?:in)?)?(?:(\d+(?:\.\d+)?)s?)?$/.exec(raw)) && (m[1] || m[2] || m[3])) {
+      return Number(m[1] || 0) * 3600 + Number(m[2] || 0) * 60 + Number(m[3] || 0);
+    }
+    return NaN;
+  };
+
   (function readLinkParams() {
     var q;
     try { q = new URLSearchParams(location.search); } catch (e) { return; }
@@ -5720,8 +5736,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     if (!link) return;
     function secs(name) {
-      var n = parseInt(q.get(name), 10);
-      return isFinite(n) && n >= 0 ? n : null;
+      // Round 203 fix: read 1:30, 1m30s and 90.5 too, not only whole seconds (parseInt turned 1:30 into 1 second).
+      var n = window.vpParseTime(q.get(name));
+      return isFinite(n) && n >= 0 ? Math.floor(n) : null;
     }
     var from = secs("from"), to = secs("to");
     if (from != null && to != null && to <= from) to = null;
@@ -7262,22 +7279,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (chip) chip.click(); else { prefs.speed = target; savePrefs(); send("setPlaybackRate", [target]); markActive(speedChips, String(target)); }
     toast(T("Speed ") + target + "x");
   }
-
-  // Round 203: one reader for typed times, shared by Jump to time, Pause at and the local-file jump box.
-  // Accepts 90, 90s, 1:23, 125:30 (minutes over 99), 1:02:03(.5), 1m30s, 1h2m3s, 2h, 5m.
-  window.vpParseTime = function (raw) {
-    raw = String(raw || "").trim().toLowerCase().replace(/\s+/g, "");
-    var m;
-    if (!raw) return NaN;
-    if (/^\d+(?:\.\d+)?s?$/.test(raw)) return Number(raw.replace("s", ""));
-    if ((m = /^(\d+):([0-5]\d)(?::([0-5]\d))?(\.\d{1,3})?$/.exec(raw))) {
-      return m[3] === undefined ? Number(m[1]) * 60 + Number(m[2]) + Number(m[4] || 0) : Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number(m[4] || 0);
-    }
-    if ((m = /^(?:(\d+)h)?(?:(\d+)m(?:in)?)?(?:(\d+(?:\.\d+)?)s?)?$/.exec(raw)) && (m[1] || m[2] || m[3])) {
-      return Number(m[1] || 0) * 3600 + Number(m[2] || 0) * 60 + Number(m[3] || 0);
-    }
-    return NaN;
-  };
 
   // ---- Jump to time: type 1:23, 1:02:03 or 90s to seek the YouTube player ----
   (function () {
