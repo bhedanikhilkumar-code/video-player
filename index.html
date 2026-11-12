@@ -742,11 +742,15 @@ html.tab-hidden *, html.tab-hidden *::before, html.tab-hidden *::after { animati
    added-when line) down to nothing, so the pills now float on the thumbnail corner. */
 .lib-open { position: relative; }
 .lib-open > span { flex: 1 1 auto; min-width: 0; }
-.lib-open .watched-badge, .lib-open .rate-badge { position: absolute; left: 8px; bottom: 8px; box-shadow: 0 1px 5px rgba(0,0,0,.35); }
+.lib-open .watched-badge, .lib-open .rate-badge, .lib-open .note-badge { position: absolute; left: 8px; bottom: 8px; box-shadow: 0 1px 5px rgba(0,0,0,.35); }
 .lib-open .rate-badge { bottom: 30px; }
+.lib-open .note-badge { bottom: 52px; }
 .dark .watched-badge { background: rgba(48,209,88,.92); color: #fff; }
 .rate-badge { font-style: normal; font-size: .68rem; font-weight: 600; line-height: 1; padding: .28rem .5rem; border-radius: 999px; background: rgba(240,160,20,.94); color: #fff; align-self: center; white-space: nowrap; }
 .dark .rate-badge { background: rgba(240,160,20,.94); color: #fff; }
+/* Round 116: a small Note pill on a library row when that video has a saved note. */
+.note-badge { font-style: normal; font-size: .68rem; font-weight: 600; line-height: 1; padding: .28rem .5rem; border-radius: 999px; background: rgba(64,110,235,.92); color: #fff; align-self: center; white-space: nowrap; }
+.dark .note-badge { background: rgba(88,132,245,.92); color: #fff; }
 .goal-row .row { gap: 6px; }
 </style>
 <style id="liquid-glass-ui">
@@ -3363,6 +3367,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (item.done || (hInfo && hInfo.done)) { var wb = document.createElement("i"); wb.className = "watched-badge"; wb.textContent = "\u2713 " + T("Watched"); open.appendChild(wb); }
     var rr = vpRateOf(item.id);
     if (rr > 0) { var rb = document.createElement("i"); rb.className = "rate-badge"; rb.textContent = "\u2605 " + rr; rb.title = T("Your rating") + ": " + rr + "/5"; open.appendChild(rb); }
+    // Round 116: a Note pill on the row when this video has a saved note, so saved notes are
+    // visible at a glance in every list (queue, Favourites, Watch later, history, search).
+    if (typeof notes === "object" && notes && typeof notes[item.id] === "string" && notes[item.id].trim()) { var ntB = document.createElement("i"); ntB.className = "note-badge"; ntB.textContent = "📝 " + T("Note"); ntB.title = T("This video has a note"); ntB.setAttribute("aria-label", T("This video has a note")); open.appendChild(ntB); }
     open.addEventListener("click", function () {
       if (onOpen) onOpen(); else { linkInput.value = item.id; loadVideo(null, null, undefined, true); }
       if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
@@ -10209,6 +10216,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Notes: one short private note per YouTube video, saved on this device as you type.
   var NOTES_KEY = "vp-notes.v1", notes = {};
   try { var nIn = JSON.parse(localStorage.getItem(NOTES_KEY) || "null"); if (nIn && typeof nIn === "object" && !Array.isArray(nIn)) notes = nIn; } catch (e) {}
+  // Round 116: the first library paint ran before the notes were read, so paint the lists
+  // again now that the Note pills can show.
+  if (typeof renderLib === "function") renderLib();
   var noteTimer = null, noteShown = null;
   function notesSave() { try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch (e) {} }
   // Times written in a note (1:23 or 1:02:03) become buttons that jump to that moment.
@@ -10233,8 +10243,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var b = $("noteBox"), st = $("noteStatus");
     if (!b || !noteShown || !notes) return;
     var v = b.value.slice(0, 600);
+    var hadNote = typeof notes[noteShown] === "string" && !!notes[noteShown].trim();
     if (v.trim()) notes[noteShown] = v; else delete notes[noteShown];
     notesSave();
+    // Round 116: refresh the library rows only when the note's empty/full state flipped,
+    // so the Note pill appears or disappears without rebuilding the lists on every keystroke.
+    if (hadNote !== !!v.trim() && typeof renderLib === "function") renderLib();
     if (st) st.textContent = T("Note saved");
   }
   function renderNotes() {
@@ -10904,9 +10918,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Added yesterday": ["कल जोड़ा", "ગઈકાલે ઉમેર્યું"],
     "Added": ["जोड़ा गया", "ઉમेર્યું"],
     "Night sound": ["नाइट साउंड", "નાઇટ સાઉન્ડ"],
-    "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"]
+    "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"],
+    "Note": ["नोट", "નોંધ"],
+    "This video has a note": ["इस वीडियो पर एक नोट है", "આ વીડિયો પર નોંધ છે"],
+    "Note mark on lists": ["लिस्ट में नोट का निशान", "યાદીમાં નોંધનું નિશાન"]
   });
   var WNEW = [
+    ["Note mark on lists", "#notesH"],
     ["Tap ripples", "#tapRipChk"],
     ["Fireflies", "#fflyChk"],
     ["Pick for me", "#laterPickBtn"],
@@ -10915,8 +10933,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Video reflection", "#reflChk"],
     ["Watch later total time", "#laterTime"],
     ["History as text file", "#histTxtBtn"],
-    ["Live frame", "#liveFrameBtn"],
-    ["Starlight", "#starsChk"]
+    ["Live frame", "#liveFrameBtn"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -13140,7 +13157,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Pick for me", "pick for me suggest choose what to watch time budget minutes free fits watch later smart suggestion", "#laterPickBtn"],
       ["Shortest first sort", "sort shortest first length quick short small video watch later history order organise", "#lhLaterSortBtn"],
       ["Fireflies", "fireflies firefly glow glowing wanderers lights garden night page background pretty ambient", "#fflyChk"],
-      ["Tap ripples", "tap ripples rings touch pond water circle feedback page glass alive", "#tapRipChk"]
+      ["Tap ripples", "tap ripples rings touch pond water circle feedback page glass alive", "#tapRipChk"],
+      ["Note mark on lists", "note mark pill lists rows library favourites watch later history queue search written remember see glance", "#notesH"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
