@@ -2206,6 +2206,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="libListMsg" role="status"></p>
       <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
+      <p class="hint" id="laterTime" role="status"></p>
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button></span></div>
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
@@ -3514,6 +3515,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   (window.__relang = window.__relang || []).push(updateQueueTime);
 
+  // Watch later total time (round 112): a line under the Watch later list sums the
+  // lengths the app has learned for saved videos, like the playlist total-length line,
+  // so a backlog evening is easy to plan; unknown lengths are said so honestly, the
+  // line stays empty while nothing is saved or no length is known yet, and it refreshes
+  // with the lists, on every learned length and on language change.
+  Object.assign(TR_MSG, {
+    "Total length": ["कुल लंबाई", "કુલ લંબાઈ"],
+    "Watch later total time": ["वॉच लेटर कुल समय", "વોચ લેટર કુલ સમય"]
+  });
+  function updateLaterTime() {
+    var el = $("laterTime"); if (!el) return;
+    if (!lib.later.length) { el.textContent = ""; return; }
+    var known = 0, secs = 0;
+    lib.later.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { known++; secs += d; } });
+    if (!known) { el.textContent = ""; return; }
+    var t = Math.round(secs), h = Math.floor(t / 3600), m = h ? Math.round((t % 3600) / 60) : Math.max(1, Math.round(t / 60));
+    el.textContent = T("Total length") + ": ~ " + (h ? h + " " + T("hr") + " " + m + " " + T("min") : m + " " + T("min")) + (known < lib.later.length ? " · " + known + "/" + lib.later.length + " " + T("lengths known") : "");
+  }
+  (window.__relang = window.__relang || []).push(updateLaterTime);
+
   function renderLib() {
     renderContinue();
     fillList(queueList, lib.queue, T("Queue is empty. Add links with Add to queue."), T("Remove"), function (item, idx) {
@@ -3534,6 +3555,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     } }, "hist");
     updateFavBtn(); updateLaterBtn();
     updateQueueTime();
+    if (typeof updateLaterTime === "function") updateLaterTime();
     if (typeof window.__vpBadgesTick === "function") window.__vpBadgesTick();
   }
   function updateLaterBtn() {
@@ -4159,7 +4181,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         duration = i.duration; seek.max = duration;
         if (window.__vpSeekMarks) window.__vpSeekMarks();
         if (window.__vpABBand) window.__vpABBand(abA, abB);
-        if (curId) { infoCache[curId] = infoCache[curId] || {}; infoCache[curId].dur = duration; infoDur.textContent = "Length " + fmt(duration); if (typeof updateQueueTime === "function") updateQueueTime(); }
+        if (curId) { infoCache[curId] = infoCache[curId] || {}; infoCache[curId].dur = duration; infoDur.textContent = "Length " + fmt(duration); if (typeof updateQueueTime === "function") updateQueueTime(); if (typeof updateLaterTime === "function") updateLaterTime(); }
       }
       if (typeof i.videoLoadedFraction === "number" && Math.abs(i.videoLoadedFraction - (seekBuffered || 0)) > 0.005) { seekBuffered = i.videoLoadedFraction; if (typeof paintSeekFill === "function") paintSeekFill(); }
       if (typeof i.volume === "number") {
@@ -10561,6 +10583,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"]
   });
   var WNEW = [
+    ["Watch later total time", "#laterTime"],
     ["History as text file", "#histTxtBtn"],
     ["Live frame", "#liveFrameBtn"],
     ["Starlight", "#starsChk"],
@@ -10569,8 +10592,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Pick many in queue", "#qPickBtn"],
     ["Queue progress bar", "#qProg"],
     ["Speed streaks", "#streaksBtn"],
-    ["Cinema curtains", "#curtainsBtn"],
-    ["Film bars", "#filmBarsBtn"]
+    ["Cinema curtains", "#curtainsBtn"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -12773,6 +12795,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Night warm", "night warm picture sepia tint eyes late evening automatic colour", "#nightWarmBtn"],
       ["Progress line", "progress line bar bottom video fills watched mini player glance", "#progLineBtn"],
       ["History as text file", "history recently watched save text file export download list links dates finished record", "#histTxtBtn"],
+      ["Watch later total time", "watch later total time length duration how long backlog saved list plan evening", "#laterTime"],
       ["Daily watch limit", "daily limit cap stop total watch time today enough rest pause sleep", "#dlimChips"],
       ["Skip watched in queue", "skip watched finished seen queue next auto-next backlog left unwatched", "#qSkipWBtn"],
       ["Captions when muted", "captions cc subtitles auto mute muted sound off read quiet night", "#ccMuteBtn"],
