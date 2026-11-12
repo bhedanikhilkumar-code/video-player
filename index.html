@@ -4538,7 +4538,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       }
       if (data.info === 0 && !prefs.loop && !(abEnabled && abA != null && abB != null) && typeof window.__vpFinBurst === "function") window.__vpFinBurst();
       if (data.info === 0 && abEnabled && abA != null && abB != null) abLoopBack(true);
-      else if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); }
+      else if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); if (window.__vpLoopPulse) window.__vpLoopPulse("full", 0, 0); }
       else if (data.info === 0 && stopAfter) { stopAfter = false; renderStopAfter(); $("queueModeMsg").textContent = T("Stopped after this track, as you asked."); }
       else if (data.info === 0 && lib.queue.length && queueModes.auto) {
         if (!stillGate()) { if (typeof upnextBegin === "function") { upnextBegin(); } else if (qPos < 0) playQueueAt(0); else if (!playNext()) $("queueModeMsg").textContent = T("Queue finished. Tap a video to play again."); }
@@ -5580,6 +5580,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       updateAB();
     }
     send("seekTo", [abA, true]); curTime = abA;
+    if (window.__vpLoopPulse) window.__vpLoopPulse("ab", abLoopCount, abLoopLimit);
     if (restart) send("playVideo");
   }
   var abLoopRow = document.createElement("div"); abLoopRow.className = "row"; abLoopRow.style.marginTop = "8px"; abLoopRow.id = "abLoopRow";
@@ -11434,6 +11435,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Loop pulse", "#abLabel"],
     ["Channel volume", "#chVolBtn"],
     ["Skip seen parts", "#sskipBtn"],
     ["Moment beacon", "#markAddBtn"],
@@ -11442,7 +11444,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Watch later length filter", "#laterLenBtn"],
     ["Seek comet", "#scometChk"],
     ["Elastic edges", "#seek"],
-    ["Length on Watch later rows", "#lhLater"],
     ["Pin in Watch later", "#lhLater"],
   ];
   function wnewRender() {
@@ -13195,6 +13196,43 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (infoChannel) new MutationObserver(function () { chVolRender(); chVolApply(curId); }).observe(infoChannel, { childList: true, characterData: true, subtree: true });
   (window.__relang = window.__relang || []).push(chVolRender);
   chVolRender();
+
+  // Loop pulse (round 135): when a loop turns - an A-B repeat, a saved practice loop riding the
+  // same range, or the whole-video Loop - a soft accent ring pulses out across the frame and a
+  // small glass pill pops with the wrap count, so the jump back to A reads as the loop turning,
+  // not a glitch or a stray scrub. Interaction feedback, not a setting; works on YouTube videos
+  // on the main player (a plain overlay on the frame - the video itself is untouched and every
+  // control stays tappable), a still pill without the ring under Calm/reduced motion and Low-end
+  // mode, the glow drops in High contrast, hidden in the mini player and Simple mode, translated
+  // in Hindi and Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Loop pulse": ["लूप पल्स", "લૂપ પલ્સ"],
+    "Again": ["फिर से", "ફરીથી"]
+  });
+  var lpSt = document.createElement("style");
+  lpSt.textContent = ".vp-loopring{position:absolute;left:50%;top:50%;width:120px;height:120px;margin:-60px 0 0 -60px;border-radius:50%;border:3px solid var(--teal);box-shadow:0 0 26px var(--teal),inset 0 0 18px #fff3;pointer-events:none;z-index:6;opacity:0;animation:vpLoopRing .8s cubic-bezier(.2,.7,.3,1) both}"
+    + "@keyframes vpLoopRing{0%{opacity:.95;transform:scale(.28)}70%{opacity:.5}100%{opacity:0;transform:scale(1.35)}}"
+    + ".vp-looppill{position:absolute;left:50%;bottom:52px;transform:translateX(-50%);z-index:6;padding:9px 16px;border-radius:999px;background:rgba(20,20,30,.78);color:#fff;border:1px solid rgba(255,255,255,.34);box-shadow:0 6px 22px #0008;backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);font-size:13px;font-weight:800;letter-spacing:.01em;pointer-events:none;white-space:nowrap;animation:vpLoopPill 1.4s cubic-bezier(.34,1.56,.5,1) both}"
+    + "@keyframes vpLoopPill{0%{opacity:0;transform:translateX(-50%) translateY(10px) scale(.7)}18%{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}80%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-6px) scale(.96)}}"
+    + "html.low-fx .vp-loopring,html.calm-motion .vp-loopring{display:none}"
+    + "html.low-fx .vp-looppill,html.calm-motion .vp-looppill{animation:vpLoopPillStill 1.2s ease both}"
+    + "@keyframes vpLoopPillStill{0%{opacity:0}15%{opacity:1}80%{opacity:1}100%{opacity:0}}"
+    + "html.high-contrast .vp-loopring{box-shadow:none}"
+    + "html.high-contrast .vp-looppill{backdrop-filter:none;-webkit-backdrop-filter:none}"
+    + "#playerDock.is-mini .vp-loopring,#playerDock.is-mini .vp-looppill,html.simple-mode .vp-loopring,html.simple-mode .vp-looppill{display:none}";
+  document.head.appendChild(lpSt);
+  var lpBox = null;
+  window.__vpLoopPulse = function (kind, n, lim) {
+    if (!curId || !frameBox) return;
+    if (!lpBox) { lpBox = document.createElement("div"); lpBox.setAttribute("aria-hidden", "true"); frameBox.appendChild(lpBox); }
+    if (!(window.vpReducedMotion && window.vpReducedMotion())) {
+      var r = document.createElement("div"); r.className = "vp-loopring"; lpBox.appendChild(r);
+      setTimeout(function () { r.remove(); }, 900);
+    }
+    var txt = "\u21BA " + T("Again") + (kind === "ab" && n > 0 ? " \u00B7 " + n + (lim > 0 ? "/" + lim : "") : "");
+    var pl = document.createElement("div"); pl.className = "vp-looppill"; pl.textContent = txt; lpBox.appendChild(pl);
+    setTimeout(function () { pl.remove(); }, 1500);
+  };
 
 })();
 </script>
@@ -15436,7 +15474,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Whip pan", "whip pan seek jump travel motion blur frame slide spring landing forward rewind fling", "#seek"],
       ["Moment beacon", "moment beacon saved moment pass spark pill name seek bar dot playback reaches announce", "#markAddBtn"],
       ["Skip seen parts", "skip seen parts rewatch already watched watched part section skip ahead seen before watch map chip jump past second time", "#sskipBtn"],
-      ["Channel volume", "channel volume remember always this channel creator auto apply sound loud quiet level per channel", "#chVolBtn"]
+      ["Channel volume", "channel volume remember always this channel creator auto apply sound loud quiet level per channel", "#chVolBtn"],
+      ["Loop pulse", "loop pulse a-b repeat wrap again ring count practice loop full video repeat turning feedback", "#abLabel"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
