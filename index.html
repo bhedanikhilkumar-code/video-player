@@ -1783,6 +1783,13 @@ setTimeout(done,3000);})();
             <button class="chip" type="submit" id="jumpGo">Go</button>
           </form>
           <span class="label" id="jumpMsg" role="status"></span>
+          <form class="row" id="pauseAtForm" style="margin-top:8px">
+            <label class="label" for="pauseAtInput" id="pauseAtLab">Pause at</label>
+            <input id="pauseAtInput" placeholder="5:20" inputmode="text" autocomplete="off" maxlength="12" style="width:110px">
+            <button class="chip" type="submit" id="pauseAtGo">Set</button>
+            <button class="chip" type="button" id="pauseAtClear" hidden>Clear</button>
+          </form>
+          <span class="label" id="pauseAtMsg" role="status"></span>
           <div id="undoSeekWrap" class="undo-seek-wrap" hidden><button class="chip" id="undoSeekBtn" type="button"></button><span id="undoSeekHint" class="hint"></span></div>
         </div>
 
@@ -11585,6 +11592,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Pause at a time", "#pauseAtForm"],
     ["Now playing lift", "#infoCard"],
     ["Library cascade", "#lhQueue"],
     ["Speak your note", "#noteMicBtn"],
@@ -11594,7 +11602,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Recent searches", "#libSearch"],
     ["Quality shine", "#qualityChips"],
     ["Home stretch glow", "#seek"],
-    ["Snooze in Watch later", "#lhLater"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -14225,6 +14232,73 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     };
   })(showInfo);
 
+  // Pause at a time (round 144): type a time like 5:20 and the video pauses by itself the
+  // moment playback reaches it - handy for watching just one part of a long video, or for
+  // stopping before an ending you do not want to see. A one-shot for the video playing now:
+  // it clears after it fires, when you clear it, or when another video loads, and it only
+  // fires when you play through the time (jumping past it leaves it waiting only if you jump
+  // back). Session-only, nothing is saved. Works on YouTube videos, translated in Hindi and
+  // Gujarati, listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Pause at a time": ["तय समय पर रुकें", "નક્કી સમયે રોકાઓ"],
+    "Pause at": ["इस समय पर रुकें", "આ સમયે રોકો"],
+    "Load a video first, then set a pause time.": ["पहले वीडियो चलाएं, फिर रुकने का समय सेट करें.", "પહેલાં વીડિયો ચલાવો, પછી રોકવાનો સમય સેટ કરો."],
+    "Type a time like 5:20 or 90s.": ["5:20 या 90s जैसा समय लिखें.", "5:20 કે 90s જેવો સમય લખો."],
+    "That time has already passed. Pick a later one.": ["वह समय निकल चुका है. आगे का समय चुनें.", "તે સમય વીતી ગયો છે. આગળનો સમય પસંદ કરો."],
+    "That is past the end of this video": ["यह वीडियो के अंत के बाद है", "આ વીડિયોના અંત પછી છે"],
+    "Will pause at ": ["रुकेगा: ", "રોકાશે: "],
+    "Paused at ": ["रुक गया: ", "રોકાયો: "],
+    "Pause time cleared.": ["रुकने का समय हटा दिया.", "રોકવાનો સમય હટાવ્યો."],
+    "Pause time passed - cleared.": ["रुकने का समय निकल गया - हटा दिया.", "રોકવાનો સમય વીતી ગયો - હટાવ્યો."]
+  });
+  (function () {
+    var form = $("pauseAtForm"), input = $("pauseAtInput"), msg = $("pauseAtMsg"), clr = $("pauseAtClear"), go = $("pauseAtGo"), lab = $("pauseAtLab");
+    if (!form || !input || !msg) return;
+    var target = -1, forId = null, prev = -1;
+    function parse(raw) {
+      raw = (raw || "").trim().toLowerCase().replace(/\s+/g, "");
+      if (/^\d+(?:\.\d+)?s$/.test(raw)) return Number(raw.slice(0, -1));
+      if (/^\d+(?:\.\d+)?$/.test(raw)) return Number(raw);
+      if (/^\d{1,2}:[0-5]\d(?::[0-5]\d)?$/.test(raw)) { var p = raw.split(":"), t = 0; for (var i = 0; i < p.length; i++) t = t * 60 + Number(p[i]); return t; }
+      return NaN;
+    }
+    function render() {
+      if (lab) lab.textContent = T("Pause at");
+      if (go) go.textContent = T("Set");
+      if (clr) { clr.textContent = T("Clear"); clr.hidden = target < 0; }
+      msg.textContent = target >= 0 ? T("Will pause at ") + fmt(target) : "";
+    }
+    function clear(text) { target = -1; forId = null; prev = -1; input.value = ""; input.setAttribute("aria-invalid", "false"); render(); if (text) msg.textContent = text; }
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (!curId || controls.hidden) { msg.textContent = T("Load a video first, then set a pause time."); return; }
+      var t = parse(input.value);
+      if (!isFinite(t) || t <= 0) { msg.textContent = T("Type a time like 5:20 or 90s."); input.setAttribute("aria-invalid", "true"); return; }
+      if (duration > 0 && t >= duration) { msg.textContent = T("That is past the end of this video") + " (" + fmt(duration) + ")."; input.setAttribute("aria-invalid", "true"); return; }
+      if (t <= (curTime || 0) + 1) { msg.textContent = T("That time has already passed. Pick a later one."); input.setAttribute("aria-invalid", "true"); return; }
+      input.setAttribute("aria-invalid", "false");
+      target = t; forId = curId; prev = curTime || 0; render();
+      if (typeof toast === "function") toast(T("Will pause at ") + fmt(t));
+    });
+    if (clr) clr.addEventListener("click", function () { clear(T("Pause time cleared.")); });
+    setInterval(function () {
+      if (target < 0) return;
+      if (curId !== forId) { clear(""); return; }
+      if (typeof seeking !== "undefined" && seeking) { prev = curTime || 0; return; }
+      var now = curTime || 0, before = prev; prev = now;
+      if (now > target + 3 && before > target) { clear(T("Pause time passed - cleared.")); return; }
+      if (before >= 0 && before < target && now >= target && now - before < 3.5) {
+        var at = target;
+        send("pauseVideo");
+        clear("");
+        msg.textContent = T("Paused at ") + fmt(at);
+        if (typeof toast === "function") toast(T("Paused at ") + fmt(at));
+      }
+    }, 250);
+    (window.__relang = window.__relang || []).push(render);
+    render();
+  })();
+
 
 })();
 </script>
@@ -16482,6 +16556,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Find in all moments", "find moments search saved moment name all videos jump bookmark marked spot chapter", "#markFindSum"],
       ["Videos in a playlist", "playlist videos items list inside see view reorder arrange order move up down remove play from position manage tidy contents", "#lhPlaylists"],
       ["Speak your note", "speak note voice dictate microphone talk hands free write words typing notes", "#noteMicBtn"],
+      ["Pause at a time", "pause at time stop timer part segment minute second watch only stop before ending jump seek one shot", "#pauseAtForm"],
       ["Library cascade", "library cascade rows rise stagger list repaint appear animation queue up next watch later favourites recently watched sort filter soft entrance", "#lhQueue"],
       ["Now playing lift", "now playing lift card spring sheen glass sweep info title channel new video load arrival entrance under frame ceremony", "#infoCard"]
     ];
