@@ -4215,7 +4215,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var snapLat = lib.later.slice();
       lib.later.splice(lIdx, 1); saveLib(); renderLib();
       toastUndo(T("Removed from Watch later."), function () { lib.later = snapLat; saveLib(); renderLib(); }, T("Watch later list restored"));
-    }, null, [{ label: "📌", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinLater(item.id); } }, { label: function (item) { return laterSnoozed(item) ? "😴 " + Math.max(1, Math.round((item.snoozeUntil - Date.now()) / 864e5)) + "d" : "😴"; }, aria: function (item) { return laterSnoozed(item) ? T("Snoozed - tap to wake it sooner") : T("Snooze this video for later"); }, cls: "snooze-chip", on: function (item) { return laterSnoozed(item); }, fn: function (item) { laterSnoozeCycle(item.id); } }, plRowAction()], "later", undefined, true);
+    }, null, [{ label: "📌", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinLater(item.id); } }, { label: function (item) { return laterSnoozed(item) ? "😴 " + Math.max(1, Math.round((item.snoozeUntil - Date.now()) / 864e5)) + "d" : "😴"; }, aria: function (item) { return laterSnoozed(item) ? T("Snoozed - tap to wake it sooner") : T("Snooze this video for later"); }, cls: "snooze-chip", on: function (item) { return laterSnoozed(item); }, fn: function (item) { laterSnoozeCycle(item.id); } }, plRowAction(), queueRowAction()], "later", undefined, true);
     // Round 206 new 4: Favourites fold - a long favourites list made the library card heavy
     // to draw and scroll on phones. Show the first 30 with a Show all row; the full list is
     // one tap away and folds back with Show less. Session-only - nothing new is saved.
@@ -4226,7 +4226,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var snapFv = lib.favs.slice();
       lib.favs.splice(fIdx, 1); saveLib(); renderLib();
       toastUndo(T("Removed from favourites"), function () { lib.favs = snapFv; saveLib(); renderLib(); }, T("Favourites restored"));
-    }, null, [{ label: "\ud83d\udccc", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinFav(item.id); } }, plRowAction()], "fav");
+    }, null, [{ label: "\ud83d\udccc", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinFav(item.id); } }, plRowAction(), queueRowAction()], "fav");
     if (fvAll206.length > 30) {
       var foldLi = document.createElement("li"); foldLi.className = "lib-empty";
       var foldBtn = document.createElement("button"); foldBtn.className = "chip"; foldBtn.type = "button";
@@ -4237,7 +4237,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     fillList(histList, histView(), T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, [{ label: T("Remove"), fn: function (item) {
       var i = findIn(lib.hist, item.id);
       if (i >= 0) { var snapH = lib.hist.slice(); lib.hist.splice(i, 1); saveLib(); renderLib(); if (typeof libSay === "function") libSay(T("Removed from history.")); toastUndo(T("Removed from history."), function () { lib.hist = snapH; saveLib(); renderLib(); }, T("History restored")); }
-    } }, plRowAction()], "hist");
+    } }, plRowAction(), queueRowAction()], "hist");
     updateFavBtn(); updateLaterBtn();
     updateQueueTime();
     if (typeof updateLaterTime === "function") updateLaterTime();
@@ -4280,6 +4280,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     + ".pl-pop-hint{margin:6px 0 0;font-size:12px;color:var(--ink2,#555);}"
     + ".pl-add-chip{padding-left:10px;padding-right:10px;}";
   document.head.appendChild(plPopStyle);
+  // Round 210 new 1: Queue chip on Favourites, Watch later and Recently watched rows. Only the queue
+  // rows themselves had a quick queue action; every other list row had to be opened first (which
+  // starts playing it) before it could be added. The chip adds that row to the end of the queue
+  // without playing it, says plainly when it is already queued or the queue is full (50), and
+  // saves nothing new beyond the queue itself.
+  Object.assign(TR_MSG, {
+    "Already in the queue": ["पहले से कतार में है", "પહેલેથી કતારમાં છે"],
+    "Add to queue": ["कतार में जोड़ें", "કતારમાં ઉમેરો"]
+  });
+  function queueRowAction() {
+    return { label: "\u2795", aria: function () { return T("Add to queue"); }, cls: "q-add-chip", fn: function (item) {
+      if (findIn(lib.queue, item.id) >= 0) { toast(T("Already in the queue")); return; }
+      if (lib.queue.length >= 50) { toast(T("The queue is full (50 videos).")); return; }
+      lib.queue.push({ id: item.id, title: item.title || titleFor(item.id) });
+      resetShuffle(); saveLib(); renderLib();
+      toast(T("Added to queue"));
+    } };
+  }
   function plRowAction() {
     return { label: "📁", aria: function () { return T("Add to playlist"); }, cls: "pl-add-chip", fn: function (item, btn) { plRowOpen(item, btn); } };
   }
@@ -14498,6 +14516,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Queue chip on every list row", "#favList"],
     ["Queue rows show when each video starts", "#lhQueue"],
     ["Clear upcoming but keep the playing video", "#clearUpcomingBtn"],
     ["O to open on YouTube", "#sc27"],
@@ -14506,8 +14525,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Copy my stats", "#statsCopyBtn"],
     ["Fade out at the end", "#fadeOutRow"],
     ["Search on YouTube", "#ytSearchBtn"],
-    ["Repeat this video N times", "#vidRepRow"],
-    ["Check offline readiness", "#offlineCheckBtn"]
+    ["Repeat this video N times", "#vidRepRow"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -14534,7 +14552,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Heading tiles": ["हेडिंग टाइल", "હેડિંગ ટાઇલ"],
     "Card float": ["कार्ड फ़्लोट", "કાર્ડ ફ્લોટ"],
     "Accent bloom": ["ऐक्सेंट ब्लूम", "એક્સેન્ટ બ્લૂમ"],
-    "Remove played videos in queue": ["कतार से चले हुए वीडियो हटाएं", "કતારમાંથી ચલાવેલા વિડિયો કાઢો"]
+    "Remove played videos in queue": ["कतार से चले हुए वीडियो हटाएं", "કતારમાંથી ચલાવેલા વિડિયો કાઢો"],
+    "Queue chip on every list row": ["हर लिस्ट पंक्ति पर कतार चिप", "દરેક યાદી પંક્તિ પર કતાર ચિપ"]
   });
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -20810,6 +20829,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Queue chip on every list row", "queue chip add row favourites watch later history without playing plus button append end", "#favList"],
       ["Tell a friend", "tell a friend share app link recommend invite send whatsapp pitch about", "#tellFriendBtn"],
       ["Copy my stats", "copy my stats watch time today week total top channel share paste chat summary", "#statsCopyBtn"],
       ["Fade out at the end", "fade out at the end sound sinks silence last seconds song gentle ending volume", "#fadeOutRow"],
