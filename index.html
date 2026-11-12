@@ -10478,6 +10478,48 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var MARKS_KEY = "vp-marks.v1", marks = {};
   try { var mkIn = JSON.parse(localStorage.getItem(MARKS_KEY) || "null"); if (mkIn && typeof mkIn === "object") marks = mkIn; } catch (e) {}
   function marksSave() { try { localStorage.setItem(MARKS_KEY, JSON.stringify(marks)); } catch (e) {} }
+  // Loop a moment (round 146): every saved moment grows a repeat chip - one tap
+  // loops the video from that moment to the next saved moment (or to the outro
+  // mark or the end of the video when it is the last), so a chorus or a tricky
+  // part replays hands-free without touching the A-B boxes. Tap the same chip
+  // again to stop the loop. Nothing new is saved: it drives the existing A-B
+  // loop, so the amber band, the loop counter and the clear button work exactly
+  // as before, and practice loops and Pause at moments stay untouched. Works on
+  // YouTube videos, translated in Hindi and Gujarati, listed in the feature
+  // finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Loop a moment": ["\u092a\u0932 \u0932\u0942\u092a", "\u0a95\u0acd\u0ab7\u0aa3 \u0ab2\u0ac2\u0aaa"],
+    "Loop from this moment": ["\u0907\u0938 \u092a\u0932 \u0938\u0947 \u0932\u0942\u092a \u0915\u0930\u0947\u0902", "\u0a86 \u0a95\u0acd\u0ab7\u0aa3\u0aa5\u0ac0 \u0ab2\u0ac2\u0aaa \u0a95\u0ab0\u0acb"],
+    "Looping ": ["\u0932\u0942\u092a \u091a\u0932 \u0930\u0939\u093e \u0939\u0948 ", "\u0ab2\u0ac2\u0aaa \u0a9a\u0abe\u0ab2\u0ac0 \u0ab0\u0ab9\u0acd\u0aaf\u0ac1\u0a82 \u0a9b\u0ac7 "],
+    "Tap the chip again to stop the loop.": ["\u0932\u0942\u092a \u0930\u094b\u0915\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u091a\u093f\u092a \u092b\u093f\u0930 \u0926\u092c\u093e\u090f\u0902.", "\u0ab2\u0ac2\u0aaa \u0ab0\u0acb\u0a95\u0ab5\u0abe \u0a9a\u0abf\u0aaa \u0aab\u0ac7\u0ab0\u0ac0 \u0aa6\u0aac\u0abe\u0ab5\u0acb."],
+    "Moment loop off.": ["\u092a\u0932 \u0932\u0942\u092a \u092c\u0902\u0926.", "\u0a95\u0acd\u0ab7\u0aa3 \u0ab2\u0ac2\u0aaa \u0aac\u0a82\u0aa7."],
+    "No room to loop after this moment.": ["\u0907\u0938 \u092a\u0932 \u0915\u0947 \u092c\u093e\u0926 \u0932\u0942\u092a \u0915\u0947 \u0932\u093f\u090f \u091c\u0917\u0939 \u0928\u0939\u0940\u0902.", "\u0a86 \u0a95\u0acd\u0ab7\u0aa3 \u0aaa\u0a9b\u0ac0 \u0ab2\u0ac2\u0aaa \u0aae\u0abe\u0a9f\u0ac7 \u0a9c\u0a97\u0acd\u0aaf\u0abe \u0aa8\u0aa5\u0ac0."]
+  });
+  function momentLoopB(m, next) {
+    if (typeof next === "number" && next > m.t + 0.5) return Math.floor(next);
+    var vm = curId && vmem[curId];
+    if (vm && typeof vm.outro === "number" && vm.outro > m.t + 1) return Math.floor(vm.outro);
+    if (duration > m.t + 1) return Math.floor(duration);
+    return null;
+  }
+  function momentLoop(m, next) {
+    if (!curId) { toast(T("Load a video first, then save a moment.")); return; }
+    var a = Math.floor(m.t), b = momentLoopB(m, next);
+    if (b == null || b - a < 1) { toast(T("No room to loop after this moment.")); return; }
+    if (abEnabled && abA === a && abB === b) { abEnabled = false; updateAB(); toast(T("Moment loop off.")); return; }
+    abA = a; abB = b; abEnabled = true; abLoopCount = 0; updateAB(); manualSeek(a); send("playVideo");
+    toast(T("Looping ") + fmt(a) + " - " + fmt(b) + ". " + T("Tap the chip again to stop the loop."));
+  }
+  function lpPaint() {
+    var list = $("markList"); if (!list || !list.querySelectorAll) return;
+    [].forEach.call(list.querySelectorAll("button[data-loopa]"), function (c) {
+      var a = Number(c.getAttribute("data-loopa")), b = Number(c.getAttribute("data-loopb"));
+      var on = abEnabled && abA === a && abB === b;
+      c.classList.toggle("active", on); c.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+  updateAB = (function (orig) { return function () { var r = orig.apply(this, arguments); lpPaint(); return r; }; })(updateAB);
+  (window.__relang = window.__relang || []).push(function () { renderMarks(); });
   function renderMarks() {
     var list = $("markList"); if (!list) return;
     list.innerHTML = "";
@@ -10489,10 +10531,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       empty.textContent = curId ? T("No moments saved for this video yet.") : T("Load a video first, then save a moment.");
       list.appendChild(empty); return;
     }
-    items.forEach(function (m) {
+    items.forEach(function (m, mi) {
       var go = document.createElement("button"); go.type = "button"; go.className = "chip";
       go.textContent = "\u25b6 " + fmt(m.t) + (m.name ? " \u00b7 " + m.name : "");
       go.addEventListener("click", function () { manualSeek(m.t); send("playVideo"); });
+      var lpB = momentLoopB(m, mi + 1 < items.length ? items[mi + 1].t : null);
+      var lp = document.createElement("button"); lp.type = "button"; lp.className = "chip mark-x"; lp.textContent = "🔁";
+      lp.setAttribute("data-loopa", Math.floor(m.t)); if (lpB != null) lp.setAttribute("data-loopb", lpB);
+      lp.setAttribute("aria-pressed", "false");
+      lp.setAttribute("aria-label", T("Loop from this moment") + " " + fmt(m.t) + (lpB != null ? " - " + fmt(lpB) : ""));
+      lp.addEventListener("click", function () { momentLoop(m, mi + 1 < items.length ? items[mi + 1].t : null); lpPaint(); });
       var sh = document.createElement("button"); sh.type = "button"; sh.className = "chip mark-x"; sh.textContent = "🔗";
       sh.setAttribute("aria-label", T("Copy link to moment") + " " + fmt(m.t));
       sh.addEventListener("click", function () { momentLinkCopy(m); });
@@ -10506,8 +10554,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         marks[curId] = arr.filter(function (x) { return x.t !== m.t; });
         marksSave(); renderMarks(); toast(T("Moment removed"));
       });
-      list.appendChild(go); list.appendChild(sh); list.appendChild(cardB); list.appendChild(del);
+      list.appendChild(go); list.appendChild(lp); list.appendChild(sh); list.appendChild(cardB); list.appendChild(del);
     });
+    lpPaint();
   }
   (function () {
     var addB = $("markAddBtn");
@@ -11601,6 +11650,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Loop a moment", "#markList"],
     ["Finder cascade", "#palBtn"],
     ["Toast spring", "#vpToast"],
     ["Time in the tab title", "#tabTimeChk"],
@@ -11610,7 +11660,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Speak your note", "#noteMicBtn"],
     ["Videos in a playlist", "#lhPlaylists"],
     ["Save pop", "#favBtn"],
-    ["Find in all moments", "#markFindSum"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -16672,7 +16721,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Library cascade", "library cascade rows rise stagger list repaint appear animation queue up next watch later favourites recently watched sort filter soft entrance", "#lhQueue"],
       ["Now playing lift", "now playing lift card spring sheen glass sweep info title channel new video load arrival entrance under frame ceremony", "#infoCard"],
       ["Toast spring", "toast spring notification bottom message confirm confirmation pop up springy sheen glass feedback saved cleared", "#vpToast"],
-      ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"]
+      ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
+      ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
