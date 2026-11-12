@@ -2056,7 +2056,7 @@ setTimeout(done,3000);})();
           <h3 id="lyricsH">Lyrics</h3>
           <textarea class="note-box" id="lyricsBox" maxlength="4000" rows="5" disabled aria-labelledby="lyricsH"></textarea>
           <div class="note-meta"><span id="lyricsStatus" role="status"></span><span id="lyricsCount">0 / 4000</span></div>
-          <div class="row"><button class="chip" id="lyricsShowBtn" type="button" aria-pressed="false" disabled>🎤 Show on video: off</button> <button class="chip" id="lyricsScrollBtn" type="button" aria-pressed="true">Auto-scroll: on</button> <button class="chip" id="lyricsClearBtn" type="button" disabled>🗑 Clear lyrics</button></div>
+          <div class="row"><button class="chip" id="lyricsShowBtn" type="button" aria-pressed="false" disabled>🎤 Show on video: off</button> <button class="chip" id="lyricsScrollBtn" type="button" aria-pressed="true">Auto-scroll: on</button> <button class="chip" id="lyricsClearBtn" type="button" disabled>🗑 Clear lyrics</button> <button class="chip" id="lyricsLrcBtn" type="button" disabled>⬇ Save as .lrc</button></div>
           <p class="hint" id="lyricsHint">Paste a song's words once and they stay with this video on this device. Show on video puts them in a glass pane on the player; tap Sync lines once while the song plays and the lines then follow it exactly.</p>
         </div>
 
@@ -13705,6 +13705,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     lyrForId = null; lyricsPaintBtns(); lyricsPaintOv();
   }
   function lyricsPaintBtns() {
+    if (window.__lyrXtra) window.__lyrXtra.forEach(function (f) { try { f(); } catch (e) {} });
     var showB = $("lyricsShowBtn"), scrB = $("lyricsScrollBtn"), clrB = $("lyricsClearBtn"), b = $("lyricsBox");
     var has = !!(b && b.value.trim());
     if (showB) { showB.disabled = !curId; showB.textContent = T("\ud83c\udfa4 Show on video") + ": " + T(lyricsUi.show ? "on" : "off"); showB.setAttribute("aria-pressed", String(lyricsUi.show)); showB.classList.toggle("active", lyricsUi.show); showB.setAttribute("aria-label", T("Lyrics on video")); }
@@ -17890,6 +17891,43 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           setTimeout(function () { if (!found) fin(T("You have the latest version.")); }, 4000);
         }, function () { fin(T("Could not check. Try again.")); });
       }, function () { uDone(T("Could not check. Try again.")); });
+    });
+  })();
+
+  // Round 206 new 2: Save as .lrc - synced lyrics could follow the song line by line, but
+  // they were stuck inside the app. This chip downloads this video's lyrics as a standard
+  // .lrc file that music players (and the desktop) understand: when the lines were synced
+  // here, each line gets its [mm:ss.xx] timestamp; without a sync the plain lines are
+  // saved, so nothing is lost either way. The file is named after the video.
+  Object.assign(TR_MSG, {
+    "Save as .lrc": [".lrc \u0915\u0947 \u0930\u0942\u092a \u092e\u0947\u0902 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902", ".lrc \u0aa4\u0ab0\u0ac0\u0a95\u0ac7 \u0ab8\u0abe\u0a9a\u0ab5\u0acb"],
+    "Save the lyrics as a .lrc file": ["\u0917\u0940\u0924 \u0915\u0947 \u092c\u094b\u0932 .lrc \u092b\u093c\u093e\u0907\u0932 \u0915\u0947 \u0930\u0942\u092a \u092e\u0947\u0902 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902", "\u0a97\u0ac0\u0aa4\u0aa8\u0abe \u0ab6\u0aac\u0acd\u0aa6\u0acb .lrc \u0aab\u0abe\u0a87\u0ab2 \u0aa4\u0ab0\u0ac0\u0a95\u0ac7 \u0ab8\u0abe\u0a9a\u0ab5\u0acb"],
+    "Lyrics saved as a .lrc file": ["\u0917\u0940\u0924 \u0915\u0947 \u092c\u094b\u0932 .lrc \u092b\u093c\u093e\u0907\u0932 \u092e\u0947\u0902 \u0938\u0947\u0935 \u0939\u0941\u090f", "\u0a97\u0ac0\u0aa4\u0aa8\u0abe \u0ab6\u0aac\u0acd\u0aa6\u0acb .lrc \u0aab\u0abe\u0a87\u0ab2\u0aae\u0abe\u0a82 \u0ab8\u0abe\u0a9a\u0ab5\u0abe\u0aaf\u0abe"],
+    "Add lyrics first, then save them as .lrc.": ["\u092a\u0939\u0932\u0947 \u0917\u0940\u0924 \u0915\u0947 \u092c\u094b\u0932 \u091c\u094b\u0921\u093c\u0947\u0902, \u092b\u093f\u0930 .lrc \u0938\u0947\u0935 \u0915\u0930\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe\u0a82 \u0a97\u0ac0\u0aa4\u0aa8\u0abe \u0ab6\u0aac\u0acd\u0aa6\u0acb \u0a89\u0aae\u0ac7\u0ab0\u0acb, \u0aaa\u0a9b\u0ac0 .lrc \u0ab8\u0abe\u0a9a\u0ab5\u0acb."]
+  });
+  (function () {
+    var lrcBtn = $("lyricsLrcBtn"); if (!lrcBtn) return;
+    function lrcPaint() {
+      lrcBtn.textContent = "\u2b07 " + T("Save as .lrc");
+      lrcBtn.setAttribute("aria-label", T("Save the lyrics as a .lrc file"));
+      var box = $("lyricsBox");
+      lrcBtn.disabled = !(curId && box && box.value.trim());
+    }
+    (window.__relang = window.__relang || []).push(lrcPaint);
+    (window.__lyrXtra = window.__lyrXtra || []).push(lrcPaint);
+    lrcPaint();
+    lrcBtn.addEventListener("click", function () {
+      if (!curId) return;
+      var lines = lyricsLinesFor(curId);
+      if (!lines.length) { toast(T("Add lyrics first, then save them as .lrc.")); return; }
+      var synced = lyrSyncValid(curId), times = synced ? lyrSync[curId] : null;
+      function stamp(s) { s = Math.max(0, s || 0); var m = Math.floor(s / 60), ss = s - m * 60; return "[" + (m < 10 ? "0" : "") + m + ":" + (ss < 10 ? "0" : "") + ss.toFixed(2) + "]"; }
+      var title = String(infoTitle.textContent || titleFor(curId) || "lyrics").replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim() || "lyrics";
+      var lrc = "[ti:" + title + "]\n[by:VP Player]\n" + lines.map(function (ln, i) { return (times ? stamp(times[i]) : "") + ln; }).join("\n") + "\n";
+      var blob = new Blob([lrc], { type: "text/plain" });
+      var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = title + ".lrc";
+      document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+      toast(T("Lyrics saved as a .lrc file"));
     });
   })();
 })();
