@@ -1983,6 +1983,7 @@ setTimeout(done,3000);})();
             <li id="sc11"><b>S</b>: save this moment</li>
             <li id="sc12"><b>,</b> / <b>.</b>: previous / next saved moment</li>
             <li id="sc13"><b>Ctrl+V</b>: paste a video link anywhere on the page</li>
+            <li id="sc14"><b>&lt;</b> / <b>&gt;</b>: slower / faster playback speed</li>
           </ul>
           <p class="hint">Shortcuts work when the page itself is focused (click outside the video first). Picture-in-picture: many browsers offer it from the video itself, for example right-click the video twice on desktop Chrome.</p>
         </details>
@@ -6035,9 +6036,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else if (k === ",") { var mPv = $("markPrevBtn"); if (mPv && !mPv.disabled) mPv.click(); else handled = false; }
     else if (k === ".") { var mNx = $("markNextBtn"); if (mNx && !mNx.disabled) mNx.click(); else handled = false; }
     else if (/^[0-9]$/.test(k) && duration > 0) { var t = duration * Number(k) / 10; manualSeek(t); }
+    else if (k === "<" || k === ">") speedKeyStep(k === ">" ? 1 : -1);
     else handled = false;
     if (handled) e.preventDefault();
   });
+
+  // Speed keys (round 148): press < or > (Shift+comma / Shift+period) to step the playback
+  // speed down or up one notch along the speed chips - 0.25x to 2x - without touching the
+  // mouse. It clicks the matching chip, so the saved speed, the active chip and the Speed
+  // pill all behave exactly as a tap would. A toast names the new speed, or says the end of
+  // the range was reached. Nothing new is saved; translated in Hindi and Gujarati, listed in
+  // the shortcut list, the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Speed keys": ["स्पीड कीज़", "સ્પીડ કીઝ"],
+    "Speed ": ["स्पीड ", "સ્પીડ "],
+    "Already at the slowest speed": ["पहले से सबसे धीमी स्पीड पर", "પહેલેથી સૌથી ધીમી સ્પીડ પર"],
+    "Already at the fastest speed": ["पहले से सबसे तेज़ स्पीड पर", "પહેલેથી સૌથી ઝડપી સ્પીડ પર"]
+  });
+  function speedKeyStep(dir) {
+    var cur = Number(prefs.speed); if (!isFinite(cur) || cur <= 0) cur = 1;
+    var target = null, i;
+    if (dir > 0) { for (i = 0; i < SPEEDS.length; i++) if (SPEEDS[i] > cur + 0.001) { target = SPEEDS[i]; break; } }
+    else { for (i = SPEEDS.length - 1; i >= 0; i--) if (SPEEDS[i] < cur - 0.001) { target = SPEEDS[i]; break; } }
+    if (target == null) { toast(T(dir > 0 ? "Already at the fastest speed" : "Already at the slowest speed") + " (" + cur + "x)"); return; }
+    var chip = null;
+    [].forEach.call(speedChips.children, function (c) { if (Number(c.dataset.value) === target) chip = c; });
+    if (chip) chip.click(); else { prefs.speed = target; savePrefs(); send("setPlaybackRate", [target]); markActive(speedChips, String(target)); }
+    toast(T("Speed ") + target + "x");
+  }
 
   // ---- Jump to time: type 1:23, 1:02:03 or 90s to seek the YouTube player ----
   (function () {
@@ -10270,11 +10296,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["#sc11", "<b>S</b>: save this moment", "<b>S</b>: यह पल सेव करें"],
     ["#sc12", "<b>,</b> / <b>.</b>: previous / next saved moment", "<b>,</b> / <b>.</b>: पिछला / अगला सेव पल"],
     ["#sc13", "<b>Ctrl+V</b>: paste a video link anywhere on the page", "<b>Ctrl+V</b>: पेज पर कहीं भी वीडियो लिंक पेस्ट करें"],
+    ["#sc14", "<b>&lt;</b> / <b>&gt;</b>: slower / faster playback speed", "<b>&lt;</b> / <b>&gt;</b>: धीमी / तेज़ स्पीड"],
     ["#faq7a", "See the <a href=\"#backgroundHelp\">Listening help card</a> below the player for simple steps and the screen-off limits.", "सरल steps और screen-off सीमाओं के लिए प्लेयर के नीचे <a href=\"#backgroundHelp\">Listening help कार्ड</a> देखें."]
   ];
   var I18N_GU_HTML = {
  "#sc12": "<b>,</b> / <b>.</b>: પાછલી / આગળની સેવ ક્ષણ",
  "#sc13": "<b>Ctrl+V</b>: પેજ પર ગમે ત્યાં વીડિયો લિંક પેસ્ટ કરો",
+ "#sc14": "<b>&lt;</b> / <b>&gt;</b>: ધીમી / ઝડપી સ્પીડ",
  "#sc1": "<b>Space</b> અથવા <b>K</b>: ચલાવો / રોકો",
  "#sc2": "<b>Left / Right</b>: 5 સેકંડ પાછળ / આગળ",
  "#sc3": "<b>J / L</b>: 10 સેકંડ પાછળ / આગળ",
@@ -11654,6 +11682,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Speed keys", "#sc14"],
     ["Stats grow", "#lhStats"],
     ["Dock glide", "#playerDock"],
     ["Top channels", "#lhStats"],
@@ -11663,7 +11692,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Time in the tab title", "#tabTimeChk"],
     ["Pause at a time", "#pauseAtForm"],
     ["Now playing lift", "#infoCard"],
-    ["Library cascade", "#lhQueue"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -16882,6 +16910,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
       ["Top channels", "top channels most watched creators ranking watch time stats favourite channel who watch most", "#lhStats"],
+      ["Speed keys", "speed keys keyboard shortcut slower faster playback speed less greater than shift comma period step 0.25 2x rate", "#sc14"],
       ["Stats grow", "stats grow bars chart week days hours calendar watch time statistics numbers grow rise pop in entrance animate progress card", "#lhStats"],
       ["Dock glide", "dock glide mini player corner spring slide up settle back dock undock scroll down small floating player entrance animation", "#playerDock"]
     ];
