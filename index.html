@@ -2344,7 +2344,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var qPos = -1;
   var favList = $("favList"), histList = $("histList"), clearHistBtn = $("clearHistBtn"), favBtn = $("favBtn");
   var curTime = 0, curId = null, abA = null, abB = null, abEnabled = true;
-  var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false;
+  var iframe = null, ready = false, playing = false, duration = 0, muted = false, seeking = false, playedOnce = false;
   var prefs = { reduceMotion: false, volume: 80, speed: 1, loop: false, theme: "auto", cc: false, ccLang: "auto", accent: "default", accentCustom: "#3a8a77", lang: "en", seekStep: 10, dataSaver: false, battSaver: false, autoPause: false, autoResume: false, bgMotion: false, timeLeft: false, ambGlow: true, nightVol: 0, fsExitEnd: false, pvVol: false, rwPause: 0, cardTheme: "midnight", simpleMode: false, sleepPicFade: false, pauseUnplug: false, laterUnwatched: false, milestones: false, lyricsBig: false, vinyl: false, watchMap: false, playFlash: false, tilt: false, nightWarm: false, progLine: false, dailyLimit: 0, queueSkipWatched: false, ccMute: false, goalRing: false, pauseClock: false, badges: {}, badgesSeed: false, skipRipple: false, filmBars: false, curtains: false, speedStreaks: false, qPick: false, liveFrame: false, stars: false, snow: false, refl: false, ffly: false, tapRip: false, reveal: false, fin: false, settle: false, wave: false, titleCard: false, react: false, rainGlass: false, dreamOrbs: false, auroraGlow: false, volWaves: false };
   try {
     var saved = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
@@ -4409,7 +4409,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (data.event === "onStateChange" && typeof data.info === "number") {
       if (sleepPaused && data.info === 1) { send("pauseVideo"); return; }
       if (data.info === 5) rateHudSkipUntil = Date.now() + 2500;
-      playing = data.info === 1; document.documentElement.classList.toggle("vp-playing", playing); if (playing) failedQueueCount = 0; if (playing && typeof tabAutoPaused !== "undefined") tabAutoPaused = false;
+      playing = data.info === 1; if (data.info === 1) playedOnce = true; document.documentElement.classList.toggle("vp-playing", playing); if (playing) failedQueueCount = 0; if (playing && typeof tabAutoPaused !== "undefined") tabAutoPaused = false;
       if (window.__vpStateFx) window.__vpStateFx(data.info);
       try { fadeInState(data.info); } catch (e) {}
       if (data.info === 2) rwPausedAt = Date.now();
@@ -4491,7 +4491,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         paintVolLabel();
       }
       if (typeof i.muted === "boolean") { muted = i.muted; muteBtn.textContent = muted ? T("🔇 Unmute") : T("🔊 Mute"); if (window.__ccMuteOn) window.__ccMuteOn(muted); }
-      if (typeof i.currentTime === "number") {
+      // A fresh embed's first report says currentTime=0 even when the video was cued to a
+      // resume point; until it has actually played, ignore that zero so the saved spot survives.
+      if (typeof i.currentTime === "number" && !(i.currentTime === 0 && !playedOnce && curTime >= 5)) {
         curTime = i.currentTime;
         if (abEnabled && abA != null && abB != null && !seeking && curTime >= abB) abLoopBack(false);
       }
@@ -4906,7 +4908,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     addHistory(id);
     showInfo(id);
     document.dispatchEvent(new Event("vp-video-loaded"));
-    ready = false; playing = false; document.documentElement.classList.remove("vp-playing"); duration = 0; playBtn.disabled = true; playBtn.textContent = T("▶ Play");
+    ready = false; playing = false; playedOnce = false; document.documentElement.classList.remove("vp-playing"); duration = 0; playBtn.disabled = true; playBtn.textContent = T("▶ Play");
     if (typeof sleepFadeRestore === "function") sleepFadeRestore();
     timeLabel.textContent = "0:00 / 0:00"; seek.value = 0; seek.max = 1; seekBuffered = 0; if (typeof paintSeekFill === "function") paintSeekFill();
     if (typeof paintEndsAt === "function") paintEndsAt(0);
