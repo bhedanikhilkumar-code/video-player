@@ -2363,7 +2363,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
       <div id="musicQueue">
-      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="sortLenQueueBtn" type="button">Sort by length</button><button class="chip" id="sortAzQueueBtn" type="button">Sort A to Z</button><button class="chip" id="queueToLaterBtn" type="button">Save all to Watch later</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="qSkipWBtn" type="button" aria-pressed="false">Skip watched: off</button><button class="chip" id="qConsumeBtn" type="button" aria-pressed="false">Remove played: off</button><button class="chip" id="qFeedBtn" type="button" aria-pressed="false">Watch later feed: off</button><button class="chip" id="qPickBtn" type="button" aria-pressed="false">☑ Pick many: off</button><button class="chip" id="clearUpcomingBtn" type="button">Clear upcoming</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="sortLenQueueBtn" type="button">Sort by length</button><button class="chip" id="sortAzQueueBtn" type="button">Sort A to Z</button><button class="chip" id="queueToLaterBtn" type="button">Save all to Watch later</button><button class="chip" id="queueToFavBtn" type="button">Save all to favourites</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="qSkipWBtn" type="button" aria-pressed="false">Skip watched: off</button><button class="chip" id="qConsumeBtn" type="button" aria-pressed="false">Remove played: off</button><button class="chip" id="qFeedBtn" type="button" aria-pressed="false">Watch later feed: off</button><button class="chip" id="qPickBtn" type="button" aria-pressed="false">☑ Pick many: off</button><button class="chip" id="clearUpcomingBtn" type="button">Clear upcoming</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <div class="q-pick-bar" id="qPickBar" hidden>
         <div class="hint q-pick-count" role="status"><span id="qPickCount"></span><span id="qPickTime" style="display:block;margin-top:4px"></span></div>
         <span class="row">
@@ -4920,6 +4920,27 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     saveLib(); renderLib(); showLibErr("");
     toastUndo(added === 1 ? T("1 video saved to Watch later") : added + " " + T("videos saved to Watch later"), function () { lib.later = snap; saveLib(); renderLib(); }, T("Watch later restored"));
   });
+  // Round 210 new 3: Save all to favourites - the queue could be saved to Watch later, as a playlist or as a
+  // text file, but not kept as favourites in one tap. Videos not yet favourites go to the top of Favourites
+  // in queue order (duplicates skipped), with Undo. Nothing is changed in the queue.
+  Object.assign(TR_MSG, {
+    "Save all to favourites": ["सब पसंदीदा में सेव करें", "બધું મનપસંદમાં સાચવો"],
+    "Everything in the queue is already a favourite.": ["कतार का सब कुछ पहले से पसंदीदा है.", "કતારમાં બધું પહેલેથી મનપસંદ છે."],
+    "1 video saved to favourites": ["1 वीडियो पसंदीदा में सेव हुआ", "1 વિડિયો મનપસંદમાં સાચવ્યો"],
+    "videos saved to favourites": ["वीडियो पसंदीदा में सेव हुए", "વિડિયો મનપસંદમાં સાચવ્યા"]
+  });
+  var queueToFavBtn = $("queueToFavBtn");
+  if (queueToFavBtn) queueToFavBtn.addEventListener("click", function () {
+    if (!lib.queue.length) { showLibErr(T("Queue is empty. Add links with Add to queue.")); return; }
+    var snapF = lib.favs.slice(), fresh = [], seenF = {};
+    lib.queue.forEach(function (q) { if (findIn(lib.favs, q.id) < 0 && !seenF[q.id]) { seenF[q.id] = 1; fresh.push({ id: q.id, title: q.title || titleFor(q.id) }); } });
+    if (!fresh.length) { showLibErr(T("Everything in the queue is already a favourite.")); return; }
+    lib.favs = fresh.concat(lib.favs);
+    saveLib(); renderLib(); showLibErr("");
+    toastUndo(fresh.length === 1 ? T("1 video saved to favourites") : fresh.length + " " + T("videos saved to favourites"), function () { lib.favs = snapF; saveLib(); renderLib(); }, T("Favourites restored"));
+  });
+  (window.__relang = window.__relang || []).push(function () { if (queueToFavBtn) queueToFavBtn.textContent = T("Save all to favourites"); });
+  if (queueToFavBtn) queueToFavBtn.textContent = T("Save all to favourites");
   (window.__relang = window.__relang || []).push(function () { if (queueToLaterBtn) queueToLaterBtn.textContent = T("Save all to Watch later"); });
   if (queueToLaterBtn) queueToLaterBtn.textContent = T("Save all to Watch later");
   (window.__relang = window.__relang || []).push(function () { if (reverseQueueBtn) reverseQueueBtn.textContent = T("Reverse order"); });
@@ -14556,6 +14577,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Save all queue videos to favourites", "#queueToFavBtn"],
     ["Day headings in history", "#lhHist"],
     ["Queue chip on every list row", "#favList"],
     ["Queue rows show when each video starts", "#lhQueue"],
@@ -14564,8 +14586,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Drop a YouTube link", "#link"],
     ["Tell a friend", "#tellFriendBtn"],
     ["Copy my stats", "#statsCopyBtn"],
-    ["Fade out at the end", "#fadeOutRow"],
-    ["Search on YouTube", "#ytSearchBtn"]
+    ["Fade out at the end", "#fadeOutRow"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -14593,6 +14614,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Card float": ["कार्ड फ़्लोट", "કાર્ડ ફ્લોટ"],
     "Accent bloom": ["ऐक्सेंट ब्लूम", "એક્સેન્ટ બ્લૂમ"],
     "Day headings in history": ["इतिहास में दिन के शीर्षक", "ઇતિહાસમાં દિવસના શીર્ષક"],
+    "Save all queue videos to favourites": ["पूरी कतार पसंदीदा में सेव करें", "આખી કતાર મનપસંદમાં સાચવો"],
     "Remove played videos in queue": ["कतार से चले हुए वीडियो हटाएं", "કતારમાંથી ચલાવેલા વિડિયો કાઢો"],
     "Queue chip on every list row": ["हर लिस्ट पंक्ति पर कतार चिप", "દરેક યાદી પંક્તિ પર કતાર ચિપ"]
   });
@@ -20870,6 +20892,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Save all queue videos to favourites", "save all queue videos to favourites keep liked starred one tap undo duplicates skipped hearts", "#queueToFavBtn"],
       ["Day headings in history", "day headings history recently watched today yesterday date group days when watched last tuesday", "#lhHist"],
       ["Queue chip on every list row", "queue chip add row favourites watch later history without playing plus button append end", "#favList"],
       ["Tell a friend", "tell a friend share app link recommend invite send whatsapp pitch about", "#tellFriendBtn"],
