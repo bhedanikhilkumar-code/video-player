@@ -2260,7 +2260,7 @@ setTimeout(done,3000);})();
         <label class="dl-chk"><input type="checkbox" id="simpleModeChk"> <span id="simpleModeChkT">Simple mode (hide advanced cards)</span></label>
         <p class="hint" id="simpleModeHint">Shows only the link box, the player with everyday controls, and Help. Your videos, the downloader and other advanced cards are hidden. Nothing is deleted - one tap brings everything back.</p>
         <p class="hint" id="autoPauseHint">Handy when a call or another app pulls you away. Off by default; both are remembered on this device.</p>
-        <div class="actions"><button class="chip" id="resetAllBtn" type="button">Reset to default</button> <button class="chip" id="tourReplayBtn" type="button">Replay welcome tour</button> <button class="chip" id="updateCheckBtn" type="button">Check for updates</button> <span class="hint" id="updateCheckMsg" role="status"></span></div>
+        <div class="actions"><button class="chip" id="resetAllBtn" type="button">Reset to default</button> <button class="chip" id="tourReplayBtn" type="button">Replay welcome tour</button> <button class="chip" id="updateCheckBtn" type="button">Check for updates</button> <span class="hint" id="updateCheckMsg" role="status"></span> <button class="chip" id="offlineCheckBtn" type="button">Check offline readiness</button> <span class="hint" id="offlineCheckMsg" role="status"></span></div>
       </div>
       <div class="help-card">
         <h3 id="rpH">Report a problem</h3>
@@ -14177,6 +14177,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   Object.assign(TR_MSG, {"A (sec or 1:23)": ["A (सेकंड या 1:23)", "A (સેકંડ કે 1:23)"]});
   Object.assign(TR_MSG, {"B (sec or 1:23)": ["B (सेकंड या 1:23)", "B (સેકંડ કે 1:23)"]});
   var WNEW = [
+    ["Check offline readiness", "#offlineCheckBtn"],
     ["Protect my data", "#storKeepBtn"],
     ["Tap the record to play or pause", "#vinylBtn"],
     ["Open thumbnail", "#infoThumbBtn"],
@@ -14185,8 +14186,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Copy lyrics", "#lyricsCopyBtn"],
     ["Favourites fold", "#favList"],
     ["Copy summary", "#infoSumBtn"],
-    ["Copy as Markdown link", "#mdLinkBtn"],
-    ["Copy embed code", "#embedBtn"]
+    ["Copy as Markdown link", "#mdLinkBtn"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -18134,6 +18134,42 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         .catch(function () { state = false; kPaint(); });
     });
   })();
+
+  // Round 207 new 4: Check offline readiness - the app saves its page and icons for offline use, but nothing
+  // showed whether that had worked on this device. The chip looks in the app's offline cache and says plainly:
+  // ready (and how many files are saved), not saved yet (open the app once with internet), or not available
+  // here (a private window or an insecure page). Videos themselves always need internet. Read-only: nothing is
+  // changed or saved.
+  Object.assign(TR_MSG, {
+    "Check offline readiness": ["ऑफ़लाइन तैयारी जाँचें", "ઑફલાઇન તૈયારી તપાસો"],
+    "Checking...": ["जाँच रहे हैं...", "તપાસી રહ્યા છીએ..."],
+    "Ready offline: the app page and icons are saved on this device (files: ": ["ऑफ़लाइन तैयार: ऐप का पेज और आइकन इस डिवाइस में सेव हैं (फ़ाइलें: ", "ઑફલાઇન તૈયાર: ઍપનું પેજ અને આઇકન આ ડિવાઇસમાં સેવ છે (ફાઇલો: "],
+    "). Videos still need internet.": ["). वीडियो के लिए इंटरनेट चाहिए.", "). વીડિયો માટે ઇન્ટરનેટ જોઈએ."],
+    "Not saved for offline yet. Open the app once with internet and check again.": ["ऑफ़लाइन के लिए अभी सेव नहीं हुआ. ऐप को एक बार इंटरनेट के साथ खोलें और फिर जाँचें.", "ઑફલાઇન માટે હજી સેવ થયું નથી. ઍપ એકવાર ઇન્ટરનેટ સાથે ખોલો અને ફરી તપાસો."],
+    "Offline saving is not available here (private window or a page that is not secure).": ["यहाँ ऑफ़लाइन सेविंग उपलब्ध नहीं है (प्राइवेट विंडो या असुरक्षित पेज).", "અહીં ઑફલાઇન સેવિંગ ઉપલબ્ધ નથી (પ્રાઇવેટ વિન્ડો અથવા અસુરક્ષિત પેજ)."]
+  });
+  (function () {
+    var oBtn = $("offlineCheckBtn"), oMsg = $("offlineCheckMsg"); if (!oBtn || !oMsg) return;
+    var last = null; // function that repaints the last answer in the current language
+    function oPaint() { oBtn.textContent = T("Check offline readiness"); if (last) last(); }
+    (window.__relang = window.__relang || []).push(oPaint); oPaint();
+    oBtn.addEventListener("click", function () {
+      if (!window.caches || !caches.keys) { last = function () { oMsg.textContent = T("Offline saving is not available here (private window or a page that is not secure)."); }; last(); return; }
+      oMsg.textContent = T("Checking...");
+      caches.keys().then(function (keys) {
+        var mine = keys.filter(function (k) { return k.indexOf("vp-shell-") === 0; });
+        if (!mine.length) return 0;
+        return caches.open(mine[0]).then(function (c) { return c.keys(); }).then(function (reqs) {
+          var hasPage = reqs.some(function (r) { return new URL(r.url).pathname === "/"; });
+          return hasPage ? reqs.length : 0;
+        });
+      }).then(function (n) {
+        last = n ? function () { oMsg.textContent = T("Ready offline: the app page and icons are saved on this device (files: ") + n + T("). Videos still need internet."); }
+          : function () { oMsg.textContent = T("Not saved for offline yet. Open the app once with internet and check again."); };
+        last();
+      }).catch(function () { last = function () { oMsg.textContent = T("Offline saving is not available here (private window or a page that is not secure)."); }; last(); });
+    });
+  })();
 })();
 </script>
 <script>
@@ -20340,6 +20376,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Check offline readiness", "check offline readiness works without internet app saved cache installed airplane mode service worker", "#offlineCheckBtn"],
       ["Protect my data", "protect my data persistent storage browser clear space low keep saved queue favourites notes backup safe", "#storKeepBtn"],
       ["Tap the record to play or pause", "vinyl record tap play pause music mode turntable spin click disc", "#vinylBtn"],
       ["Open thumbnail", "open thumbnail cover picture album art poster image full size save preview video info", "#infoThumbBtn"],
