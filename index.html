@@ -3024,6 +3024,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Sort: Newest": ["क्रम: नया पहले", "ક્રમ: નવું પહેલા"],
    "Sort: A to Z": ["क्रम: A से Z", "ક્રમ: A થી Z"],
    "Sort: Top rated": ["क्रम: टॉप रेटेड", "ક્રમ: ટોપ રેટેડ"],
+   "Sort: Shortest": ["क्रम: सबसे छोटा", "ક્રમ: સૌથી ટૂંકું"],
    "Change favourites order": ["पसंदीदा का क्रम बदलें", "મનપસંદનો ક્રમ બદલો"],
    "Change playlist order": ["प्लेलिस्ट का क्रम बदलें", "પ્લેલિસ્ટનો ક્રમ બદલો"],
    "Saved playlists": ["सेव की प्लेलिस्ट", "સેવ કરેલી પ્લેલિસ્ટ"],
@@ -4041,14 +4042,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   /* Same title sort for Watch later and Recently watched. Newest first stays the default. */
   function makeSortView(key) {
     var mode = "new";
-    try { var sm = localStorage.getItem(key); mode = (sm === "az" || sm === "rate") ? sm : "new"; } catch (e) {}
+    try { var sm = localStorage.getItem(key); mode = (sm === "az" || sm === "rate" || sm === "short") ? sm : "new"; } catch (e) {}
     return {
       isAZ: function () { return mode === "az"; },
       mode: function () { return mode; },
-      toggle: function () { mode = mode === "new" ? "az" : (mode === "az" ? "rate" : "new"); try { localStorage.setItem(key, mode); } catch (e) {} },
+      toggle: function () { mode = mode === "new" ? "az" : (mode === "az" ? "rate" : (mode === "rate" ? "short" : "new")); try { localStorage.setItem(key, mode); } catch (e) {} },
       view: function (items) {
         if (mode === "new") return items;
         if (mode === "az") return items.slice().sort(function (a, b) { return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase()); });
+        if (mode === "short") return items.slice().sort(function (a, b) {
+          var da = infoCache[a.id] && infoCache[a.id].dur, db = infoCache[b.id] && infoCache[b.id].dur;
+          var ka = (typeof da === "number" && da > 0) ? da : Infinity, kb = (typeof db === "number" && db > 0) ? db : Infinity;
+          if (ka !== kb) return ka - kb;
+          return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase());
+        });
         return items.slice().sort(function (a, b) { return vpRateOf(b.id) - vpRateOf(a.id); });
       }
     };
@@ -4061,11 +4068,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   function histView() { return typeof histSort !== "undefined" && histSort ? histSort.view(lib.hist) : lib.hist; }
   function makeSortBtn(headingId, sort, items, labelKey) {
-    var b = document.createElement("button"); b.type = "button"; b.className = "chip";
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = headingId + "SortBtn";
     b.addEventListener("click", function () { sort.toggle(); renderLib(); });
     (function () { var r = document.querySelector('.lib-listtools[data-for="' + headingId + '"]'); if (r) r.appendChild(b); })();
     b.refresh = function () {
-      b.textContent = T(sort.mode() === "az" ? "Sort: A to Z" : (sort.mode() === "rate" ? "Sort: Top rated" : "Sort: Newest"));
+      b.textContent = T(sort.mode() === "az" ? "Sort: A to Z" : (sort.mode() === "rate" ? "Sort: Top rated" : (sort.mode() === "short" ? "Sort: Shortest" : "Sort: Newest")));
       b.setAttribute("aria-label", T(labelKey));
       b.hidden = items().length < 2;
     };
@@ -5898,7 +5905,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Move the sound towards the left or right ear - handy when one earphone sounds louder. Works on files you open here.": ["आवाज़ को बाएं या दाएं कान की ओर ले जाएं - जब एक ईयरफ़ोन तेज़ लगे तो काम आता है. यहां खोली गई फ़ाइलों पर काम करता है.", "અવાજને ડાબા કે જમણા કાન તરફ લઈ જાઓ - જ્યારે એક ઇયરફોન વધુ સંભળાય ત્યારે ઉપયોગી. અહીં ખોલેલી ફાઇલો પર કામ કરે છે."],
     "This browser cannot move sound left or right, so Balance stays in the middle.": ["यह ब्राउज़र आवाज़ को बाएं-दाएं नहीं कर सकता, इसलिए बैलेंस बीच में रहता है.", "આ બ્રાઉઝર અવાજને ડાબે-જમણે ખસેડી શકતું નથી, એટલે બૅલેન્સ વચ્ચે જ રહે છે."],
     "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"],
-    "Pick for me": ["मेरे लिए चुनो", "મારા માટે પસંદ કરો"]
+    "Pick for me": ["मेरे लिए चुनो", "મારા માટે પસંદ કરો"],
+    "Shortest first sort": ["सबसे छोटा पहले क्रम", "સૌથી ટૂંકું પહેલા ક્રમ"]
   });
   var mileBtn = $("mileBtn"), mileFired = {}, mileHideT = 0, mileOv = null;
   var mileSt = document.createElement("style");
@@ -10782,6 +10790,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   var WNEW = [
     ["Pick for me", "#laterPickBtn"],
+    ["Shortest first sort", "#lhLaterSortBtn"],
     ["Snowfall", "#snowChk"],
     ["Video reflection", "#reflChk"],
     ["Watch later total time", "#laterTime"],
@@ -10789,8 +10798,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Live frame", "#liveFrameBtn"],
     ["Starlight", "#starsChk"],
     ["Queue unwatched from Watch later", "#laterQueueBtn"],
-    ["Channel speed memory", "#chSpeedBtn"],
-    ["Pick many in queue", "#qPickBtn"]
+    ["Channel speed memory", "#chSpeedBtn"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -13011,7 +13019,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Video reflection", "video reflection mirror poster under frame cover flow glass pretty shine", "#reflChk"],
       ["Channel speed memory", "channel speed remember always this channel creator auto apply rate favourite", "#chSpeedBtn"],
       ["Queue unwatched from Watch later", "queue unwatched watch later add all backlog bulk move play saved", "#laterQueueBtn"],
-      ["Pick for me", "pick for me suggest choose what to watch time budget minutes free fits watch later smart suggestion", "#laterPickBtn"]
+      ["Pick for me", "pick for me suggest choose what to watch time budget minutes free fits watch later smart suggestion", "#laterPickBtn"],
+      ["Shortest first sort", "sort shortest first length quick short small video watch later history order organise", "#lhLaterSortBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
