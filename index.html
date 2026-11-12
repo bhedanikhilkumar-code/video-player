@@ -1962,6 +1962,7 @@ setTimeout(done,3000);})();
         <div class="ctl-card" id="ctl-repeat">
           <h3>Repeat</h3>
           <div class="row"><button class="chip" id="loopBtn">🔁 Loop off</button></div>
+          <div class="row" id="vidRepRow" style="margin-top:8px"><span class="label" id="vidRepLab">Repeat this video:</span><span class="chips" id="vidRepChips"></span></div>
           <span class="label" id="abSecLab">Repeat a section (A-B loop)</span>
           <div class="row">
             <button class="chip" id="aBtn">Set A</button>
@@ -5214,6 +5215,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (data.info === 0 && !prefs.loop && !(abEnabled && abA != null && abB != null) && typeof window.__vpFinBurst === "function") window.__vpFinBurst();
       if (data.info === 0 && abEnabled && abA != null && abB != null) abLoopBack(true);
       else if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); if (window.__vpLoopPulse) window.__vpLoopPulse("full", 0, 0); }
+      else if (data.info === 0 && vidRepN > 1) { vidRepN -= 1; send("seekTo", [0, true]); send("playVideo"); renderVidRep(); toast(T("Repeats left: {n}").replace("{n}", vidRepN - 1 + 1)); if (window.__vpLoopPulse) window.__vpLoopPulse("full", 0, 0); }
       else if (data.info === 0 && stopAfter) { stopAfter = false; renderStopAfter(); $("queueModeMsg").textContent = T("Stopped after this track, as you asked."); }
       else if (data.info === 0 && (lib.queue.length || qFeedPeek() >= 0) && queueModes.auto) {
         if (!stillGate()) { if (typeof upnextBegin === "function") { upnextBegin(); } else if (qPos < 0) playQueueAt(0); else if (!playNext()) $("queueModeMsg").textContent = T("Queue finished. Tap a video to play again."); }
@@ -5678,6 +5680,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     return t;
   }
   function loadVideo(startSec, endSec, queueIndex, autoplay) {
+    if (vidRepN !== 0) { vidRepN = 0; renderVidRep(); }
     if (typeof upnextCancel === "function") upnextCancel(true);
     var id = parseVideoId(linkInput.value);
     if (id) clearUndoSeek();
@@ -6279,6 +6282,38 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     loopBtn.classList.toggle("active", prefs.loop);
     loopBtn.textContent = prefs.loop ? T("🔁 Loop on") : T("🔁 Loop off");
   });
+
+  /* Repeat this video N times (round 208 new 1): the Loop chip repeats endlessly, but for a
+     song or a drill you often want "play it 3 times, then stop". Chips next to Loop set a
+     countdown (2, 3 or 5 plays); each finish plays the video again from the start and shows
+     how many plays are left, and when the count runs out the video simply ends. A-B loops
+     and the endless Loop chip win over the countdown; picking Off clears it. The choice is
+     for this visit only - nothing new is saved - and it resets when another video loads. */
+  Object.assign(TR_MSG, {
+    "Repeat this video:": ["यह वीडियो दोहराएं:", "આ વિડિયો ફરી ચલાવો:"],
+    "Repeats left: {n}": ["बाकी दोहराव: {n}", "બાકી દોહરાવ: {n}"],
+    "Video will play {n} times in all": ["वीडियो कुल {n} बार चलेगा", "વિડિયો કુલ {n} વાર ચાલશે"],
+    "Video repeat off": ["वीडियो दोहराव बंद", "વિડિયો દોહરાવ બંધ"]
+  });
+  var vidRepN = 0, vidRepChips = $("vidRepChips");
+  function renderVidRep() {
+    if (!vidRepChips) return;
+    vidRepChips.innerHTML = "";
+    [0, 2, 3, 5].forEach(function (n) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip" + (vidRepN === n ? " active" : "");
+      b.setAttribute("aria-pressed", String(vidRepN === n));
+      b.textContent = n === 0 ? T("Off") : n + "x";
+      b.addEventListener("click", function () {
+        vidRepN = n; renderVidRep();
+        toast(n === 0 ? T("Video repeat off") : T("Video will play {n} times in all").replace("{n}", n));
+      });
+      vidRepChips.appendChild(b);
+    });
+    var l = $("vidRepLab"); if (l) l.textContent = T("Repeat this video:");
+  }
+  (window.__relang = window.__relang || []).push(renderVidRep);
+  renderVidRep();
   var abToggle = document.createElement("button"); abToggle.type = "button"; abToggle.className = "chip";
   abToggle.id = "abToggle"; abToggle.textContent = T("Repeat A-B") + ": " + T("on"); abToggle.setAttribute("aria-pressed", "true");
   abLabel.parentNode.appendChild(abToggle);
@@ -14184,7 +14219,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // English inside a Hindi or Gujarati page (seen live in Hindi).
   Object.assign(TR_MSG, {
     "Save lyrics as .lrc": ["गीतों के बोल .lrc में सेव करें", "ગીતના શબ્દો .lrcમાં સાચવો"],
-    "Favourites fold": ["पसंदीदा सूची छोटी-बड़ी करें", "મનપસંદ યાદી નાની-મોટી કરો"]
+    "Favourites fold": ["पसंदीदा सूची छोटी-बड़ी करें", "મનપસંદ યાદી નાની-મોટી કરો"],
+    "Repeat this video N times": ["वीडियो N बार दोहराएं", "વિડિયો N વાર ફરી ચલાવો"]
   });
   Object.assign(TR_MSG, {
     "📁 Choose files": ["📁 फ़ाइलें चुनें", "📁 ફાઇલો પસંદ કરો"],
@@ -14192,6 +14228,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Repeat this video N times", "#vidRepRow"],
     ["Undo last import", "#libUndoImport"],
     ["Check offline readiness", "#offlineCheckBtn"],
     ["Protect my data", "#storKeepBtn"],
@@ -14201,7 +14238,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Save lyrics as .lrc", "#lyricsLrcBtn"],
     ["Copy lyrics", "#lyricsCopyBtn"],
     ["Favourites fold", "#favList"],
-    ["Copy summary", "#infoSumBtn"]
+    ["Check for updates", "#updateCheckBtn"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -20447,6 +20484,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Repeat this video N times", "repeat this video n times play again 2 3 5 times then stop countdown not endless song drill practice", "#vidRepRow"],
       ["Undo last import", "undo last import backup restore wrong file put back merge revert", "#libUndoImport"],
       ["Check offline readiness", "check offline readiness works without internet app saved cache installed airplane mode service worker", "#offlineCheckBtn"],
       ["Protect my data", "protect my data persistent storage browser clear space low keep saved queue favourites notes backup safe", "#storKeepBtn"],
