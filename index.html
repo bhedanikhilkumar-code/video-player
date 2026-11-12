@@ -1807,6 +1807,8 @@ setTimeout(done,3000);})();
           </form>
           <p class="hint" id="fitTimeHint">Picks a speed from 1x to 2x for the part left to watch. An estimate for recorded videos; pauses, loops and ads can add time.</p>
           <p class="hint" id="fitTimeMsg" role="status" aria-live="polite"></p>
+          <div class="row" style="margin-top:10px"><button class="chip" id="chSpeedBtn" type="button" aria-pressed="false">⏩ Channel speed: off</button></div>
+          <p class="hint" id="chSpeedHint">Remember a speed for this channel and it applies by itself when one of its videos plays. A speed saved for the video itself wins.</p>
         </div>
 
         <div class="ctl-card wide" id="ctl-quality">
@@ -4087,7 +4089,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (data.info === 0 && prefs.fsExitEnd && !prefs.loop && !(abEnabled && abA != null && abB != null) && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
     }
     if (data.event === "onPlaybackQualityChange" && typeof data.info === "string") markActive(qualityChips, data.info);
-    if (data.event === "onPlaybackRateChange" && typeof data.info === "number") { prefs.speed = data.info; savePrefs(); markActive(speedChips, String(data.info)); if (curId) vmemRec({ speed: data.info }); if (window.__vpSpeedHud && Date.now() > rateHudSkipUntil) window.__vpSpeedHud(data.info); }
+    if (data.event === "onPlaybackRateChange" && typeof data.info === "number") { prefs.speed = data.info; savePrefs(); markActive(speedChips, String(data.info)); if (curId) vmemRec({ speed: data.info }); if (window.__vpSpeedHud && Date.now() > rateHudSkipUntil) window.__vpSpeedHud(data.info); if (window.__vpChSpeedNote) window.__vpChSpeedNote(data.info); }
     if (data.event === "onError") {
       var ec = data.info;
       clearTimeout(loadWatchdog);
@@ -7285,6 +7287,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       lyricSync: (function () { var o = {}; if (typeof lyrSync === "object" && lyrSync) Object.keys(lyrSync).forEach(function (id) { var a = lyrSync[id]; if (Array.isArray(a) && a.length) o[id] = a.map(function (x) { return Math.round(x * 10) / 10; }); }); return o; })(),
       practiceLoops: practiceLoops,
       channels: vpChans.map(function (c) { return { n: c.n, u: c.u }; }),
+      chanSpeeds: (function () { var o = {}; Object.keys(chSpeed).forEach(function (k) { o[k] = chSpeed[k]; }); return o; })(),
       settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
     ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
@@ -7305,6 +7308,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var nLyrSyn = Object.keys(data.lyricSync || {}).length;
     if (nLyrSyn) libBackupMsg.textContent += " " + T("Lyrics sync included: ") + nLyrSyn + ".";
     if (data.channels.length) libBackupMsg.textContent += " " + T("Channels included: ") + data.channels.length + ".";
+    var nChSpd = Object.keys(data.chanSpeeds).length;
+    if (nChSpd) libBackupMsg.textContent += " " + T("Channel speeds included: ") + nChSpd + ".";
     bkMark();
   });
   $("libImport").addEventListener("click", function () { $("libImportFile").click(); });
@@ -7340,6 +7345,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             vpChans.push({ n: c.n.trim().slice(0, 60), u: /^https:\/\/(www\.)?youtube\.com\//.test(c.u) ? c.u : "" }); cn++;
           });
           if (cn) { vpChansSave(); chanRowRender(); chanStarRender(); }
+        }
+        var csn = 0;
+        if (d.chanSpeeds && typeof d.chanSpeeds === "object" && !Array.isArray(d.chanSpeeds) && typeof chSpeed !== "undefined") {
+          Object.keys(d.chanSpeeds).forEach(function (k) {
+            var v = Number(d.chanSpeeds[k]);
+            if (typeof k !== "string" || !k.trim() || !isFinite(v) || v < 0.25 || v > 2) return;
+            if (chSpeedFind(k)) return;
+            if (Object.keys(chSpeed).length >= 30) return;
+            chSpeed[k.trim().slice(0, 60)] = v; csn++;
+          });
+          if (csn) { chSpeedSave(); chSpeedRender(); }
         }
         var mn = 0;
         if (d.moments && typeof d.moments === "object" && !Array.isArray(d.moments)) {
@@ -7400,7 +7416,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
         }
-        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !cn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
+        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !cn && !csn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app."); return; }
         saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
         bkMark();
         libBackupMsg.textContent = T("Imported ") + qn + T(" queued, ") + fn + " " + (fn === 1 ? T("favourite") : T("favourites")) + T(" and ") + pn + " " + (pn === 1 ? T("playlist") : T("playlists")) + ".";
@@ -7409,6 +7425,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (nl) libBackupMsg.textContent += " " + T("Lyrics restored: ") + nl + ".";
         if (nSyn) libBackupMsg.textContent += " " + T("Lyrics sync restored: ") + nSyn + ".";
         if (cn) libBackupMsg.textContent += " " + T("Channels restored: ") + cn + ".";
+        if (csn) libBackupMsg.textContent += " " + T("Channel speeds restored: ") + csn + ".";
         if (gotSettings) { libBackupMsg.textContent += " " + T("Settings restored. Reloading to apply\u2026"); setTimeout(function () { location.reload(); }, 1200); }
       } catch (e) { libBackupMsg.textContent = T("That file could not be read. Use a backup file made by this app."); }
     };
@@ -8228,6 +8245,82 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (infoChannel) new MutationObserver(function () { chanStarRender(); }).observe(infoChannel, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["href"] });
   (window.__relang = window.__relang || []).push(function () { chanStarRender(); chanRowRender(); });
   chanStarRender(); chanRowRender();
+  // Channel speed (round 110): a chip in the Speed card remembers the speed you use for
+  // the channel of the video playing now - the next time one of its videos loads, that
+  // speed applies by itself, handy for channels you always watch faster or slower. A speed
+  // saved for the video itself (per-video memory) wins over the channel speed. Tapping the
+  // chip again forgets the channel, and changing the speed while a remembered channel plays
+  // updates its memory. Up to 30 channels, saved on this device and riding the backup
+  // export/import, translated in Hindi and Gujarati, in the feature finder and What's new.
+  Object.assign(TR_MSG, {
+    "⏩ Channel speed": ["⏩ चैनल स्पीड", "⏩ ચેનલ સ્પીડ"],
+    "Speed {s}x remembered for {c}.": ["{c} के लिए {s}x स्पीड याद रखी गई.", "{c} માટે {s}x સ્પીડ યાદ રાખી."],
+    "Speed {s}x for {c}.": ["{c} के लिए {s}x स्पीड.", "{c} માટે {s}x સ્પીડ."],
+    "Channel speed forgotten for {c}.": ["{c} की चैनल स्पीड भुला दी गई.", "{c} ની ચેનલ સ્પીડ ભૂલાઈ ગઈ."],
+    "Load a video first, then set a channel speed.": ["पहले वीडियो चलाएं, फिर चैनल स्पीड सेट करें.", "પહેલાં વીડિયો ચલાવો, પછી ચેનલ સ્પીડ સેટ કરો."],
+    "Remember a speed for this channel and it applies by itself when one of its videos plays. A speed saved for the video itself wins.": ["इस चैनल के लिए स्पीड याद रखें - उसका वीडियो चलते ही वह अपने आप लग जाती है. वीडियो के लिए अलग से सेव की गई स्पीड पहले लगती है.", "આ ચેનલ માટે સ્પીડ યાદ રાખો - તેનો વીડિયો ચાલતાં જ તે આપોઆપ લાગુ થાય. વીડિયો માટે અલગથી સાચવેલી સ્પીડ પહેલાં લાગુ થાય."],
+    "Channel speed memory": ["चैनल स्पीड मेमोरी", "ચેનલ સ્પીડ મેમરી"],
+    "Channel speeds included: ": ["चैनल स्पीड शामिल: ", "ચેનલ સ્પીડ સામેલ: "],
+    "Channel speeds restored: ": ["चैनल स्पीड वापस मिलीं: ", "ચેનલ સ્પીડ પાછી મળી: "]
+  });
+  var CHSPD_KEY = "vp-chanspeed.v1", chSpeed = {}, chSpeedAppliedId = null;
+  try {
+    var _cs = JSON.parse(localStorage.getItem(CHSPD_KEY) || "null");
+    if (_cs && typeof _cs === "object" && !Array.isArray(_cs)) Object.keys(_cs).forEach(function (k) {
+      var v = Number(_cs[k]);
+      if (typeof k === "string" && k.trim() && isFinite(v) && v >= 0.25 && v <= 2) chSpeed[k] = v;
+    });
+  } catch (e) {}
+  function chSpeedSave() { try { var ks = Object.keys(chSpeed); while (ks.length > 30) delete chSpeed[ks.shift()]; localStorage.setItem(CHSPD_KEY, JSON.stringify(chSpeed)); } catch (e) {} }
+  function chSpeedFind(n) { n = (n || "").toLowerCase(); var ks = Object.keys(chSpeed); for (var i = 0; i < ks.length; i++) if (ks[i].toLowerCase() === n) return ks[i]; return null; }
+  function chSpeedCurName() { var c = typeof chanCur === "function" ? chanCur() : null; return c ? c.n : ""; }
+  var chSpeedBtn = $("chSpeedBtn"), chSpeedHint = $("chSpeedHint");
+  function chSpeedRender() {
+    if (chSpeedHint) chSpeedHint.textContent = T("Remember a speed for this channel and it applies by itself when one of its videos plays. A speed saved for the video itself wins.");
+    if (!chSpeedBtn) return;
+    var n = chSpeedCurName(), k = n ? chSpeedFind(n) : null;
+    chSpeedBtn.textContent = T("⏩ Channel speed") + ": " + (k ? chSpeed[k] + "x" : T("off"));
+    chSpeedBtn.setAttribute("aria-pressed", String(!!k));
+    chSpeedBtn.classList.toggle("active", !!k);
+    chSpeedBtn.setAttribute("aria-label", T("⏩ Channel speed") + " - " + T("Remember a speed for this channel and it applies by itself when one of its videos plays. A speed saved for the video itself wins."));
+    chSpeedBtn.title = n ? n : "";
+  }
+  if (chSpeedBtn) chSpeedBtn.addEventListener("click", function () {
+    var n = chSpeedCurName();
+    if (!n) { toast(T("Load a video first, then set a channel speed.")); return; }
+    var k = chSpeedFind(n);
+    if (k) {
+      delete chSpeed[k]; chSpeedSave(); chSpeedRender();
+      toast(T("Channel speed forgotten for {c}.").replace("{c}", n));
+    } else {
+      chSpeed[n] = prefs.speed; chSpeedSave(); chSpeedRender();
+      toast(T("Speed {s}x remembered for {c}.").replace("{s}", prefs.speed).replace("{c}", n));
+    }
+  });
+  function chSpeedApply(id) {
+    if (!id || id !== curId || chSpeedAppliedId === id) return;
+    var n = chSpeedCurName(); if (!n) return; // wait for the channel name
+    chSpeedAppliedId = id;
+    var k = chSpeedFind(n); if (!k) return;
+    var vm = typeof vmem !== "undefined" ? vmem[id] : null;
+    if (vm && typeof vm.speed === "number") return; // the video's own speed wins
+    var spd = chSpeed[k];
+    if (spd !== prefs.speed) {
+      prefs.speed = spd; savePrefs();
+      send("setPlaybackRate", [spd]); markActive(speedChips, String(spd));
+      toast(T("Speed {s}x for {c}.").replace("{s}", spd).replace("{c}", n));
+    }
+  }
+  window.__vpChSpeedNote = function (rate) {
+    var n = chSpeedCurName(); if (!n) return;
+    var k = chSpeedFind(n);
+    if (k && chSpeed[k] !== rate) { chSpeed[k] = rate; chSpeedSave(); chSpeedRender(); }
+  };
+  window.__vpChSpeedApply = chSpeedApply;
+  window.__vpChSpeedRender = chSpeedRender;
+  if (infoChannel) new MutationObserver(function () { chSpeedRender(); chSpeedApply(curId); }).observe(infoChannel, { childList: true, characterData: true, subtree: true });
+  (window.__relang = window.__relang || []).push(chSpeedRender);
+  chSpeedRender();
 
   // Daily goal ring (round 105): a small glass ring at the video's top corner fills
   // towards today's watch goal while you watch - the goal progress is visible at a
@@ -10301,6 +10394,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Left-right balance": ["बायां-दायां बैलेंस", "ડાબે-જમણે બૅલેન્સ"]
   });
   var WNEW = [
+    ["Channel speed memory", "#chSpeedBtn"],
     ["Pick many in queue", "#qPickBtn"],
     ["Queue progress bar", "#qProg"],
     ["Speed streaks", "#streaksBtn"],
@@ -10309,8 +10403,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Skip ripple", "#skipRippleBtn"],
     ["Watch badges", "#badgesWrap"],
     ["Daily goal ring", "#goalRingBtn"],
-    ["Paused clock", "#pauseClockBtn"],
-    ["Captions when muted", "#ccMuteBtn"]
+    ["Paused clock", "#pauseClockBtn"]
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -12522,7 +12615,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Skip ripple", "skip ripple bubble seek jump back forward 10 seconds feedback video", "#skipRippleBtn"],
       ["Film bars", "film bars letterbox black bars cinema widescreen movie look video frame", "#filmBarsBtn"],
       ["Cinema curtains", "curtains theatre movie red velvet open close reveal start end show cinema", "#curtainsBtn"],
-      ["Speed streaks", "speed streaks fast lines motion playback rate quick video sweep faster than normal", "#streaksBtn"]
+      ["Speed streaks", "speed streaks fast lines motion playback rate quick video sweep faster than normal", "#streaksBtn"],
+      ["Channel speed memory", "channel speed remember always this channel creator auto apply rate favourite", "#chSpeedBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
