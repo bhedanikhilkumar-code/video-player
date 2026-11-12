@@ -17759,6 +17759,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       else if (it.status === "running") st.textContent = T("Downloading ") + (it.progress || 0) + "%";
       else if (it.status === "done") { var a = document.createElement("a"); a.href = it.file; a.download = it.name || ""; a.textContent = T("Save"); st.appendChild(a); }
       else { st.className = "st err"; st.textContent = T(it.err || "Failed"); }
+      it._st = st;
       var right = document.createElement("span"); right.className = "row"; right.style.gap = "8px"; right.appendChild(st);
       if (it.status === "error") { var rb = document.createElement("button"); rb.className = "chip"; rb.type = "button"; rb.textContent = T("Retry"); rb.addEventListener("click", function () { it.status = "waiting"; it.err = ""; qRender(); qNext(); }); right.appendChild(rb); }
       if (it.status !== "running") { var xb = document.createElement("button"); xb.className = "chip"; xb.type = "button"; xb.textContent = "x"; xb.setAttribute("aria-label", T("Remove from queue")); xb.addEventListener("click", function () { Q = Q.filter(function (q) { return q !== it; }); qRender(); }); right.appendChild(xb); }
@@ -17774,7 +17775,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var it = null; for (var i = 0; i < Q.length; i++) if (Q[i].status === "waiting") { it = Q[i]; break; }
     if (!it) return;
     qRun = true; it.status = "running"; it.progress = 0; qRender();
-    runTask(it.body, function (p) { it.progress = p; qRender(); }).then(function (s) {
+    // Round 204 fix: progress ticks rebuilt the whole queue list many times a second - churning
+    // the DOM, dropping keyboard focus and re-reading every row to screen-reader users. Now only
+    // the running row's status text updates between full renders (state changes still render fully).
+    runTask(it.body, function (p) { it.progress = p; if (it._st && it._st.isConnected && it.status === "running") it._st.textContent = T("Downloading ") + p + "%"; else qRender(); }).then(function (s) {
       it.status = "done"; it.file = API + s.file; it.name = s.name;
       histAdd({ url: it.body.url, title: it.title || hostOf(it.body.url), kind: it.body.kind, t: Date.now() });
       var a = document.createElement("a"); a.href = it.file; a.download = it.name || ""; document.body.appendChild(a); a.click(); a.remove();
