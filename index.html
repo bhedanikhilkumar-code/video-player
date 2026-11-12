@@ -1234,6 +1234,11 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
   background-size: 200% 100%; animation: skel-imgmove 1.3s linear infinite;
 }
 @keyframes skel-imgmove { to { background-position: -200% 0; } }
+/* Round 149: the shimmer now covers every list thumbnail too (thumbSet adds the class). */
+img.skel-img {
+  background: linear-gradient(100deg, #141114 30%, #2a2333 50%, #141114 70%);
+  background-size: 200% 100%; animation: skel-imgmove 1.3s linear infinite;
+}
 </style><style id="empty-state-icons">
 /* Empty states: each empty library list gets a small tinted icon tile next to its hint,
    so an empty section still looks finished instead of broken. */
@@ -8746,10 +8751,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Data and battery saver: 480p quality cap, thumbnail-free lists, lighter effects, battery readout.
   var saverData = $("saverData"), saverBatt = $("saverBatt"), battStatus = $("battStatus");
   var dsAppliedFor = null;
+  // Thumb shimmer (round 149): every list thumbnail - queue, Favourites, Watch later,
+  // Recently watched, search results, playlist covers and the Up-next countdown picture -
+  // wears the same soft glass shimmer the Now playing thumbnail has while its picture
+  // loads, so rows land with a quiet glow instead of a blank tile popping in. A cached
+  // picture skips the shimmer (checked right after the src is set), Data saver keeps its
+  // no-thumbnail behaviour, and the page-wide Calm/reduced-motion and Low-end rules still
+  // the sweep. Nothing new is saved, listed in the feature finder and the What's new card.
   function thumbSet(img, id, size) {
     if (!img) return;
-    if (prefs.dataSaver) { img.hidden = true; img.removeAttribute("src"); }
-    else { img.hidden = false; img.src = "https://i.ytimg.com/vi/" + id + "/" + size; }
+    if (prefs.dataSaver) { img.hidden = true; img.removeAttribute("src"); img.classList.remove("skel-img"); }
+    else {
+      img.hidden = false;
+      img.classList.add("skel-img");
+      img.onload = function () { img.classList.remove("skel-img"); };
+      img.onerror = function () { img.classList.remove("skel-img"); };
+      img.src = "https://i.ytimg.com/vi/" + id + "/" + size;
+      if (img.complete && img.naturalWidth > 0) img.classList.remove("skel-img");
+    }
   }
   function saverRerender() {
     renderLib(); renderPlaylists(); renderStats(); renderContinue(); applyLibSearch();
@@ -11725,6 +11744,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Thumb shimmer", "#lhQueue"],
     ["Glass switches", "#autoPauseChk"],
     ["Speed keys", "#sc14"],
     ["Stats grow", "#lhStats"],
@@ -11734,10 +11754,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Finder cascade", "#palBtn"],
     ["Toast spring", "#vpToast"],
     ["Time in the tab title", "#tabTimeChk"],
-    ["Pause at a time", "#pauseAtForm"],
   ];
   Object.assign(TR_MSG, {
-    "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"]
+    "Glass switches": ["ग्लास स्विच", "ગ્લાસ સ્વિચ"],
+    "Thumb shimmer": ["थंब शिमर", "થંબ શિમર"]
   });
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -16956,6 +16976,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
       ["Top channels", "top channels most watched creators ranking watch time stats favourite channel who watch most", "#lhStats"],
+      ["Thumb shimmer", "thumb shimmer thumbnail skeleton loading glow list rows playlist covers pictures while loading", "#lhQueue"],
       ["Glass switches", "glass switches settings toggles iphone style on off switch look premium controls accessibility", "#autoPauseChk"],
       ["Speed keys", "speed keys keyboard shortcut slower faster playback speed less greater than shift comma period step 0.25 2x rate", "#sc14"],
       ["Stats grow", "stats grow bars chart week days hours calendar watch time statistics numbers grow rise pop in entrance animate progress card", "#lhStats"],
