@@ -18151,6 +18151,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (/^\s*WEBVTT/.test(text)) return text;
     return "WEBVTT\n\n" + text;
   }
+  function subDecode(buf) {
+    // Round 203 fix: read UTF-16 (BOM) and old Windows-1252 subtitle files, not only UTF-8.
+    var u = new Uint8Array(buf);
+    try {
+      if (u[0] === 0xFF && u[1] === 0xFE) return new TextDecoder("utf-16le").decode(u.subarray(2));
+      if (u[0] === 0xFE && u[1] === 0xFF) return new TextDecoder("utf-16be").decode(u.subarray(2));
+      return new TextDecoder("utf-8", { fatal: true }).decode(u);
+    } catch (e) {}
+    try { return new TextDecoder("windows-1252").decode(u); } catch (e2) { return ""; }
+  }
   function clearSub() {
     if (subTrack) { try { subTrack.remove(); } catch (e) {} subTrack = null; }
     if (subUrl) { URL.revokeObjectURL(subUrl); subUrl = null; }
@@ -18179,7 +18189,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     rd.onload = function () {
       if (!curUrl || curUrl !== sourceAtRead) return;
       clearSub();
-      var vtt = srtToVtt(rd.result);
+      var vtt = srtToVtt(subDecode(rd.result));
       subUrl = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" }));
       subTrack = document.createElement("track");
       subTrack.kind = "subtitles"; subTrack.label = f.name; subTrack.srclang = "en"; subTrack.src = subUrl; subTrack.default = true;
@@ -18191,7 +18201,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       subMsg.textContent = T("Subtitles loaded: ") + f.name;
     };
     rd.onerror = function () { subMsg.textContent = T("That subtitle file could not be read."); };
-    rd.readAsText(f);
+    rd.readAsArrayBuffer(f);
   });
   var baseShowSub = show;
   show = function (url, local) { clearSub(); if (subMsg) subMsg.textContent = ""; baseShowSub(url, local); };
