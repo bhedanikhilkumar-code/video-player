@@ -4594,7 +4594,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (!fadeActive && !(prefs.nightVol > 0 && nightOn() && volIn <= prefs.nightVol && prefs.volume > prefs.nightVol) && !(window.__vpVolAutoT && Date.now() - window.__vpVolAutoT < 8000)) { prefs.volume = volIn; vol.value = volIn; }
         paintVolLabel();
       }
-      if (typeof i.muted === "boolean") { muted = i.muted; muteBtn.textContent = muted ? T("🔇 Unmute") : T("🔊 Mute"); if (window.__ccMuteOn) window.__ccMuteOn(muted); }
+      if (typeof i.muted === "boolean") { muted = i.muted; muteBtn.textContent = muted ? T("🔇 Unmute") : T("🔊 Mute"); if (window.__ccMuteOn) window.__ccMuteOn(muted); if (window.__vpMutePop) window.__vpMutePop(muted); }
       // A fresh embed's first report says currentTime=0 even when the video was cued to a
       // resume point; until it has actually played, ignore that zero so the saved spot survives.
       if (typeof i.currentTime === "number" && !(i.currentTime === 0 && !playedOnce && curTime >= 5)) {
@@ -11435,6 +11435,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Time left in Continue watching": ["जारी वीडियो में बचा समय", "ચાલુ વીડિયોમાં બચેલો સમય"]
   });
   var WNEW = [
+    ["Mute pop", "#muteBtn"],
     ["Loop pulse", "#abLabel"],
     ["Channel volume", "#chVolBtn"],
     ["Skip seen parts", "#sskipBtn"],
@@ -11444,7 +11445,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Watch later length filter", "#laterLenBtn"],
     ["Seek comet", "#scometChk"],
     ["Elastic edges", "#seek"],
-    ["Pin in Watch later", "#lhLater"],
   ];
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -13232,6 +13232,45 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var txt = "\u21BA " + T("Again") + (kind === "ab" && n > 0 ? " \u00B7 " + n + (lim > 0 ? "/" + lim : "") : "");
     var pl = document.createElement("div"); pl.className = "vp-looppill"; pl.textContent = txt; lpBox.appendChild(pl);
     setTimeout(function () { pl.remove(); }, 1500);
+  };
+
+  // Mute pop (round 135): muting or unmuting - the button, the M key, Captions-when-muted -
+  // pops a big glass muted / sound-on icon at the centre of the frame on a spring, the
+  // iPhone-style state confirmation for sound; on unmute two soft wave rings radiate out.
+  // Interaction feedback, not a setting; works on YouTube videos on the main player (a plain
+  // overlay on the frame - the video itself is untouched and every control stays tappable), a
+  // plain fade without the spring or waves under Calm/reduced motion and Low-end mode, solid in
+  // High contrast, hidden in the mini player and Simple mode, translation-free (icons only),
+  // listed in the feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Mute pop": ["म्यूट पॉप", "મ્યૂટ પૉપ"]
+  });
+  var mpopSt = document.createElement("style");
+  mpopSt.textContent = ".vp-mutepop{position:absolute;left:50%;top:50%;width:88px;height:88px;margin:-44px 0 0 -44px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(20,20,30,.6);color:#fff;border:1px solid rgba(255,255,255,.3);box-shadow:0 10px 34px #0007;backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);font-size:38px;line-height:1;pointer-events:none;z-index:6;animation:vpMutePop .85s cubic-bezier(.2,.9,.3,1) both}"
+    + "@keyframes vpMutePop{0%{opacity:0;transform:scale(.55)}20%{opacity:1;transform:scale(1.12)}38%{transform:scale(1)}78%{opacity:1}100%{opacity:0;transform:scale(1.06)}}"
+    + ".vp-mutewave{position:absolute;left:50%;top:50%;width:88px;height:88px;margin:-44px 0 0 -44px;border-radius:50%;border:2px solid rgba(255,255,255,.7);pointer-events:none;z-index:6;opacity:0;animation:vpMuteWave .8s ease-out both}"
+    + ".vp-mutewave.w2{animation-delay:.12s}"
+    + "@keyframes vpMuteWave{0%{opacity:.8;transform:scale(1)}100%{opacity:0;transform:scale(1.75)}}"
+    + "html.low-fx .vp-mutepop,html.calm-motion .vp-mutepop{animation:vpMutePopStill .7s ease both}"
+    + "html.low-fx .vp-mutewave,html.calm-motion .vp-mutewave{display:none}"
+    + "@keyframes vpMutePopStill{0%{opacity:0}15%{opacity:1}80%{opacity:1}100%{opacity:0}}"
+    + "html.high-contrast .vp-mutepop{backdrop-filter:none;-webkit-backdrop-filter:none;background:#000}"
+    + "#playerDock.is-mini .vp-mutepop,#playerDock.is-mini .vp-mutewave,html.simple-mode .vp-mutepop,html.simple-mode .vp-mutewave{display:none}";
+  document.head.appendChild(mpopSt);
+  var mpopBox = null, mpopLast = null;
+  window.__vpMutePop = function (m) {
+    if (mpopLast === null) { mpopLast = m; return; }
+    if (m === mpopLast) return; mpopLast = m;
+    if (!curId || !ready || !frameBox) return;
+    if (!mpopBox) { mpopBox = document.createElement("div"); mpopBox.setAttribute("aria-hidden", "true"); frameBox.appendChild(mpopBox); }
+    var d = document.createElement("div"); d.className = "vp-mutepop"; d.textContent = m ? "\uD83D\uDD07" : "\uD83D\uDD0A"; mpopBox.appendChild(d);
+    setTimeout(function () { d.remove(); }, 900);
+    if (!m && !(window.vpReducedMotion && window.vpReducedMotion())) {
+      for (var w = 0; w < 2; w++) {
+        var wv = document.createElement("div"); wv.className = "vp-mutewave" + (w ? " w2" : ""); mpopBox.appendChild(wv);
+        (function (x) { setTimeout(function () { x.remove(); }, 1000); })(wv);
+      }
+    }
   };
 
 })();
@@ -15475,7 +15514,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Moment beacon", "moment beacon saved moment pass spark pill name seek bar dot playback reaches announce", "#markAddBtn"],
       ["Skip seen parts", "skip seen parts rewatch already watched watched part section skip ahead seen before watch map chip jump past second time", "#sskipBtn"],
       ["Channel volume", "channel volume remember always this channel creator auto apply sound loud quiet level per channel", "#chVolBtn"],
-      ["Loop pulse", "loop pulse a-b repeat wrap again ring count practice loop full video repeat turning feedback", "#abLabel"]
+      ["Loop pulse", "loop pulse a-b repeat wrap again ring count practice loop full video repeat turning feedback", "#abLabel"],
+      ["Mute pop", "mute pop sound on off unmute icon centre frame confirm feedback speaker waves", "#muteBtn"]
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
