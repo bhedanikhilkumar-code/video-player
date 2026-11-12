@@ -4076,6 +4076,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       else { var qEnd = new Date(Date.now() + Math.round(secs / sp) * 1000); txt += " · " + T("ends ~") + qEnd.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
     }
     el.textContent = txt;
+    if (typeof paintQueueStarts === "function") paintQueueStarts();
   }
   (window.__relang = window.__relang || []).push(updateQueueTime);
 
@@ -4755,6 +4756,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (copyQueueBtn) copyQueueBtn.textContent = T("Copy list");
   Object.assign(TR_MSG, {
     "Nothing upcoming in the queue": ["कतार में आगे कुछ नहीं है", "કતારમાં આગળ કંઈ નથી"],
+    "Starts around": ["लगभग शुरू", "લગભગ શરૂ"],
+    "Queue rows show when each video starts": ["कतार की पंक्तियाँ बताती हैं हर वीडियो कब शुरू होगा", "કતારની પંક્તિઓ દરેક વીડિયો ક્યારે શરૂ થશે તે બતાવે છે"],
     "Upcoming queue cleared": ["आगे की कतार साफ़ हुई", "આગળની કતાર સાફ થઈ"],
     "Clear upcoming but keep the playing video": ["चलता वीडियो रखें, आगे की कतार साफ़ करें", "ચાલતો વીડિયો રાખો, આગળની કતાર સાફ કરો"]
   });
@@ -9305,6 +9308,47 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var baseRenderLib = renderLib;
   renderLib = function () { baseRenderLib(); decorateQueue(); };
   decorateQueue();
+
+  // Round 209: each upcoming queue row shows the wall-clock time it starts at,
+  // built from the learned lengths (the same source as the row Length tag and
+  // the queue "ends ~" clock) plus the playing video's remaining time at the
+  // current speed. A row whose earlier lengths are not all known stays silent,
+  // because its time would be a guess. Refreshed with every repaint, whenever a
+  // length is learned, and on language change.
+  function queueRowDur(id) {
+    var d = infoCache[id] && infoCache[id].dur;
+    if (typeof d === "number" && d > 0) return d;
+    var hi = findIn(lib.hist, id);
+    if (hi >= 0 && typeof lib.hist[hi].dur === "number" && lib.hist[hi].dur > 0) return lib.hist[hi].dur;
+    return 0;
+  }
+  function paintQueueStarts() {
+    if (!queueList || !queueList.children) return;
+    var sp = prefs.speed > 0 ? prefs.speed : 1;
+    var acc = 0, known = true;
+    if (qPos >= 0 && qPos < lib.queue.length) {
+      var cur = lib.queue[qPos], dCur = cur ? queueRowDur(cur.id) : 0;
+      if (dCur > 0) {
+        if (curId && cur.id === curId && curTime > 0) dCur = Math.max(0, dCur - Math.min(Math.floor(curTime), dCur));
+        acc += dCur;
+      } else known = false;
+    }
+    Array.prototype.forEach.call(queueList.children, function (li, idx) {
+      var oldTag = li.querySelector(".q-start"); if (oldTag) oldTag.remove();
+      if (!known || idx <= qPos || idx >= lib.queue.length) return;
+      var d = queueRowDur(lib.queue[idx].id);
+      var ts = new Date(Date.now() + Math.round(acc / sp) * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+      var tag = document.createElement("span");
+      tag.className = "later-age q-start";
+      tag.textContent = "~" + ts;
+      tag.setAttribute("aria-label", T("Starts around") + " " + ts);
+      li.appendChild(tag);
+      if (d > 0) acc += d; else known = false;
+    });
+  }
+  var baseRenderLibQS = renderLib;
+  renderLib = function () { baseRenderLibQS(); paintQueueStarts(); };
+  (window.__relang = window.__relang || []).push(paintQueueStarts);
 
   // ---- Round 109: Pick many in the queue + Queue progress bar ----
   // Pick many: a "Pick many" chip in the queue header turns on pick mode - every queue row
@@ -14430,6 +14474,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Queue rows show when each video starts", "#lhQueue"],
     ["Clear upcoming but keep the playing video", "#clearUpcomingBtn"],
     ["O to open on YouTube", "#sc27"],
     ["Drop a YouTube link", "#link"],
@@ -14438,8 +14483,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Fade out at the end", "#fadeOutRow"],
     ["Search on YouTube", "#ytSearchBtn"],
     ["Repeat this video N times", "#vidRepRow"],
-    ["Check offline readiness", "#offlineCheckBtn"],
-    ["Protect my data", "#storKeepBtn"]
+    ["Check offline readiness", "#offlineCheckBtn"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -21006,6 +21050,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Home and End keys", "home end key keyboard shortcut jump start beginning finish last end of video seek first second", "#sc26"],
       ["O to open on YouTube", "o key open playing video on youtube same second timestamp keyboard shortcut", "#sc27"],
       ["Clear upcoming but keep the playing video", "clear upcoming queue keep current playing drop rest remove after now playing tidy", "#clearUpcomingBtn"],
+      ["Queue rows show when each video starts", "queue row start time estimated begins clock when will each video start eta schedule upcoming", "#lhQueue"],
       ["E to queue the playing video", "queue this video playing now key e keyboard shortcut add end of queue current chip now playing link opened from history", "#sc25"],
       ["Empty breath", "empty breath list icon tile pulse glow idle alive queue watch later favourites history nothing here ios widget", "#lhQueue"],
       ["Switch ring", "switch ring toggle switch ring pulse flip on off settings saver accessibility checkbox confirmation glass ios haptic", "#saverData"],
