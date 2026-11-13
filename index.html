@@ -1998,7 +1998,7 @@ setTimeout(done,3000);})();
           <div class="row" style="margin-top:10px;flex-wrap:nowrap;gap:8px" id="sleepAtRow"><label class="label" style="white-space:nowrap" for="sleepAtTime" id="sleepAtLab">Stop at clock time:</label><input id="sleepAtTime" type="time" value="23:00" style="width:112px;min-width:0"><button class="chip" id="sleepAtBtn" type="button">Set</button></div>
           <div class="row" style="margin-top:10px;flex-wrap:nowrap;gap:8px" id="premRow"><label class="label" style="white-space:nowrap" for="premTime" id="premLab">Premiere at clock time:</label><input id="premTime" type="time" value="20:00" style="width:112px;min-width:0"><button class="chip" id="premBtn" type="button">Set</button></div>
           <div class="row" style="margin-top:10px"><label for="sleepMinutes" id="sleepMinLab">Custom minutes</label><input id="sleepMinutes" type="number" min="1" max="720" value="20" style="width:90px"><button class="chip" id="sleepStart" type="button">Start timer</button></div>
-          <div class="row" style="margin-top:10px"><button class="chip" id="sleepShrink" type="button" hidden>-10 min</button> <button class="chip" id="sleepExtend" type="button" hidden>+10 min</button></div>
+          <div class="row" style="margin-top:10px"><button class="chip" id="sleepRepeat" type="button" hidden>Repeat</button> <button class="chip" id="sleepShrink" type="button" hidden>-10 min</button> <button class="chip" id="sleepExtend" type="button" hidden>+10 min</button></div>
           <label class="dl-chk"><input type="checkbox" id="sleepFade"> <span id="sleepFadeT">Fade the sound out in the last minute</span></label>
           <label class="dl-chk"><input type="checkbox" id="sleepPicFade"> <span id="sleepPicFadeT">Fade the picture to dark in the last minute</span></label>
           <p class="hint">Pauses playback and auto-next. Background tabs may delay timers; the pause is checked again when you return.</p>
@@ -7487,6 +7487,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     sleepLabel.textContent = sleepEnd ? T("Pauses in ") + fmt(left) + (sleepStopTxt ? " (" + sleepStopTxt + ")" : "") : T("Off");
     if (sleepExtend) sleepExtend.hidden = !sleepEnd;
     if (typeof sleepShrinkPaint === "function") sleepShrinkPaint();
+    if (typeof sleepRepeatPaint === "function") sleepRepeatPaint();
     // Sleep ember (round 175): the countdown pill on the video warms to an ember
     // glow through the last minute, so a glance says the pause is close. The class
     // rides this render, which runs every second while a timer counts and on every
@@ -7512,12 +7513,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     send("pauseVideo"); playing = false; playBtn.textContent = T("▶ Play");
     sleepFadeRestore();
     markActive(sleepChips, "0"); sleepLabel.textContent = T("Sleep timer finished - paused. Press Play to continue.");
+    if (typeof sleepRepeatPaint === "function") sleepRepeatPaint();
   }
   function sleepSet(mins, endMs) {
     if (sleepTick) clearInterval(sleepTick);
     sleepFadeRestore();
     sleepClockTxt = "";
     sleepEnd = endMs ? endMs : (mins ? Date.now() + mins * 60000 : 0); sleepPaused = false;
+    if (!endMs && mins > 0) { try { localStorage.setItem("vp-sleep-last.v1", String(mins)); } catch (e) {} }
     if (endMs) { mins = 1; sleepClockTxt = new Date(endMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
     try { if (sleepEnd) localStorage.setItem("vp-sleep-end.v1", String(sleepEnd)); else localStorage.removeItem("vp-sleep-end.v1"); } catch(e) {}
     markActive(sleepChips, String(mins)); sleepRender();
@@ -7563,6 +7566,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "-10 min": ["-10 मिनट", "-10 મિનિટ"],
     "Less than 11 minutes left - use Off to stop the timer.": ["11 मिनट से कम बचे हैं - टाइमर रोकने के लिए बंद दबाएं.", "11 મિનિટથી ઓછા બાકી છે - ટાઈમર રોકવા બંધ દબાવો."]
   });
+  // Repeat last timer (round 226 new 2): a timer that ended (or was switched off) had to be
+  // rebuilt from the chips or the Custom box, even when it is the same 45 minutes every night.
+  // A chip shows while no timer runs and starts the last duration-based timer again in one tap
+  // (clock-time timers are not remembered); the length rides the backup.
+  Object.assign(TR_MSG, { "Repeat {n} min": ["{n} मिनट फिर से", "{n} મિનિટ ફરી"], "Repeat the last sleep timer": ["पिछला स्लीप टाइमर फिर चलाएं", "છેલ્લું સ્લીપ ટાઈમર ફરી ચલાવો"], "Repeat last sleep timer": ["पिछला स्लीप टाइमर दोहराएं", "છેલ્લું સ્લીપ ટાઈમર દોહરાવો"] });
+  var sleepRepeat = $("sleepRepeat");
+  function sleepLastMins() { var n = 0; try { n = Number(localStorage.getItem("vp-sleep-last.v1")); } catch (e) {} return (Number.isInteger(n) && n >= 1 && n <= 720) ? n : 0; }
+  function sleepRepeatPaint() {
+    if (!sleepRepeat) return;
+    var n = sleepLastMins();
+    sleepRepeat.hidden = !!sleepEnd || !n;
+    sleepRepeat.textContent = "\u21bb " + T("Repeat {n} min").replace("{n}", n || "");
+    sleepRepeat.setAttribute("aria-label", T("Repeat the last sleep timer") + (n ? ": " + n + " " + T("min") : ""));
+  }
+  if (sleepRepeat) sleepRepeat.addEventListener("click", function () { var n = sleepLastMins(); if (n && !sleepEnd) sleepSet(n); });
+  (window.__relang = window.__relang || []).push(sleepRepeatPaint);
   var sleepShrink = $("sleepShrink");
   function sleepShrinkPaint() { if (!sleepShrink) return; sleepShrink.textContent = T("-10 min"); sleepShrink.hidden = !sleepEnd; }
   if (sleepShrink) sleepShrink.addEventListener("click", function () {
@@ -7614,6 +7633,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // chips were marked Off before the saved timer was read back), so the card said Off and
   // "Pauses in 12:00" at once. A restored timer now lights no preset, like a clock timer.
   if (sleepEnd) { checkSleep(); if (sleepEnd) { sleepTick = setInterval(checkSleep, 1000); markActive(sleepChips, "-1"); } }
+  sleepRepeatPaint();
   document.addEventListener("visibilitychange", checkSleep);
   window.addEventListener("pageshow", checkSleep);
 
@@ -12003,7 +12023,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
   // ---- Library backup: export and import queue + favourites as a file ----
   var libBackupMsg = $("libBackupMsg");
-  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/ };
+  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-last.v1": /^\d{1,3}$/ };
   $("libExport").addEventListener("click", function () {
     if (typeof noteFlush === "function") noteFlush();
     if (typeof lyricsFlush === "function") lyricsFlush();
@@ -16746,6 +16766,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Repeat last sleep timer", "#sleepRepeat"],
     ["Shorter sleep timer", "#sleepShrink"],
     ["Forget every channel speed", "#chSpeedClearBtn"],
     ["Save all playlists as a text file", "#plAllTxtBtn"],
@@ -16755,7 +16776,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Revert note edits", "#noteRevertBtn"],
     ["Copy note with link", "#noteShareBtn"],
     ["Note times to moments", "#noteToMarksBtn"],
-    ["Import notes from a file", "#notesImportBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23337,6 +23357,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Repeat last sleep timer", "sleep timer repeat again last same duration one tap restart", "#sleepRepeat"],
       ["Shorter sleep timer", "sleep timer shorten minus 10 minutes less earlier reduce shorter", "#sleepShrink"],
       ["Forget every channel speed", "forget clear all channel speeds reset remembered per channel speed undo wipe", "#chSpeedClearBtn"],
       ["Save all playlists as a text file", "save all playlists one text file txt export backup titles links every playlist new phone", "#plAllTxtBtn"],
