@@ -18008,6 +18008,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Restore points", "#restoreCard"],
     ["Import preview", "#libImport"],
     ["Library check", "#libCheckCard"],
     ["Print your lists", "#printCard"],
@@ -18017,7 +18018,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Continue on another device", "#handoffBtn"],
     ["Playlist note", "#plList"],
     ["All-time recap", "#arecapBtn"],
-    ["Lists as CSV", "#listsCsvBtn"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23982,6 +23982,59 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   },true);
   })();
 /*R243-END*/
+  // Restore points (round 244 new 1): Undo toasts cover the last mistake, and Import backup needs a
+  // file you remembered to export, so a bad evening (a Clear tap, a wrong import, a merge gone
+  // wrong) could still cost the whole queue, favourites, Watch later and playlists. This card keeps
+  // up to six restore points on this device: one is taken by itself the first time the app opens on
+  // a new day (only when the lists changed since the last one), and 'Save a restore point now' adds
+  // one by hand. Restore asks first, shows what the point holds, and saves your current lists as a
+  // new point before it replaces anything, so a restore can itself be undone. History, ratings and
+  // settings are not part of a point (they are what Export backup is for). Nothing leaves the device.
+  Object.assign(TR_MSG, {
+    "Restore points": ["रिस्टोर पॉइंट", "રિસ્ટોર પોઇન્ટ"],
+    "Snapshots of your queue, favourites, Watch later and playlists. Restore one if a list goes wrong.": ["आपकी कतार, पसंदीदा, बाद में देखें और प्लेलिस्ट की कॉपी. कोई लिस्ट बिगड़े तो वापस लाएँ.", "તમારી કતાર, મનપસંદ, પછી જુઓ અને પ્લેલિસ્ટની નકલ. કોઈ યાદી બગડે તો પાછી લાવો."],
+    "Save a restore point now": ["अभी रिस्टोर पॉइंट सेव करें", "હમણાં રિસ્ટોર પોઇન્ટ સેવ કરો"],
+    "Automatic": ["अपने आप", "આપોઆપ"],
+    "Saved by you": ["आपने सेव किया", "તમે સેવ કર્યું"],
+    "Before a restore": ["रिस्टोर से पहले", "રિસ્ટોર પહેલાં"],
+    "Restore point saved.": ["रिस्टोर पॉइंट सेव हुआ.", "રિસ્ટોર પોઇન્ટ સેવ થયો."],
+    "Nothing changed since the last restore point.": ["पिछले रिस्टोर पॉइंट के बाद कुछ नहीं बदला.", "છેલ્લા રિસ્ટોર પોઇન્ટ પછી કંઈ બદલાયું નથી."],
+    "No restore points yet.": ["अभी कोई रिस्टोर पॉइंट नहीं.", "હજુ કોઈ રિસ્ટોર પોઇન્ટ નથી."],
+    "Could not save: browser storage is full or blocked.": ["सेव नहीं हुआ: ब्राउज़र स्टोरेज भरा है या बंद है.", "સેવ ન થયું: બ્રાઉઝર સ્ટોરેજ ભરેલું છે અથવા બંધ છે."],
+    "Restore the lists from this point? Your current lists are saved as a restore point first.": ["इस पॉइंट की लिस्ट वापस लाएँ? आपकी मौजूदा लिस्ट पहले रिस्टोर पॉइंट में सेव हो जाएँगी.", "આ પોઇન્ટની યાદી પાછી લાવો? તમારી હાલની યાદી પહેલાં રિસ્ટોર પોઇન્ટમાં સેવ થશે."],
+    "Lists restored.": ["लिस्ट वापस आ गईं.", "યાદી પાછી આવી ગઈ."],
+    "Restore point deleted.": ["रिस्टोर पॉइंट हटाया.", "રિસ્ટોર પોઇન્ટ કાઢ્યો."]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var KEY='vp-restorepoints.v1',MAXP=6;
+  var card=document.createElement('details');card.id='restoreCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="row"><button type="button" class="chip" id="rpSave"></button></div><div id="rpRows"></div><p class="hint" id="rpMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  function load(){try{var a=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(a)?a.filter(function(p){return p&&typeof p.ts==='number'&&p.d&&typeof p.d==='object';}):[];}catch(e){return [];}}
+  function store(a){while(a.length){try{localStorage.setItem(KEY,JSON.stringify(a));return true;}catch(e){a.pop();}}try{localStorage.removeItem(KEY);}catch(e2){}return false;}
+  function cur(){return JSON.parse(JSON.stringify({queue:lib.queue,favs:lib.favs,later:lib.later,playlists:playlists}));}
+  function total(d){return (d.queue||[]).length+(d.favs||[]).length+(d.later||[]).length+(d.playlists||[]).length;}
+  function add(kind,force){var d=cur();if(!total(d)&&!force)return 0;var a=load();if(a.length&&JSON.stringify(a[0].d)===JSON.stringify(d))return -1;a.unshift({ts:Date.now(),kind:kind,d:d});a=a.slice(0,MAXP);return store(a)?1:-2;}
+  function kindLabel(k){return T(k==='auto'?'Automatic':k==='before'?'Before a restore':'Saved by you');}
+  function line(d){return T('Queue')+' '+(d.queue||[]).length+' · '+T('Favourites')+' '+(d.favs||[]).length+' · '+T('Watch later')+' '+(d.later||[]).length+' · '+T('Playlists')+' '+(d.playlists||[]).length;}
+  function restore(p){var q=(p.d.queue||[]).filter(validItem),f=(p.d.favs||[]).filter(validItem),l=(p.d.later||[]).filter(validItem),pl=(p.d.playlists||[]).filter(function(x){return x&&typeof x.name==='string'&&Array.isArray(x.items);});
+    add('before',false);lib.queue=q;lib.favs=f;lib.later=l;playlists.splice(0,playlists.length);pl.forEach(function(x){playlists.push(x);});qPos=-1;
+    saveLib();savePlaylists();renderLib();renderPlaylists();$('rpMsg').textContent=T('Lists restored.');paint();}
+  function paint(){card.querySelector('summary').textContent=T('Restore points');card.querySelector('.r239-desc').textContent=T('Snapshots of your queue, favourites, Watch later and playlists. Restore one if a list goes wrong.');$('rpSave').textContent=T('Save a restore point now');
+    var box=$('rpRows');box.textContent='';var a=load();
+    if(!a.length){var e=document.createElement('p');e.className='hint';e.textContent=T('No restore points yet.');box.appendChild(e);return;}
+    a.forEach(function(p,i){var d=document.createElement('div');d.className='row';d.style.cssText='display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0';
+      var s=document.createElement('span');s.className='hint';s.style.flex='1 1 180px';s.textContent=new Date(p.ts).toLocaleString(undefined,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+' · '+kindLabel(p.kind)+' - '+line(p.d);d.appendChild(s);
+      var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Restore');b.setAttribute('aria-label',T('Restore')+': '+new Date(p.ts).toLocaleString());
+      b.addEventListener('click',function(){window.vpConfirm(line(p.d)+'. '+T('Restore the lists from this point? Your current lists are saved as a restore point first.'),T('Restore')).then(function(ok){if(ok)restore(p);});});d.appendChild(b);
+      var x=document.createElement('button');x.type='button';x.className='chip';x.textContent=T('Delete');x.setAttribute('aria-label',T('Delete')+': '+new Date(p.ts).toLocaleString());
+      x.addEventListener('click',function(){var b2=load().filter(function(q2){return q2.ts!==p.ts;});store(b2);$('rpMsg').textContent=T('Restore point deleted.');paint();});d.appendChild(x);box.appendChild(d);});}
+  $('rpSave').addEventListener('click',function(){var r=add('manual',true);$('rpMsg').textContent=r===1?T('Restore point saved.'):r===-1?T('Nothing changed since the last restore point.'):T('Could not save: browser storage is full or blocked.');paint();});
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  try{var al=load().filter(function(p){return p.kind==='auto';})[0];if(!al||Date.now()-al.ts>20*3600*1000)add('auto',false);}catch(e){}
+  })();
+/*R244-END*/
 
 })();
 </script>
@@ -26539,6 +26592,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Restore points", "restore points snapshot backup undo recover lists queue favourites watch later playlists mistake automatic daily", "#restoreCard"],
       ["Import preview", "import preview backup confirm what will be added dry run check before restore cancel safe file", "#libImport"],
       ["Library check", "library check health capacity full limit 50 empty playlists missing titles tidy fix untitled cap", "#libCheckCard"],
       ["Print your lists", "print lists pdf paper save pdf favourites watch later queue playlists share offline sheet", "#printCard"],
