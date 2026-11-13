@@ -2050,6 +2050,7 @@ setTimeout(done,3000);})();
           <div class="goal-row" id="cardThemeRow"><span class="hint" id="cardThemeLab">Share card style:</span><span class="row" id="cardThemeChips"></span></div>
           <div class="marks-list" id="markList"></div>
           <p class="hint" id="marksHint">Keep your favourite spots in this video. Tap one to jump to it. Saved on this device, for each video.</p>
+          <p class="hint" id="marksTotal" role="status" hidden></p>
           <details class="mark-find" id="markFindBox">
             <summary id="markFindSum">Find in all moments</summary>
             <input id="markFindIn" type="search" autocomplete="off" spellcheck="false" placeholder="Search every saved moment..." aria-label="Search every saved moment">
@@ -17449,6 +17450,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Moments across videos", "#marksTotal"],
     ["Continue watching done-by clock", "#contTime"],
     ["Yesterday in Watch stats", "#statsYest"],
     ["Longest unwatched favourite", "#favStaleBtn"],
@@ -21626,6 +21628,29 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     uPaint();
   })();
 
+  // Moments across videos (round 231 new 5): the card shows this video's moments and
+  // Find in all moments searches them, but the size of the whole collection - how many
+  // spots have I saved, over how many videos - was nowhere. One line under the card
+  // counts both, following saves, clears, imports and Undo through the shared render.
+  // Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "moments across": ["पल,", "ક્ષણો,"],
+    "Moments across videos": ["वीडियोज़ में कुल पल", "વીડિયોમાં કુલ ક્ષણો"]
+  });
+  (function () {
+    var el = $("marksTotal"); if (!el) return;
+    function paintMarksTotal() {
+      if (typeof marks === "undefined" || !marks) { el.hidden = true; el.textContent = ""; return; }
+      var vids = 0, n = 0;
+      Object.keys(marks).forEach(function (id) { var a = marks[id]; if (Array.isArray(a) && a.length) { vids++; n += a.length; } });
+      el.hidden = n === 0;
+      el.textContent = n === 0 ? "" : "\u{1F516} " + n + " " + T("moments across") + " " + vids + " " + (vids === 1 ? T("video") : T("videos"));
+    }
+    if (typeof renderMarks === "function") renderMarks = (function (orig) { return function () { var r = orig.apply(this, arguments); try { paintMarksTotal(); } catch (e) {} return r; }; })(renderMarks);
+    (window.__relang = window.__relang || []).push(paintMarksTotal);
+    paintMarksTotal();
+  })();
+
   Object.assign(TR_MSG, {
     "Yesterday in Watch stats": ["वॉच आंकड़ों में कल", "વોચ આંકડામાં ગઈકાલ"],
     "usual day": ["सामान्य दिन", "સામાન્ય દિવસ"],
@@ -24347,6 +24372,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Longest unwatched favourite", "longest unwatched favourite stale oldest not watched for a while rediscover star forgotten play", "#favStaleBtn"],
       ["Yesterday in Watch stats", "yesterday watch stats time watched last night day before compare usual average day", "#statsYest"],
       ["Continue watching done-by clock", "continue watching done by clock time finish wall clock when done total left rotation", "#contTime"],
+      ["Moments across videos", "moments across videos total saved moments count how many videos collection bookmarks", "#marksTotal"],
       ["Skip buttons in the mini player", "mini player skip back forward 10 seconds seek floating docked rewind hop", "#miniRew"],
       ["Find in lyrics", "find search lyrics words line song locate match jump next enter", "#lyrFindQ"],
       ["Snooze all in Watch later", "snooze all watch later park hide backlog every video one day wake undo", "#laterSnoozeAllBtn"],
