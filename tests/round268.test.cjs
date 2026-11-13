@@ -74,4 +74,11 @@ function grab(ctx, name) {
   assert.equal(ctx.lenSkip268(0, 30, 5), ''); // unknown length is never skipped
   assert.equal(ctx.lenSkip268(500, 0, 0), '');
 }
+
+// Fix 1: ?url= / ?text= links keep the time inside the link (checked in a browser; this guards the code path).
+{
+  const a = html.indexOf('(function readLinkParams()');
+  const body = html.slice(a, html.indexOf('linkInput.value = link;', a));
+  assert.ok(/if \(from == null\) \{ var inLink = linkStartSeconds\(link\)/.test(body));
+}
 console.log('round268 tests ok');
