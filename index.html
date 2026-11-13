@@ -13111,7 +13111,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     // Round 231 fix 1: the focus session choices (auto-pick) rode no backup - vp-focus.v1
     // is counted by Reset all settings since round 229, but it was missing here, so a
     // restore on a new phone silently turned the focus auto choice back on.
-    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1", "vp-today.v1"].forEach(function (k) {
+    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1", "vp-today.v1", "vp-saved-searches.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
     });
     // Round 223 fix 2: small one-word settings kept under their own keys (list sort orders,
@@ -13375,7 +13375,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
             savePrefs(); gotSettings = true; }
           if (s.queueModes && typeof s.queueModes === "object") { ["shuffle", "repeat", "auto"].forEach(function (k) { if (typeof s.queueModes[k] === "boolean") queueModes[k] = s.queueModes[k]; }); try { localStorage.setItem("vp-queue-modes.v1", JSON.stringify(queueModes)); } catch (e) {} gotSettings = true; }
           if (s.vmem && typeof s.vmem === "object") { Object.keys(s.vmem).forEach(function (k) { vmem[k] = s.vmem[k]; }); vmemSave(); gotSettings = true; }
-          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1", "vp-today.v1"].forEach(function (k) {
+          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1", "vp-today.v1", "vp-saved-searches.v1"].forEach(function (k) {
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
           if (s.rawKeys && typeof s.rawKeys === "object" && !Array.isArray(s.rawKeys)) {
@@ -27513,6 +27513,57 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
+  // Saved searches (round 260 new 1): the library search box remembers the last few searches,
+  // but they scroll away and cannot be kept. A search such as "is:later -shorts" that is
+  // worth repeating can now be saved with one tap (up to 10), and shows as a chip under the
+  // box; tapping a chip runs it, the x removes it (Undo offered). Kept on this device and in
+  // the backup. Hindi and Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Save this search": ["यह खोज सेव करें", "આ શોધ સાચવો"],
+    "Saved:": ["सेव:", "સાચવેલ:"],
+    "Type a search first, then save it.": ["पहले कोई खोज लिखें, फिर सेव करें.", "પહેલાં શોધ લખો, પછી સાચવો."],
+    "Saved searches are full (10). Remove one first.": ["सेव खोजें भर गईं (10). पहले एक हटाएं.", "સાચવેલી શોધ ભરાઈ ગઈ (10). પહેલાં એક કાઢો."],
+    "That search is already saved.": ["यह खोज पहले से सेव है.", "આ શોધ પહેલેથી સાચવેલી છે."],
+    "Search saved": ["खोज सेव हुई", "શોધ સાચવાઈ"],
+    "Saved search removed": ["सेव खोज हटाई", "સાચવેલી શોધ કાઢી"],
+    "Saved search restored": ["सेव खोज वापस आई", "સાચવેલી શોધ પાછી આવી"],
+    "Remove saved search": ["सेव खोज हटाएं", "સાચવેલી શોધ કાઢો"]
+  });
+  (function () {
+    var rs = $("rsRow"); if (!rs || !rs.parentNode) return;
+    var KEY = "vp-saved-searches.v1", MAXN = 10, list = [];
+    try { var a = JSON.parse(localStorage.getItem(KEY) || "[]"); if (Array.isArray(a)) list = a.filter(function (x) { return typeof x === "string" && x.trim(); }).map(function (x) { return x.trim().slice(0, 80); }).slice(0, MAXN); } catch (e) {}
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {} }
+    var row = document.createElement("div"); row.id = "ssRow"; row.className = "row"; row.style.cssText = "align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px";
+    rs.parentNode.insertBefore(row, rs.nextSibling);
+    function run(q) { libSearch.value = q; libSearch.dispatchEvent(new Event("input", { bubbles: true })); try { libSearch.focus({ preventScroll: true }); } catch (e) {} }
+    function paint() {
+      row.textContent = "";
+      var save = document.createElement("button"); save.type = "button"; save.className = "chip"; save.id = "ssSave"; save.textContent = "\uD83D\uDD16 " + T("Save this search");
+      save.addEventListener("click", function () {
+        var q = libSearch.value.trim().slice(0, 80);
+        if (!q) { toast(T("Type a search first, then save it.")); return; }
+        if (list.some(function (x) { return x.toLowerCase() === q.toLowerCase(); })) { toast(T("That search is already saved.")); return; }
+        if (list.length >= MAXN) { toast(T("Saved searches are full (10). Remove one first.")); return; }
+        list.unshift(q); persist(); paint(); toast(T("Search saved"));
+      });
+      row.appendChild(save);
+      if (list.length) { var lab = document.createElement("span"); lab.className = "hint"; lab.textContent = T("Saved:"); row.appendChild(lab); }
+      list.forEach(function (q, i) {
+        var w = document.createElement("span"); w.className = "rs-chips"; w.style.cssText = "display:inline-flex;align-items:center;gap:2px";
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip ss-run"; b.textContent = q; b.title = q;
+        b.addEventListener("click", function () { run(q); });
+        var x = document.createElement("button"); x.type = "button"; x.className = "chip ss-del"; x.textContent = "\u00D7"; x.setAttribute("aria-label", T("Remove saved search") + ": " + q); x.title = T("Remove saved search");
+        x.addEventListener("click", function () {
+          var at = list.indexOf(q); if (at < 0) return; list.splice(at, 1); persist(); paint();
+          toastUndo(T("Saved search removed"), function () { if (list.indexOf(q) < 0) list.splice(Math.min(at, list.length), 0, q); persist(); paint(); }, T("Saved search restored"));
+        });
+        w.appendChild(b); w.appendChild(x); row.appendChild(w);
+      });
+    }
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+
   // Copied link prompt (round 259 new 5): a link copied in another app or tab had to be pasted
   // by hand. With this switched on (off by default), coming back to the app checks the
   // clipboard once per return, and if it holds a YouTube video link that has not been offered
@@ -29306,7 +29357,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Break reminder, Keep screen awake, Fullscreen rotate and Stats on video as they were, although
   // the dialog promises settings go back to defaults. They are cleared with the rest now.
   var KEYS = ["vp-prefs.v1", "vp-keymap.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1", "vp-stillwatch.v1", "vp-ctl-use.v1",
-    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1"];
+    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1", "vp-saved-searches.v1"];
   btn.addEventListener("click", async function () {
     if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices, downloader choices, list sort orders, fade, focus and mini player choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
@@ -30454,6 +30505,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played has:note advanced library search narrow", "#sqTip259"],
       ["Activity log", "activity log history of changes what was added removed queue watch later favourites where did it go timeline recent changes", "#activityCard"],
       ["Speed ramp", "speed ramp ease up faster gradually raise playback speed every minutes lecture podcast step 1.25 1.5 2x training", "#rampCard"],
+      ["Saved searches", "saved searches save search keep pin favourite query operators is:later chips repeat run again library", "#ssRow"],
       ["Copied link prompt", "copied link prompt clipboard youtube link paste offer play queue later come back app focus switch tab automatic", "#clipCard"],
       ["Open from any page", "open from any page bookmarklet bookmark bar drag youtube tab current time send video here browser", "#bmkCard"],
       ["Channels as OPML", "channels opml rss feed export feedly inoreader netnewswire subscriptions saved channels reader", "#chanOpmlBtn"],
