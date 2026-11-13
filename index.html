@@ -2339,7 +2339,7 @@ setTimeout(done,3000);})();
         <button class="chip" type="button" data-scope="hist" aria-pressed="false">History</button>
       </div>
       <div id="continueWrap" hidden>
-        <div class="lib-head"><h3 id="lhContinue">Continue watching</h3><span class="row"><button class="chip" id="contQueueBtn" type="button">Queue all</button><button class="chip" id="contShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="contCopyBtn" type="button">Copy list</button><button class="chip" id="contClearBtn" type="button">Clear all</button></span></div>
+        <div class="lib-head"><h3 id="lhContinue">Continue watching</h3><span class="row"><button class="chip" id="contQueueBtn" type="button">Queue all</button><button class="chip" id="contShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="contCopyBtn" type="button">Copy list</button><button class="chip" id="contTxtBtn" type="button">Save as text file</button><button class="chip" id="contClearBtn" type="button">Clear all</button></span></div>
         <ul class="lib-list" id="continueList"></ul>
         <p class="lib-empty" id="continueEmpty" hidden><span class="lib-empty-ic" aria-hidden="true">&#9654;</span><span id="continueEmptyTx">Nothing to continue yet. Watch any video for 10 seconds and it will wait for you here.</span></p>
       </div>
@@ -14409,6 +14409,36 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   (window.__relang = window.__relang || []).push(function () { if (contClearBtn) { contClearBtn.textContent = T("Clear all"); contClearBtn.setAttribute("aria-label", T("Clear every Continue watching video")); } });
   if (contClearBtn) contClearBtn.setAttribute("aria-label", T("Clear every Continue watching video"));
 
+  // Save Continue watching as a text file (round 222 new 1): the rotation could be copied
+  // to the clipboard, but keeping it in a notes app that takes files (or moving it to
+  // another device by cable) meant pasting somewhere first. One chip next to Copy list
+  // saves the same videos, each with the position you stopped at, straight to a
+  // video-player-continue.txt download - the same etiquette as the Watch later text save.
+  // Hindi and Gujarati text, What's new (capped) and feature finder included.
+  Object.assign(TR_MSG, {
+    "Save the continue watching list as a text file": ["\u091c\u093e\u0930\u0940 \u0926\u0947\u0916\u0928\u0947 \u0915\u0940 \u0938\u0942\u091a\u0940 \u091f\u0947\u0915\u094d\u0938\u094d\u091f \u092b\u093c\u093e\u0907\u0932 \u092e\u0947\u0902 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902", "\u0a9a\u0abe\u0ab2\u0ac1 \u0a9c\u0acb\u0ab5\u0abe\u0aa8\u0ac0 \u0aaf\u0abe\u0aa6\u0ac0 \u0a9f\u0ac7\u0a95\u0acd\u0ab8\u0acd\u0a9f \u0aab\u0abe\u0a87\u0ab2\u0aae\u0abe\u0a82 \u0ab8\u0abe\u0a9a\u0ab5\u0acb"],
+    "Continue watching saved as a text file": ["\u091c\u093e\u0930\u0940 \u0926\u0947\u0916\u0928\u093e \u091f\u0947\u0915\u094d\u0938\u094d\u091f \u092b\u093c\u093e\u0907\u0932 \u092e\u0947\u0902 \u0938\u0947\u0935 \u0939\u0941\u0906", "\u0a9a\u0abe\u0ab2\u0ac1 \u0a9c\u0acb\u0ab5\u0abe\u0aa8\u0ac1\u0a82 \u0a9f\u0ac7\u0a95\u0acd\u0ab8\u0acd\u0a9f \u0aab\u0abe\u0a87\u0ab2\u0aae\u0abe\u0a82 \u0ab8\u0abe\u0a9a\u0ab5\u0abe\u0aaf\u0ac1\u0a82"],
+    "left at ": ["\u092f\u0939\u093e\u0902 \u0924\u0915 \u0926\u0947\u0916\u093e: ", "\u0a85\u0ab9\u0ac0\u0a82 \u0ab8\u0ac1\u0aa7\u0ac0 \u0a9c\u0acb\u0aaf\u0ac1\u0a82: "],
+    "Save continue watching as a text file": ["\u091c\u093e\u0930\u0940 \u0926\u0947\u0916\u0928\u093e \u091f\u0947\u0915\u094d\u0938\u094d\u091f \u092b\u093c\u093e\u0907\u0932 \u092e\u0947\u0902 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902", "\u0a9a\u0abe\u0ab2\u0ac1 \u0a9c\u0acb\u0ab5\u0abe\u0aa8\u0ac1\u0a82 \u0a9f\u0ac7\u0a95\u0acd\u0ab8\u0acd\u0a9f \u0aab\u0abe\u0a87\u0ab2\u0aae\u0abe\u0a82 \u0ab8\u0abe\u0a9a\u0ab5\u0acb"]
+  });
+  var contTxtBtn = $("contTxtBtn");
+  if (contTxtBtn) contTxtBtn.addEventListener("click", function () {
+    var hit = [];
+    lib.hist.forEach(function (h) {
+      if (!h || !h.id || !(h.t >= 10 && h.dur > 0 && h.t < h.dur - 5)) return;
+      hit.push(h);
+    });
+    if (!hit.length) { toast(T("Nothing to continue yet. Watch any video for 10 seconds and it will wait for you here.")); return; }
+    var text = hit.map(function (h, i) { return (i + 1) + ". " + (h.title || h.id) + " (" + T("left at ") + fmt(h.t) + ")\nhttps://youtu.be/" + h.id; }).join("\n\n") + "\n";
+    try {
+      var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" })); a.download = "video-player-continue.txt";
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      toast(T("Continue watching saved as a text file"));
+    } catch (e) { toast(T("Could not copy. Try again.")); }
+  });
+  (window.__relang = window.__relang || []).push(function () { if (contTxtBtn) { contTxtBtn.textContent = T("Save as text file"); contTxtBtn.setAttribute("aria-label", T("Save the continue watching list as a text file")); } });
+  if (contTxtBtn) contTxtBtn.setAttribute("aria-label", T("Save the continue watching list as a text file"));
+
   // Sleep timer: also offer "stop when this video ends" (pauses instead of auto-next).
   var sleepAtEnd = false;
   var sleepVids = 0;
@@ -15949,6 +15979,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Save continue watching as a text file", "#contTxtBtn"],
     ["Best day in Watch stats", "#statsBest"],
     ["Save picked files as a text file", "#lpTxtBtn"],
     ["Clear all of Continue watching", "#contClearBtn"],
@@ -15965,7 +15996,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Sort picked files A to Z", "#lpSortBtn"],
     ["Copy the download queue", "#dlQCopyBtn"],
     ["Save a history day as a playlist", ".hist-day-p"],
-    ["Shuffle play favourites", "#favShufBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -22518,6 +22548,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Save continue watching as a text file", "save continue watching half watched rotation resume list text file txt download keep positions left at", "#contTxtBtn"],
       ["Best day in Watch stats", "best day most watched single biggest record peak watch stats date time watched", "#statsBest"],
       ["Save picked files as a text file", "save picked selected local files list text file txt download keep note folder sizes names", "#lpTxtBtn"],
       ["Clear all of Continue watching", "clear all continue watching remove every half watched stale rotation reset positions undo wipe", "#contClearBtn"],
