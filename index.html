@@ -12888,6 +12888,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Load a video to save its channel": ["\u091A\u0948\u0928\u0932 \u0938\u0947\u0935 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093F\u090F \u092A\u0939\u0932\u0947 \u0935\u0940\u0921\u093F\u092F\u094B \u091A\u0932\u093E\u090F\u0902", "\u0A9A\u0AC7\u0AA8\u0AB2 \u0AB8\u0AC7\u0AB5 \u0A95\u0AB0\u0AB5\u0ABE \u0AAA\u0AB9\u0AC7\u0AB2\u0ABE\u0A82 \u0AB5\u0AC0\u0AA1\u0ABF\u0AAF\u0ACB \u0A9A\u0AB2\u0ABE\u0AB5\u0ACB"],
     "You can keep up to 30 channels. Remove one first.": ["\u0906\u092A 30 \u0924\u0915 \u091A\u0948\u0928\u0932 \u0930\u0916 \u0938\u0915\u0924\u0947 \u0939\u0948\u0902. \u092A\u0939\u0932\u0947 \u090F\u0915 \u0939\u091F\u093E\u090F\u0902.", "\u0AA4\u0AAE\u0AC7 30 \u0AB8\u0AC1\u0AA7\u0AC0\u0AA8\u0AC0 \u0A9A\u0AC7\u0AA8\u0AB2\u0ACB \u0AB0\u0ABE\u0A96\u0AC0 \u0AB6\u0A95\u0ACB \u0A9B\u0ACB. \u0AAA\u0AB9\u0AC7\u0AB2\u0ABE\u0A82 \u0A8F\u0A95 \u0AB9\u0A9F\u0ABE\u0AB5\u0ACB."],
     "Channels included: ": ["\u091A\u0948\u0928\u0932 \u0936\u093E\u092E\u093F\u0932: ", "\u0A9A\u0AC7\u0AA8\u0AB2\u0ACB \u0AB8\u0ABE\u0AAE\u0AC7\u0AB2: "],
+    "Copy saved channels as a list": ["सेव किए गए चैनल लिस्ट में कॉपी करें", "સેવ કરેલી ચેનલો યાદીમાં કૉપી કરો"],
+    "Channel list copied": ["चैनल लिस्ट कॉपी हुई", "ચેનલ યાદી કૉપી થઈ"],
     "Channels restored: ": ["\u091A\u0948\u0928\u0932 \u0935\u093E\u092A\u0938 \u092E\u093F\u0932\u0947: ", "\u0A9A\u0AC7\u0AA8\u0AB2\u0ACB \u0AAA\u0ABE\u0A9A\u0AC0 \u0AAE\u0AB3\u0AC0: "]
   });
   var chansSt = document.createElement("style");
@@ -12939,6 +12941,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       });
       chanChips.appendChild(b); chanChips.appendChild(x);
     });
+    // Copy channels (round 218 new 3): saved channels could be opened one by one or removed,
+    // never taken out of the app - sharing your set with a friend meant typing names by hand.
+    // A small Copy list chip at the end of the row copies them numbered (name, then its
+    // YouTube link when the app knows it) through the shared hang-safe copy helper.
+    if (vpChans.length) {
+      var cb = document.createElement("button"); cb.type = "button"; cb.className = "chip chan-copy";
+      cb.textContent = T("Copy list"); cb.setAttribute("aria-label", T("Copy saved channels as a list"));
+      cb.addEventListener("click", function () {
+        var text = vpChans.map(function (c, i) { return (i + 1) + ". " + c.n + (c.u ? "\n" + c.u : ""); }).join("\n");
+        vpCopySafe(text, function (ok) { if (ok && typeof copyTick === "function") copyTick(cb); toast(ok ? T("Channel list copied") : T("Could not copy. Try again.")); });
+      });
+      chanChips.appendChild(cb);
+    }
     if (typeof window.__vpBadgesTick === "function") window.__vpBadgesTick();
   }
   if (chanStarBtn) chanStarBtn.addEventListener("click", function () {
@@ -15573,6 +15588,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Copy your saved channels", ".chan-copy"],
     ["Queue unwatched favourites", "#favQueueUnwBtn"],
     ["Copy this day in history", ".hist-day-c"],
     ["Save a playlist as a text file", "#lhPlaylists"],
@@ -15582,7 +15598,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Snooze all in Watch later", "#laterSnoozeAllBtn"],
     ["Watch later count on the app icon", "#badgeLater"],
     ["Halve or double the loop", "#abNudgeRow"],
-    ["Copy all notes", "#notesCopyAllBtn"],
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -22151,6 +22166,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Finish burst", "finish burst sparks celebration ribbon video ends done complete cheer confetti end", "#finChk"],
       ["Note mark on lists", "note mark pill lists rows library favourites watch later history queue search written remember see glance", "#notesH"],
       ["Queue unwatched favourites", "queue unwatched favourites unfinished not watched add all bulk evening play saved", "#favQueueUnwBtn"],
+      ["Copy your saved channels", "copy saved channels list favourite channel names links clipboard share friend whatsapp", ".chan-copy"],
       ["Copy your lists", "copy list watch later favourites history clipboard paste share chat titles links", "#laterCopyBtn"],
       ["Copy a playlist", "copy playlist list titles links clipboard paste share chat note text numbered", "#lhPlaylists"],
       ["Sort favourites by length", "sort favourites shortest length duration quick short video order time", "#favSortBtn"],
