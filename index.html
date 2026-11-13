@@ -1397,6 +1397,12 @@ html.mini-on body { padding-bottom: 316px; }
   html.mini-on:not(.mini-left) .side { max-height: calc(100dvh - var(--nav-clearance, 16px) - 316px); }
 }
 </style>
+<style id="r281-later-group">
+/* Round 281 new 2: channel group headings inside Watch later - quiet glass dividers. */
+.later-group-h281 { margin: 16px 4px 6px; font-size: 13px; font-weight: 600; opacity: .85; letter-spacing: .01em; }
+.later-group-list281 { margin-bottom: 6px; }
+html.high-contrast .later-group-h281 { opacity: 1; }
+</style>
 <style id="r35-mini-totop">
 /* Back-to-top button hides while the mini player floats so the two never overlap */
 html.mini-on #toTop { opacity: 0; pointer-events: none; transform: translateY(12px); }
@@ -13324,7 +13330,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // like the rest) was in the Reset-all settings list but rode no backup either, so a
   // restore on a new phone silently turned the on-video clock back off. It now exports
   // and restores with the same 0/1 validation.
-  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short|long)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new|recent)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-last.v1": /^\d{1,3}$/, "vp-sleep-playonly.v1": /^[01]$/, "vp-dl-mp3": /^[01]$/, "vp-clock-ov.v1": /^[01]$/ };
+  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short|long)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new|recent)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-last.v1": /^\d{1,3}$/, "vp-sleep-playonly.v1": /^[01]$/, "vp-dl-mp3": /^[01]$/, "vp-clock-ov.v1": /^[01]$/, "vp-latergroup.v1": /^[01]$/ };
   // Round 232 fix 1: the Still watching? choice (vp-stillwatch.v1: off, or ask after 2, 3
   // or 5 auto-plays) rode no backup - Reset all settings counts it, but it was missing
   // here (the same class round 230 fix 1 closed for the on-video clock), so a restore on
@@ -32088,6 +32094,98 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
     WNEW.unshift(["Your own shortcut keys", "#xkRow280"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   })();
+  // Round 281 new 2: Group Watch later by channel. A parked list of thirty videos mixes
+  // every creator into one scroll, so "what do I have from this channel?" meant reading
+  // every row. A toggle chip in the Watch later head now folds the same rows (current
+  // sort, unwatched and length filters, pins and snooze all respected) under glass
+  // channel headings with a count - channels A to Z, videos whose channel is not learned
+  // yet under "Other" at the end. Rows keep their normal open and remove-with-Undo. The
+  // choice rides the backup, retranslates on language change, lists in the feature
+  // finder and the What's new card, and the plain list is one tap away at all times.
+  Object.assign(TR_MSG, {
+    "Group by channel": ["चैनल से समूह", "ચેનલ પ્રમાણે જૂથ"],
+    "Group by channel: on": ["चैनल से समूह: चालू", "ચેનલ પ્રમાણે જૂથ: ચાલુ"],
+    "Group by channel: off": ["चैनल से समूह: बंद", "ચેનલ પ્રમાણે જૂથ: બંદ"],
+    "Other channel": ["अन्य / अज्ञात चैनल", "અન્ય / અજાણ ચેનલ"],
+    "{n} videos": ["{n} वीडियो", "{n} વીડિયો"],
+    "Watch later grouped by channel": ["बाद में देखें चैनल से समूहित", "પછી જુઓ ચેનલ પ્રમાણે જૂથમાં"]
+  });
+  (function () {
+    var KEY = "vp-latergroup.v1";
+    var head = null, btn = null, box = null, on = false;
+    try { on = localStorage.getItem(KEY) === "1"; } catch (e) {}
+    function hostRow() {
+      var h = $("lhLater"); if (!h) return null;
+      var row = h.parentNode && h.parentNode.querySelector(".row");
+      return row;
+    }
+    function ensure() {
+      if (btn || !$("laterList")) return;
+      head = hostRow(); if (!head) return;
+      btn = document.createElement("button");
+      btn.className = "chip"; btn.type = "button"; btn.id = "laterGroupBtn281"; btn.setAttribute("aria-pressed", "false");
+      btn.addEventListener("click", function () {
+        on = !on;
+        try { localStorage.setItem(KEY, on ? "1" : "0"); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
+        paint(); toast(on ? T("Group by channel: on") : T("Group by channel: off"));
+      });
+      head.appendChild(btn);
+      box = document.createElement("div"); box.id = "laterGroup281"; box.hidden = true;
+      $("laterList").parentNode.insertBefore(box, $("laterList").nextSibling);
+      var mo = new MutationObserver(function () { if (on) paintGroups(); });
+      mo.observe($("laterList"), { childList: true });
+    }
+    function chanOfL(id) {
+      try { chanMapLearn(id); } catch (e) {}
+      var c = (typeof chanMap === "object" && chanMap && chanMap[id]) || (typeof infoCache === "object" && infoCache && infoCache[id] && infoCache[id].author) || "";
+      return String(c || "").trim();
+    }
+    function paintGroups() {
+      if (!box) return;
+      box.innerHTML = "";
+      var items = laterView();
+      if (!items.length) { var em = document.createElement("p"); em.className = "hint"; em.textContent = laterEmptyMsg(); box.appendChild(em); return; }
+      var groups = {}, order = [];
+      items.forEach(function (it) {
+        var c = chanOfL(it.id) || T("Other channel");
+        if (!groups[c]) { groups[c] = []; order.push(c); }
+        groups[c].push(it);
+      });
+      var otherName = T("Other channel");
+      order.sort(function (a, b) {
+        if (a === otherName) return 1; if (b === otherName) return -1;
+        return a.localeCompare(b, prefs.lang === "hi" ? "hi" : prefs.lang === "gu" ? "gu" : "en");
+      });
+      order.forEach(function (c) {
+        var g = groups[c];
+        var h = document.createElement("h4"); h.className = "later-group-h281";
+        h.textContent = c + " · " + T("{n} videos").replace("{n}", g.length);
+        box.appendChild(h);
+        var ul = document.createElement("ul"); ul.className = "lib-list later-group-list281";
+        g.forEach(function (item) {
+          ul.appendChild(buildItem(item, T("Remove"), function () {
+            var lIdx = findIn(lib.later, item.id); if (lIdx < 0) return;
+            var snapLat = lib.later.slice();
+            lib.later.splice(lIdx, 1); saveLib(); renderLib();
+            toastUndo(T("Removed from Watch later."), function () { lib.later = snapLat; saveLib(); renderLib(); }, T("Watch later list restored"));
+          }));
+        });
+        box.appendChild(ul);
+      });
+    }
+    function paint() {
+      ensure(); if (!btn || !box) return;
+      btn.textContent = "🗂 " + T("Group by channel") + ": " + (on ? T("on") : T("off"));
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      $("laterList").style.display = on ? "none" : "";
+      box.hidden = !on;
+      if (on) paintGroups();
+    }
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+    WNEW.unshift(["Watch later grouped by channel", "#laterGroupBtn281"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
+
   // Round 281 new 1: Hold a list row for quick actions. Watch later, Favourites, Recently
   // watched and the queue all show rows whose whole job is "open it" or "remove it" -
   // anything else (play it next, favourite it, park it in Watch later) means opening the
@@ -33940,7 +34038,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Break reminder, Keep screen awake, Fullscreen rotate and Stats on video as they were, although
   // the dialog promises settings go back to defaults. They are cleared with the rest now.
   var KEYS = ["vp-prefs.v1", "vp-keymap.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1", "vp-stillwatch.v1", "vp-ctl-use.v1",
-    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1"];
+    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-latergroup.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1"];
   btn.addEventListener("click", async function () {
     if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices, downloader choices, list sort orders, fade, focus and mini player choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
@@ -35084,6 +35182,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Watch later grouped by channel", "watch later group by channel creator folders sections tidy backlog organised", "#laterGroupBtn281"],
       ["Hold a row for quick actions", "hold press long press right click row quick actions play now play next add queue watch later favourite remove action sheet", "#library"],
       ["Channel intro skip", "channel intro skip theme song opening every episode podcast auto first seconds creator remember", "#chIntroRow280"],
       ["Unwatched badges", "unwatched badge count heading watch later favourites not seen left to watch how many backlog total time", "#unwLater280"],
