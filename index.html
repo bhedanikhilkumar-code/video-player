@@ -12648,6 +12648,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // export now carries it (validated like the other sections) and the import merges
       // it, an entry already on this device winning on the same url+kind.
       dlHistory: (function () { var h = []; try { h = JSON.parse(localStorage.getItem("vp-dl-hist") || "[]"); } catch (e) {} if (!Array.isArray(h)) return []; return h.filter(function (x) { return x && typeof x.url === "string" && x.url && x.url.length <= 2000; }).slice(0, 10).map(function (x) { return { url: String(x.url), title: typeof x.title === "string" ? x.title.slice(0, 200) : "", kind: x.kind === "mp3" ? "mp3" : "video", t: typeof x.t === "number" ? x.t : 0 }; }); })(),
+      // Round 236 fix 1: the Recently removed bin rode no backup - a restore on a new phone started with an empty bin.
+      bin: typeof window.__vpBinExport === "function" ? window.__vpBinExport() : [],
       settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
     // Round 231 fix 1: the focus session choices (auto-pick) rode no backup - vp-focus.v1
     // is counted by Reset all settings since round 229, but it was missing here, so a
@@ -12878,6 +12880,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           saveStats(); renderStats(); sn = 1;
         }
         var s = d.settings && typeof d.settings === "object" ? d.settings : null, gotSettings = false;
+        if (Array.isArray(d.bin) && typeof window.__vpBinMerge === "function" && window.__vpBinMerge(d.bin)) gotSettings = true;
         if (s) {
           if (s.prefs && typeof s.prefs === "object") { Object.keys(s.prefs).forEach(function (k) { if (k in prefs && typeof s.prefs[k] === typeof prefs[k]) prefs[k] = s.prefs[k]; });
             // Round 214 fix: imported settings were saved after only a type check, so a hand-edited or
@@ -22491,6 +22494,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         row.appendChild(t); row.appendChild(r); listEl.appendChild(row);
       });
     }
+    // Round 236 fix 1: backup export / import hooks for the bin (validated, newest first, max 20, an entry already in the bin or its list wins).
+    window.__vpBinExport = function () { return binItems.map(function (b) { return { list: b.list, at: b.at, item: { id: b.item.id, title: b.item.title || "" } }; }); };
+    window.__vpBinMerge = function (arr) {
+      var n = 0, now = Date.now();
+      arr.forEach(function (b) {
+        if (!b || !validItem(b.item) || (b.list !== "favs" && b.list !== "later") || typeof b.at !== "number" || now - b.at > 30 * 86400000) return;
+        if (findIn(b.list === "favs" ? lib.favs : lib.later, b.item.id) >= 0) return;
+        if (binItems.some(function (x) { return x.list === b.list && x.item.id === b.item.id; })) return;
+        binItems.push({ list: b.list, at: b.at, item: { id: b.item.id, title: typeof b.item.title === "string" ? b.item.title.slice(0, 200) : "" } }); n++;
+      });
+      if (n) { binItems.sort(function (x, y) { return y.at - x.at; }); binItems = binItems.slice(0, 20); binSave(); paint(); }
+      return n;
+    };
     window.__vpBinPaint = paint; (window.__relang = window.__relang || []).push(paint);
     btn.addEventListener("click", function () { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); paint(); if (!panel.hidden && window.vpExpandSection) window.vpExpandSection("library"); });
     closeB.addEventListener("click", function () { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); });
