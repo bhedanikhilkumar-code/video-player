@@ -31,5 +31,18 @@ console.log('round272 fix3 ok');
 }
 console.log('round272 new1 ok');
 // Fix 4: r271 must be a default pref so an import on a fresh device restores it.
-assert.ok(html.includes('r271: { block: [], words: [], favFeed: false }, '));
+assert.ok(html.includes('r271: { block: [], words: [], favFeed: false, feedMax: 0 }, '));
 console.log('round272 fix4 ok');
+// New 2: Feed limit counts pulls, stops at the limit, resets when a video outside the feed loads.
+{
+  const vm = require('node:vm'); const a = html.indexOf('var feedCount272 = 0'); const b = html.indexOf('// Speed keys (round 148)', a);
+  assert.ok(a > 0 && b > a);
+  const toasts = []; let listener = null;
+  const ctx = vm.createContext({ prefs: { r271: { favFeed: true, feedMax: 3 }, laterFeed: false }, curId: 'x', lib: { favs: Array.from({ length: 8 }, (_, i) => ({ id: 'fav' + i + 'aaaaaaa'.slice(0, 7), title: 't' + i })), hist: [], queue: [], later: [] }, findIn(l, id) { return l.findIndex(x => x.id === id); }, saveLib() {}, renderLib() {}, toast(m) { toasts.push(m); }, T: x => x, laterSnoozed: () => false, setTimeout: f => f(), document: { addEventListener(n, f) { listener = f; } } });
+  vm.runInContext(html.slice(a, b), ctx);
+  for (let i = 0; i < 3; i++) { assert.equal(ctx.qFeedPull(), true); ctx.curId = ctx.lib.queue[ctx.lib.queue.length - 1].id; listener(); }
+  assert.equal(ctx.qFeedPull(), false); assert.ok(toasts.some(t => t === 'Feed stopped after {n} videos.'.replace('{n}', 3)));
+  ctx.curId = 'user-picked'; listener(); assert.equal(ctx.qFeedPull(), true); // picking a video yourself starts again
+  ctx.prefs.r271.feedMax = 0; for (let i = 0; i < 3; i++) assert.equal(ctx.qFeedPull(), true); // no limit
+}
+console.log('round272 new2 ok');
