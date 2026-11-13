@@ -2067,6 +2067,7 @@ setTimeout(done,3000);})();
 
         <div class="ctl-card wide" id="ctl-lyrics">
           <h3 id="lyricsH">Lyrics</h3>
+          <div class="row" style="margin-bottom:6px"><input id="lyrFindQ" type="search" placeholder="Find in lyrics" aria-label="Find in lyrics" autocomplete="off" spellcheck="false" style="flex:1;min-width:0"><span class="hint" id="lyrFindMsg" role="status" hidden style="align-self:center;white-space:nowrap"></span></div>
           <textarea class="note-box" id="lyricsBox" maxlength="4000" rows="5" disabled aria-labelledby="lyricsH"></textarea>
           <div class="note-meta"><span id="lyricsStatus" role="status"></span><span id="lyricsCount">0 / 4000</span></div>
           <div class="row"><button class="chip" id="lyricsShowBtn" type="button" aria-pressed="false" disabled>🎤 Show on video: off</button> <button class="chip" id="lyricsScrollBtn" type="button" aria-pressed="true">Auto-scroll: on</button> <button class="chip" id="lyricsClearBtn" type="button" disabled>🗑 Clear lyrics</button> <button class="chip" id="lyricsLrcBtn" type="button" disabled>⬇ Save as .lrc</button> <button class="chip" id="lyricsCopyBtn" type="button" disabled>Copy lyrics</button></div>
@@ -11890,6 +11891,49 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // browser's maxlength with no word - a long song pasted into Lyrics just lost its ending.
   // The paste now says so, with the limit.
   Object.assign(TR_MSG, { "Pasted text was longer than the {max}-character limit - the end was cut off.": ["\u092a\u0947\u0938\u094d\u091f \u0915\u093f\u092f\u093e \u091f\u0947\u0915\u094d\u0938\u094d\u091f {max} \u0905\u0915\u094d\u0937\u0930\u094b\u0902 \u0915\u0940 \u0938\u0940\u092e\u093e \u0938\u0947 \u0932\u0902\u092c\u093e \u0925\u093e - \u0905\u0902\u0924 \u0915\u093e\u091f \u0926\u093f\u092f\u093e \u0917\u092f\u093e\u0964", "\u0aaa\u0ac7\u0ab8\u0acd\u0a9f \u0a95\u0ab0\u0ac7\u0ab2\u0acb \u0a9f\u0ac7\u0a95\u0acd\u0ab8\u0acd\u0a9f {max} \u0a85\u0a95\u0acd\u0ab7\u0ab0\u0acb\u0aa8\u0ac0 \u0aae\u0ab0\u0acd\u0aaf\u0abe\u0aa6\u0abe\u0aa5\u0ac0 \u0ab2\u0abe\u0a82\u0aac\u0acb \u0ab9\u0aa4\u0acb - \u0a85\u0a82\u0aa4 \u0a95\u0abe\u0aaa\u0ac0 \u0ab2\u0ac0\u0aa7\u0acb\u0964"] });
+  // Find in lyrics (round 217 new 2): lyrics run to 4000 characters and the box is a
+  // plain textarea, so finding one line meant reading the whole song. A find box above
+  // it jumps straight to each match: it selects the match in place, scrolls the box to
+  // it, counts the matches ("1 of 4 matches") and Enter hops to the next one. Quiet
+  // while the box is disabled (no video with lyrics loaded). Hindi and Gujarati text,
+  // What's new (capped) and feature finder included.
+  Object.assign(TR_MSG, {
+    "Find in lyrics": ["\u0917\u0940\u0924 \u092e\u0947\u0902 \u0916\u094b\u091c\u0947\u0902", "\u0a97\u0ac0\u0aa4\u0aae\u0abe\u0a82 \u0ab6\u0acb\u0aa7\u0acb"],
+    "{a} of {n} matches": ["{n} \u092e\u0947\u0902 \u0938\u0947 {a}", "{n} \u0aae\u0abe\u0a82\u0aa5\u0ac0 {a}"],
+    "No match in these lyrics.": ["\u0907\u0928 \u092c\u094b\u0932\u094b\u0902 \u092e\u0947\u0902 \u0915\u0941\u091b \u0928\u0939\u0940\u0902 \u092e\u093f\u0932\u093e\u0964", "\u0a86 \u0aac\u0acb\u0ab2\u0aae\u0abe\u0a82 \u0a95\u0a82\u0a88 \u0aae\u0ab3\u0aa4\u0ac1\u0a82 \u0aa8\u0aa5\u0ac0."]
+  });
+  (function () {
+    var q = $("lyrFindQ"), msg = $("lyrFindMsg"), box = $("lyricsBox");
+    if (!q || !msg || !box) return;
+    var hits = [], hi = 0;
+    function showHit() {
+      var needle = q.value;
+      msg.hidden = false;
+      msg.textContent = T("{a} of {n} matches").replace("{a}", hi + 1).replace("{n}", hits.length);
+      box.focus();
+      try { box.setSelectionRange(hits[hi], hits[hi] + needle.length); } catch (e) {}
+      var lines = box.value.slice(0, hits[hi]).split("\n").length;
+      box.scrollTop = Math.max(0, lines - 2) * (parseFloat(getComputedStyle(box).lineHeight) || 18);
+    }
+    function run() {
+      hits = []; hi = 0;
+      var needle = q.value.trim().toLowerCase();
+      if (!needle || box.disabled) { msg.hidden = true; msg.textContent = ""; return; }
+      var v = box.value.toLowerCase(), i = 0;
+      while ((i = v.indexOf(needle, i)) >= 0) { hits.push(i); i += needle.length; }
+      if (!hits.length) { msg.hidden = false; msg.textContent = T("No match in these lyrics."); return; }
+      showHit();
+    }
+    q.addEventListener("input", run);
+    q.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && hits.length) { e.preventDefault(); hi = (hi + 1) % hits.length; showHit(); }
+    });
+    (window.__relang = window.__relang || []).push(function () {
+      q.setAttribute("placeholder", T("Find in lyrics")); q.setAttribute("aria-label", T("Find in lyrics"));
+      if (q.value.trim()) run();
+    });
+  })();
+
   ["noteBox", "lyricsBox"].forEach(function (id) {
     var box = $(id); if (!box) return;
     box.addEventListener("paste", function (e) {
@@ -15410,9 +15454,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Find in lyrics", "#lyrFindQ"],
     ["Snooze all in Watch later", "#laterSnoozeAllBtn"],
     ["Watch later count on the app icon", "#badgeLater"],
-    ["Copy recent downloads", "#dlHistCopy"],
     ["Search the help", "#faqSearch"],
     ["Battery saver suggestion", "#saverBatt"],
     ["Data Saver suggestion", "#saverData"],
@@ -21793,6 +21837,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Find in lyrics", "find search lyrics words line song locate match jump next enter", "#lyrFindQ"],
       ["Snooze all in Watch later", "snooze all watch later park hide backlog every video one day wake undo", "#laterSnoozeAllBtn"],
       ["Copy all notes", "copy all notes clipboard share study text every saved note paste", "#notesCopyAllBtn"],
       ["Wake all snoozed videos", "wake all snoozed watch later sleeping hidden come back unsnooze every", "#laterWakeBtn"],
