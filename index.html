@@ -1954,6 +1954,8 @@ setTimeout(done,3000);})();
           <h3>Quality</h3>
           <div class="chips" id="qualityChips"></div>
           <div class="row" style="margin-top:10px"><button class="chip" id="qLockBtn" type="button" aria-pressed="false">🔒 Quality lock: off</button></div>
+          <div class="row" style="margin-top:10px"><button class="chip" id="chQualBtn" type="button" aria-pressed="false">🎞 Channel quality: off</button> <button class="chip" id="chQualClearBtn" type="button" hidden>Forget every channel quality</button></div>
+          <p class="hint" id="chQualHint">Remember a quality for this channel and it applies by itself when one of its videos plays. Data saver still wins while it is on.</p>
           <p class="hint" id="qLockHint" hidden>Every video plays at your chosen quality. Data saver still wins while it is on.</p>
         </div>
 
@@ -6069,7 +6071,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var b = document.createElement("button");
     b.className = "chip"; b.textContent = q.label; b.dataset.value = q.value;
     b.type = "button"; b.setAttribute("aria-pressed", "false");
-    b.addEventListener("click", function () { send("setPlaybackQuality", [q.value]); markActive(qualityChips, q.value); prefs.quality = q.value; savePrefs(); });
+    b.addEventListener("click", function () { send("setPlaybackQuality", [q.value]); markActive(qualityChips, q.value); prefs.quality = q.value; savePrefs(); if (window.__vpChQualNote) window.__vpChQualNote(q.value); });
     qualityChips.appendChild(b);
   });
   // Quality lock (round 204): a picked quality used to hold for one video only - the
@@ -12139,6 +12141,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       stats: (stats && (stats.total > 0 || stats.plays > 0)) ? stats : null,
       channels: vpChans.map(function (c) { return { n: c.n, u: c.u }; }),
       chanSpeeds: (function () { var o = {}; Object.keys(chSpeed).forEach(function (k) { o[k] = chSpeed[k]; }); return o; })(),
+      chanQuals: (function () { var o = {}; if (typeof chQual !== "undefined") Object.keys(chQual).forEach(function (k) { o[k] = chQual[k]; }); return o; })(),
       chanVols: (function () { var o = {}; Object.keys(chVol).forEach(function (k) { o[k] = chVol[k]; }); return o; })(),
       // Round 215 fix: star ratings rode no backup - a device change silently lost every
       // rating while queue, notes and even channel volumes moved over. Export them like
@@ -12174,6 +12177,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (data.channels.length) libBackupMsg.textContent += " " + T("Channels included: ") + data.channels.length + ".";
     var nChSpd = Object.keys(data.chanSpeeds).length;
     if (nChSpd) libBackupMsg.textContent += " " + T("Channel speeds included: ") + nChSpd + ".";
+    var nChQ = Object.keys(data.chanQuals || {}).length;
+    if (nChQ) libBackupMsg.textContent += " " + T("Channel qualities included: ") + nChQ + ".";
     var nChVol = Object.keys(data.chanVols).length;
     if (nChVol) libBackupMsg.textContent += " " + T("Channel volumes included: ") + nChVol + ".";
     var nRate = Object.keys(data.ratings || {}).length;
@@ -12234,6 +12239,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             chSpeed[k.trim().slice(0, 60)] = v; csn++;
           });
           if (csn) { chSpeedSave(); chSpeedRender(); }
+        }
+        var cqn = 0;
+        if (d.chanQuals && typeof d.chanQuals === "object" && !Array.isArray(d.chanQuals) && typeof chQual !== "undefined") {
+          Object.keys(d.chanQuals).forEach(function (k) {
+            var v = d.chanQuals[k];
+            if (typeof k !== "string" || !k.trim() || !chQualValid(v)) return;
+            if (chQualFind(k)) return;
+            if (Object.keys(chQual).length >= 30) return;
+            chQual[k.trim().slice(0, 60)] = v; cqn++;
+          });
+          if (cqn) { chQualSave(); chQualRender(); }
+          if (cqn) libBackupMsg.textContent += " " + T("Channel qualities restored: ") + cqn + ".";
         }
         var cvn = 0;
         if (d.chanVols && typeof d.chanVols === "object" && !Array.isArray(d.chanVols) && typeof chVol !== "undefined") {
@@ -13782,6 +13799,108 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (infoChannel) new MutationObserver(function () { chSpeedRender(); chSpeedApply(curId); }).observe(infoChannel, { childList: true, characterData: true, subtree: true });
   (window.__relang = window.__relang || []).push(chSpeedRender);
   chSpeedRender();
+
+  // Channel quality (round 227 new 3): Channel speed remembers a speed per channel, but
+  // quality only had the one-video pick and the global lock, so a music channel you always
+  // keep at 720p and a movie channel you want in 4K both needed a fresh tap per video. A
+  // chip in the Quality card remembers the current quality pick for the channel of the
+  // video playing now; the next time one of its videos loads, that quality applies by
+  // itself once the channel name arrives. Data saver still wins while it is on, and a
+  // channel pick beats the global lock (the lock is every video, this is one channel).
+  // Changing the quality by hand while a remembered channel plays updates its memory,
+  // tapping the chip again forgets the channel, and a Forget-every chip with Undo clears
+  // the pile. Up to 30 channels, saved on this device and riding the backup. Hindi and
+  // Gujarati text, What's new (capped) and feature finder included.
+  Object.assign(TR_MSG, {
+    "🎞 Channel quality": ["🎞 चैनल क्वालिटी", "🎞 ચેનલ ક્વાલિટી"],
+    "Quality {q} remembered for {c}.": ["{c} के लिए {q} क्वालिटी याद रखी गई.", "{c} માટે {q} ક્વાલિટી યાદ રાખી."],
+    "Quality {q} for {c}.": ["{c} के लिए {q} क्वालिटी.", "{c} માટે {q} ક્વાલિટી."],
+    "Channel quality forgotten for {c}.": ["{c} की चैनल क्वालिटी भुला दी गई.", "{c} ની ચેનલ ક્વાલિટી ભૂલાઈ ગઈ."],
+    "Load a video first, then set a channel quality.": ["पहले वीडियो चलाएं, फिर चैनल क्वालिटी सेट करें.", "પહેલાં વીડિયો ચલાવો, પછી ચેનલ ક્વાલિટી સેટ કરો."],
+    "Remember a quality for this channel and it applies by itself when one of its videos plays. Data saver still wins while it is on.": ["इस चैनल के लिए क्वालिटी याद रखें - उसका वीडियो चलते ही वह अपने आप लग जाती है. डेटा सेवर चालू हो तो वही जीतता है.", "આ ચેનલ માટે ક્વાલિટી યાદ રાખો - તેનો વીડિયો ચાલતાં જ તે આપોઆપ લાગુ થાય. ડેટા સેવર ચાલુ હોય તો તે જ જીતે."],
+    "Channel quality memory": ["चैनल क्वालिटी मेमोरी", "ચેનલ ક્વાલિટી મેમરી"],
+    "Forget every channel quality": ["सभी चैनल क्वालिटी भूलें", "બધી ચેનલ ક્વાલિટી ભૂલો"],
+    "Forgot {n} channel qualities.": ["{n} चैनल क्वालिटी भुला दी गई.", "{n} ચેનલ ક્વાલિટી ભૂલાઈ ગઈ."],
+    "Channel qualities restored.": ["चैनल क्वालिटी वापस आ गई.", "ચેનલ ક્વાલિટી પાછી આવી."],
+    "Channel qualities included: ": ["चैनल क्वालिटी शामिल: ", "ચેનલ ક્વાલિટી સામેલ: "],
+    "Channel qualities restored: ": ["चैनल क्वालिटी वापस मिलीं: ", "ચેનલ ક્વાલિટી પાછી મળી: "]
+  });
+  var CHQ_KEY = "vp-chanqual.v1", chQual = {}, chQualAppliedId = null;
+  function chQualValid(v) { return QUALITIES.some(function (q) { return q.value === v; }); }
+  try {
+    var _cq = JSON.parse(localStorage.getItem(CHQ_KEY) || "null");
+    if (_cq && typeof _cq === "object" && !Array.isArray(_cq)) Object.keys(_cq).forEach(function (k) {
+      if (typeof k === "string" && k.trim() && chQualValid(_cq[k])) chQual[k] = _cq[k];
+    });
+  } catch (e) {}
+  function chQualSave() { try { var ks = Object.keys(chQual); while (ks.length > 30) delete chQual[ks.shift()]; localStorage.setItem(CHQ_KEY, JSON.stringify(chQual)); } catch (e) {} }
+  function chQualFind(n) { n = (n || "").toLowerCase(); var ks = Object.keys(chQual); for (var i = 0; i < ks.length; i++) if (ks[i].toLowerCase() === n) return ks[i]; return null; }
+  function chQualCurName() { var c = typeof chanCur === "function" ? chanCur() : null; return c ? c.n : ""; }
+  function chQualLabel(v) { for (var i = 0; i < QUALITIES.length; i++) if (QUALITIES[i].value === v) return QUALITIES[i].label; return v; }
+  var chQualBtn = $("chQualBtn"), chQualHint = $("chQualHint"), chQualClearBtn = $("chQualClearBtn");
+  function chQualClearPaint() {
+    if (!chQualClearBtn) return;
+    chQualClearBtn.textContent = T("Forget every channel quality");
+    chQualClearBtn.hidden = Object.keys(chQual).length === 0;
+  }
+  function chQualRender() {
+    if (chQualHint) chQualHint.textContent = T("Remember a quality for this channel and it applies by itself when one of its videos plays. Data saver still wins while it is on.");
+    if (chQualBtn) {
+      var n = chQualCurName(), k = n ? chQualFind(n) : null;
+      chQualBtn.textContent = T("🎞 Channel quality") + ": " + (k ? chQualLabel(chQual[k]) : T("off"));
+      chQualBtn.setAttribute("aria-pressed", String(!!k));
+      chQualBtn.classList.toggle("active", !!k);
+      chQualBtn.setAttribute("aria-label", T("🎞 Channel quality") + " - " + T("Remember a quality for this channel and it applies by itself when one of its videos plays. Data saver still wins while it is on."));
+      chQualBtn.title = n ? n : "";
+    }
+    chQualClearPaint();
+  }
+  if (chQualBtn) chQualBtn.addEventListener("click", function () {
+    var n = chQualCurName();
+    if (!n) { toast(T("Load a video first, then set a channel quality.")); return; }
+    var k = chQualFind(n);
+    if (k) {
+      delete chQual[k]; chQualSave(); chQualRender();
+      toast(T("Channel quality forgotten for {c}.").replace("{c}", n));
+    } else {
+      chQual[n] = prefs.quality; chQualSave(); chQualRender();
+      toast(T("Quality {q} remembered for {c}.").replace("{q}", chQualLabel(prefs.quality)).replace("{c}", n));
+    }
+  });
+  if (chQualClearBtn) chQualClearBtn.addEventListener("click", function () {
+    var keys = Object.keys(chQual);
+    if (!keys.length) { chQualClearPaint(); return; }
+    var snap = {};
+    keys.forEach(function (k) { snap[k] = chQual[k]; });
+    chQual = {}; chQualSave(); chQualRender();
+    toastUndo(T("Forgot {n} channel qualities.").replace("{n}", keys.length), function () {
+      Object.keys(snap).forEach(function (k) { if (!(k in chQual)) chQual[k] = snap[k]; });
+      chQualSave(); chQualRender();
+    }, T("Channel qualities restored."));
+  });
+  function chQualApply(id) {
+    if (!id || id !== curId || chQualAppliedId === id) return;
+    var n = chQualCurName(); if (!n) return; // wait for the channel name
+    chQualAppliedId = id;
+    var k = chQualFind(n); if (!k) return;
+    if (prefs.dataSaver) return; // the saver still wins
+    var qv = chQual[k];
+    window.__vpChQualAutoT = Date.now();
+    qlAppliedFor = id; // a channel pick beats the global lock for this load
+    send("setPlaybackQuality", [qv]); markActive(qualityChips, qv);
+    toast(T("Quality {q} for {c}.").replace("{q}", chQualLabel(qv)).replace("{c}", n));
+  }
+  window.__vpChQualNote = function (qv) {
+    // A quality the app set itself (a remembered channel quality applied on load) is not
+    // the user choosing a new quality for the channel - only hand-made taps update memory.
+    if (window.__vpChQualAutoT && Date.now() - window.__vpChQualAutoT < 2500) return;
+    var n = chQualCurName(); if (!n) return;
+    var k = chQualFind(n);
+    if (k && chQual[k] !== qv) { chQual[k] = qv; chQualSave(); chQualRender(); }
+  };
+  if (infoChannel) new MutationObserver(function () { chQualRender(); chQualApply(curId); }).observe(infoChannel, { childList: true, characterData: true, subtree: true });
+  (window.__relang = window.__relang || []).push(chQualRender);
+  chQualRender();
 
   // Daily goal ring (round 105): a small glass ring at the video's top corner fills
   // towards today's watch goal while you watch - the goal progress is visible at a
@@ -16867,6 +16986,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Channel quality memory", "#chQualBtn"],
     ["Sort favourites A to Z", "#favSortAzBtn"],
     ["Loop B to the video end", "#abBEndBtn"],
     ["Sleep timer from the page link", "#ctl-sleep"],
@@ -23563,6 +23683,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Playback speed", "speed tez slow fast 2x", "#ctl-speed"],
       ["Loop B to the video end", "loop b to the video end ab repeat outro tail last part finish end", "#abBEndBtn"],
       ["Sort favourites A to Z", "sort favourites a to z z to a order title name arrange starred list alphabet", "#favSortAzBtn"],
+      ["Channel quality memory", "channel quality remember per channel 1080 720 4k auto applies by itself music movie", "#chQualBtn"],
       ["Speed change pill", "speed pill popup confirm rate change 2x", "#ctl-speed"],
       ["Up next countdown with thumbnail", "up next countdown thumbnail preview auto next picture", "#lhQueue"],
       ["Finish within (minutes)", "finish fit budget minutes time speed lecture", "#fitTimeForm"],
