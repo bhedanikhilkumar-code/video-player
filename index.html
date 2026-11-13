@@ -2057,7 +2057,7 @@ setTimeout(done,3000);})();
           <textarea class="note-box" id="noteBox" maxlength="600" rows="4" disabled aria-labelledby="notesH"></textarea>
           <div class="note-meta"><span id="noteStatus" role="status"></span><span id="noteCount">0 / 600</span></div>
           <div class="marks-list" id="noteTimes"></div>
-          <div class="row"><button class="chip" id="noteTimeBtn" type="button" disabled>⏱ Add current time</button> <button class="chip vs-mic" id="noteMicBtn" type="button" aria-label="Speak your note" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button> <button class="chip" id="noteCopyBtn" type="button" disabled>📋 Copy note</button> <button class="chip" id="noteClearBtn" type="button" disabled>🗑 Clear note</button> <button class="chip" id="noteToMarksBtn" type="button" disabled>🔖 Times to moments</button> <button class="chip" id="noteShareBtn" type="button" disabled>🔗 Copy note with link</button></div>
+          <div class="row"><button class="chip" id="noteTimeBtn" type="button" disabled>⏱ Add current time</button> <button class="chip vs-mic" id="noteMicBtn" type="button" aria-label="Speak your note" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button> <button class="chip" id="noteCopyBtn" type="button" disabled>📋 Copy note</button> <button class="chip" id="noteClearBtn" type="button" disabled>🗑 Clear note</button> <button class="chip" id="noteToMarksBtn" type="button" disabled>🔖 Times to moments</button> <button class="chip" id="noteShareBtn" type="button" disabled>🔗 Copy note with link</button> <button class="chip" id="noteRevertBtn" type="button" disabled>↩ Revert edits</button></div>
           <p class="hint" id="notesHint">Write what you want to remember. Times like 1:23 in your note become buttons that jump there. Saved on this device, for each video.</p>
           <details class="note-find" id="noteFindBox">
             <summary id="noteFindSum">Find in all notes</summary>
@@ -15570,6 +15570,35 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     paint();
   })();
 
+  // Revert edits (round 224 new 5): a note is saved as you type, so a slip (a select-all and a
+  // keystroke, a paste in the wrong place) overwrote the old text with no way back except the
+  // browser's own undo, which is lost after leaving the box. One chip puts the note back to how
+  // it was when this video was opened and offers one Undo to return to the edited text.
+  Object.assign(TR_MSG, {
+    "↩ Revert edits": ["↩ बदलाव वापस लें", "↩ ફેરફાર પાછા લો"],
+    "Note reverted": ["नोट वापस पुराना किया", "નોંધ પાછી જૂની કરી"],
+    "Revert note edits": ["नोट के बदलाव वापस लें", "નોંધના ફેરફાર પાછા લો"]
+  });
+  (function () {
+    var b = $("noteRevertBtn"), nb = $("noteBox"); if (!b || !nb) return;
+    var base = "", baseId = null;
+    function paint() { b.textContent = T("↩ Revert edits"); b.disabled = !curId || baseId !== curId || nb.value === base; }
+    b.addEventListener("click", function () {
+      if (!curId || baseId !== curId) return;
+      var id = curId, edited = nb.value, orig = base;
+      if (edited === orig) return;
+      nb.value = orig; nb.dispatchEvent(new Event("input")); noteFlush(); paint();
+      toastUndo(T("Note reverted"), function () {
+        if (curId !== id) { if (edited.trim()) notes[id] = edited; notesSave(); return; }
+        nb.value = edited; nb.dispatchEvent(new Event("input")); noteFlush(); paint();
+      });
+    });
+    nb.addEventListener("input", paint);
+    (window.__relang = window.__relang || []).push(paint);
+    var rn2 = renderNotes; renderNotes = function () { var r = rn2.apply(this, arguments); base = nb.value; baseId = curId || null; paint(); return r; };
+    base = nb.value; baseId = curId || null; paint();
+  })();
+
   // Find in all notes: search every saved note and jump to the matching video.
   (function () {
     var inp = $("noteFindIn"), out = $("noteFindOut"); if (!inp || !out) return;
@@ -16447,6 +16476,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Revert note edits", "#noteRevertBtn"],
     ["Copy note with link", "#noteShareBtn"],
     ["Note times to moments", "#noteToMarksBtn"],
     ["Import notes from a file", "#notesImportBtn"],
@@ -16456,7 +16486,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Random moment", "#markRandBtn"],
     ["Shift all moments by 5 seconds", "#markShiftBackBtn"],
     ["Clear all moments with Undo", "#markClearBtn"],
-    ["This month in Watch stats", "#statsMonth"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23038,6 +23067,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Revert note edits", "revert note edits undo mistake restore old text overwrite typed", "#noteRevertBtn"],
       ["Copy note with link", "copy note link title share paste chat youtu.be clipboard send", "#noteShareBtn"],
       ["Note times to moments", "note times moments save convert timestamps 1:23 bookmarks jump chorus study", "#noteToMarksBtn"],
       ["Import notes from a file", "import notes text file txt restore another phone load saved notes backup", "#notesImportBtn"],
