@@ -1900,6 +1900,8 @@ setTimeout(done,3000);})();
           </div>
           <div class="pct-row" id="pctRow" role="group" aria-label="Jump to a part of the video"><span class="label" id="pctLab">Jump to:</span><button class="chip pct-chip" type="button" data-p="0">0%</button><button class="chip pct-chip" type="button" data-p="25">25%</button><button class="chip pct-chip" type="button" data-p="50">50%</button><button class="chip pct-chip" type="button" data-p="75">75%</button></div>
           <div class="dim-row" id="dimRow"><label class="label" for="dimRange" id="dimLab">Screen dimmer</label><input class="slider" id="dimRange" type="range" min="0" max="70" step="5" value="0" aria-label="Screen dimmer"><span class="dim-val" id="dimVal" role="status">Off</span></div>
+          <div class="row" id="autoDimRow285" style="margin-top:8px"><span class="label" id="autoDimLab285">Auto-dim when idle</span><span class="chips" id="autoDimChips285"></span></div>
+          <p class="hint" id="autoDimHint285"></p>
           <div class="look-row" id="lookRow" role="group" aria-label="Picture look"><span class="label" id="lookLab">Picture look</span><span class="look-chips" id="lookChips"></span></div>
           <div class="flip-row" id="flipRow" role="group" aria-label="Flip the picture"><span class="label" id="flipLab">Flip picture</span><button class="chip flip-chip" type="button" id="flipH" aria-pressed="false"><span id="flipHT">Mirror</span> &#8596;</button><button class="chip flip-chip" type="button" id="flipV" aria-pressed="false"><span id="flipVT">Upside down</span> &#8597;</button></div>
           <div class="rot-row" id="rotRow" role="group" aria-label="Rotate the picture"><span class="label" id="rotLab">Rotate picture</span><button class="chip rot-chip" type="button" data-r="0" aria-pressed="true">0°</button><button class="chip rot-chip" type="button" data-r="90" aria-pressed="false">90°</button><button class="chip rot-chip" type="button" data-r="180" aria-pressed="false">180°</button><button class="chip rot-chip" type="button" data-r="270" aria-pressed="false">270°</button></div>
@@ -33148,6 +33150,76 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
   WNEW.unshift(["Spoiler-free titles", "#spoilerBtn"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  // Auto-dim when idle (round 285 new 2): watching in bed meant picking between a bright
+  // screen and the manual Screen dimmer slider, which stays put until touched again. The
+  // Auto-dim chips beside the dimmer pick an idle time (30 s, 1 min, 2 min); while a video
+  // plays and you stop touching the screen, a black veil slowly sinks over the page, and
+  // any touch, mouse move or key brings the light straight back. The veil pauses the moment
+  // playback stops, so the end screen and cards never sit under it, and it never dims an
+  // idle-but-paused page. Kept in prefs.autoDim285 so it rides the backup; Calm/Low-end drop
+  // the fade animation, High contrast keeps the veil solid. Hindi and Gujarati text, What's
+  // new and feature finder included. Checked first: Screen dimmer (round 61) is a fixed
+  // manual slider and Sleep picture fade works only on the sleep timer - nothing watched
+  // for idle hands during normal playback.
+  Object.assign(TR_MSG, {
+    "Auto-dim when idle": ["बिना छुए स्क्रीन डिम", "છોયા વગર સ્ક્રીન ડિમ"],
+    "Auto-dim": ["ऑटो-डिम", "ઓટો-ડિમ"],
+    "While a video plays and you stop touching the screen, the light slowly sinks after the time you pick; any touch or key brings it back. Pairs well with the sleep timer at night.": ["वीडियो चलते समय जब आप स्क्रीन छूना बंद कर देते हैं, तो चुने गए समय बाद रोशनी धीरे-धीरे बुझ जाती है; कोई भी स्पर्श या बटन उसे वापस ला देता है. रात में स्लीप टाइमर के साथ अच्छा जोड़.", "વીડિઓ ચાલતી વખતે તમે સ્ક્રીન છૂવાનું બંધ કરો એટલે પસંદ કરેલા સમય પછી અજ્વાળું ધીમે ઓસડ થાય છે; કોઈપણ સ્પર્શ કે બટન તેને પાછું લાવે છે. રાત્રે સ્લીપ ટાઇમર સાથે સરસ જોડ."],
+    "30 s": ["30 सेकंड", "30 સેકંડ"],
+    "1 min": ["1 मिनट", "1 મિનિટ"]
+  });
+  (function () {
+    var lab = $("autoDimLab285"), chipsBox = $("autoDimChips285"), hint = $("autoDimHint285");
+    if (!lab || !chipsBox) return;
+    var veil = document.createElement("div");
+    veil.id = "vpAutoDimVeil285";
+    veil.setAttribute("aria-hidden", "true");
+    var st = document.createElement("style");
+    st.id = "autoDimCss285";
+    st.textContent = "#vpAutoDimVeil285{position:fixed;inset:0;z-index:9600;background:#000;opacity:0;pointer-events:none;transition:opacity 1.4s ease}"
+      + "#vpAutoDimVeil285.on{opacity:.78;pointer-events:auto}"
+      + "html.calm-motion #vpAutoDimVeil285,html.low-fx #vpAutoDimVeil285{transition:none}"
+      + ":root.high-contrast #vpAutoDimVeil285.on{opacity:.92}";
+    document.head.appendChild(st);
+    document.body.appendChild(veil);
+    var defs = [[0, "Off"], [30, "30 s"], [60, "1 min"], [120, "2 min"]];
+    var lastAct = Date.now(), dimmed = false;
+    function playing() {
+      if (document.documentElement.classList.contains("vp-playing")) return true;
+      var lv = $("lpVideo");
+      return !!(lv && !lv.hidden && lv.currentSrc && !lv.paused && !lv.ended);
+    }
+    function dim(on) {
+      dimmed = !!on;
+      veil.classList.toggle("on", dimmed);
+    }
+    function wake() { lastAct = Date.now(); if (dimmed) dim(false); }
+    ["pointerdown", "pointermove", "keydown", "wheel", "touchmove", "scroll"].forEach(function (ev) {
+      window.addEventListener(ev, wake, { passive: true, capture: true });
+    });
+    veil.addEventListener("pointerdown", wake);
+    setInterval(function () {
+      if (!prefs.autoDim285) { if (dimmed) dim(false); return; }
+      if (dimmed && !playing()) { dim(false); return; }
+      if (!dimmed && playing() && Date.now() - lastAct >= prefs.autoDim285 * 1000) dim(true);
+    }, 1000);
+    function paint() {
+      lab.textContent = T("Auto-dim when idle");
+      if (hint) hint.textContent = T("While a video plays and you stop touching the screen, the light slowly sinks after the time you pick; any touch or key brings it back. Pairs well with the sleep timer at night.");
+      chipsBox.textContent = "";
+      defs.forEach(function (d) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "chip" + (prefs.autoDim285 === d[0] ? " active" : "");
+        b.textContent = T(d[1]);
+        b.setAttribute("aria-pressed", prefs.autoDim285 === d[0] ? "true" : "false");
+        b.addEventListener("click", function () { prefs.autoDim285 = d[0]; savePrefs(); wake(); paint(); });
+        chipsBox.appendChild(b);
+      });
+    }
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+  WNEW.unshift(["Auto-dim when idle", "#autoDimRow285"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   window.__vpWnew283 = function (name, sel) {
     try { WNEW.unshift([name, sel]); WNEW.length = Math.min(10, WNEW.length); wnewRender(); } catch (e) {}
   };
@@ -37084,6 +37156,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Playlist actions More menu", "playlist actions more menu group chips overflow tidy crowded row hidden extra actions dropdown glass popover iphone sorts split merge rename export delete less clutter", "#plList"],
       ["Glass playlist progress", "glass playlist progress watched bar meter track fill glossy frosted well playlist row count done videos seen", "#plList"],
       ["Spoiler-free titles", "spoiler free blur hide titles thumbnails scores endings privacy library lists peek reveal glance screen", "#spoilerBtn"],
+      ["Auto-dim when idle", "auto dim screen idle dark display bedtime night no touch hands off fade light oled battery sleep timer pair", "#autoDimRow285"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
