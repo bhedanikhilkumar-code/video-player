@@ -13106,7 +13106,15 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         } catch (e) { plSay(T("Could not copy. Try again.")); }
       });
       // Deferred What's new registration: this block runs before the list declaration.
-      setTimeout(function () { WNEW.unshift(["Save a playlist as .m3u", "#lhPlaylists"]); WNEW.length = Math.min(10, WNEW.length); wnewRender(); }, 0);
+      // Round 283 fix 1: the registration lived inside the per-playlist row builder,
+      // which re-runs on every renderPlaylists() (startup, library renders, language
+      // switches), so each pass queued ANOTHER deferred unshift and the What's new
+      // card filled with duplicate "Save a playlist as .m3u" rows that pushed the
+      // newest features out of the ten. The once-guard keeps it to a single entry.
+      if (!window.__wnewM3u282) {
+        window.__wnewM3u282 = 1;
+        setTimeout(function () { WNEW.unshift(["Save a playlist as .m3u", "#lhPlaylists"]); WNEW.length = Math.min(10, WNEW.length); wnewRender(); }, 0);
+      }
       Object.assign(TR_MSG, { "Playlist deleted:": ["प्लेलिस्ट हटाई:", "પ્લેલિસ્ટ કાઢી:"] });
       btn(T("Delete"), "pl-del", async function () {
         if (!await vpConfirm(T("Delete the playlist") + " \"" + pl.name + "\"? " + T("Your queue stays as it is."), T("Delete"))) return;
