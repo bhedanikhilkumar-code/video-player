@@ -11950,7 +11950,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   try {
     var savedPl = JSON.parse(localStorage.getItem(PL_KEY) || "null");
     if (Array.isArray(savedPl)) savedPl.forEach(function (p) {
-      if (p && typeof p.name === "string" && Array.isArray(p.items)) playlists.push({ name: p.name.slice(0, 40), pinned: p.pinned === true ? true : undefined, note: typeof p.note === "string" ? p.note.slice(0, 80) : undefined, items: p.items.filter(validItem).slice(0, 50).map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "" }; }) });
+      if (p && typeof p.name === "string" && Array.isArray(p.items)) playlists.push({ name: p.name.slice(0, 40), pinned: p.pinned === true ? true : undefined, note: typeof p.note === "string" ? p.note.slice(0, 80) : undefined, speed: typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3 ? p.speed : undefined, items: p.items.filter(validItem).slice(0, 50).map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "" }; }) });
     });
   } catch (e) {}
   function savePlaylists() { try { localStorage.setItem(PL_KEY, JSON.stringify(playlists)); } catch (e) { plMsg.textContent = T("Could not save: browser storage is full or blocked. Your latest changes may be lost - export a backup."); storageWarn(); } }
@@ -12276,7 +12276,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       function playPl() {
         if (!pl.items.length) return;
         lib.queue = pl.items.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1;
-        saveLib(); renderLib(); showLibErr(""); plSay(T("Playing") + " \"" + pl.name + "\". " + T("The queue now holds its") + " " + pl.items.length + " " + T("videos") + ".");
+        saveLib(); renderLib(); showLibErr(""); plHookPlay246(pl); plSay(T("Playing") + " \"" + pl.name + "\". " + T("The queue now holds its") + " " + pl.items.length + " " + T("videos") + ".");
         playQueueAt(0);
         if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
       }
@@ -12315,7 +12315,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       btn(T("Shuffle play"), "", function () {
         if (!pl.items.length) return;
         lib.queue = plShuffled(pl.items); qPos = -1; resetShuffle();
-        saveLib(); renderLib(); showLibErr("");
+        saveLib(); renderLib(); showLibErr(""); plHookPlay246(pl);
         plSay(T("Playing in shuffled order:") + " \"" + pl.name + "\" - " + pl.items.length + " " + (pl.items.length === 1 ? T("video") : T("videos")) + ".");
         playQueueAt(0);
         if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
@@ -12325,7 +12325,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         var un = pl.items.filter(function (x) { var hi = findIn(lib.hist, x.id); return !(hi >= 0 && lib.hist[hi].done); });
         if (!un.length) { plSay(T("Everything in this playlist is watched.")); return; }
         lib.queue = un.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1;
-        saveLib(); renderLib(); showLibErr("");
+        saveLib(); renderLib(); showLibErr(""); plHookPlay246(pl);
         plSay(T("Playing the unwatched videos of") + " \"" + pl.name + "\": " + un.length + "/" + pl.items.length + " " + (un.length === 1 ? T("video") : T("videos")) + ".");
         playQueueAt(0);
         if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
@@ -12879,7 +12879,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       queuePos: (qPos >= 0 && qPos < lib.queue.length && lib.queue[qPos]) ? lib.queue[qPos].id : null,
       favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "", pin: x.pin === true }; }),
       later: lib.later.map(function (x) { var o = { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (laterSnoozed(x)) o.snoozeUntil = x.snoozeUntil; if (typeof x.why === "string" && x.why.trim()) o.why = x.why.slice(0, 200); return o; }),
-      playlists: playlists.map(function (p) { var o = { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; if (p.pinned === true) o.pinned = true; if (typeof p.note === "string" && p.note) o.note = p.note.slice(0, 80); return o; }),
+      playlists: playlists.map(function (p) { var o = { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; if (p.pinned === true) o.pinned = true; if (typeof p.note === "string" && p.note) o.note = p.note.slice(0, 80); if (typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3) o.speed = p.speed; return o; }),
       moments: (function () { var o = {}; Object.keys(marks).forEach(function (id) { if (Array.isArray(marks[id]) && marks[id].length) o[id] = marks[id].map(function (m) { return { t: m.t, name: m.name || "" }; }); }); return o; })(),
       notes: (function () { var o = {}; if (typeof notes === "object" && notes) Object.keys(notes).forEach(function (id) { if (typeof notes[id] === "string" && notes[id].trim()) o[id] = notes[id]; }); return o; })(),
       lyrics: (function () { var o = {}; if (typeof lyrics === "object" && lyrics) Object.keys(lyrics).forEach(function (id) { if (typeof lyrics[id] === "string" && lyrics[id].trim()) o[id] = lyrics[id]; }); return o; })(),
@@ -12982,7 +12982,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
           // A playlist with the same name and the same videos in the same order is already here - skip it.
           if (playlists.some(function (q) { return q.name === nm && q.items.length === items.length && q.items.every(function (it, ix) { return it.id === items[ix].id; }); })) return;
           var base = nm, k = 2; while (plFind(nm) >= 0) { nm = (base.slice(0, 34) + " (" + k + ")"); k++; }
-          playlists.push({ name: nm, pinned: p.pinned === true ? true : undefined, note: typeof p.note === "string" && p.note ? p.note.slice(0, 80) : undefined, items: items }); pn++;
+          playlists.push({ name: nm, pinned: p.pinned === true ? true : undefined, note: typeof p.note === "string" && p.note ? p.note.slice(0, 80) : undefined, speed: typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3 ? p.speed : undefined, items: items }); pn++;
         });
         var ln = 0;
         (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length >= 50) capN++; if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { var li2 = { id: x.id, title: typeof x.title === "string" ? x.title : "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (typeof x.snoozeUntil === "number" && x.snoozeUntil > Date.now() && x.snoozeUntil < Date.now() + 30 * 864e5) li2.snoozeUntil = x.snoozeUntil; if (typeof x.why === "string" && x.why.trim()) li2.why = x.why.slice(0, 200); lib.later.push(li2); ln++; } });
@@ -18014,6 +18014,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Playlist default speed", "#plList"],
     ["Library words", "#wordsCard"],
     ["Rediscover", "#rediscoverCard"],
     ["Weekly plan", "#weekPlanCard"],
@@ -18023,7 +18024,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Overlapping playlists", "#overlapCard"],
     ["Mix builder", "#mixCard"],
     ["Unavailable video check", "#deadCard"],
-    ["Restore points", "#restoreCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -20575,7 +20575,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         open.addEventListener("click", function () {
           if (!pl.items.length) return;
           lib.queue = pl.items.map(function (y) { return { id: y.id, title: y.title }; }); qPos = -1;
-          saveLib(); renderLib(); showLibErr("");
+          saveLib(); renderLib(); showLibErr(""); plHookPlay246(pl);
           plSay(T("Playing") + " \"" + pl.name + "\" (" + (i + 1) + "/" + pl.items.length + ").");
           playQueueAt(i);
           if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
@@ -24505,6 +24505,58 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // prints its tooltip text (day or hour and the watch time) under that chart.
   (function(){[$('statsDays'),$('statsHours')].forEach(function(box,n){if(!box||!box.parentNode)return;var out=document.createElement('p');out.className='hint';out.setAttribute('role','status');out.hidden=true;out.id=n?'statsHourRead':'statsDayRead';box.parentNode.insertBefore(out,box.nextSibling);
     box.addEventListener('click',function(e){var col=e.target&&e.target.closest?e.target.closest('.stats-day,.stats-hour'):null;var b=col&&col.querySelector('i[title]');if(!b)return;out.textContent=b.title;out.hidden=false;});});})();
+  // Playlist default speed (round 246 new 2): a study playlist wants 1.5x, a music one 1x, but the
+  // speed was one global for everything - every switch meant an extra trip to the Speed chips. A
+  // Speed chip in the playlist's More menu picks this playlist's own speed (off, or 0.5 to 2); the
+  // next Play, Shuffle play, Play unwatched or play-from-a-video of that playlist applies it (and
+  // says so), off means the playlist follows your hand like before. The choice rides the playlist,
+  // so backups and shared devices keep it.
+  Object.assign(TR_MSG, {
+    "Playlist default speed": ["प्लेलिस्ट डिफ़ॉल्ट स्पीड", "પ્લેલિસ્ટ ડિફૉલ્ટ સ્પીડ"],
+    "Speed": ["स्पीड", "સ્પીડ"],
+    "Speed: off": ["स्पीड: बंद", "સ્પીડ: બંધ"],
+    "Playlist speed: {n}x": ["प्लेलिस्ट स्पीड: {n}x", "પ્લેલિસ્ટ સ્પીડ: {n}x"],
+    "Speed {n}x for this playlist.": ["इस प्लेलिस्ट के लिए स्पीड {n}x.", "આ પ્લેલિસ્ટ માટે સ્પીડ {n}x."],
+    "Playlist speed off.": ["प्लेलिस्ट स्पीड बंद.", "પ્લેલિસ્ટ સ્પીડ બંધ."]
+  });
+  var PL_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+  function plHookPlay246(pl) {
+    if (typeof pl.speed !== "number" || pl.speed < 0.25 || pl.speed > 3) return;
+    prefs.speed = pl.speed; savePrefs(); markActive(speedChips, String(pl.speed));
+    toast(T("Speed {n}x for this playlist.").replace("{n}", pl.speed));
+    // A fresh load applies prefs.speed once (when it is not 1); a reused player can keep the last
+    // video's rate, so re-apply while this playlist's videos are the ones loading.
+    [600, 1800, 3500].forEach(function (ms) {
+      setTimeout(function () {
+        if (curId && findIn(pl.items, curId) >= 0) { send("setPlaybackRate", [pl.speed]); markActive(speedChips, String(pl.speed)); }
+      }, ms);
+    });
+  }
+  (function () {
+    function addSpd() {
+      var lis = plList.querySelectorAll(":scope > li.pl-item");
+      Array.prototype.forEach.call(lis, function (li) {
+        var idx = li.dataset && li.dataset.playlistIndex != null ? +li.dataset.playlistIndex : -1;
+        if (!(idx >= 0) || !playlists[idx]) return;
+        var menu = li.querySelector(".pl-more-menu"); if (!menu) return;
+        var old = menu.querySelector(".pl-spd"); if (old) old.remove();
+        var pl = playlists[idx];
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip pl-spd"; b.setAttribute("role", "menuitem");
+        var cur = typeof pl.speed === "number" ? pl.speed : 0;
+        b.textContent = cur ? T("Playlist speed: {n}x").replace("{n}", cur) : T("Speed: off");
+        b.setAttribute("aria-label", T("Playlist default speed") + ": " + pl.name);
+        b.addEventListener("click", function () {
+          var i = PL_SPEEDS.indexOf(cur), nv = i < 0 ? PL_SPEEDS[0] : (i + 1 < PL_SPEEDS.length ? PL_SPEEDS[i + 1] : 0);
+          if (nv) pl.speed = nv; else delete pl.speed;
+          savePlaylists();
+          plSay(nv ? T("Playlist speed: {n}x").replace("{n}", nv) + " - \"" + pl.name + "\"." : T("Playlist speed off.") + " \"" + pl.name + "\".");
+          addSpd();
+        });
+        menu.appendChild(b);
+      });
+    }
+    renderPlaylists = (function (orig) { return function () { var r = orig.apply(this, arguments); try { addSpd(); } catch (e) {} return r; }; })(renderPlaylists);
+  })();
 /*R244-END*/
 
 })();
@@ -27063,6 +27115,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Playlist default speed", "playlist default speed own rate per playlist study faster lectures music normal remember apply on play more menu", "#plList"],
       ["Library words", "library words keyword title common words tags topics cloud find group lofi lecture songs tap word queue playlist", "#wordsCard"],
       ["Rediscover", "rediscover forgotten favourites not played old months ago stale oldest unplayed bring back resurface", "#rediscoverCard"],
       ["Weekly plan", "weekly plan schedule weekday playlist monday study routine habit today plan calendar assign", "#weekPlanCard"],
