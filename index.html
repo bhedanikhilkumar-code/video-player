@@ -2458,6 +2458,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="libListMsg" role="status"></p>
       <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterQuickBtn" type="button">⚡ Quick wins</button><button class="chip" id="laterOldBtn" type="button">📦 Oldest 5</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterWakeBtn" type="button" hidden>⏰ Wake all</button><button class="chip" id="laterSnoozeAllBtn" type="button" hidden>😴 Snooze all</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterSortAzBtn" type="button">Sort A to Z</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
+      <div class="row" id="laterOverlap" style="margin-top:6px" hidden></div>
       <p class="hint" id="laterTime" role="status"></p>
       <p class="hint" id="laterOldLine" role="status" hidden></p>
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favQueueUnwBtn" type="button">➕ Queue unwatched</button><button class="chip" id="favQueueTopBtn" type="button">⭐ Queue top rated</button><button class="chip" id="favCopyRatedBtn" type="button">📋 Copy ratings</button><button class="chip" id="favClearRatedBtn" type="button">Clear ratings</button><button class="chip" id="favRand5Btn" type="button">🎰 Random 5</button><button class="chip" id="favShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="favUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="favRatedBtn" type="button" aria-pressed="false">Only rated: off</button><button class="chip" id="favClrWBtn" type="button">Clear watched</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button><button class="chip" id="favSortAzBtn" type="button">Sort A to Z</button><button class="chip" id="favClearBtn" type="button">Clear</button></span></div>
@@ -17922,6 +17923,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Watch later overlap", "#laterOverlapBtn"],
     ["History as CSV", "#histCsvBtn"],
     ["Quick opens cleanup", "#histQuickBtn"],
     ["History tidy-up", "#histKeepBtn"],
@@ -23657,6 +23659,17 @@ var blob=new Blob(['\ufeff'+rows.join('\r\n')+'\r\n'],{type:'text/csv;charset=ut
 a.href=u;a.download='video-player-history.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u);},4000);
 toast(T('History saved as CSV'));});
 (window.__relang=window.__relang||[]).push(paint);paint();})();
+Object.assign(TR_MSG, {"Watch later overlap": ["Watch later और पसंदीदा में दोहराव", "Watch later અને ફેવરિટમાં બેવડું"], "Also in Favourites:": ["पसंदीदा में भी:", "ફેવરિટમાં પણ:"], "remove from Watch later": ["Watch later से हटाएँ", "Watch later માંથી દૂર કરો"], "Removed from Watch later:": ["Watch later से हटाए:", "Watch later માંથી દૂર કર્યા:"]});
+(function(){var row=$('laterOverlap');if(!row)return;
+var b=document.createElement('button');b.type='button';b.className='chip';b.id='laterOverlapBtn';row.appendChild(b);var n=0;
+function paint(){var f={};lib.favs.forEach(function(x){f[x.id]=1;});n=lib.later.filter(function(x){return f[x.id];}).length;row.hidden=!n;
+b.textContent=T('Also in Favourites:')+' '+n+' - '+T('remove from Watch later');}
+b.addEventListener('click',function(){var f={};lib.favs.forEach(function(x){f[x.id]=1;});var snap=lib.later.slice();
+lib.later=snap.filter(function(x){return !f[x.id];});var gone=snap.length-lib.later.length;if(!gone)return;saveLib();renderLib();
+toastUndo(T('Removed from Watch later:')+' '+gone,function(){lib.later=snap;saveLib();renderLib();},T('Watch later list restored'));});
+var mo=window.MutationObserver?new MutationObserver(function(){mo.disconnect();paint();attach();}):null;
+function attach(){if(!mo)return;['laterList','favList'].forEach(function(id){var e=$(id);if(e)mo.observe(e,{childList:true});});}
+attach();(window.__relang=window.__relang||[]).push(paint);paint();})();
 Object.assign(TR_MSG, {"Wind-down reminder": ["वाइंड-डाउन रिमाइंडर", "વાઇન્ડ-ડાઉન રિમાઇન્ડર"], "Wind-down reminder:": ["वाइंड-डाउन रिमाइंडर:", "વાઇન્ડ-ડાઉન રિમાઇન્ડર:"], "9 PM": ["रात 9 बजे", "રાતે 9"], "10 PM": ["रात 10 बजे", "રાતે 10"], "11 PM": ["रात 11 बजे", "રાતે 11"], "Winding down? A sleep timer can stop playback for you.": ["दिन ख़त्म हो रहा है? स्लीप टाइमर वीडियो अपने-आप रोक देगा.", "દિવસ પૂરો થાય છે? સ્લીપ ટાઇમર વીડિયો આપમેળે રોકી દેશે."], "Start 30-min timer": ["30 मिनट का टाइमर लगाएं", "30 મિનિટનો ટાઇમર લગાવો"], "Not now": ["अभी नहीं", "હજી નહીં"]});
 (function(){var card=$('ctl-sleep');if(!card)return;var row=document.createElement('div');row.className='row';row.id='windRow';row.style.marginTop='10px';var lab=document.createElement('span');lab.className='label';lab.id='windLab';var chips=document.createElement('span');chips.className='chips';chips.id='windChips';row.appendChild(lab);row.appendChild(chips);var at=$('sleepAtRow');card.insertBefore(row,at?at.nextSibling:null);
 var st=document.createElement('style');st.textContent='.wind-banner{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9995;width:min(430px,calc(100vw - 32px));padding:14px 16px;box-sizing:border-box;border:1px solid var(--hairline);border-radius:18px;background:var(--card);color:var(--ink);box-shadow:0 16px 50px #0005;text-align:center}.wind-banner[hidden]{display:none}.wind-banner p{margin:0 0 10px;font-size:15px}.wind-banner .row{justify-content:center}';document.head.appendChild(st);
@@ -26186,6 +26199,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["History tidy-up", "history clean tidy older delete remove days keep old recently watched", "#histKeepBtn"],
       ["Quick opens cleanup", "history clean quick opens accidental short glance seconds remove tapped by mistake", "#histQuickBtn"],
       ["History as CSV", "history csv spreadsheet excel export download sheet table", "#histCsvBtn"],
+      ["Watch later overlap", "watch later favourites duplicate already saved overlap both lists clean remove", "#laterOverlapBtn"],
       ["Scratch pad", "scratch pad quick note notepad free text ideas links jot down notes", "#scratchH"],
       ["Wind-down reminder", "wind down bedtime evening reminder sleep timer night stop playback habit", "#windRow"],
       ["This month's recap", "month recap summary 30 days monthly journal share watched busiest day copy text log", "#mrecapBtn"],
