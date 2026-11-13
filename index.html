@@ -17118,9 +17118,11 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   function renderNoteTimes() {
     var box = $("noteTimes"), b = $("noteBox"); if (!box || !b) return;
     box.innerHTML = "";
-    var seen = {}, n = 0, m, re = /(?:^|[^0-9:])((?:\d{1,2}:)?\d{1,2}:[0-5]\d)(?![0-9:])/g;
+    var seen = {}, n = 0, m, re = /(?:^|[^0-9:])((?:\d+:)?\d+:[0-5]\d)(?![0-9:])/g;
     while ((m = re.exec(b.value)) && n < 12) {
       var p = m[1].split(":").map(Number), sec = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1];
+      // Long podcasts use 100:00 as naturally as 1:40:00. Do not truncate their minutes.
+      if ((p.length === 3 && p[1] > 59) || !Number.isSafeInteger(sec) || sec < 0) continue;
       if (seen[sec]) continue; seen[sec] = 1; n++;
       (function (sec) {
         var go = document.createElement("button"); go.type = "button"; go.className = "chip";
