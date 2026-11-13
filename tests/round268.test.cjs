@@ -50,4 +50,16 @@ function grab(ctx, name) {
   assert.equal(ctx.rangeAction268(undefined, 5, false), '');
   assert.equal(ctx.rangeText268([75, 0]), '1:15 - end');
 }
+
+// Check saved videos: how the public title service status maps to a verdict.
+{
+  const ctx = vm.createContext({});
+  grab(ctx, 'oembedVerdict268');
+  assert.equal(ctx.oembedVerdict268(200), 'ok');
+  assert.equal(ctx.oembedVerdict268(404), 'gone');
+  assert.equal(ctx.oembedVerdict268(400), 'gone'); // the service answers 400 for ids that do not exist
+  assert.equal(ctx.oembedVerdict268(401), 'blocked');
+  assert.equal(ctx.oembedVerdict268(429), 'unknown'); // busy is never treated as removed
+  assert.equal(ctx.oembedVerdict268(500), 'unknown');
+}
 console.log('round268 tests ok');

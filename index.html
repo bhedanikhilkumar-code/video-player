@@ -29457,6 +29457,98 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   WNEW.unshift(["Play range","#rangeCard268"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 
+
+  // Round 268 new 4: Check saved videos - asks YouTube's public title service about every video in
+  // the queue, Watch later and favourites and lists the ones that were removed, made private or
+  // cannot be embedded. Nothing is deleted until you press Remove, and Undo puts them back.
+  function oembedVerdict268(status) { return status === 404 || status === 400 ? "gone" : status === 401 || status === 403 ? "blocked" : status === 200 ? "ok" : "unknown"; }
+  var chk268 = { running: false, bad: [], removed: [], done: 0, total: 0 };
+  function chkIds268() {
+    var seen = {}, out = [];
+    ["queue", "later", "favs"].forEach(function (k) { (lib[k] || []).forEach(function (x) { if (x && x.id && !seen[x.id] && out.length < 100) { seen[x.id] = 1; out.push(x.id); } }); });
+    return out;
+  }
+  function chkRun268(paintFn) {
+    if (chk268.running) return;
+    var ids = chkIds268(); chk268 = { running: true, bad: [], removed: [], done: 0, total: ids.length, unknown: 0 };
+    var i = 0, active = 0;
+    function next() {
+      if (i >= ids.length) { if (active === 0) { chk268.running = false; paintFn(); } return; }
+      var id = ids[i++]; active++;
+      fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id))
+        .then(function (r) { return oembedVerdict268(r.status); }, function () { return "unknown"; })
+        .then(function (v) { if (v === "gone" || v === "blocked") chk268.bad.push({ id: id, why: v }); else if (v === "unknown") chk268.unknown++; chk268.done++; active--; paintFn(); next(); });
+    }
+    paintFn(); for (var c = 0; c < 3; c++) next();
+    if (!ids.length) { chk268.running = false; paintFn(); }
+  }
+  function chkRemove268() {
+    var drop = {}; chk268.bad.forEach(function (b) { if (b.id !== curId) drop[b.id] = 1; });
+    var removed = [];
+    ["queue", "later", "favs"].forEach(function (k) {
+      for (var j = lib[k].length - 1; j >= 0; j--) if (lib[k][j] && drop[lib[k][j].id]) { removed.push({ k: k, at: j, item: lib[k][j] }); lib[k].splice(j, 1); }
+    });
+    chk268.removed = removed.reverse(); chk268.bad = chk268.bad.filter(function (b) { return !drop[b.id]; });
+    saveLib(); renderLib();
+    return removed.length;
+  }
+  function chkUndo268() {
+    var r = chk268.removed; chk268.removed = [];
+    r.forEach(function (e) { if (findIn(lib[e.k], e.item.id) < 0) lib[e.k].splice(Math.min(e.at, lib[e.k].length), 0, e.item); });
+    saveLib(); renderLib(); return r.length;
+  }
+  Object.assign(TR_MSG, {
+    "Check saved videos": ["सेव किए वीडियो जाँचें", "સાચવેલા વીડિયો તપાસો"],
+    "Finds videos in your queue, Watch later and favourites that were removed or made private. Nothing is deleted until you press Remove.": ["कतार, बाद में देखें और पसंदीदा में वे वीडियो ढूँढता है जो हटा दिए गए या निजी हो गए. जब तक आप हटाएँ नहीं दबाते, कुछ नहीं हटता.", "કતાર, પછી જુઓ અને મનપસંદમાં એવા વીડિયો શોધે છે જે હટાવાયા કે ખાનગી થયા. તમે હટાવો દબાવો નહીં ત્યાં સુધી કશું હટતું નથી."],
+    "Check now": ["अभी जाँचें", "હમણાં તપાસો"],
+    "Checking {a} of {b}...": ["{a} में से {b} जाँचे जा रहे हैं...", "{b} માંથી {a} તપાસાય છે..."],
+    "Nothing saved to check yet.": ["जाँचने के लिए अभी कुछ सेव नहीं है.", "તપાસવા માટે હજી કશું સાચવ્યું નથી."],
+    "All {n} videos still work.": ["सभी {n} वीडियो ठीक हैं.", "બધા {n} વીડિયો ચાલુ છે."],
+    "{n} videos have a problem:": ["{n} वीडियो में समस्या है:", "{n} વીડિયોમાં સમસ્યા છે:"],
+    "removed or private": ["हटाया गया या निजी", "હટાવાયો અથવા ખાનગી"],
+    "cannot be played here": ["यहाँ चल नहीं सकता", "અહીં ચાલી શકતો નથી"],
+    "Remove these": ["इन्हें हटाएँ", "આને હટાવો"],
+    "Undo": ["पहले जैसा करें", "પાછું લાવો"],
+    "Removed {n} videos.": ["{n} वीडियो हटाए.", "{n} વીડિયો હટાવ્યા."],
+    "Put back {n} videos.": ["{n} वीडियो वापस रखे.", "{n} વીડિયો પાછા મૂક્યા."],
+    "{n} could not be checked (offline or busy).": ["{n} जाँचे नहीं जा सके (ऑफलाइन या व्यस्त).", "{n} તપાસી શકાયા નહીં (ઑફલાઇન અથવા વ્યસ્ત)."]
+  });
+  (function () {
+    var card = card268("chkCard268", "Check saved videos", "#rangeCard268"); if (!card) return;
+    var hint = document.createElement("p"); hint.className = "hint"; card.appendChild(hint);
+    var row = document.createElement("div"); row.className = "row"; row.style.marginTop = "8px"; card.appendChild(row);
+    var go = document.createElement("button"); go.type = "button"; go.className = "chip"; go.id = "chkGo268";
+    var rm = document.createElement("button"); rm.type = "button"; rm.className = "chip"; rm.id = "chkRm268"; rm.hidden = true;
+    var un = document.createElement("button"); un.type = "button"; un.className = "chip"; un.id = "chkUn268"; un.hidden = true;
+    row.appendChild(go); row.appendChild(rm); row.appendChild(un);
+    var status = document.createElement("p"); status.className = "label"; status.id = "chkStatus268"; status.setAttribute("role", "status"); card.appendChild(status);
+    var list = document.createElement("ul"); list.className = "lib-list"; list.id = "chkList268"; card.appendChild(list);
+    function paint() {
+      hint.textContent = T("Finds videos in your queue, Watch later and favourites that were removed or made private. Nothing is deleted until you press Remove.");
+      go.textContent = T("Check now"); rm.textContent = T("Remove these"); un.textContent = T("Undo"); go.disabled = chk268.running;
+      list.textContent = "";
+      var s = "";
+      if (chk268.running) s = T("Checking {a} of {b}...").replace("{a}", chk268.done).replace("{b}", chk268.total);
+      else if (chk268.total === 0 && chk268.done === 0 && !chk268.removed.length && !chk268.bad.length) s = chk268.ran ? T("Nothing saved to check yet.") : "";
+      else if (chk268.bad.length) s = T("{n} videos have a problem:").replace("{n}", chk268.bad.length);
+      else if (chk268.total) s = T("All {n} videos still work.").replace("{n}", chk268.total - (chk268.unknown || 0));
+      if (!chk268.running && chk268.unknown) s += (s ? " " : "") + T("{n} could not be checked (offline or busy).").replace("{n}", chk268.unknown);
+      status.textContent = s;
+      chk268.bad.forEach(function (b) {
+        var li = document.createElement("li"); li.className = "lib-item";
+        li.textContent = (titleFor(b.id) || b.id) + " - " + T(b.why === "gone" ? "removed or private" : "cannot be played here");
+        list.appendChild(li);
+      });
+      rm.hidden = chk268.running || !chk268.bad.some(function (b) { return b.id !== curId; });
+      un.hidden = !chk268.removed.length;
+    }
+    go.addEventListener("click", function () { chk268.ran = true; chkRun268(paint); chk268.ran = true; });
+    rm.addEventListener("click", function () { var n = chkRemove268(); toast(T("Removed {n} videos.").replace("{n}", n)); paint(); });
+    un.addEventListener("click", function () { var n = chkUndo268(); toast(T("Put back {n} videos.").replace("{n}", n)); paint(); });
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+  WNEW.unshift(["Check saved videos","#chkCard268"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+
 /*R244-END*/
 
 })();
@@ -32147,6 +32239,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Check saved videos", "dead links removed private unavailable broken videos clean queue watch later favourites check", "#chkCard268"],
       ["Play range", "start end trim play only part of video skip intro outro cut limit section", "#rangeCard268"],
       ["Eye rest", "eye break rest 20-20-20 pause look away tired eyes health reminder", "#eyeCard268"],
       ["Voice announcements", "read title aloud speak announce now playing voice speech driving low vision", "#announceCard268"],
