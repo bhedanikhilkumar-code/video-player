@@ -2294,6 +2294,8 @@ setTimeout(done,3000);})();
         <p class="hint" id="lpSinkHint" hidden>Send this tab's local-file sound to another speaker or headset - the browser asks which one. Works where your browser lets a page pick its sound output (Chrome and Edge); the YouTube player's sound cannot be moved (a browser security limit).</p>
         <div class="row"><button class="chip" id="lpMonoBtn" type="button" aria-pressed="false">🔈 Mono sound: off</button></div>
         <p class="hint" id="lpMonoHint" hidden>Both ears hear the same sound - handy with one earphone or a weaker ear on one side. Works on files you open here; the YouTube player's sound cannot be changed (a browser security limit).</p>
+        <div class="row"><button class="chip" id="lpHallBtn285" type="button" aria-pressed="false">🎛 Hall sound: off</button></div>
+        <p class="hint" id="lpHallHint285" hidden></p>
         <label class="dl-lab" for="lpBal"><span id="lpBalLab">Balance: </span><b id="lpBalVal">Center</b></label>
         <input id="lpBal" type="range" min="-100" max="100" step="5" value="0" style="width:100%">
         <p class="hint" id="lpBalHint">Move the sound towards the left or right ear - handy when one earphone sounds louder. Works on files you open here.</p>
@@ -33228,6 +33230,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "🎚 Song fade: {n} s": ["🎚 गाना फ़ेड: {n} सेकंड", "🎚 ગીત ફેડ: {n} સેકંડ"],
     "One song melts into the next: the ending fades out and the new one fades in. Works on files you open here; the YouTube player's sound cannot be changed (a browser security limit).": ["एक गाना अगले में घुल जाता है: अंत धीमा पड़ता है और नया गाना धीरे-धीरे उठता है. यहां खोली गई फ़ाइलों पर काम करता है; YouTube प्लेयर की आवाज़ बदली नहीं जा सकती (ब्राउज़र सुरक्षा सीमा).", "એક ગીત બીજામાં ઓગળી જાય છે: અંત ધીમો થાય છે અને નવું ગીત ધીમે ઊઠે છે. અહીં ખોલેલી ફાઇલો પર કામ કરે છે; YouTube પ્લેયરનો અવાજ બદલી શકાતો નથી (બ્રાઉઝર સુરક્ષા મર્યાદા)."]
   });
+  Object.assign(TR_MSG, {
+    "Hall sound": ["हॉल साउंड", "હૉલ સાઉન્ડ"],
+    "🎛 Hall sound: off": ["🎛 हॉल साउंड: बंद", "🎛 હૉલ સાઉન્ડ: બંધ"],
+    "🎛 Hall sound: room": ["🎛 हॉल साउंड: कमरा", "🎛 હૉલ સાઉન્ડ: રૂમ"],
+    "🎛 Hall sound: hall": ["🎛 हॉल साउंड: हॉल", "🎛 હૉલ સાઉન્ડ: હૉલ"],
+    "Adds the echo of a small room or a big hall to files you open here - like hearing the song where it was played. Works on local files; the YouTube player's sound cannot be changed (a browser security limit).": ["यहां खोली गई फ़ाइलों में छोटे कमरे या बड़े हॉल की गूंज जोड़ता है - जैसे गाना वहीं बज रहा हो. लोकल फ़ाइलों पर काम करता है; YouTube प्लेयर की आवाज़ बदली नहीं जा सकती (ब्राउज़र सुरक्षा सीमा).", "અહીં ખોલેલી ફાઇલોમાં નાના રૂમ કે મોટા હૉલની પડઘા ઉમેરે છે - જાણે ગીત ત્યાં જ વાગે છે. લોકલ ફાઇલો પર કામ કરે છે; YouTube પ્લેયરનો અવાજ બદલી શકાતો નથી (બ્રાઉઝર સુરક્ષા મર્યાદા)."]
+  });
   window.__vpWnew283 = function (name, sel) {
     try { WNEW.unshift([name, sel]); WNEW.length = Math.min(10, WNEW.length); wnewRender(); } catch (e) {}
   };
@@ -33611,7 +33620,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var file = $("lpFile"), vid = $("lpVideo"), ctl = $("lpCtl"), gain = $("lpGain"), gv = $("lpGainVal"), warn = $("lpWarn"), sp = $("lpSpeeds");
-  var ctx = null, node = null, curUrl = null, eqNodes = null, nightNode = null, panNode = null, monoNode = null;
+  var ctx = null, node = null, curUrl = null, eqNodes = null, nightNode = null, panNode = null, monoNode = null, hallConv285 = null, hallWet285 = null;
   function ensureAudio() {
     if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -33649,6 +33658,12 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     ['pause','seeking','emptied','loadstart'].forEach(function(ev){vid.addEventListener(ev,muteAndFlush276);});
     ['play','playing','seeked'].forEach(function(ev){vid.addEventListener(ev,openOutput276);});
     monoNode = monoN;
+    // Round 285 new 4 (Hall sound): a convolver send taps the chain after the mono
+    // fold, wet-only into the shared output, so the delay line and every upstream
+    // control (boost, EQ, balance, song fade) keep their meaning with the echo on.
+    hallConv285 = ctx.createConvolver(); hallWet285 = ctx.createGain(); hallWet285.gain.value = 0;
+    monoN.connect(hallConv285); hallConv285.connect(hallWet285); hallWet285.connect(output276);
+    if (typeof hallApply285 === "function") hallApply285();
     eqNodes = { b: fb, m: fm, t: ft }; nightNode = comp; panNode = pan;
     if (typeof eqApply === "function") eqApply();
     if (typeof nightBalApply === "function") nightBalApply();
@@ -33662,8 +33677,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     try { ensureAudio(); if(!ctx || typeof ctx.setSinkId !== 'function') return Promise.reject(new Error('unsupported')); return ctx.setSinkId(id); }
     catch(e) { return Promise.reject(e); }
   };
-  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, night: false, bal: 0, fade: 0, eq: { b: 0, m: 0, t: 0 } };
-  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.ccBg === "none" || sv.ccBg === "solid") lp.ccBg = sv.ccBg; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; if (typeof sv.bal === "number" && sv.bal >= -100 && sv.bal <= 100) lp.bal = Math.round(sv.bal); if (sv.mono === true) lp.mono = true; if (sv.soft === true) lp.soft = true; if ([0, 2, 4, 8].indexOf(sv.fade) >= 0) lp.fade = sv.fade; } } catch (e) {}
+  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, night: false, bal: 0, fade: 0, hall: "off", eq: { b: 0, m: 0, t: 0 } };
+  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.ccBg === "none" || sv.ccBg === "solid") lp.ccBg = sv.ccBg; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; if (typeof sv.bal === "number" && sv.bal >= -100 && sv.bal <= 100) lp.bal = Math.round(sv.bal); if (sv.mono === true) lp.mono = true; if (sv.soft === true) lp.soft = true; if ([0, 2, 4, 8].indexOf(sv.fade) >= 0) lp.fade = sv.fade; if (["off", "room", "hall"].indexOf(sv.hall) >= 0) lp.hall = sv.hall; } } catch (e) {}
   gain.value = lp.gain;
   function saveLp() { try { localStorage.setItem(LK, JSON.stringify(lp)); } catch (e) { if(window.vpStorageWarning276)window.vpStorageWarning276(); } }
   function setGain() { var v = Number(gain.value); lp.gain = v; saveLp(); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
@@ -33745,6 +33760,53 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   }
 
   if (window.__vpWnew283) window.__vpWnew283("Fade between songs", "#lpFadeBtn285");
+  // Hall sound (round 285 new 4): a downloaded song sounds flat next to a live recording
+  // because a phone speaker strips the room away. The Hall sound chip beside Mono cycles
+  // Off / Room / Hall and adds the echo of a small room or a big hall to files opened
+  // here: a convolver send taps the audio chain after the mono fold (built in
+  // ensureAudio) and feeds a wet-only share into the shared output, so the boost,
+  // equalizer, balance, delay and fade controls all keep their meaning with the echo on.
+  // Works on files opened here; the YouTube player's sound cannot be changed (a browser
+  // security limit). Kept in lp.hall (vp-lp.v1) so it rides the backup. Hindi and
+  // Gujarati text lives in the main closure like the other local-player strings; What's
+  // new and feature finder included. Checked first: the equalizer only shapes tone and
+  // Night sound only evens loudness - nothing added a sense of space.
+  var hallBtn285 = $("lpHallBtn285"), hallHint285 = $("lpHallHint285");
+  function hallImpulse285(seconds, decay) {
+    var rate = ctx.sampleRate, len = Math.max(1, Math.floor(rate * seconds));
+    var buf = ctx.createBuffer(2, len, rate);
+    for (var ch = 0; ch < 2; ch++) {
+      var d = buf.getChannelData(ch);
+      for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    }
+    return buf;
+  }
+  function hallApply285() {
+    if (!ctx || !hallConv285 || !hallWet285) return;
+    try {
+      if (lp.hall === "room") { hallConv285.buffer = hallImpulse285(0.7, 2.6); hallWet285.gain.value = 0.20; }
+      else if (lp.hall === "hall") { hallConv285.buffer = hallImpulse285(2.4, 1.9); hallWet285.gain.value = 0.32; }
+      else hallWet285.gain.value = 0;
+    } catch (e) {}
+  }
+  if (hallBtn285) {
+    var hallDefs285 = ["off", "room", "hall"];
+    function hallPaint285() {
+      hallBtn285.textContent = T("🎛 Hall sound: " + lp.hall);
+      hallBtn285.setAttribute("aria-pressed", lp.hall !== "off" ? "true" : "false");
+      hallBtn285.classList.toggle("active", lp.hall !== "off");
+      if (hallHint285) { hallHint285.hidden = false; hallHint285.textContent = T("Adds the echo of a small room or a big hall to files you open here - like hearing the song where it was played. Works on local files; the YouTube player's sound cannot be changed (a browser security limit)."); }
+    }
+    (window.__relang = window.__relang || []).push(hallPaint285);
+    hallBtn285.addEventListener("click", function () {
+      var i = hallDefs285.indexOf(lp.hall);
+      lp.hall = hallDefs285[(i + 1) % hallDefs285.length];
+      saveLp(); hallApply285(); hallPaint285();
+    });
+    hallPaint285();
+  }
+
+  if (window.__vpWnew283) window.__vpWnew283("Hall sound", "#lpHallBtn285");
   [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3].forEach(function (r) {
     var b = document.createElement("button"); b.className = "chip" + (r === lp.rate ? " active" : ""); b.type = "button"; b.textContent = r + "x";
     b.addEventListener("click", function () { vid.playbackRate = r; lp.rate = r; saveLp(); [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c === b); }); if (window.__vpSpeedHud) window.__vpSpeedHud(r); });
@@ -37222,6 +37284,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Spoiler-free titles", "spoiler free blur hide titles thumbnails scores endings privacy library lists peek reveal glance screen", "#spoilerBtn"],
       ["Auto-dim when idle", "auto dim screen idle dark display bedtime night no touch hands off fade light oled battery sleep timer pair", "#autoDimRow285"],
       ["Fade between songs", "fade between songs tracks crossfade smooth transition melt music mode local files gapless soft ending beginning", "#lpFadeBtn285"],
+      ["Hall sound", "hall sound reverb echo room concert space acoustics live feeling local files speaker depth", "#lpHallBtn285"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
