@@ -32088,6 +32088,162 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
     WNEW.unshift(["Your own shortcut keys", "#xkRow280"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   })();
+  // Round 281 new 1: Hold a list row for quick actions. Watch later, Favourites, Recently
+  // watched and the queue all show rows whose whole job is "open it" or "remove it" -
+  // anything else (play it next, favourite it, park it in Watch later) means opening the
+  // video first or hunting the right chip. Holding a row half a second (or right-clicking
+  // it) now raises a glass action sheet with the everyday moves: play now, play next, add
+  // to queue, Watch later, favourite and remove from that list. One tap acts and closes;
+  // Escape, the dim behind the sheet or Cancel closes without acting. The sheet is a real
+  // dialog (aria-modal, focus lands inside and comes back), retranslates on language
+  // change, honours Calm motion / Low-end (no slide) and High contrast, keeps clear of
+  // the swipe-to-remove gesture (any move cancels the hold), and registers in the feature
+  // finder and the What's new card. No new setting, nothing stored.
+  Object.assign(TR_MSG, {
+    "Hold a row for quick actions": ["तेज़ कार्रवाई के लिए पंक्ति दबाकर रखें", "ઝડપી ક્રિયાઓ માટે પંક્તિ દબાવી રાખો"],
+    "Quick actions": ["तेज़ कार्रवाई", "ઝડપી ક્રિયાઓ"],
+    "Play now": ["अभी चलाएं", "હમણાં ચલાવો"],
+    "Play next": ["अगला चलाएं", "આગળ ચલાવો"],
+    "Add to queue": ["कतार में डालें", "કતારમાં નાખો"],
+    "Watch later": ["बाद में देखें", "પછી જુઓ"],
+    "Favourite": ["पसंदीदा", "મનપસંદ"],
+    "Remove from this list": ["इस लिस्ट से हटाएं", "આ યાદીમાંથી કાઢો"],
+    "Cancel": ["रद्द करें", "રદ કરો"],
+    "Removed.": ["हटाया गया.", "કાઢી નાખ્યું."],
+    "Row actions": ["पंक्ति क्रियाएं", "પંક્તિ ક્રિયાઓ"]
+  });
+  (function () {
+    var sheet = null, back = null, holdT = null, holdRow = null, holdX = 0, holdY = 0, lastFocus = null;
+    function rowVid(row) { var v = row && row.getAttribute("data-vid"); return (v && /^[\w-]{11}$/.test(v)) ? v : null; }
+    function listOf(row) {
+      var ul = row && row.parentNode; if (!ul || !ul.id) return null;
+      if (ul.id === "queueList") return { list: lib.queue, name: "queue" };
+      if (ul.id === "laterList") return { list: lib.later, name: "later" };
+      if (ul.id === "favList") return { list: lib.favs, name: "favs" };
+      if (ul.id === "histList") return { list: lib.hist, name: "hist" };
+      return null;
+    }
+    function closeSheet() {
+      clearTimeout(holdT); holdT = null; holdRow = null;
+      if (back) { back.remove(); back = null; }
+      if (sheet) { sheet.remove(); sheet = null; }
+      document.removeEventListener("keydown", onKey, true);
+      if (lastFocus && lastFocus.focus) { try { lastFocus.focus(); } catch (e) {} }
+      lastFocus = null;
+    }
+    function onKey(e) { if (e.key === "Escape") { e.preventDefault(); closeSheet(); } }
+    function paintSheet() {
+      if (!sheet) return;
+      sheet.querySelector(".lpa-title").textContent = sheet._title || "";
+      var map = { play: "Play now", next: "Play next", queue: "Add to queue", later: "Watch later", fav: "Favourite", rem: "Remove from this list", cancel: "Cancel" };
+      [].forEach.call(sheet.querySelectorAll("button[data-a]"), function (b) {
+        var k = b.getAttribute("data-a");
+        if (k === "later") { var i = findIn(lib.later, sheet._vid); b.textContent = (i >= 0 ? "✕ " : "🔖 ") + T("Watch later"); return; }
+        if (k === "fav") { var j = findIn(lib.favs, sheet._vid); b.textContent = (j >= 0 ? "✕ " : "⭐ ") + T("Favourite"); return; }
+        if (k === "play") { b.textContent = "▶ " + T("Play now"); return; }
+        if (k === "next") { b.textContent = "⏭ " + T("Play next"); return; }
+        if (k === "queue") { b.textContent = "➕ " + T("Add to queue"); return; }
+        if (k === "rem") { b.textContent = "🗑 " + T("Remove from this list"); return; }
+        b.textContent = T("Cancel");
+      });
+    }
+    function act(a) {
+      var id = sheet._vid, src = sheet._src;
+      if (a === "play") {
+        closeSheet();
+        linkInput.value = id; loadVideo(null, null, undefined, true);
+        if (frameBox && frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+        return;
+      }
+      if (a === "next") {
+        closeSheet();
+        var curQ = (qPos >= 0 && lib.queue[qPos]) ? lib.queue[qPos].id : null;
+        if (id === curQ) { toast(T("That video is already playing.")); return; }
+        var ix = findIn(lib.queue, id);
+        if (ix >= 0) { lib.queue.splice(ix, 1); if (ix < qPos) qPos--; }
+        else if (lib.queue.length >= 50) { showLibErr(T("The queue holds up to 50 videos. Extra links were skipped.")); return; }
+        var at = (qPos >= 0 && qPos < lib.queue.length) ? qPos + 1 : 0;
+        lib.queue = lib.queue.slice(0, at).concat([{ id: id, title: titleFor(id) }], lib.queue.slice(at));
+        fetchTitle(id); resetShuffle(); saveLib(); renderLib();
+        toast(T("Queued to play next"));
+        if (!iframe) playQueueAt(at);
+        return;
+      }
+      if (a === "queue") {
+        closeSheet();
+        if (findIn(lib.queue, id) >= 0) { toast(T("That video is already in the queue.")); return; }
+        if (lib.queue.length >= 50) { showLibErr(T("The queue holds up to 50 videos. Extra links were skipped.")); return; }
+        lib.queue.push({ id: id, title: titleFor(id) }); fetchTitle(id); saveLib(); renderLib();
+        toast(T("Added to queue"));
+        return;
+      }
+      if (a === "later") { closeSheet(); toggleLater(id); return; }
+      if (a === "fav") { closeSheet(); toggleFav(id); return; }
+      if (a === "rem" && src) {
+        closeSheet();
+        var i = findIn(src.list, id); if (i < 0) return;
+        var gone = src.list[i];
+        src.list.splice(i, 1); saveLib(); renderLib();
+        toastUndo(T("Removed."), function () { src.list.splice(Math.min(i, src.list.length), 0, gone); saveLib(); renderLib(); }, T("Restored."));
+      }
+    }
+    function openSheet(row) {
+      var id = rowVid(row); if (!id) return;
+      var src = listOf(row);
+      closeSheet();
+      lastFocus = document.activeElement;
+      back = document.createElement("div"); back.className = "lpa-back281";
+      sheet = document.createElement("div"); sheet.className = "lpa-sheet281"; sheet.setAttribute("role", "dialog"); sheet.setAttribute("aria-modal", "true"); sheet.setAttribute("aria-label", T("Quick actions"));
+      sheet._vid = id; sheet._src = src; sheet._title = titleFor(id) || ("Video " + id);
+      var h = document.createElement("p"); h.className = "lpa-title"; sheet.appendChild(h);
+      var mk = function (a) { var b = document.createElement("button"); b.type = "button"; b.className = "chip lpa-btn"; b.setAttribute("data-a", a); b.addEventListener("click", function () { act(a); }); sheet.appendChild(b); return b; };
+      mk("play"); mk("next");
+      if (findIn(lib.queue, id) < 0) mk("queue");
+      mk("later"); mk("fav");
+      if (src) mk("rem");
+      mk("cancel").classList.add("lpa-cancel");
+      back.addEventListener("click", closeSheet);
+      document.body.appendChild(back); document.body.appendChild(sheet);
+      paintSheet();
+      document.addEventListener("keydown", onKey, true);
+      var first = sheet.querySelector("button"); if (first) first.focus();
+    }
+    function onDown(e) {
+      if (e.button !== undefined && e.button !== 0) return;
+      var row = e.target && e.target.closest ? e.target.closest(".lib-item[data-vid]") : null;
+      if (!row || !row.closest("#library")) return;
+      holdRow = row; holdX = e.clientX; holdY = e.clientY;
+      clearTimeout(holdT);
+      holdT = setTimeout(function () { if (holdRow) { openSheet(holdRow); holdRow = null; } }, 550);
+    }
+    function onMove(e) {
+      if (!holdRow) return;
+      if (Math.abs(e.clientX - holdX) > 10 || Math.abs(e.clientY - holdY) > 10) { clearTimeout(holdT); holdT = null; holdRow = null; }
+    }
+    function onUp() { clearTimeout(holdT); holdT = null; holdRow = null; }
+    document.addEventListener("pointerdown", onDown, true);
+    document.addEventListener("pointermove", onMove, true);
+    document.addEventListener("pointerup", onUp, true);
+    document.addEventListener("pointercancel", onUp, true);
+    document.addEventListener("dragstart", function () { onUp(); }, true);
+    document.addEventListener("contextmenu", function (e) {
+      var row = e.target && e.target.closest ? e.target.closest(".lib-item[data-vid]") : null;
+      if (!row || !row.closest("#library")) return;
+      e.preventDefault(); openSheet(row);
+    }, true);
+    var st = document.createElement("style");
+    st.textContent = ".lpa-back281{position:fixed;inset:0;z-index:118;background:rgba(10,12,18,.45)}"
+      + ".lpa-sheet281{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:119;width:min(92vw,380px);background:var(--card);border:1px solid var(--hairline);border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:8px;box-shadow:0 18px 50px rgba(0,0,0,.35);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}"
+      + ".lpa-sheet281 .lpa-title{margin:0 0 4px;font-weight:600;font-size:14px;line-height:1.35;max-height:2.7em;overflow:hidden}"
+      + ".lpa-sheet281 .lpa-btn{width:100%;text-align:left;justify-content:flex-start}"
+      + ".lpa-sheet281 .lpa-cancel{opacity:.85}"
+      + "html.high-contrast .lpa-sheet281{background:#000;border-color:#fff}"
+      + "@media (prefers-reduced-motion:reduce){.lpa-sheet281{transition:none}}";
+    document.head.appendChild(st);
+    (window.__relang = window.__relang || []).push(paintSheet);
+    WNEW.unshift(["Hold a row for quick actions", "#library"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
+
 
 
 
@@ -34928,6 +35084,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Hold a row for quick actions", "hold press long press right click row quick actions play now play next add queue watch later favourite remove action sheet", "#library"],
       ["Channel intro skip", "channel intro skip theme song opening every episode podcast auto first seconds creator remember", "#chIntroRow280"],
       ["Unwatched badges", "unwatched badge count heading watch later favourites not seen left to watch how many backlog total time", "#unwLater280"],
       ["Remembered videos", "remembered videos per video memory speed volume rotation picture look ab loop intro outro forget clean manage list", "#vmemCard280"],
