@@ -25711,7 +25711,12 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       var acts = li.querySelector(".pl-acts"); if (!acts) return;
       var b = document.createElement("button"); b.type = "button"; b.className = "chip pl-share"; b.textContent = T("Share");
       b.addEventListener("click", function () {
-        var pls = readPls(), pl = pls[i]; if (!pl) return;
+        // Round 242 fix 1: the row position i was used to pick the playlist, but rows follow the
+        // DISPLAY order (pinned first, optional A-Z), not the storage order - with a pinned playlist
+        // or A-Z sort on, Share copied the link for a different playlist. Every row already carries
+        // its storage index in dataset.playlistIndex (set by renderPlaylists); use it.
+        var pi = li.dataset && li.dataset.playlistIndex != null ? +li.dataset.playlistIndex : i;
+        var pls = readPls(), pl = pls[pi]; if (!pl) return;
         var url = encodePl(pl);
         copyText(url, function (ok) {
           if (ok) toast(T("Link copied"));
