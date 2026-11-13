@@ -2423,6 +2423,7 @@ setTimeout(done,3000);})();
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
       <p class="hint" id="favTime" role="status"></p>
+      <p class="hint" id="favRateLine" role="status" hidden></p>
       <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="histShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="histSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="histQueueBtn" type="button">Queue unfinished</button><button class="chip" id="histPlBtn" type="button">Save unfinished as playlist</button><button class="chip" id="histTrimBtn" type="button">Trim old history</button><button class="chip" id="histDoneBtn" type="button">Clear watched</button><button class="chip" id="histUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="histShortsBtn" type="button" aria-pressed="false">Hide shorts: off</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint" id="histFinLine" role="status" hidden></p>
@@ -5074,6 +5075,38 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   renderLib = function () { baseRenderLibLO(); laterOldRender(); };
   (window.__relang = window.__relang || []).push(laterOldRender);
   laterOldRender();
+
+  // Average rating in Favourites (round 230 new 3): stars can be sorted by rating, but
+  // the simple answer to "how good is my starred pile?" needed reading every row's
+  // stars. One line under the card averages the ratings of the favourited videos that
+  // have one and names how many are rated, so a 4.3-star pile reads as the keepers it
+  // is; it hides while fewer than two favourites are rated (one row shows its own
+  // stars) and follows rating taps, new favourites and Undo through the shared render
+  // and the rating-change event. Hindi and Gujarati text, What's new and feature
+  // finder included.
+  Object.assign(TR_MSG, {
+    "Average rating": ["औसत रेटिंग", "સરેરાશ રેટિંગ"],
+    "rated": ["रेटेड", "રેટેડ"],
+    "Average rating in Favourites": ["पसंदीदा में औसत रेटिंग", "મનપસંદમાં સરેરાશ રેટિંગ"]
+  });
+  var favRateLine = $("favRateLine");
+  function favRateRender() {
+    if (!favRateLine) return;
+    var m = {}; try { m = JSON.parse(localStorage.getItem("vp-rate.v1") || "{}") || {}; } catch (e) {}
+    var sum = 0, n = 0;
+    lib.favs.forEach(function (x) {
+      if (!x || !x.id) return;
+      var v = Math.round(Number(m[x.id]));
+      if (v >= 1 && v <= 5) { sum += v; n++; }
+    });
+    favRateLine.hidden = n < 2;
+    favRateLine.textContent = n < 2 ? "" : T("Average rating") + ": " + (Math.round(sum / n * 10) / 10) + " ★ · " + n + " " + T("rated");
+  }
+  var baseRenderLibFR = renderLib;
+  renderLib = function () { baseRenderLibFR(); favRateRender(); };
+  window.addEventListener("vp-rate-changed", favRateRender);
+  (window.__relang = window.__relang || []).push(favRateRender);
+  favRateRender();
 
   // Round 219 new 3 (Copy the download queue) strings live here inside the main app
   // closure - the download queue's own script block cannot see TR_MSG.
@@ -17331,6 +17364,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Average rating in Favourites", "#favRateLine"],
     ["Oldest parked in Watch later", "#laterOldLine"],
     ["Finished count in history", "#histFinLine"],
     ["App data size", "#dataSize"],
@@ -24052,6 +24086,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Average rating in Favourites", "average rating favourites stars mean score how good starred pile rated", "#favRateLine"],
       ["Oldest parked in Watch later", "oldest parked watch later longest waiting stale backlog saved date ago forgot", "#laterOldLine"],
       ["Finished count in history", "finished count history how many watched done seen through completed split list", "#histFinLine"],
       ["Sleep timer from the page link", "sleep timer link url sleep=45 bookmark shortcut start timer on open home screen", "#ctl-sleep"],
