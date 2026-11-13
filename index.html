@@ -34384,10 +34384,9 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
   var input = document.getElementById("linkInput"), btn = document.getElementById("cleanLinkBtn");
   if (!input || !btn) return;
   function timeOf(text) {
-    var m = text.match(/[?&#](?:t|start|time_continue)=(\d+)s?(?:&|$)/);
-    if (m) return +m[1];
-    var m2 = text.match(/[?&#]t=(?:(\d+)h)?(?:(\d+)m)?(\d+)s?(?:&|$)/);
-    if (m2) return (+(m2[1] || 0)) * 3600 + (+(m2[2] || 0)) * 60 + (+(m2[3] || 0));
+    // round 270 fix 3: t=1m, t=2h and t=1:30 were dropped by Clean link (only whole seconds or h/m/s with seconds matched); use the shared time reader
+    var m = text.match(/[?&#](?:t|start|time_continue)=([^&#\s]+)/);
+    if (m) { var v = window.vpParseTime ? window.vpParseTime(m[1]) : NaN; return isFinite(v) && v > 0 && v < 86400 ? Math.floor(v) : 0; }
     return 0;
   }
   function cleanOf(text) {

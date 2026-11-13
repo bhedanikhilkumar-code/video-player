@@ -26,3 +26,19 @@ console.log('round270 tests ok');
   assert.equal(ctx.linkStartSeconds('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30&time_continue=90'), 30);
 }
 console.log('round270 fix2 ok');
+// Fix 3: Clean link keeps minute/hour/clock start times.
+{
+  const tsrc = slice('window.vpParseTime = function', '(function readLinkParams');
+  const ctx = vm.createContext({ window: {} });
+  vm.runInContext(tsrc, ctx);
+  const body = slice('function timeOf(text) {', 'function cleanOf');
+  const c2 = vm.createContext({ window: ctx.window });
+  vm.runInContext(body, c2);
+  assert.equal(c2.timeOf('https://youtu.be/dQw4w9WgXcQ?t=1m'), 60);
+  assert.equal(c2.timeOf('https://youtu.be/dQw4w9WgXcQ?t=2h'), 7200);
+  assert.equal(c2.timeOf('https://youtu.be/dQw4w9WgXcQ?t=1m30s&si=x'), 90);
+  assert.equal(c2.timeOf('https://youtu.be/dQw4w9WgXcQ?t=90'), 90);
+  assert.equal(c2.timeOf('https://youtu.be/dQw4w9WgXcQ?si=x'), 0);
+  assert.equal(c2.timeOf('https://youtu.be/dQw4w9WgXcQ?t=junk'), 0);
+}
+console.log('round270 fix3 ok');
