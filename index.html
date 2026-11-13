@@ -2336,7 +2336,7 @@ setTimeout(done,3000);})();
           <button class="chip vs-mic" id="vsMic" type="button" aria-label="Voice search" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button>
         </div>
         <span class="hint" id="libSearchMsg" role="status"></span>
-        <div class="row"><button class="chip" id="libNotesBtn" type="button" aria-pressed="false">Include notes: off</button><button class="chip" id="libQueueMatchBtn" type="button" hidden>➕ Queue matches</button><button class="chip" id="libCopyMatchBtn" type="button" hidden>📋 Copy matches</button></div>
+        <div class="row"><button class="chip" id="libNotesBtn" type="button" aria-pressed="false">Include notes: off</button><button class="chip" id="libQueueMatchBtn" type="button" hidden>➕ Queue matches</button><button class="chip" id="libCopyMatchBtn" type="button" hidden>📋 Copy matches</button><button class="chip" id="libPlMatchBtn" type="button" hidden>💾 Save matches as playlist</button></div>
         <div id="rsRow" hidden><span class="hint" id="rsLab">Recent:</span><span class="rs-chips" id="rsChips"></span><button class="chip" id="rsClear" type="button">Clear</button></div>
       </div>
       <div class="lib-scope" id="libScope" role="group" aria-label="Search in">
@@ -11381,6 +11381,51 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     (window.vpCopySafe || function (t, cb) { cb(false); })(text, function (ok) { toast(ok ? pool.length + " " + T("matches copied") : T("Could not copy. Try again.")); });
   });
 
+  // Save search matches as a playlist (round 233 new 7): Queue matches parks every hit in
+  // the queue and Copy matches shares the list, but keeping the find itself - "my lecture
+  // videos" - meant queuing, then Save queue as playlist, then clearing the queue. One chip
+  // next to them collects the same matches (search text, scope picker and Include-notes
+  // choice, duplicates removed), asks for a name and saves a new playlist directly (a taken
+  // name and a full shelf both say so honestly). Hidden while the search box is empty.
+  // Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "💾 Save matches as playlist": ["💾 मिलान को प्लेलिस्ट में सेव करें", "💾 મેળને પ્લેલિસ્ટમાં સેવ કરો"],
+    "Save search matches as playlist": ["खोज के मिलान को प्लेलिस्ट में सेव करें", "શોધ મેળને પ્લેલિસ્ટમાં સેવ કરો"],
+    "Name the playlist for these matches": ["इन मिलानों की प्लेलिस्ट का नाम लिखें", "આ મેળોની પ્લેલિસ્ટનું નામ લખો"],
+    "Nothing matches to save.": ["सेव करने के लिए कुछ नहीं मिला.", "સેવ કરવા કંઈ મળ્યું નથી."],
+    "A playlist with that name already exists.": ["उस नाम की प्लेलिस्ट पहले से है.", "તે નામની પ્લેલિસ્ટ પહેલેથી છે."]
+  });
+  var libPlMatchBtn = $("libPlMatchBtn");
+  function libPlMatchPaint() { if (libPlMatchBtn) { libPlMatchBtn.textContent = T("💾 Save matches as playlist"); libPlMatchBtn.setAttribute("aria-label", T("Save search matches as playlist")); } }
+  (window.__relang = window.__relang || []).push(libPlMatchPaint);
+  libPlMatchPaint();
+  function libPlMatchSync() { if (libPlMatchBtn && libSearch) libPlMatchBtn.hidden = !libSearch.value.trim(); }
+  if (libSearch) {
+    libSearch.addEventListener("input", libPlMatchSync);
+    libSearch.addEventListener("keydown", function (e) { if (e.key === "Escape") setTimeout(libPlMatchSync, 0); });
+  }
+  if (libPlMatchBtn) libPlMatchBtn.addEventListener("click", async function () {
+    var q = libSearch ? libSearch.value.trim().toLowerCase() : "";
+    if (!q) { libPlMatchSync(); return; }
+    function hit2(it) { return it && it.id && libSearchHit202(it, q); }
+    var pool = [], seen2 = {};
+    if (libScope === "all" || libScope === "queue") lib.queue.forEach(function (it) { if (hit2(it) && !seen2[it.id]) { seen2[it.id] = 1; pool.push(it); } });
+    if (libScope === "all" || libScope === "favs") lib.favs.forEach(function (it) { if (hit2(it) && !seen2[it.id]) { seen2[it.id] = 1; pool.push(it); } });
+    if (libScope === "all" || libScope === "later") lib.later.forEach(function (it) { if (hit2(it) && !seen2[it.id]) { seen2[it.id] = 1; pool.push(it); } });
+    if (libScope === "all" || libScope === "hist") lib.hist.forEach(function (it) { if (hit2(it) && !seen2[it.id]) { seen2[it.id] = 1; pool.push(it); } });
+    if ((libScope === "all" || libScope === "playlists") && typeof playlists !== "undefined" && playlists) playlists.forEach(function (pl) { pl.items.forEach(function (it) { if (hit2(it) && !seen2[it.id]) { seen2[it.id] = 1; pool.push(it); } }); });
+    if (!pool.length) { toast(T("Nothing matches to save.")); return; }
+    var nm = cleanName(await vpAsk(T("Name the playlist for these matches"), q.slice(0, 40)));
+    if (!nm) return;
+    if (plFind(nm) >= 0) { plSay(T("A playlist with that name already exists.")); return; }
+    if (playlists.length >= PL_MAX) { plSay(T("You can keep up to ") + PL_MAX + T(" playlists. Delete one first.")); return; }
+    var items233 = pool.slice(0, 50).map(function (x) { return { id: x.id, title: x.title || titleFor(x.id) || "" }; });
+    playlists.push({ name: nm, items: items233 });
+    savePlaylists(); renderPlaylists();
+    toast(T("Playlist saved"));
+    plSay(T("Saved") + " \"" + nm + "\"" + T(" with ") + items233.length + " " + (items233.length === 1 ? T("video") : T("videos")) + ".");
+  });
+
   // Recent searches (round 140): the library search box remembers the last few searches on
   // this device. While the box is empty they show as chips under it - one tap types the word
   // back and runs the search, so a search you run often (a course, a creator, a mood) is one
@@ -17615,6 +17660,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Save search matches as playlist", "#libPlMatchBtn"],
     ["Favourites done-by clock", "#favTime"],
     ["Surprise me in the queue", "#qSurpriseBtn"],
     ["Watch later from the info card", "#infoLaterBtn"],
@@ -21251,7 +21297,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var el = $("favTime"); if (!el) return;
     if (!lib.favs.length) { el.textContent = ""; return; }
     var known = 0, secs = 0;
-    lib.favs.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { known++; secs += d; } });
+    lib.favs.forEach(function (x) { var hi3 = lib.hist.findIndex(function (h) { return h && h.id === x.id; }); var d = (infoCache[x.id] && infoCache[x.id].dur) || (hi3 >= 0 && lib.hist[hi3].dur) || 0; if (typeof d === "number" && d > 0) { known++; secs += d; } });
     if (!known) { el.textContent = ""; return; }
     var t = Math.round(secs), h = Math.floor(t / 3600), m = h ? Math.round((t % 3600) / 60) : Math.max(1, Math.round(t / 60));
     // Round 213 fix: 59.6+ minutes used to round to a printed "1 hr 60 min".
@@ -24679,6 +24725,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Save search matches as playlist", "save search matches as playlist keep find results named collection library search", "#libPlMatchBtn"],
       ["Favourites done-by clock", "favourites done by clock time finish wall clock when done total length rewatch end", "#favTime"],
       ["Surprise me in the queue", "surprise me queue random pick upcoming jump play dice luck", "#qSurpriseBtn"],
       ["Watch later from the info card", "info card now playing save watch later chip park playing video", "#infoLaterBtn"],
