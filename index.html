@@ -27740,6 +27740,24 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     };
   })();
 
+  // Round 260 fix 5: saved playlists were kept in memory per tab and written whole on every
+  // change, so with the app open in two tabs (or the installed app plus a browser tab) the tab
+  // that saved last silently wiped a playlist the other tab had just made - the same loss
+  // round 235 fixed for the queue, favourites and history (confirmed first: a playlist added by
+  // another tab was gone after this tab pinned a list). A storage event from the other tab now
+  // refreshes this tab's playlists before its next save.
+  window.addEventListener("storage", function (e) {
+    if (e.key !== PL_KEY || !e.newValue) return;
+    try {
+      var a = JSON.parse(e.newValue); if (!Array.isArray(a)) return;
+      var next = a.filter(function (p) { return p && typeof p.name === "string" && Array.isArray(p.items); }).slice(0, PL_MAX).map(function (p) {
+        var c = Object.assign({}, p); c.name = p.name.slice(0, 40); c.items = p.items.filter(validItem); return c;
+      });
+      playlists.length = 0; next.forEach(function (p) { playlists.push(p); });
+      renderPlaylists();
+    } catch (err) {}
+  });
+
   // Copied link prompt (round 259 new 5): a link copied in another app or tab had to be pasted
   // by hand. With this switched on (off by default), coming back to the app checks the
   // clipboard once per return, and if it holds a YouTube video link that has not been offered
