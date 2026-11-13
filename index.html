@@ -1841,7 +1841,7 @@ setTimeout(done,3000);})();
         <div class="info-text">
           <span class="np-pill" id="npPill"><span class="np-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="npPillT">Now playing</span></span>
           <div class="info-title" id="infoTitle"></div>
-          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><button class="chip chan-star" id="chanStarBtn" type="button" aria-pressed="false" aria-label="Save channel" hidden>☆</button><span id="infoDur"></span><button class="chip info-copy" id="infoCopyBtn" type="button">Copy title &amp; link</button><button class="chip info-copy" id="infoQueueBtn" type="button">Queue this video</button><button class="chip info-copy" id="infoPlBtn" type="button">Add to playlist</button><button class="chip info-copy" id="infoSumBtn" type="button">Copy summary</button><button class="chip info-copy" id="infoThumbBtn" type="button">Open thumbnail</button><span class="vmem-note" id="vmemNote" hidden></span><span class="vmem-note" id="npWatched" hidden></span></div>
+          <div class="info-meta"><a id="infoChannel" target="_blank" rel="noopener noreferrer"></a><button class="chip chan-star" id="chanStarBtn" type="button" aria-pressed="false" aria-label="Save channel" hidden>☆</button><span id="infoDur"></span><button class="chip info-copy" id="infoCopyBtn" type="button">Copy title &amp; link</button><button class="chip info-copy" id="infoQueueBtn" type="button">Queue this video</button><button class="chip info-copy" id="infoPlBtn" type="button">Add to playlist</button><button class="chip info-copy" id="infoChanMoreBtn" type="button" hidden>More from this channel</button><button class="chip info-copy" id="infoSumBtn" type="button">Copy summary</button><button class="chip info-copy" id="infoThumbBtn" type="button">Open thumbnail</button><span class="vmem-note" id="vmemNote" hidden></span><span class="vmem-note" id="npWatched" hidden></span></div>
         </div>
       </div>
 
@@ -17419,6 +17419,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["More from this channel", "#infoChanMoreBtn"],
     ["Average watch per play", "#statsPerPlay"],
     ["Playlists at a glance", "#plTotalLine"],
     ["Average rating in Favourites", "#favRateLine"],
@@ -21592,6 +21593,69 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     uPaint();
   })();
 
+  // More from this channel (round 231 new 1): the info card can queue or playlist the
+  // playing video, but "keep this creator going" meant searching your own lists by eye.
+  // When the app has learned the playing video's channel (it learns the author each time
+  // a video's info loads), a chip on the info card offers every unwatched video from the
+  // same channel across favourites, Watch later and Recently watched. One tap queues
+  // them in library order, skipping watched ones, the playing video itself, ones already
+  // queued and stopping at the 50-video limit, with the same Undo toast every queue add
+  // gives. The chip hides while the channel is unknown or there is nothing to offer, and
+  // the toasts say so honestly. Hindi and Gujarati text, What's new and feature finder
+  // included.
+  Object.assign(TR_MSG, {
+    "More from this channel": ["इस चैनल से और", "આ ચેનલમાંથી વધુ"],
+    "Queue unwatched videos from": ["इस चैनल के न देखे वीडियो कतार में डालें:", "આ ચેનલના ન જોયેલા વીડિયો કતારમાં નાખો:"],
+    "The channel is not known yet for this video.": ["इस वीडियो का चैनल अभी ज्ञात नहीं है.", "આ વીડિયોની ચેનલ હજી જ્ઞાત નથી."],
+    "No unwatched videos from this channel in your lists.": ["आपकी लिस्ट में इस चैनल का कोई न देखा वीडियो नहीं.", "તમારી યાદીઓમાં આ ચેનલનો કોઈ ન જોયેલો વીડિયો નથી."]
+  });
+  (function () {
+    var btn = $("infoChanMoreBtn"); if (!btn) return;
+    function chanOf(id) { if (!id) return ""; try { chanMapLearn(id); } catch (e) {} return chanMap[id] || ""; }
+    function watchedId(id) {
+      var fi = findIn(lib.favs, id); if (fi >= 0 && lib.favs[fi].done === true) return true;
+      var hi = findIn(lib.hist, id); return hi >= 0 && lib.hist[hi].done === true;
+    }
+    function matches(c) {
+      var pool = {}, out = [];
+      [lib.favs, lib.later, lib.hist].forEach(function (list) {
+        (list || []).forEach(function (x) {
+          if (!x || !x.id || x.id === curId || pool[x.id]) return;
+          if (chanMap[x.id] !== c) return;
+          pool[x.id] = 1; out.push(x);
+        });
+      });
+      return out;
+    }
+    function paint() {
+      var c = chanOf(curId), n = 0;
+      if (c) matches(c).forEach(function (x) { if (!watchedId(x.id) && findIn(lib.queue, x.id) < 0) n++; });
+      btn.hidden = !c || !n;
+      btn.textContent = "\u{1F4FA} " + T("More from this channel") + (n ? " (" + n + ")" : "");
+      btn.setAttribute("aria-label", T("Queue unwatched videos from") + " " + (c || ""));
+    }
+    btn.addEventListener("click", function () {
+      var c = chanOf(curId);
+      if (!c) { toast(T("The channel is not known yet for this video.")); return; }
+      var snap = lib.queue.slice(), sp = qPos, add = [];
+      matches(c).forEach(function (x) {
+        if (watchedId(x.id)) return;
+        if (findIn(lib.queue, x.id) >= 0) return;
+        if (lib.queue.length + add.length >= 50) return;
+        add.push({ id: x.id, title: x.title || titleFor(x.id) || "" });
+      });
+      if (!add.length) { toast(T("No unwatched videos from this channel in your lists.")); return; }
+      add.forEach(function (x) { lib.queue.push(x); });
+      saveLib(); renderLib();
+      toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    });
+    document.addEventListener("vp-video-loaded", function () { setTimeout(paint, 400); });
+    var baseRenderLibCM = renderLib;
+    renderLib = function () { baseRenderLibCM(); try { paint(); } catch (e) {} };
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+
   // Drop a YouTube link (round 209 new 1): drag a video link from another browser tab,
   // the address bar or another app and let go anywhere on the page - a single link plays
   // here, several links go into the queue. A frosted glass veil says so while you drag.
@@ -24185,6 +24249,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Favourite from the mini player", "favourite star mini player floating docked save like keep playing video bookmark heart", "#miniFav"],
       ["Save a playlist as a text file", "save playlist text file download txt titles links readable export keep", "#lhPlaylists"],
       ["Add the playing video to a playlist", "add playing now current video to playlist save collect organise picker", "#infoPlBtn"],
+      ["More from this channel", "more from this channel same channel queue unwatched suggestions creator author like this playing video", "#infoChanMoreBtn"],
       ["Skip buttons in the mini player", "mini player skip back forward 10 seconds seek floating docked rewind hop", "#miniRew"],
       ["Find in lyrics", "find search lyrics words line song locate match jump next enter", "#lyrFindQ"],
       ["Snooze all in Watch later", "snooze all watch later park hide backlog every video one day wake undo", "#laterSnoozeAllBtn"],
