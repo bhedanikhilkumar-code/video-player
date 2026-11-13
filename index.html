@@ -26789,6 +26789,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // honest when there are fewer than 2 watched days. Hindi and Gujarati text, feature finder.
   Object.assign(TR_MSG, {
     "{n} not added: Watch later is full at 50 videos.": ["{n} नहीं जुड़े: बाद में देखें 50 वीडियो पर भर गया है.", "{n} ઉમેરાયા નથી: પછી જુઓ 50 વીડિયો પર ભરાઈ ગયું છે."],
+    "Tap again to replace your {n} queued videos": ["अपने {n} कतार वाले वीडियो बदलने के लिए फिर टैप करें", "તમારા કતારના {n} વીડિયો બદલવા ફરી ટૅપ કરો"],
     "Tap again to replace your {n} saved videos": ["अपने {n} सेव वीडियो बदलने के लिए फिर टैप करें", "તમારા {n} સાચવેલા વીડિયો બદલવા ફરી ટૅપ કરો"],
     "Break tracker": ["ब्रेक ट्रैकर", "બ્રેક ટ્રેકર"],
     "How long your breaks between watching days are, from the last 100 days on this device.": ["पिछले 100 दिनों में देखने के दिनों के बीच आपके ब्रेक कितने लंबे हैं, इसी डिवाइस से.", "છેલ્લા 100 દિવસમાં જોવાના દિવસો વચ્ચેના તમારા બ્રેક કેટલા લાંબા છે, આ ડિવાઇસ પરથી."],
@@ -29313,7 +29314,17 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       } catch (e) { p.textContent = T("Could not save: browser storage is full or blocked."); }
     }
     add.addEventListener("click", function () { take(false); });
-    rep.addEventListener("click", function () { take(true); });
+    // Round 257 fix: Replace emptied the saved queue at once with no way back. When there is a queue to lose, the first tap now asks for a second tap (5 seconds).
+    var repArmed = false, repTimer = 0, repLabel = rep.textContent;
+    rep.addEventListener("click", function () {
+      var cur = readLib(), have = Array.isArray(cur.queue) ? cur.queue.length : 0;
+      if (have > 0 && !repArmed) {
+        repArmed = true; rep.textContent = T("Tap again to replace your {n} queued videos").replace("{n}", have);
+        clearTimeout(repTimer); repTimer = setTimeout(function () { repArmed = false; rep.textContent = repLabel; }, 5000);
+        return;
+      }
+      take(true);
+    });
   }
   no.addEventListener("click", function () { try { history.replaceState(null, "", location.pathname); } catch (e) {} banner.remove(); });
 })();
