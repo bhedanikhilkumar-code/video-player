@@ -17722,6 +17722,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Today's recap", "#recapBtn"],
     ["Storage check", "#storBtn"],
     ["Tidy Watch later", "#tidyBtn"],
     ["Park the rest of the queue", "#qParkBtn"],
@@ -22822,6 +22823,51 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     btn.addEventListener("click", function () { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); paint(); if (!panel.hidden && window.vpExpandSection) window.vpExpandSection("library"); });
   })();
 
+  // Today's recap (round 236 new 5): Watch stats show numbers, but sharing or journaling a day meant retyping
+  // it. A panel under Playlists writes a short plain-text recap of today - date, time watched (from Watch
+  // stats), how many videos and each title with its youtu.be link (from Recently watched, newest first,
+  // up to 15) - and copies it in one tap. Built on this device, nothing is uploaded.
+  Object.assign(TR_MSG, {
+    "Today's recap": ["आज का सार", "આજનો સાર"],
+    "Copy recap": ["सार कॉपी करें", "સાર કૉપિ કરો"],
+    "Recap copied": ["सार कॉपी हुआ", "સાર કૉપિ થયો"],
+    "Could not copy - select the text and copy it by hand.": ["कॉपी नहीं हुआ - टेक्स्ट चुनकर हाथ से कॉपी करें.", "કૉપિ ન થયું - ટેક્સ્ટ પસંદ કરી હાથે કૉપિ કરો."],
+    "Nothing watched yet today.": ["आज अभी कुछ नहीं देखा.", "આજે હજી કંઈ જોયું નથી."]
+  });
+  (function () {
+    var host = $("binBtn"); if (!host) return;
+    var btn = document.createElement("button"); btn.className = "chip"; btn.type = "button"; btn.id = "recapBtn"; btn.setAttribute("aria-expanded", "false");
+    host.parentNode.insertBefore(btn, host);
+    var panel = document.createElement("div"); panel.className = "pl-paste"; panel.id = "recapPanel"; panel.hidden = true;
+    var box = document.createElement("textarea"); box.className = "note-box"; box.id = "recapBox"; box.readOnly = true; box.rows = 8; box.setAttribute("aria-label", "Today's recap");
+    var cr = document.createElement("div"); cr.className = "row";
+    var cp = document.createElement("button"); cp.type = "button"; cp.className = "chip"; cp.id = "recapCopy";
+    var cl = document.createElement("button"); cl.type = "button"; cl.className = "chip";
+    cr.appendChild(cp); cr.appendChild(cl); panel.appendChild(box); panel.appendChild(cr);
+    host.parentNode.parentNode.insertBefore(panel, host.parentNode.nextSibling);
+    function dur(sec) { return fmtWatch(Math.floor(sec || 0)); }
+    function build() {
+      var start = new Date(); start.setHours(0, 0, 0, 0);
+      var rows = lib.hist.filter(function (x) { return typeof x.ts === "number" && x.ts >= start.getTime(); }).sort(function (a, b) { return b.ts - a.ts; });
+      var secs = Math.floor((stats && stats.days && stats.days[dayKey(new Date())]) || 0);
+      if (!rows.length && !secs) return T("Nothing watched yet today.");
+      var loc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-US";
+      var out = [T("Today") + " - " + new Date().toLocaleDateString(loc, { weekday: "long", day: "numeric", month: "long" }), T("Watched") + ": " + dur(secs) + ", " + rows.length + " " + T("videos"), ""];
+      rows.slice(0, 15).forEach(function (x, i) { out.push((i + 1) + ". " + (x.title || x.id) + " - https://youtu.be/" + x.id); });
+      if (rows.length > 15) out.push("+" + (rows.length - 15));
+      return out.join("\n");
+    }
+    function paint() {
+      btn.textContent = T("Today's recap"); cp.textContent = T("Copy recap"); cl.textContent = T("Close");
+      box.setAttribute("aria-label", T("Today's recap"));
+      if (!panel.hidden) { box.value = build(); }
+    }
+    cp.addEventListener("click", function () { box.value = build(); vpCopySafe(box.value, function (ok) { toast(ok ? T("Recap copied") : T("Could not copy - select the text and copy it by hand.")); }); });
+    cl.addEventListener("click", function () { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); });
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); paint(); if (!panel.hidden && window.vpExpandSection) window.vpExpandSection("library"); });
+  })();
+
   // Round 234 fix: list rows read '... - Resume 1:00' in English on Hindi and Gujarati pages, and
   // the 'Saved on this device only.' note under Recently watched also stayed English (its
   // translation row pointed at the first paragraph after the list, which became the hidden
@@ -25497,6 +25543,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Park the rest of the queue", "park queue watch later save for later move upcoming clear evening over keep not lose", "#qParkBtn"],
       ["Tidy Watch later", "tidy clean watch later already favourite watched old parked remove clutter", "#tidyBtn"],
       ["Storage check", "storage space full quota size memory used how much data backup trim 5 mb", "#storBtn"],
+      ["Today's recap", "recap today summary journal share what i watched copy text day log", "#recapBtn"],
       ["Select videos", "select multiple checkbox bulk favourites watch later remove move queue several tick batch", "#selBtn"],
       ["Recently removed", "recently removed bin trash undo restore deleted favourites watch later accident bring back", "#binBtn"],
       ["Add to calendar", "calendar ics event schedule evening plan reminder queue watch later block time session", "#calBtn"],
