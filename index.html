@@ -22583,7 +22583,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     function local(d) { return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()) + "T" + pad(d.getHours()) + pad(d.getMinutes()) + "00"; }
     function utc(d) { return d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate()) + "T" + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + pad(d.getUTCSeconds()) + "Z"; }
     function esc(s) { return String(s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n"); }
-    function fold(line) { var out = [], i = 0; while (line.length - i > 70) { out.push(line.slice(i, i + 70)); i += 70; } out.push(line.slice(i)); return out.join("\r\n "); }
+    function fold(line) {
+      // RFC 5545 folds at 75 UTF-8 octets, not JS characters. Keep code points intact.
+      var out = [], part = "", size = 0, encoder = new TextEncoder();
+      Array.from(line).forEach(function (ch) { var n = encoder.encode(ch).length; if (size + n > 75) { out.push(part); part = " "; size = 1; } part += ch; size += n; });
+      out.push(part); return out.join("\r\n");
+    }
     window.__vpBuildIcs = function (list, start, mins, title) {
       var end = new Date(start.getTime() + mins * 60000);
       var desc = list.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + " - https://youtu.be/" + x.id; }).join("\n");
