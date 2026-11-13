@@ -6349,7 +6349,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (data.info === 0 && prefs.fsExitEnd && !prefs.loop && !(abEnabled && abA != null && abB != null) && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
     }
     if (data.event === "onPlaybackQualityChange" && typeof data.info === "string") markActive(qualityChips, data.info);
-    if (data.event === "onPlaybackRateChange" && typeof data.info === "number") { prefs.speed = data.info; savePrefs(); markActive(speedChips, String(data.info)); if (curId) vmemRec({ speed: data.info }); if (window.__vpSpeedHud && Date.now() > rateHudSkipUntil) window.__vpSpeedHud(data.info); if (window.__vpChSpeedNote) window.__vpChSpeedNote(data.info); }
+    if (data.event === "onPlaybackRateChange" && typeof data.info === "number") {
+      // Round 253 fix 5: hold-to-rush (the gesture pad hold and the Hold: 2x button)
+      // borrows 2x only for as long as you press, but every rate change was also written
+      // down as your speed - the global speed, this video's remembered speed, the
+      // channel's remembered speed and the lit speed chip all flipped to 2x. If the page
+      // closed, the video changed or the events raced, your real speed stayed clobbered
+      // at 2x. While a rush hold is fresh, only the HUD note runs; speed memory stays
+      // untouched, and letting go re-applies your true speed as before.
+      var rushHeld = window.__vpHoldRushT && Date.now() - window.__vpHoldRushT < 2500;
+      if (!rushHeld) {
+        prefs.speed = data.info; savePrefs(); markActive(speedChips, String(data.info));
+        if (curId) vmemRec({ speed: data.info });
+        if (window.__vpChSpeedNote) window.__vpChSpeedNote(data.info);
+      }
+      if (window.__vpSpeedHud && Date.now() > rateHudSkipUntil) window.__vpSpeedHud(data.info);
+    }
     if (data.event === "onError") {
       var ec = data.info;
       clearTimeout(loadWatchdog);
@@ -9352,6 +9367,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (holdPrev >= 2) return;
         holdBoost = true;
         if (flashTimer) clearTimeout(flashTimer);
+        window.__vpHoldRushT = Date.now(); // round 253 fix 5: this 2x is borrowed, not chosen
         send("setPlaybackRate", [2]);
         flash.textContent = "\u25b6\u25b6 2\u00d7"; flash.classList.add("show");
         if (window.__vpBuzz) window.__vpBuzz(8);
@@ -25760,6 +25776,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (held) return;
       if (!ready || !curId) { toast(T("Load a video first.")); return; }
       held = true; prevSpeed = prefs.speed;
+      window.__vpHoldRushT = Date.now(); // round 253 fix 5: this 2x is borrowed, not chosen
       send("setPlaybackRate", [2]);
       b.classList.add("active"); b.setAttribute("aria-pressed", "true");
       b.textContent = T("Rushing at 2x - let go to return");
