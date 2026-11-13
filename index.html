@@ -1878,6 +1878,7 @@ setTimeout(done,3000);})();
             <button class="chip" id="fsBtn">⛶ Full screen</button> <button class="chip" id="cinemaBtn" type="button" aria-pressed="false">🎬 Cinema</button> <button class="chip" id="ambGlowBtn" type="button" aria-pressed="true">✨ Ambient light</button> <button class="chip" id="lockBtn" type="button" aria-pressed="false">🔒 Lock touch</button> <button class="chip" id="fsRotBtn" type="button" aria-pressed="true">🔄 Auto-rotate</button> <button class="chip" id="statsBtn" type="button" aria-pressed="false">📊 Stats</button> <button class="chip" id="clockOvBtn" type="button" aria-pressed="false">🕐 Clock</button> <button class="chip" id="mileBtn" type="button" aria-pressed="false">🏁 Milestones</button> <button class="chip" id="wmapBtn" type="button" aria-pressed="false">🗺 Watch map</button> <button class="chip" id="playFlashBtn" type="button" aria-pressed="false">⚡ Play flash</button> <button class="chip" id="tiltBtn" type="button" aria-pressed="false">🎥 Tilt</button> <button class="chip" id="progLineBtn" type="button" aria-pressed="false">📏 Progress line</button> <button class="chip" id="goalRingBtn" type="button" aria-pressed="false">🎯 Goal ring</button> <button class="chip" id="pauseClockBtn" type="button" aria-pressed="false">🕰 Paused clock</button> <button class="chip" id="skipRippleBtn" type="button" aria-pressed="false">⏪ Skip ripple</button> <button class="chip" id="filmBarsBtn" type="button" aria-pressed="false">🎞 Film bars</button> <button class="chip" id="curtainsBtn" type="button" aria-pressed="false">🎭 Curtains</button> <button class="chip" id="streaksBtn" type="button" aria-pressed="false">💨 Speed streaks</button> <button class="chip" id="liveFrameBtn" type="button" aria-pressed="false">🌈 Live frame</button>
       <button class="chip" id="calmMotionBtn" type="button" aria-pressed="false">Calm motion: off</button> <button class="chip" id="fsExitBtn" type="button" aria-pressed="false">Exit at end: off</button> <button class="chip" id="introBtn" type="button" aria-pressed="false">⏭ Skip intro</button> <button class="chip" id="outroBtn" type="button" aria-pressed="false">⏩ Skip outro</button>
           </div>
+          <div class="row" id="chIntroRow280" style="margin-top:6px"><span class="label" id="chIntroLab280">Channel intro</span><span class="chips" id="chIntroChips280"></span></div>
           <label class="label" for="seek" id="seekLab">Seek through video</label>
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
           <div class="wmap-strip" id="wmapStrip" hidden aria-hidden="true"></div>
@@ -31757,6 +31758,69 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   WNEW.unshift(["Auto chapters for local files", "#lpChAutoRow278"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   WNEW.unshift(["Practice loop repeat count", "#lpLoopCountRow278"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
 
+  // Round 280 new 5: Channel intro skip. Podcast and lesson channels open every video
+  // with the same 30 or 60 second theme, and the per-video Skip intro only remembers
+  // one video at a time - a whole channel meant marking every episode by hand. This
+  // row saves one intro length for the channel of the playing video (15, 30 or 60
+  // seconds) and skips it by itself the next time any video from that channel starts.
+  // Off forgets the channel. Once per video load, never re-seeks after you have
+  // watched past the mark, translated, in the feature finder and the What's new card.
+  (function () {
+    var lab = $("chIntroLab280"), chips = $("chIntroChips280");
+    if (!lab || !chips) return;
+    var KEY = "vp-chintro.v1";
+    var mem = {};
+    try { var raw = JSON.parse(localStorage.getItem(KEY) || "null"); if (raw && typeof raw === "object" && !Array.isArray(raw)) mem = raw; } catch (e) {}
+    var CH = [0, 15, 30, 60];
+    Object.assign(TR_MSG, {
+      "Channel intro": ["\u091a\u0948\u0928\u0932 \u0907\u0902\u091f\u094d\u0930\u094b", "\u0a9a\u0ac7\u0aa8\u0ab2 \u0a87\u0aa8\u0acd\u0a9f\u0acd\u0ab0\u0acb"],
+      "Skip the first {n} seconds of every video from this channel": ["\u0907\u0938 \u091a\u0948\u0928\u0932 \u0915\u0947 \u0939\u0930 \u0935\u0940\u0921\u093f\u092f\u094b \u0915\u0947 \u092a\u0939\u0932\u0947 {n} \u0938\u0947\u0915\u0902\u0921 \u091b\u094b\u0a21\u093c\u0947\u0902", "\u0a86 \u0a9a\u0ac7\u0aa8\u0ab2\u0aa8\u0abe \u0aa6\u0ab0\u0ac7\u0a95 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb\u0aa8\u0abe \u0aaa\u0ab9\u0ac7\u0ab2\u0abe {n} \u0ab8\u0ac7\u0a95\u0aa8\u0acd\u0aa1 \u0a9b\u0acb\u0aa1\u0acb"],
+      "Channel intro skipped: ": ["\u091a\u0948\u0928\u0932 \u0907\u0902\u091f\u094d\u0930\u094b \u091b\u0942\u091f\u093e: ", "\u0a9a\u0ac7\u0aa8\u0ab2 \u0a87\u0aa8\u0acd\u0a9f\u0acd\u0ab0\u0acb \u0a9b\u0ac2\u0a9f\u0acd\u0aaf\u0ac1\u0a82: "],
+      "Channel intro skip": ["\u091a\u0948\u0928\u0932 \u0907\u0902\u091f\u094d\u0930\u094b \u0938\u094d\u0915\u093f\u092a", "\u0a9a\u0ac7\u0aa8\u0ab2 \u0a87\u0aa8\u0acd\u0a9f\u0acd\u0ab0\u0acb \u0ab8\u0acd\u0a95\u0abf\u0aaa"]
+    });
+    function chanKey() {
+      if (typeof chanCur !== "function") return "";
+      var c = chanCur(); return c && c.n ? c.n.toLowerCase() : "";
+    }
+    function cur() { var k = chanKey(); return k && CH.indexOf(mem[k]) > 0 ? mem[k] : 0; }
+    function paint() {
+      lab.textContent = T("Channel intro");
+      lab.setAttribute("aria-label", T("Skip the first {n} seconds of every video from this channel").replace("{n}", "15/30/60"));
+      chips.textContent = "";
+      var on = cur(), dis = !chanKey();
+      CH.forEach(function (v) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (on === v ? " active" : "");
+        b.setAttribute("aria-pressed", String(on === v));
+        b.textContent = v === 0 ? T("Off") : v + "s";
+        b.title = v === 0 ? "" : T("Skip the first {n} seconds of every video from this channel").replace("{n}", v);
+        b.disabled = dis;
+        b.addEventListener("click", function () {
+          var k = chanKey(); if (!k) return;
+          if (v === 0) delete mem[k]; else mem[k] = v;
+          try { localStorage.setItem(KEY, JSON.stringify(mem)); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
+          paint();
+        });
+        chips.appendChild(b);
+      });
+    }
+    var lastChan = null, appliedFor = null;
+    setInterval(function () {
+      var k = chanKey();
+      if (k !== lastChan) { lastChan = k; paint(); }
+      if (!curId) { appliedFor = null; return; }
+      if (appliedFor === curId) return;
+      var v = cur(); if (!(v > 0)) return;
+      if (typeof playerReady !== "undefined" && !playerReady) return;
+      if (!(curTime > 0) || curTime >= v) return;
+      appliedFor = curId;
+      manualSeek(v, curTime);
+      toast(T("Channel intro skipped: ") + v + "s");
+    }, 1000);
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+    WNEW.unshift(["Channel intro skip", "#chIntroRow280"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
+
   // Round 280 new 4: Unwatched badges. Watch later and Favourites told you nothing at
   // a glance - the backlog grew quietly behind a plain heading. Each heading now carries
   // a small glass count of the videos in it you have not finished (the same "watched"
@@ -34854,6 +34918,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Channel intro skip", "channel intro skip theme song opening every episode podcast auto first seconds creator remember", "#chIntroRow280"],
       ["Unwatched badges", "unwatched badge count heading watch later favourites not seen left to watch how many backlog total time", "#unwLater280"],
       ["Remembered videos", "remembered videos per video memory speed volume rotation picture look ab loop intro outro forget clean manage list", "#vmemCard280"],
       ["Your own shortcut keys", "your own keys custom shortcut extra key rebind personal keyboard letter mute fullscreen loop next previous subtitles", "#xkRow280"],
