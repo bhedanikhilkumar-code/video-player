@@ -2156,7 +2156,7 @@ setTimeout(done,3000);})();
         <p class="hint">Items download one after another. Your browser may ask once to allow multiple downloads. Each finished file also gets a Save link (kept for 15 minutes).</p>
       </div>
       <div id="dlHistWrap" hidden>
-        <div class="lib-head"><h3 id="lhDlH">Recent downloads</h3><button class="chip" id="dlHistClear" type="button">Clear</button></div>
+        <div class="lib-head"><h3 id="lhDlH">Recent downloads</h3><span class="row"><button class="chip" id="dlHistCopy" type="button">Copy list</button><button class="chip" id="dlHistClear" type="button">Clear</button></span></div>
         <ul class="lib-list" id="dlHist"></ul>
       </div>
       <details class="dl-more"><summary>About downloads</summary><p class="hint">The server is on a free plan, so the first request can take up to a minute. Some sites (such as Vimeo and Facebook) block free servers. Only download content you have the right to download.</p></details>
@@ -11825,6 +11825,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
 
+  // Copy recent downloads (round 216): the downloader's Recent downloads rows could be re-opened
+  // one by one or cleared, but never taken out of the app. A Copy list chip puts them on the
+  // clipboard as a numbered list (title, MP3 marker, link), through the same hang-safe copy
+  // helper as every other copy button.
+  Object.assign(TR_MSG, {
+    "Download list copied.": ["\u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0938\u0942\u091a\u0940 \u0915\u0949\u092a\u0940 \u0939\u094b \u0917\u0908\u0964", "\u0aa1\u0abe\u0a89\u0aa8\u0ab2\u0acb\u0aa1 \u0aaf\u0abe\u0aa6\u0ac0 \u0a95\u0ac9\u0aaa\u0ac0 \u0aa5\u0a88."],
+    "Nothing to copy yet.": ["\u0905\u092d\u0940 \u0915\u0949\u092a\u0940 \u0915\u0930\u0928\u0947 \u0915\u094b \u0915\u0941\u091b \u0928\u0939\u0940\u0902 \u0939\u0948\u0964", "\u0ab9\u0a9c\u0ac0 \u0a95\u0ac9\u0aaa\u0ac0 \u0a95\u0ab0\u0ab5\u0abe \u0a95\u0a82\u0a88 \u0aa8\u0aa5\u0ac0."],
+    "Copy the recent downloads list": ["\u0939\u093e\u0932 \u0915\u0947 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0940 \u0938\u0942\u091a\u0940 \u0915\u0949\u092a\u0940 \u0915\u0930\u0947\u0902", "\u0aa4\u0abe\u0a9c\u0ac7\u0aa4\u0ab0\u0aa8\u0abe \u0aa1\u0abe\u0a89\u0aa8\u0ab2\u0acb\u0aa1\u0aa8\u0ac0 \u0aaf\u0abe\u0aa6\u0ac0 \u0a95\u0ac9\u0aaa\u0ac0 \u0a95\u0ab0\u0acb"],
+    "Copy recent downloads": ["\u0939\u093e\u0932 \u0915\u0947 \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0949\u092a\u0940 \u0915\u0930\u0947\u0902", "\u0aa4\u0abe\u0a9c\u0ac7\u0aa4\u0ab0\u0aa8\u0abe \u0aa1\u0abe\u0a89\u0aa8\u0ab2\u0acb\u0aa1 \u0a95\u0ac9\u0aaa\u0ac0 \u0a95\u0ab0\u0acb"]
+  });
+  (function () {
+    var btn = $("dlHistCopy"); if (!btn) return;
+    btn.addEventListener("click", function () {
+      var h = []; try { h = JSON.parse(localStorage.getItem("vp-dl-hist")); } catch (e) {}
+      if (!Array.isArray(h)) h = [];
+      h = h.filter(function (x) { return x && typeof x.url === "string" && x.url; });
+      if (!h.length) { toast(T("Nothing to copy yet.")); return; }
+      var text = h.map(function (x, i) { return (i + 1) + ". " + (x.title ? String(x.title) + (x.kind === "mp3" ? " (MP3)" : "") + " - " : (x.kind === "mp3" ? "(MP3) " : "")) + x.url; }).join("\n");
+      window.vpCopySafe(text, function (ok) { toast(ok ? T("Download list copied.") : T("Could not copy. Try again.")); });
+    });
+    (window.__relang = window.__relang || []).push(function () {
+      btn.textContent = T("Copy list"); btn.setAttribute("aria-label", T("Copy the recent downloads list"));
+    });
+  })();
+
   // Data Saver suggestion (round 215): many phones run with the system's Data Saver
   // always on, but the app's own Data saver (480p cap, no list thumbnails) sits in
   // Settings unnoticed. When the phone reports saveData, the app offers its matching
@@ -15296,6 +15321,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Copy recent downloads", "#dlHistCopy"],
     ["Search the help", "#faqSearch"],
     ["Battery saver suggestion", "#saverBatt"],
     ["Data Saver suggestion", "#saverData"],
@@ -15304,8 +15330,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Wake all snoozed videos", "#laterWakeBtn"],
     ["Shuffle play Watch later", "#laterShufBtn"],
     ["Clear finished downloads", "#dlQClearFin"],
-    ["Stop the sleep timer from the pill", "#ctl-sleep"],
-    ["Sort Oldest first", "#lhLater"]
+    ["Stop the sleep timer from the pill", "#ctl-sleep"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -21688,6 +21713,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Shuffle play from the queue", "shuffle play random queue video pick any luck dice mix now playing", "#shufflePlayBtn"],
       ["Battery saver suggestion", "battery saver suggestion low battery 20 percent offer turn on calm animations power saving phone", "#saverBatt"],
       ["Search the help", "search the help faq questions find answer filter help card type keyword support how do i", "#faqSearch"],
+      ["Copy recent downloads", "copy recent downloads list clipboard links downloader history share paste titles mp3", "#dlHistCopy"],
       ["Halve or double the loop", "halve double loop length scale a-b repeat window half twice longer shorter same middle practice", "#abNudgeRow"],
       ["Data Saver suggestion", "data saver suggestion phone system save data offer turn on less mobile data 480p thumbnails", "#saverData"],
       ["Shift+Arrow fine seek", "shift arrow fine seek one second precise keyboard arrow keys exact frame practice", "#sc28"],
