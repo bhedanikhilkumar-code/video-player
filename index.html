@@ -31351,6 +31351,65 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   WNEW.unshift(['Fill my break','#fillBreak277']);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 
+  // Round 278 new 1: Remember the A-B loop per video. A 'Remember this loop' chip in the
+  // A-B card saves the loop points of the playing video and brings them back the next time
+  // the same video loads - a practice section survives closing the app. Up to 25 videos,
+  // the oldest forgotten. Toggling the chip off, or clearing the loop, forgets it.
+  // Checked first: only the single live loop and per-video local practice loops existed.
+  (function () {
+    var KEY = "vp-abmem.v1";
+    var mem = {}, order = [];
+    try { var raw = JSON.parse(localStorage.getItem(KEY) || "null"); if (raw && typeof raw === "object") mem = raw; } catch (e) {}
+    try { var rawO = JSON.parse(localStorage.getItem(KEY + ".o") || "[]"); if (Array.isArray(rawO)) order = rawO; } catch (e) {}
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(mem)); localStorage.setItem(KEY + ".o", JSON.stringify(order)); return true; } catch (e) { return false; } }
+    function touch(id) { order = order.filter(function (x) { return x !== id; }); order.push(id); while (order.length > 25) { delete mem[order.shift()]; } }
+    var host = $("abToggle") && $("abToggle").parentNode; if (!host) return;
+    var row = document.createElement("div"); row.className = "row"; row.style.marginTop = "8px";
+    var chip = document.createElement("button"); chip.type = "button"; chip.className = "chip"; chip.id = "abMemBtn278"; chip.setAttribute("aria-pressed", "false");
+    row.appendChild(chip); host.appendChild(row);
+    function on() { return !!(curId && mem[curId]); }
+    function paint() {
+      chip.textContent = "\uD83D\uDCCC " + T("Remember this loop") + ": " + (on() ? T("on") : T("off"));
+      chip.setAttribute("aria-pressed", String(on()));
+    }
+    chip.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first.")); return; }
+      if (on()) { delete mem[curId]; order = order.filter(function (x) { return x !== curId; }); persist(); toast(T("Loop memory removed for this video.")); paint(); return; }
+      if (abA == null || abB == null) { toast(T("Set A and B first to remember them.")); return; }
+      mem[curId] = { a: Math.round(abA * 2) / 2, b: Math.round(abB * 2) / 2 }; touch(curId);
+      if (!persist()) toast(T("Could not save: browser storage is full or blocked. Your latest changes may be lost - export a backup."));
+      else toast(T("Loop remembered - it comes back when this video loads again."));
+      paint();
+    });
+    var lastId = null, lastA = null, lastB = null, restoredFor = null;
+    setInterval(function () {
+      if (curId !== lastId) { lastId = curId; restoredFor = null; lastA = abA; lastB = abB; paint(); }
+      if (!curId) return;
+      var m = mem[curId];
+      if (!m) return;
+      if (restoredFor !== curId) {
+        if (duration > 0 && m.b <= duration + 0.5) {
+          abA = m.a; abB = m.b; abEnabled = true; abLoopCount = 0; updateAB();
+          restoredFor = curId; lastA = abA; lastB = abB; paint();
+          toast(T("Remembered loop back: ") + fmt(m.a) + " - " + fmt(m.b));
+        }
+        return;
+      }
+      if (abA == null || abB == null) { delete mem[curId]; order = order.filter(function (x) { return x !== curId; }); persist(); paint(); return; }
+      if (Math.abs(abA - lastA) > 0.05 || Math.abs(abB - lastB) > 0.05) { mem[curId] = { a: abA, b: abB }; persist(); lastA = abA; lastB = abB; }
+    }, 1000);
+    Object.assign(TR_MSG, {
+      "Remember this loop": ["यह लूप याद रखें", "આ લૂપ યાદ રાખો"],
+      "Loop memory removed for this video.": ["इस वीडियो की लूप याद हटा दी.", "આ વીડિયોની લૂપ યાદ કાઢી નાખી."],
+      "Set A and B first to remember them.": ["याद रखने के लिए पहले A और B सेट करें.", "યાદ રાખવા પહેલાં A અને B સેટ કરો."],
+      "Loop remembered - it comes back when this video loads again.": ["लूप याद रख लिया - यह वीडियो फिर खुलने पर वापस आ जाएगा.", "લૂપ યાદ રાખી - આ વીડિયો ફરી ખુલે એટલે પાછો આવશે."],
+      "Remembered loop back: ": ["याद लूप वापस: ", "યાદદાર લૂપ પાછો: "],
+      "Remember the A-B loop": ["A-B लूप याद रखें", "A-B લૂપ યાદ રાખો"]
+    });
+    (window.__relang = window.__relang || []).push(paint); paint();
+    WNEW.unshift(["Remember the A-B loop", "#abMemBtn278"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
+
 
 
 
