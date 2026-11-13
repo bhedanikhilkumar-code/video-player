@@ -12102,6 +12102,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     + "html.calm-motion .pl-more-menu,html.low-fx .pl-more-menu{animation:none}"
     + "@media (prefers-reduced-motion:reduce){.pl-more-menu{animation:none}}";
   document.head.appendChild(plMoreSt);
+plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 4px;overflow-wrap:anywhere}";
   // Glass playlist progress (round 199): the watched-progress line under each saved
   // playlist was a flat four-pixel teal line on a plain hairline track. The track is now
   // a frosted inset glass well with a bright lower lip, and the fill a glossy teal glass
@@ -12330,6 +12331,27 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       });
       btn(T("Queue playlist next"), "", function () { plQueueNext202(pl); });
       btn(T("Compare"), "", function () { plCompareOpen202(pl); });
+      // Playlist note (round 242 new 2): renaming told you a playlist's name but not why it
+      // exists ("phone rips", "for mom", "exam songs"). A Note chip in the playlist editor saves
+      // one short line (80 characters, whitespace collapsed) on the playlist itself; the line
+      // shows under the playlist's name on the Your playlists card, an empty answer removes it,
+      // and it rides backup/restore with the rest of the playlist data.
+      Object.assign(TR_MSG, {
+        "📝 Note": ["📝 नोट", "📝 નોંધ"],
+        "A short note for this playlist (what it is for, who it is for)": ["इस प्लेलिस्ट के लिए एक छोटा नोट (यह किस लिए है, किसके लिए है)", "આ પ્લેલિસ્ટ માટે ટૂંકી નોંધ (તે શા માટે છે, કોના માટે છે)"],
+        "Note saved.": ["नोट सेव हुआ.", "નોંધ સેવ થઈ."],
+        "Note removed.": ["नोट हटा दिया.", "નોંધ કાઢી નાખી."]
+      });
+      btn(T("📝 Note"), "", async function () {
+        var cur = typeof pl.note === "string" ? pl.note : "";
+        var nv = await vpAsk(T("A short note for this playlist (what it is for, who it is for)"), cur);
+        if (nv === null || nv === undefined) return;
+        nv = String(nv).replace(/\s+/g, " ").trim().slice(0, 80);
+        if (nv === cur) return;
+        if (nv) pl.note = nv; else delete pl.note;
+        savePlaylists(); renderPlaylists();
+        plSay(nv ? T("Note saved.") : T("Note removed."));
+      });
       btn(T("Update"), "", async function () {
         if (!lib.queue.length) { plSay(T("The queue is empty, so there is nothing to save.")); return; }
         if (!await vpConfirm(T("Replace the videos in") + " \"" + pl.name + "\"" + T(" with the current queue?"), T("Replace"))) return;
@@ -12622,7 +12644,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           if (e.target && e.target.closest && e.target.closest(".chip")) close();
         });
       })();
-      li.appendChild(top); li.appendChild(acts); plList.appendChild(li);
+      li.appendChild(top); if (typeof pl.note === "string" && pl.note) { var plNoteEl = document.createElement("div"); plNoteEl.className = "pl-note"; plNoteEl.textContent = pl.note; li.appendChild(plNoteEl); } li.appendChild(acts); plList.appendChild(li);
     });
     if (window.__plPickRender) window.__plPickRender();
   }
@@ -17952,6 +17974,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Playlist note", "#plList"],
     ["All-time recap", "#arecapBtn"],
     ["Lists as CSV", "#listsCsvBtn"],
     ["Watch later overlap", "#laterOverlapBtn"],
@@ -26209,6 +26232,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Playlist note", "playlist note remark memo description purpose reason rename edit line", "#plList"],
       ["All-time recap", "all time recap total watched best day ever overall summary stats everything whole", "#arecapBtn"],
       ["History tidy-up", "history clean tidy older delete remove days keep old recently watched", "#histKeepBtn"],
       ["Quick opens cleanup", "history clean quick opens accidental short glance seconds remove tapped by mistake", "#histQuickBtn"],
