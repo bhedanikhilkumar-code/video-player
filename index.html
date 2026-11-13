@@ -3321,6 +3321,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Sort: A to Z": ["क्रम: A से Z", "ક્રમ: A થી Z"],
    "Sort: Top rated": ["क्रम: टॉप रेटेड", "ક્રમ: ટોપ રેટેડ"],
    "Sort: Shortest": ["क्रम: सबसे छोटा", "ક્રમ: સૌથી ટૂંકું"],
+   "Sort: Longest": ["क्रम: सबसे लंबा", "ક્રમ: સૌથી લાંબું"],
+   "Sort: Longest first": ["सबसे लंबा पहले क्रम", "સૌથી લાંબું પહેલા ક્રમ"],
    "Change favourites order": ["पसंदीदा का क्रम बदलें", "મનપસંદનો ક્રમ બદલો"],
    "Change playlist order": ["प्लेलिस्ट का क्रम बदलें", "પ્લેલિસ્ટનો ક્રમ બદલો"],
    "Saved playlists": ["सेव की प्लेलिस्ट", "સેવ કરેલી પ્લેલિસ્ટ"],
@@ -5949,7 +5951,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Round 120: favourites also get the Shortest mode Watch later and history already
   // had - quick videos float to the top, unknown lengths sink to the end in title order.
   var favSortMode = "new";
-  try { var fm = localStorage.getItem("vp-favsort.v1"); favSortMode = (fm === "az" || fm === "rate" || fm === "short") ? fm : "new"; } catch (e) {}
+  try { var fm = localStorage.getItem("vp-favsort.v1"); favSortMode = (fm === "az" || fm === "rate" || fm === "short" || fm === "long") ? fm : "new"; } catch (e) {}
   function favView() {
     var v;
     if (favSortMode === "az") v = lib.favs.slice().sort(function (a, b) { return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase()); });
@@ -5958,6 +5960,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var da = infoCache[a.id] && infoCache[a.id].dur, db = infoCache[b.id] && infoCache[b.id].dur;
       var ka = (typeof da === "number" && da > 0) ? da : Infinity, kb = (typeof db === "number" && db > 0) ? db : Infinity;
       if (ka !== kb) return ka - kb;
+      return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase());
+    });
+    else if (favSortMode === "long") v = lib.favs.slice().sort(function (a, b) {
+      var da = infoCache[a.id] && infoCache[a.id].dur, db = infoCache[b.id] && infoCache[b.id].dur;
+      var ka = (typeof da === "number" && da > 0) ? da : -1, kb = (typeof db === "number" && db > 0) ? db : -1;
+      if (ka !== kb) return kb - ka;
       return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase());
     });
     else v = lib.favs.slice();
@@ -5977,19 +5985,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   var favSortBtn = document.createElement("button"); favSortBtn.type = "button"; favSortBtn.className = "chip"; favSortBtn.id = "favSortBtn";
   favSortBtn.addEventListener("click", function () {
-    favSortMode = favSortMode === "new" ? "az" : (favSortMode === "az" ? "rate" : (favSortMode === "rate" ? "short" : "new")); try { localStorage.setItem("vp-favsort.v1", favSortMode); } catch (e) {}
+    favSortMode = favSortMode === "new" ? "az" : (favSortMode === "az" ? "rate" : (favSortMode === "rate" ? "short" : (favSortMode === "short" ? "long" : "new"))); try { localStorage.setItem("vp-favsort.v1", favSortMode); } catch (e) {}
     renderLib();
   });
   (function () { var r = document.querySelector('.lib-listtools[data-for="lhFavs"]'); if (r) r.appendChild(favSortBtn); })();
   /* Same title sort for Watch later and Recently watched. Newest first stays the default. */
   function makeSortView(key) {
     var mode = "new";
-    try { var sm = localStorage.getItem(key); mode = (sm === "az" || sm === "rate" || sm === "short" || sm === "old") ? sm : "new"; } catch (e) {}
+    try { var sm = localStorage.getItem(key); mode = (sm === "az" || sm === "rate" || sm === "short" || sm === "long" || sm === "old") ? sm : "new"; } catch (e) {}
     return {
       isAZ: function () { return mode === "az"; },
       mode: function () { return mode; },
-      set: function (m) { mode = (m === "az" || m === "rate" || m === "short" || m === "old") ? m : "new"; try { localStorage.setItem(key, mode); } catch (e) {} },
-      toggle: function () { mode = mode === "new" ? "az" : (mode === "az" ? "rate" : (mode === "rate" ? "short" : (mode === "short" ? "old" : "new"))); try { localStorage.setItem(key, mode); } catch (e) {} },
+      set: function (m) { mode = (m === "az" || m === "rate" || m === "short" || m === "long" || m === "old") ? m : "new"; try { localStorage.setItem(key, mode); } catch (e) {} },
+      toggle: function () { mode = mode === "new" ? "az" : (mode === "az" ? "rate" : (mode === "rate" ? "short" : (mode === "short" ? "long" : (mode === "long" ? "old" : "new")))); try { localStorage.setItem(key, mode); } catch (e) {} },
       view: function (items) {
         if (mode === "new") return items;
         // Round 213 new: Oldest first - the one natural order the cycle did not have. Rows
@@ -6001,6 +6009,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           var da = infoCache[a.id] && infoCache[a.id].dur, db = infoCache[b.id] && infoCache[b.id].dur;
           var ka = (typeof da === "number" && da > 0) ? da : Infinity, kb = (typeof db === "number" && db > 0) ? db : Infinity;
           if (ka !== kb) return ka - kb;
+          return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase());
+        });
+        // Round 249 new 3: Longest first - the cycle had Shortest but not its mirror, so
+        // lining up a long documentary (or finding what eats the evening) took scanning.
+        // Videos with no learned length sink to the end, like Shortest in reverse.
+        if (mode === "long") return items.slice().sort(function (a, b) {
+          var da = infoCache[a.id] && infoCache[a.id].dur, db = infoCache[b.id] && infoCache[b.id].dur;
+          var ka = (typeof da === "number" && da > 0) ? da : -1, kb = (typeof db === "number" && db > 0) ? db : -1;
+          if (ka !== kb) return kb - ka;
           return String(a.title || "~").toLowerCase().localeCompare(String(b.title || "~").toLowerCase());
         });
         return items.slice().sort(function (a, b) { return vpRateOf(b.id) - vpRateOf(a.id); });
@@ -6052,7 +6069,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     b.addEventListener("click", function () { sort.toggle(); renderLib(); });
     (function () { var r = document.querySelector('.lib-listtools[data-for="' + headingId + '"]'); if (r) r.appendChild(b); })();
     b.refresh = function () {
-      b.textContent = T(sort.mode() === "az" ? "Sort: A to Z" : (sort.mode() === "rate" ? "Sort: Top rated" : (sort.mode() === "short" ? "Sort: Shortest" : (sort.mode() === "old" ? "Sort: Oldest" : "Sort: Newest"))));
+      b.textContent = T(sort.mode() === "az" ? "Sort: A to Z" : (sort.mode() === "rate" ? "Sort: Top rated" : (sort.mode() === "short" ? "Sort: Shortest" : (sort.mode() === "long" ? "Sort: Longest" : (sort.mode() === "old" ? "Sort: Oldest" : "Sort: Newest")))));
       b.setAttribute("aria-label", T(labelKey));
       b.hidden = items().length < 2;
     };
@@ -6091,7 +6108,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (!c) { c = document.createElement("span"); c.className = "lib-count hint"; h.parentNode.insertBefore(c, h.nextSibling); }
       c.textContent = x[1].length ? "(" + x[1].length + ")" : "";
     });
-    favSortBtn.textContent = T(favSortMode === "az" ? "Sort: A to Z" : (favSortMode === "rate" ? "Sort: Top rated" : (favSortMode === "short" ? "Sort: Shortest" : "Sort: Newest")));
+    favSortBtn.textContent = T(favSortMode === "az" ? "Sort: A to Z" : (favSortMode === "rate" ? "Sort: Top rated" : (favSortMode === "short" ? "Sort: Shortest" : (favSortMode === "long" ? "Sort: Longest" : "Sort: Newest"))));
     favSortBtn.setAttribute("aria-label", T("Change favourites order"));
     favSortBtn.hidden = lib.favs.length < 2;
     laterSortBtn.refresh(); histSortBtn.refresh();
@@ -12868,7 +12885,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // like the rest) was in the Reset-all settings list but rode no backup either, so a
   // restore on a new phone silently turned the on-video clock back off. It now exports
   // and restores with the same 0/1 validation.
-  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new|recent)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-last.v1": /^\d{1,3}$/, "vp-sleep-playonly.v1": /^[01]$/, "vp-dl-mp3": /^[01]$/, "vp-clock-ov.v1": /^[01]$/ };
+  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short|long)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new|recent)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-last.v1": /^\d{1,3}$/, "vp-sleep-playonly.v1": /^[01]$/, "vp-dl-mp3": /^[01]$/, "vp-clock-ov.v1": /^[01]$/ };
   // Round 232 fix 1: the Still watching? choice (vp-stillwatch.v1: off, or ask after 2, 3
   // or 5 auto-plays) rode no backup - Reset all settings counts it, but it was missing
   // here (the same class round 230 fix 1 closed for the on-video clock), so a restore on
@@ -18031,6 +18048,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Sort: Longest first", "#lhLaterSortBtn"],
     ["Find a moment", "#momFindCard"],
     ["Watch sessions", "#sessCard"],
     ["Today's list", "#todayCard"],
@@ -18040,7 +18058,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Favourites duel", "#duelCard"],
     ["Video of the day", "#dailyPickCard"],
     ["Review reminders", "#reviewCard"],
-    ["Title tidy", "#titleTidyCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -27886,6 +27903,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later triage", "watch later triage one at a time oldest first decide keep remove favourite play clean backlog", "#triageCard"],
       ["Around this time", "around this time of day morning afternoon evening night usually watch history suggestions hour", "#aroundCard"],
       ["Where is this video?", "where is this video find locate which list saved queue favourites watch later history playlist search by title link", "#whereCard"],
+      ["Sort: Longest first", "sort longest first length long big video documentary movie watch later favourites history order organise evening", "#lhLaterSortBtn"],
       ["Find a moment", "find a moment search saved moments name second jump play from here bookmark marked solo", "#momFindCard"],
       ["Watch sessions", "watch sessions sittings evening grouped history 3 hour gap queue again put back on span finished minutes", "#sessCard"],
       ["Today's list", "today's list daily plan up to 5 videos tick off done today checklist", "#todayCard"],
