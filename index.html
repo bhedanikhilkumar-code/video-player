@@ -2363,7 +2363,7 @@ setTimeout(done,3000);})();
         <button class="chip" id="plAddCurBtn" type="button">Add current video</button>
       </div>
       <div class="row pl-import-row">
-        <button class="chip" id="plAllTxtBtn" type="button">Save all playlists as a text file</button> <button class="chip" id="plImportBtn" type="button">Import playlist</button>
+        <button class="chip" id="plAllTxtBtn" type="button">Save all playlists as a text file</button> <button class="chip" id="plAllCopyBtn" type="button">Copy all playlists</button> <button class="chip" id="plImportBtn" type="button">Import playlist</button>
         <input id="plImportFile" type="file" accept="application/json,.json" hidden>
         <button class="chip" id="plPasteBtn" type="button" aria-expanded="false">Paste a list of links</button>
         <button class="chip" id="queueTxtBtn" type="button">Save queue as text file</button>
@@ -12116,6 +12116,29 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     } catch (e) { plSay(T("Could not copy. Try again.")); }
   });
   (window.__relang = window.__relang || []).push(plAllTxtPaint); plAllTxtPaint();
+  // Copy all playlists (round 228 new 3): every playlist could leave as a text file, but
+  // pasting the whole collection into a chat or a notes app meant saving the file, opening it
+  // and copying from there. One chip puts the same layout (each playlist's name, then its
+  // numbered titles and links, sections split by a ---- line) straight on the clipboard through
+  // the hang-safe copy helper; empty playlists are skipped like the file save, and with none at
+  // all it says so.
+  Object.assign(TR_MSG, {
+    "Copy all playlists": ["सभी प्लेलिस्ट कॉपी करें", "બધી પ્લેલિસ્ટ કૉપી કરો"],
+    "All {n} playlists copied.": ["सभी {n} प्लेलिस्ट कॉपी हुईं.", "બધી {n} પ્લેલિસ્ટ કૉપી થઈ."],
+    "Copy every playlist to the clipboard": ["हर प्लेलिस्ट क्लिपबोर्ड पर कॉपी करें", "દરેક પ્લેલિસ્ટ ક્લિપબોર્ડ પર કૉપી કરો"]
+  });
+  var plAllCopyBtn = $("plAllCopyBtn");
+  function plAllCopyPaint() { if (plAllCopyBtn) { plAllCopyBtn.textContent = T("Copy all playlists"); plAllCopyBtn.setAttribute("aria-label", T("Copy every playlist to the clipboard")); } }
+  if (plAllCopyBtn) plAllCopyBtn.addEventListener("click", function () {
+    var withItems = playlists.filter(function (p) { return p.items.length; });
+    if (!withItems.length) { plSay(T("No saved playlists yet.")); return; }
+    var text = withItems.map(function (p) {
+      return p.name + "\n\n" + p.items.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n\n");
+    }).join("\n\n----\n\n") + "\n";
+    if (window.vpCopySafe) window.vpCopySafe(text, function (ok) { plSay(ok ? T("All {n} playlists copied.").replace("{n}", withItems.length) : T("Could not copy. Try again.")); });
+    else plSay(T("Could not copy. Try again."));
+  });
+  (window.__relang = window.__relang || []).push(plAllCopyPaint); plAllCopyPaint();
 
   function playMusicList(pl) {
     if (!pl || !pl.items.length) { plSay(T("No Music playlist yet. Add videos to your queue, then tap Save queue as Music.")); return; }
@@ -17112,6 +17135,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var WNEW = [
     ["Surprise me in Recently watched", "#histSurpriseBtn"],
     ["Recent downloads as a text file", "#dlHistTxtBtn"],
+    ["Copy all playlists", "#plAllCopyBtn"],
     ["Sort Watch later A to Z", "#laterSortAzBtn"],
     ["This month vs last month in Watch stats", "#statsMonthCmp"],
     ["Channel quality memory", "#chQualBtn"],
@@ -23766,6 +23790,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Shuffle play from the queue", "shuffle play random queue video pick any luck dice mix now playing", "#shufflePlayBtn"],
       ["Battery saver suggestion", "battery saver suggestion low battery 20 percent offer turn on calm animations power saving phone", "#saverBatt"],
       ["Search the help", "search the help faq questions find answer filter help card type keyword support how do i", "#faqSearch"],
+      ["Copy all playlists", "copy all playlists clipboard every playlist titles links paste chat notes share collection", "#plAllCopyBtn"],
       ["Copy recent downloads", "copy recent downloads list clipboard links downloader history share paste titles mp3", "#dlHistCopy"],
       ["Recent downloads as a text file", "save recent downloads text file export record keep list links downloader history", "#dlHistTxtBtn"],
       ["Watch later count on the app icon", "app icon badge watch later count number home screen installed pwa unwatched waiting saved videos", "#badgeLater"],
