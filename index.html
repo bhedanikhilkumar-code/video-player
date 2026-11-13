@@ -32094,6 +32094,71 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
     WNEW.unshift(["Your own shortcut keys", "#xkRow280"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   })();
+  // Round 281 new 5: Forget the playing video completely. The Remembered videos card
+  // forgets a video's per-video settings, but a real "start this one fresh" also means
+  // its saved moments, its note, its resume position and its history rows - today that
+  // is four cleanups in four cards. One chip in the Remembered videos card now wipes
+  // every trace of the playing video: per-video memories (speed, volume, subtitles,
+  // intro/outro skips, watched parts, A-B loop, rotation, picture look), saved moments,
+  // the note, and its Recently watched rows. It asks first, lists what will go, keeps
+  // what you chose on purpose (favourite, Watch later, queue and playlist spots, star
+  // rating, watch stats), and one Undo puts every store back byte for byte.
+  Object.assign(TR_MSG, {
+    "Forget the playing video": ["चल रहा वीडियो भुलाएं", "ચાલતો વીડિયો ભૂલાવો"],
+    "Forget this video completely?": ["यह वीडियो पूरी तरह भुलाएं?", "આ વીડિયો સંપૂર્ણ ભૂલી જાવ?"],
+    "Load a video first.": ["पहले एक वीडियो लोड करें.", "પહેલા વીડિયો લોડ કરો."],
+    "Forgot everything about this video.": ["इस वीडियो का सब कुछ भुला दिया.", "આ વીડિયો વિશે બધું ભૂલાઈ ગયું."],
+    "Everything restored.": ["सब वापस आ गया.", "બધું પાછું આવ્યું."],
+    "Its saved moments, note, resume position, per-video memories and history rows go. Favourite, Watch later, queue and playlist spots, the star rating and watch stats stay.": ["इसके सेव किए पल, नोट, रिज़्यूम पोज़ीशन, पर-वीडियो मेमोरी और हिस्ट्री रो हटेंगे. पसंदीदा, बाद में देखें, कतार और प्लेलिस्ट स्थान, स्टार रेटिंग और वॉच स्टैट्स बने रहेंगे.", "તેની સાચવેલી ક્ષણો, નોંધ, રિઝ્યૂમ પોઝિશન, દર-વીડિયો મેમરી અને હિસ્ટ્રી પંક્તિઓ જશે. મનપસંદ, પછી જુઓ, કતાર અને પ્લેલિસ્ટ સ્થાન, સ્ટાર રેટિંગ અને વોચ સ્ટેટ્સ રહેશે."]
+  });
+  (function () {
+    var btn = null;
+    var STORES = ["vp-vmem.v1", "vp-abmem.v1", "vp-rotmem.v1", "vp-picmem.v1"];
+    function ensure() {
+      if (btn) return;
+      var clearB = $("vmemClear280"); if (!clearB || !clearB.parentNode) return;
+      btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "forgetVid281";
+      clearB.parentNode.appendChild(document.createTextNode(" "));
+      clearB.parentNode.appendChild(btn);
+      btn.addEventListener("click", onForget);
+    }
+    async function onForget() {
+      if (!curId) { toast(T("Load a video first.")); return; }
+      if (!(await vpConfirm(T("Forget this video completely?") + " " + T("Its saved moments, note, resume position, per-video memories and history rows go. Favourite, Watch later, queue and playlist spots, the star rating and watch stats stay."), T("Forget everything")))) return;
+      var id = curId;
+      var snap = {};
+      STORES.forEach(function (k) { snap[k] = localStorage.getItem(k); snap[k + ".o"] = localStorage.getItem(k + ".o"); });
+      var snapMarks = marks[id] ? marks[id].slice() : null;
+      var snapNote = typeof notes[id] === "string" ? notes[id] : null;
+      var snapHist = lib.hist.slice();
+      STORES.forEach(function (k) {
+        try {
+          var m = JSON.parse(localStorage.getItem(k) || "null");
+          if (m && typeof m === "object" && !Array.isArray(m) && m[id] !== undefined) { delete m[id]; localStorage.setItem(k, JSON.stringify(m)); }
+          var o = JSON.parse(localStorage.getItem(k + ".o") || "[]");
+          if (Array.isArray(o) && o.indexOf(id) >= 0) localStorage.setItem(k + ".o", JSON.stringify(o.filter(function (x) { return x !== id; })));
+        } catch (e) {}
+      });
+      if (marks[id]) { delete marks[id]; marksSave(); renderMarks(); if (window.__vpSeekMarks) window.__vpSeekMarks(); }
+      if (snapNote !== null) { delete notes[id]; notesSave(); if (typeof renderNotes === "function") renderNotes(); }
+      lib.hist = lib.hist.filter(function (h) { return h && h.id !== id; });
+      saveLib(); renderLib();
+      toastUndo(T("Forgot everything about this video."), function () {
+        STORES.forEach(function (k) {
+          try { if (snap[k] === null) localStorage.removeItem(k); else localStorage.setItem(k, snap[k]); } catch (e) {}
+          try { if (snap[k + ".o"] === null) localStorage.removeItem(k + ".o"); else localStorage.setItem(k + ".o", snap[k + ".o"]); } catch (e) {}
+        });
+        if (snapMarks) marks[id] = snapMarks; marksSave(); renderMarks(); if (window.__vpSeekMarks) window.__vpSeekMarks();
+        if (snapNote !== null) notes[id] = snapNote; notesSave(); if (typeof renderNotes === "function") renderNotes();
+        lib.hist = snapHist; saveLib(); renderLib();
+      }, T("Everything restored."));
+    }
+    function paint() { ensure(); if (btn) btn.textContent = "🧹 " + T("Forget the playing video"); }
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+    WNEW.unshift(["Forget the playing video", "#forgetVid281"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
+
   // Round 281 new 4: Split this video into even parts. A three-hour lecture or mix has
   // no chapters unless the creator typed them - the local-file player already splits a
   // recording into even parts ("Auto chapters"), but a YouTube video had to be marked
@@ -35315,6 +35380,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Forget the playing video", "forget this video completely wipe start fresh moments note resume position memories history clean", "#forgetVid281"],
       ["Split into even parts", "split video into even parts auto chapters moments part markers long lecture mix divide", "#splitRow281"],
       ["Rate right after finishing", "rate after finishing video ends quick stars favourite unrated prompt enjoyed", "#rateRow"],
       ["Watch later grouped by channel", "watch later group by channel creator folders sections tidy backlog organised", "#laterGroupBtn281"],
