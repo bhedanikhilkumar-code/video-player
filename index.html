@@ -18026,6 +18026,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Take it to YouTube", "#ytTakeCard"],
     ["Weave playlists", "#weaveCard"],
     ["Import YouTube subscriptions", "#chanImportRow"],
     ["Playlist last played and Recent sort", "#plSortBtn"],
@@ -18035,7 +18036,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Library words", "#wordsCard"],
     ["Rediscover", "#rediscoverCard"],
     ["Weekly plan", "#weekPlanCard"],
-    ["Video tags", "#tagsCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24842,6 +24842,50 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var oldRP3=renderPlaylists;renderPlaylists=function(){oldRP3.apply(this,arguments);if(card.open&&!(document.activeElement&&document.activeElement.closest('#weaveCard')))paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Take it to YouTube (round 247 new 2): the queue, Favourites, Watch later and every saved
+  // playlist live only on this device. YouTube's own watch_videos link turns up to 50 video ids
+  // into a temporary playlist in the YouTube app or site, so a list can be opened on a TV, in
+  // the YouTube app, or sent to a friend. This card picks one list, shows how many videos go in,
+  // and offers Open on YouTube and Copy link. Nothing is stored. Limit: YouTube builds the
+  // temporary playlist (with its own ads); it is only saved to an account if the person saves it there.
+  Object.assign(TR_MSG, {
+    "Take it to YouTube": ["YouTube पर ले जाएँ", "YouTube પર લઈ જાઓ"],
+    "Open any of your lists as a temporary YouTube playlist (up to 50 videos), for the YouTube app, a TV or a friend. YouTube plays it, with its own ads.": ["अपनी किसी भी सूची को YouTube की अस्थायी प्लेलिस्ट (50 वीडियो तक) के रूप में खोलें, YouTube ऐप, टीवी या दोस्त के लिए. YouTube इसे चलाता है, अपने विज्ञापनों के साथ.", "તમારી કોઈ પણ યાદીને YouTube ની અસ્થાયી પ્લેલિસ્ટ (50 વીડિયો સુધી) તરીકે ખોલો, YouTube એપ, ટીવી કે મિત્ર માટે. YouTube તેને ચલાવે છે, પોતાની જાહેરાતો સાથે."],
+    "Which list?": ["कौन सी सूची?", "કઈ યાદી?"],
+    "Open on YouTube": ["YouTube पर खोलें", "YouTube પર ખોલો"],
+    "Copy link": ["लिंक कॉपी करें", "લિંક કૉપિ કરો"],
+    "This list has no videos to send.": ["इस सूची में भेजने लायक कोई वीडियो नहीं.", "આ યાદીમાં મોકલવા જેવી કોઈ વીડિયો નથી."],
+    "Link copied.": ["लिंक कॉपी हो गया.", "લિંક કૉપિ થઈ."],
+    "Could not copy - open it instead.": ["कॉपी नहीं हो सका - इसके बजाय खोलें.", "કૉપિ ન થઈ - તેના બદલે ખોલો."],
+    "Only the first 50 videos go in.": ["सिर्फ़ पहले 50 वीडियो जाएँगे.", "ફક્ત પહેલી 50 વીડિયો જશે."],
+    "Queue": ["कतार", "કતાર"],
+    "Favourites": ["पसंदीदा", "મનપસંદ"],
+    "Watch later": ["बाद में देखें", "પછી જુઓ"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='ytTakeCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="wv-r" style="display:flex;align-items:center;gap:8px;margin:8px 0"><label for="ytSrc" id="ytSrcL" style="flex:0 0 96px;font-size:14px"></label><select id="ytSrc" style="flex:1;min-width:0"></select></div><p id="ytInfo" class="hint" role="status"></p><div class="row" id="ytAct" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div>';
+  host.parentNode.insertBefore(card,host);
+  var cur='q';
+  function items(){if(cur==='q')return lib.queue;if(cur==='f')return lib.favs;if(cur==='l')return lib.later;var i=+cur.slice(1);return playlists[i]?playlists[i].items||[]:[];}
+  function ids(){var seen={},o=[];items().forEach(function(x){if(x&&/^[\w-]{11}$/.test(x.id)&&!seen[x.id]){seen[x.id]=1;o.push(x.id);}});return o;}
+  function link(a){return 'https://www.youtube.com/watch_videos?video_ids='+a.slice(0,50).join(',');}
+  function paint(){card.querySelector('summary').textContent=T('Take it to YouTube');card.querySelector('.r239-desc').textContent=T('Open any of your lists as a temporary YouTube playlist (up to 50 videos), for the YouTube app, a TV or a friend. YouTube plays it, with its own ads.');
+    $('ytSrcL').textContent=T('Which list?');var s=$('ytSrc');s.textContent='';
+    var opts=[['q',T('Queue')],['f',T('Favourites')],['l',T('Watch later')]];playlists.forEach(function(p,i){opts.push(['p'+i,p.name]);});
+    opts.forEach(function(o){var e=document.createElement('option');e.value=o[0];e.textContent=o[1];s.appendChild(e);});if(!opts.some(function(o){return o[0]===cur;}))cur='q';s.value=cur;
+    s.onchange=function(){cur=s.value;paint();};
+    var a=ids(),A=$('ytAct'),I=$('ytInfo');A.textContent='';
+    if(!a.length){I.textContent=T('This list has no videos to send.');return;}
+    I.textContent=Math.min(50,a.length)+' '+T(Math.min(50,a.length)===1?'video':'videos')+(a.length>50?' · '+T('Only the first 50 videos go in.'):'');
+    var o=document.createElement('a');o.className='chip';o.href=link(a);o.target='_blank';o.rel='noopener noreferrer';o.textContent=T('Open on YouTube');A.appendChild(o);
+    var c=document.createElement('button');c.type='button';c.className='chip';c.textContent=T('Copy link');A.appendChild(c);
+    c.addEventListener('click',function(){vpCopySafe(link(ids()),function(ok){I.textContent=ok?T('Link copied.'):T('Could not copy - open it instead.');});});}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRL5=renderLib;renderLib=function(){oldRL5();if(card.open&&!(document.activeElement&&document.activeElement.closest('#ytTakeCard')))paint();};
+  var oldRP4=renderPlaylists;renderPlaylists=function(){oldRP4.apply(this,arguments);if(card.open&&!(document.activeElement&&document.activeElement.closest('#ytTakeCard')))paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27400,6 +27444,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Take it to YouTube", "take it to youtube open list temporary playlist watch_videos tv app friend send queue favourites watch later share", "#ytTakeCard"],
       ["Weave playlists", "weave playlists interleave mix two playlists take turns alternate combine queue shuffle between", "#weaveCard"],
       ["Import YouTube subscriptions", "import youtube subscriptions csv google takeout channels saved favourite star move from youtube app", "#chanImportRow"],
       ["Playlist last played and Recent sort", "playlist last played recent sort order played days ago stamp row when did i run this playlist newest a to z", "#plSortBtn"],
