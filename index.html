@@ -33323,7 +33323,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       monoN.connect(delay276);delay276.connect(output276);window.__lpDelay276=delay276;
     }
     function muteAndFlush276(){output276.gain.setValueAtTime(0,ctx.currentTime);flushDelay276();}
-    function openOutput276(){output276.gain.setValueAtTime(vid.paused||vid.seeking?0:1,ctx.currentTime);}
+    function openOutput276(){
+      var target=vid.paused||vid.seeking?0:1;
+      // Round 283 new 5 (Soft pause): with the toggle on, resuming fades the sound back
+      // in over about a third of a second instead of snapping on mid-note.
+      if(target===1&&lp.soft){try{output276.gain.cancelScheduledValues(ctx.currentTime);output276.gain.setValueAtTime(Math.max(0.0001,output276.gain.value),ctx.currentTime);output276.gain.setTargetAtTime(1,ctx.currentTime,0.12);return;}catch(e){}}
+      output276.gain.setValueAtTime(target,ctx.currentTime);
+    }
     flushDelay276();
     ['pause','seeking','emptied','loadstart'].forEach(function(ev){vid.addEventListener(ev,muteAndFlush276);});
     ['play','playing','seeked'].forEach(function(ev){vid.addEventListener(ev,openOutput276);});
@@ -33342,13 +33348,29 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     catch(e) { return Promise.reject(e); }
   };
   var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, night: false, bal: 0, eq: { b: 0, m: 0, t: 0 } };
-  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.ccBg === "none" || sv.ccBg === "solid") lp.ccBg = sv.ccBg; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; if (typeof sv.bal === "number" && sv.bal >= -100 && sv.bal <= 100) lp.bal = Math.round(sv.bal); if (sv.mono === true) lp.mono = true; } } catch (e) {}
+  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.ccBg === "none" || sv.ccBg === "solid") lp.ccBg = sv.ccBg; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; if (typeof sv.bal === "number" && sv.bal >= -100 && sv.bal <= 100) lp.bal = Math.round(sv.bal); if (sv.mono === true) lp.mono = true; if (sv.soft === true) lp.soft = true; } } catch (e) {}
   gain.value = lp.gain;
   function saveLp() { try { localStorage.setItem(LK, JSON.stringify(lp)); } catch (e) { if(window.vpStorageWarning276)window.vpStorageWarning276(); } }
   function setGain() { var v = Number(gain.value); lp.gain = v; saveLp(); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
   gv.textContent = lp.gain + "%"; warn.hidden = lp.gain <= 200;
   gain.addEventListener("input", function () { ensureAudio(); setGain(); });
   vid.addEventListener("play", ensureAudio);
+  // Soft pause (round 283 new 5): pausing a local file cut the sound dead mid-note,
+  // and a hard cut on boosted bass clicks. With Soft pause on, every script-driven
+  // pause first eases the shared output gain to silence over about a third of a
+  // second, then the pause lands; resuming fades back in (see openOutput276). The
+  // seek/emptied mutes stay instant so scrubbing and file changes never lag. The
+  // choice is kept in lp (vp-lp.v1), so it rides the backup. Hindi and Gujarati text
+  // lives in the main closure like the other local-player strings; What's new and
+  // feature finder included. Checked first: Fade in/out cover the main player's
+  // video ends and the local chain muted instantly - nothing eased a mid-listen
+  // pause on local files.
+  var origPause283 = vid.pause.bind(vid), softPend283 = 0;
+  vid.pause = function () {
+    if (!lp.soft || !ctx || vid.paused) return origPause283();
+    try { if (window.__lpOutput276) { var g = window.__lpOutput276.gain; g.cancelScheduledValues(ctx.currentTime); g.setValueAtTime(Math.max(0.0001, g.value), ctx.currentTime); g.setTargetAtTime(0, ctx.currentTime, 0.09); } } catch (e) {}
+    clearTimeout(softPend283); softPend283 = setTimeout(origPause283, 300);
+  };
   [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3].forEach(function (r) {
     var b = document.createElement("button"); b.className = "chip" + (r === lp.rate ? " active" : ""); b.type = "button"; b.textContent = r + "x";
     b.addEventListener("click", function () { vid.playbackRate = r; lp.rate = r; saveLp(); [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c === b); }); if (window.__vpSpeedHud) window.__vpSpeedHud(r); });
@@ -33364,6 +33386,22 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var localFiles = [], localIndex = -1, session = "mediaSession" in navigator ? navigator.mediaSession : null;
   var sessionMsg = $("lpSessionMsg");
   var T = window.T || function (x) { return x; };
+  (function () {
+    var monoBtn = $("lpMonoBtn"); if (!monoBtn || !monoBtn.parentNode) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "lpSoftBtn"; btn.setAttribute("aria-pressed", "false");
+    monoBtn.parentNode.insertBefore(btn, monoBtn.nextSibling);
+    function paint() {
+      btn.textContent = "\uD83C\uDFA7 " + T("Soft pause") + ": " + T(lp.soft ? "on" : "off");
+      btn.setAttribute("aria-pressed", lp.soft ? "true" : "false");
+      btn.classList.toggle("active", !!lp.soft);
+    }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      lp.soft = !lp.soft; saveLp(); paint();
+      sessionMsg.textContent = lp.soft ? T("Soft pause on - the sound eases out and back in.") : T("Soft pause off.");
+    });
+    if (window.__vpWnew283) window.__vpWnew283("Soft pause", "#lpSoftBtn");
+  })();
   var LP_DEF = sessionMsg.textContent;
   // Total size of picked files (round 229 new 4): before queuing tonight's folder you
   // could not tell whether the batch was 200 MB or 20 GB without adding the sizes in your
@@ -36139,6 +36177,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Moments tour", "moments tour play each saved moment automatically eight seconds revision recap hands free walk through", "#markTourBtn"],
       ["Chapter previous and next", "chapter previous next local file jump boundary section skip forward back buttons", "#lpChPrev"],
       ["Mix a second ambient sound", "mix second ambient sound two blend rain brown noise ocean volume layer sleep focus", "#ambMixRow283"],
+      ["Soft pause", "soft pause local files sound eases out fade resume click mid note gentle", "#lpSoftBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
       ["Rate backlog", "rate backlog unrated videos stars rating give stars favourites history without rating", "#rateBacklogCard"],
       ["Weekday rhythm", "weekday rhythm busiest day of the week monday sunday pattern when do i watch bars stats", "#weekdayCard"],
