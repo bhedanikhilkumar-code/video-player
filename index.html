@@ -24218,7 +24218,12 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var card=document.createElement('details');card.id='deadCard';card.className='r239-card';
   card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="row"><button type="button" class="chip" id="dvGo"></button></div><p class="hint" id="dvMsg" role="status"></p><div id="dvRows"></div>';
   host.parentNode.insertBefore(card,host);
-  var found=[],busy=false,doneMsg='';
+  var found=[],busy=false,doneMsg='',dvCount=false;
+  // Round 253 fix 1: every status write goes through setDv, which remembers whether the
+  // line currently shown is the plain 'N saved videos to check' count. The count is the
+  // only line paint() may rewrite, so a language switch refreshes it instead of leaving
+  // it stuck in the language it was first written in.
+  function setDv(t,isCount){$('dvMsg').textContent=t;dvCount=isCount===true;}
   function gather(){var m={},order=[];function add(x,where){if(!validItem(x))return;if(!m[x.id]){m[x.id]={id:x.id,title:x.title||'',where:[]};order.push(x.id);}if(!m[x.id].title&&x.title)m[x.id].title=x.title;if(m[x.id].where.indexOf(where)<0)m[x.id].where.push(where);}
     lib.queue.forEach(function(x){add(x,'Queue');});lib.favs.forEach(function(x){add(x,'Favourites');});lib.later.forEach(function(x){add(x,'Watch later');});lib.hist.forEach(function(x){add(x,'History');});playlists.forEach(function(p){(p.items||[]).forEach(function(x){add(x,'Playlists');});});
     return order.map(function(id){return m[id];});}
@@ -24226,26 +24231,26 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // YouTube answers a missing video with a 404 that still carries a small grey 120x90 picture, so an
   // image that loads is not proof: a real thumbnail is at least 320 wide (medium) or 480 wide (high).
   function check(id){return probe('https://i.ytimg.com/vi/'+id+'/mqdefault.jpg?vpc='+Date.now(),320).then(function(a){if(a==='ok')return 'ok';if(a==='timeout')return 'unknown';return probe('https://i.ytimg.com/vi/'+id+'/hqdefault.jpg?vpc='+Date.now(),480).then(function(b){return b==='ok'?'ok':b==='bad'?'dead':'unknown';});});}
-  function run(){if(busy)return;var list=gather();if(!list.length){$('dvMsg').textContent=T('Nothing saved to check yet.');return;}
-    busy=true;found=[];$('dvGo').disabled=true;$('dvRows').textContent='';$('dvMsg').textContent=T('Checking')+' 0/'+list.length;
-    check('dQw4w9WgXcQ').then(function(r){if(r!=='ok'){busy=false;$('dvGo').disabled=false;$('dvMsg').textContent=T('Could not reach YouTube pictures - check your connection and try again.');return;}
-      var i=0,fin=0,unk=0;function next(){if(i>=list.length)return Promise.resolve();var v=list[i++];return check(v.id).then(function(s){fin++;if(s==='dead')found.push(v);if(s==='unknown')unk++;$('dvMsg').textContent=T('Checking')+' '+fin+'/'+list.length;return next();});}
+  function run(){if(busy)return;var list=gather();if(!list.length){setDv(T('Nothing saved to check yet.'));return;}
+    busy=true;found=[];$('dvGo').disabled=true;$('dvRows').textContent='';setDv(T('Checking')+' 0/'+list.length);
+    check('dQw4w9WgXcQ').then(function(r){if(r!=='ok'){busy=false;$('dvGo').disabled=false;setDv(T('Could not reach YouTube pictures - check your connection and try again.'));return;}
+      var i=0,fin=0,unk=0;function next(){if(i>=list.length)return Promise.resolve();var v=list[i++];return check(v.id).then(function(s){fin++;if(s==='dead')found.push(v);if(s==='unknown')unk++;setDv(T('Checking')+' '+fin+'/'+list.length);return next();});}
       Promise.all([next(),next(),next(),next()]).then(function(){busy=false;$('dvGo').disabled=false;var cleanN=fin-unk;doneMsg=cleanN+' '+T('videos checked. None look unavailable.')+(unk?' '+unk+' '+T('could not be checked - the connection dropped.'):'');paint(true);});});}
   function removeFound(){var ids={};found.forEach(function(v){ids[v.id]=1;});var snap=JSON.parse(JSON.stringify({queue:lib.queue,favs:lib.favs,later:lib.later,playlists:playlists}));var curId=(qPos>=0&&lib.queue[qPos])?lib.queue[qPos].id:null;
     var keep=function(x){return !(x&&ids[x.id]);};lib.queue=lib.queue.filter(keep);lib.favs=lib.favs.filter(keep);lib.later=lib.later.filter(keep);playlists.forEach(function(p){p.items=(p.items||[]).filter(keep);});
     qPos=curId?lib.queue.findIndex(function(x){return x.id===curId;}):-1;
-    var n=found.length;found=[];saveLib();savePlaylists();renderLib();renderPlaylists();doneMsg='';paint(true);$('dvMsg').textContent=T('Unavailable videos removed:')+' '+n;
+    var n=found.length;found=[];saveLib();savePlaylists();renderLib();renderPlaylists();doneMsg='';paint(true);setDv(T('Unavailable videos removed:')+' '+n);
     toastUndo(T('Unavailable videos removed:')+' '+n,function(){lib.queue=snap.queue;lib.favs=snap.favs;lib.later=snap.later;playlists.splice(0,playlists.length);snap.playlists.forEach(function(p){playlists.push(p);});qPos=curId?lib.queue.findIndex(function(x){return x.id===curId;}):-1;saveLib();savePlaylists();renderLib();renderPlaylists();},T('Lists restored'));}
   function paint(after){card.querySelector('summary').textContent=T('Unavailable video check');card.querySelector('.r239-desc').textContent=T('Finds saved videos that were deleted, made private or blocked, using their thumbnails.');$('dvGo').textContent=T('Check now');
     var box=$('dvRows');box.textContent='';
-    if(!busy&&!after&&!$('dvMsg').textContent)$('dvMsg').textContent=gather().length+' '+T('saved videos to check');
-    if(after&&!found.length&&doneMsg){$('dvMsg').textContent=doneMsg;return;}
-    if(found.length){$('dvMsg').textContent=found.length+' '+T('look unavailable:');
+    if(!busy&&!after&&(dvCount||!$('dvMsg').textContent))setDv(gather().length+' '+T('saved videos to check'),true);
+    if(after&&!found.length&&doneMsg){setDv(doneMsg);return;}
+    if(found.length){setDv(found.length+' '+T('look unavailable:'));
       found.forEach(function(v){var p=document.createElement('p');p.className='hint';p.style.margin='4px 0';p.textContent=(v.title||v.id)+' - '+v.where.map(function(w){return T(w);}).join(', ');box.appendChild(p);});
       var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Remove them from my lists');b.addEventListener('click',removeFound);box.appendChild(b);
       var n=document.createElement('p');n.className='hint';n.textContent=T('Thumbnail check only: a private video and a deleted one look the same.');box.appendChild(n);}}
   $('dvGo').addEventListener('click',run);
-  card.addEventListener('toggle',function(){if(card.open){if(!busy&&!found.length&&!doneMsg)$('dvMsg').textContent='';paint();}});
+  card.addEventListener('toggle',function(){if(card.open){if(!busy&&!found.length&&!doneMsg)setDv('');paint();}});
   (window.__relang=window.__relang||[]).push(function(){if(!busy)paint(!!found.length||!!doneMsg);});paint();
   })();
   // Mix builder (round 244 new 3): Line up my evening fits Watch later into your free time, but a
