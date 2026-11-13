@@ -18008,6 +18008,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Mix builder", "#mixCard"],
     ["Unavailable video check", "#deadCard"],
     ["Restore points", "#restoreCard"],
     ["Import preview", "#libImport"],
@@ -18017,7 +18018,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Playlist QR code", "#plList"],
     ["Hide shorts in favourites", "#favShortsBtn"],
     ["Continue on another device", "#handoffBtn"],
-    ["Playlist note", "#plList"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24099,6 +24099,66 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   card.addEventListener('toggle',function(){if(card.open){if(!busy&&!found.length&&!doneMsg)$('dvMsg').textContent='';paint();}});
   (window.__relang=window.__relang||[]).push(function(){if(!busy)paint(!!found.length||!!doneMsg);});paint();
   })();
+  // Mix builder (round 244 new 3): Line up my evening fits Watch later into your free time, but a
+  // real evening draws on more than one list. This card builds a mix from any of Favourites, Watch
+  // later, your playlists and unfinished Recently watched videos: pick the sources, the minutes you
+  // have and the order (as saved, shortest first, or random), and a live preview lists exactly what
+  // fits (a video already watched to the end is skipped unless you untick that). Videos whose length
+  // is not known yet are left out and counted, never guessed. Play it (replaces the queue, with
+  // Undo), add it to the queue, or save it as a playlist.
+  Object.assign(TR_MSG, {
+    "Mix builder": ["मिक्स बनाएँ", "મિક્સ બનાવો"],
+    "Build a mix from your lists to fit the minutes you have.": ["आपके पास जितने मिनट हैं, उसमें फिट होने वाला मिक्स अपनी लिस्ट से बनाएँ.", "તમારી પાસે જેટલી મિનિટ છે તેમાં બેસે તેવો મિક્સ તમારી યાદીમાંથી બનાવો."],
+    "Minutes I have": ["मेरे पास मिनट", "મારી પાસે મિનિટ"],
+    "Skip videos already watched": ["देखे हुए वीडियो छोड़ें", "જોયેલા વીડિયો છોડો"],
+    "As saved": ["जैसा सेव है", "જેમ સેવ છે"],
+    "Shortest first": ["सबसे छोटे पहले", "સૌથી નાના પહેલા"],
+    "Random": ["रैंडम", "રેન્ડમ"],
+    "Unfinished history": ["अधूरी हिस्ट्री", "અધૂરી હિસ્ટ્રી"],
+    "Play this mix": ["यह मिक्स चलाएँ", "આ મિક્સ ચલાવો"],
+    "Add to queue": ["कतार में जोड़ें", "કતારમાં ઉમેરો"],
+    "Save as playlist": ["प्लेलिस्ट बनाएँ", "પ્લેલિસ્ટ બનાવો"],
+    "Nothing fits - pick another list or more minutes.": ["कुछ फिट नहीं हुआ - दूसरी लिस्ट चुनें या मिनट बढ़ाएँ.", "કંઈ બેસતું નથી - બીજી યાદી પસંદ કરો અથવા મિનિટ વધારો."],
+    "left out: length not known yet": ["छोड़े गए: लंबाई अभी पता नहीं", "છોડ્યા: લંબાઈ હજુ ખબર નથી"],
+    "Mix replaced the queue:": ["मिक्स ने कतार बदली:", "મિક્સે કતાર બદલી:"],
+    "Queue restored": ["कतार वापस आई", "કતાર પાછી આવી"],
+    "Mix added to the queue:": ["मिक्स कतार में जुड़ा:", "મિક્સ કતારમાં ઉમેર્યો:"],
+    "Mix saved as a playlist:": ["मिक्स प्लेलिस्ट में सेव:", "મિક્સ પ્લેલિસ્ટમાં સેવ:"],
+    "Playlist list is full (30). Delete one first.": ["प्लेलिस्ट लिस्ट भरी है (30). पहले एक हटाएँ.", "પ્લેલિસ્ટ યાદી ભરેલી છે (30). પહેલાં એક કાઢો."],
+    "Pick at least one list.": ["कम से कम एक लिस्ट चुनें.", "ઓછામાં ઓછી એક યાદી પસંદ કરો."]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='mixCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="row" id="mxSrc" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center"></div><div class="row" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:6px"><label class="hint" id="mxMinL"></label><input type="number" id="mxMin" min="5" max="600" value="30" style="width:84px"><select id="mxOrd" aria-label="Order"></select><label class="hint"><input type="checkbox" id="mxSkip" checked> <span id="mxSkipL"></span></label></div><div id="mxList"></div><div class="row" id="mxAct" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div><p class="hint" id="mxMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var SRC=[['fav','Favourites',true],['later','Watch later',true],['pl','Playlists',false],['hist','Unfinished history',false]];
+  var sel={fav:true,later:true,pl:false,hist:false},mix=[],order='saved';
+  function doneId(id){var h=findIn(lib.hist,id);return h>=0&&!!lib.hist[h].done;}
+  function build(){var m=parseInt($('mxMin').value,10);if(!(m>=1))m=30;m=Math.min(600,m);var budget=m*60,seen={},cands=[],unk=0;
+    function add(x){if(!validItem(x)||seen[x.id])return;seen[x.id]=1;if($('mxSkip').checked&&doneId(x.id))return;var d=plItemDuration(x);if(!d){unk++;return;}cands.push({id:x.id,title:x.title||titleFor(x.id)||'',dur:d});}
+    if(sel.fav)lib.favs.forEach(add);if(sel.later)lib.later.forEach(add);if(sel.pl)playlists.forEach(function(p){(p.items||[]).forEach(add);});if(sel.hist)lib.hist.forEach(function(x){if(!x.done)add(x);});
+    if(order==='short')cands.sort(function(a,b){return a.dur-b.dur;});else if(order==='random'){for(var i=cands.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=cands[i];cands[i]=cands[j];cands[j]=t;}}
+    var tot=0,out=[];cands.forEach(function(c){if(out.length<50&&tot+c.dur<=budget){out.push(c);tot+=c.dur;}});return {items:out,total:tot,unk:unk};}
+  function mins(s){return Math.max(1,Math.round(s/60));}
+  var last={items:[],total:0,unk:0};
+  function paintList(){var r=last=build(),box=$('mxList');box.textContent='';
+    if(!sel.fav&&!sel.later&&!sel.pl&&!sel.hist){$('mxMsg').textContent=T('Pick at least one list.');}else if(!r.items.length){$('mxMsg').textContent=T('Nothing fits - pick another list or more minutes.')+(r.unk?' ('+r.unk+' '+T('left out: length not known yet')+')':'');}else{$('mxMsg').textContent=r.items.length+' '+T(r.items.length===1?'video':'videos')+' · ~'+mins(r.total)+' '+T('min')+(r.unk?' · '+r.unk+' '+T('left out: length not known yet'):'');}
+    r.items.forEach(function(c,i){var p=document.createElement('p');p.className='hint';p.style.margin='3px 0';p.textContent=(i+1)+'. '+(c.title||c.id)+' - '+mins(c.dur)+' '+T('min');box.appendChild(p);});
+    Array.prototype.forEach.call($('mxAct').children,function(b){b.disabled=!r.items.length;});}
+  function tr(){card.querySelector('summary').textContent=T('Mix builder');card.querySelector('.r239-desc').textContent=T('Build a mix from your lists to fit the minutes you have.');$('mxMinL').textContent=T('Minutes I have');$('mxSkipL').textContent=T('Skip videos already watched');
+    var o=$('mxOrd');o.textContent='';[['saved','As saved'],['short','Shortest first'],['random','Random']].forEach(function(a){var op=document.createElement('option');op.value=a[0];op.textContent=T(a[1]);if(a[0]===order)op.selected=true;o.appendChild(op);});
+    var s=$('mxSrc');s.textContent='';SRC.forEach(function(a){var l=document.createElement('label');l.className='hint';var c=document.createElement('input');c.type='checkbox';c.checked=!!sel[a[0]];c.addEventListener('change',function(){sel[a[0]]=c.checked;paintList();});l.appendChild(c);l.appendChild(document.createTextNode(' '+T(a[1])));s.appendChild(l);});
+    var act=$('mxAct');act.textContent='';
+    function ab(t,fn){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T(t);b.addEventListener('click',fn);act.appendChild(b);}
+    ab('Play this mix',function(){var r=last;if(!r.items.length)return;var snap=lib.queue.slice();lib.queue=r.items.map(function(c){return {id:c.id,title:c.title};});qPos=-1;saveLib();renderLib();toastUndo(T('Mix replaced the queue:')+' '+r.items.length,function(){lib.queue=snap;qPos=-1;saveLib();renderLib();},T('Queue restored'));playQueueAt(0);});
+    ab('Add to queue',function(){var n=0;last.items.forEach(function(c){if(findIn(lib.queue,c.id)<0&&lib.queue.length<50){lib.queue.push({id:c.id,title:c.title});n++;}});saveLib();renderLib();$('mxMsg').textContent=T('Mix added to the queue:')+' '+n;});
+    ab('Save as playlist',function(){if(!last.items.length)return;if(playlists.length>=PL_MAX){$('mxMsg').textContent=T('Playlist list is full (30). Delete one first.');return;}var nm=T('Mix builder')+' '+new Date().toLocaleDateString(undefined,{day:'numeric',month:'short'});playlists.push({name:nm,items:last.items.map(function(c){return {id:c.id,title:c.title};})});savePlaylists();renderPlaylists();$('mxMsg').textContent=T('Mix saved as a playlist:')+' '+nm;});
+    paintList();}
+  $('mxMin').addEventListener('input',paintList);$('mxSkip').addEventListener('change',paintList);$('mxOrd').addEventListener('change',function(){order=$('mxOrd').value;paintList();});
+  card.addEventListener('toggle',function(){if(card.open)paintList();});
+  var oldRL2=renderLib;renderLib=function(){oldRL2();if(card.open&&!document.activeElement.closest('#mixCard'))paintList();};
+  (window.__relang=window.__relang||[]).push(tr);tr();
+  })();
 /*R244-END*/
 
 })();
@@ -26657,6 +26717,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Mix builder", "mix builder build queue minutes time budget favourites watch later playlists history fit evening plan shortest random save playlist", "#mixCard"],
       ["Unavailable video check", "unavailable video check dead deleted private blocked broken links removed saved lists thumbnail cleanup clean library", "#deadCard"],
       ["Restore points", "restore points snapshot backup undo recover lists queue favourites watch later playlists mistake automatic daily", "#restoreCard"],
       ["Import preview", "import preview backup confirm what will be added dry run check before restore cancel safe file", "#libImport"],
