@@ -16137,6 +16137,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "That file is too big (100 KB at most).": ["वह फ़ाइल बहुत बड़ी है (अधिकतम 100 KB).", "તે ફાઇલ ઘણી મોટી છે (વધુમાં વધુ 100 KB)."],
     "That file has no notes to import.": ["उस फ़ाइल में लाने लायक नोट्स नहीं हैं.", "તે ફાઇલમાં લાવવા જેવી નોંધો નથી."],
     "Notes imported: ": ["नोट्स लाए गए: ", "નોંધો લાવ્યા: "],
+    "Notes you edited after the import were kept: ": ["इम्पोर्ट के बाद बदले गए नोट्स रखे गए: ", "ઈમ્પોર્ટ પછી બદલેલી નોંધો રાખી: "],
     " (skipped, already have a note: ": [" (छोड़े, पहले से नोट है: ", " (છોડ્યા, પહેલેથી નોંધ છે: "],
     "Import notes from a file": ["फ़ाइल से नोट्स लाएं", "ફાઇલમાંથી નોંધો લાવો"]
   });
@@ -16167,9 +16168,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         });
         if (!added.length) { toast(T("Notes imported: ") + "0" + T(" (skipped, already have a note: ") + skipped + ")"); return; }
         notesSave(); renderNotes(); if (typeof renderLib === "function") renderLib();
+        // Round 229 fix: the Undo deleted every imported note by id, so a note you edited
+        // after the import (one added line, then a tap on Undo) lost your edit with it.
+        // The sibling 'Clear all notes' Undo already protects newer typing; this one now
+        // removes only notes that still read exactly as the import wrote them and says
+        // how many edited ones were kept.
+        var importedMap = {}; added.forEach(function (id) { importedMap[id] = notes[id]; });
         toastUndo(T("Notes imported: ") + added.length + (skipped ? T(" (skipped, already have a note: ") + skipped + ")" : ""), function () {
-          added.forEach(function (id) { delete notes[id]; });
+          var kept = 0;
+          added.forEach(function (id) { if (notes[id] === importedMap[id]) delete notes[id]; else kept++; });
           notesSave(); renderNotes(); if (typeof renderLib === "function") renderLib();
+          if (kept) toast(T("Notes you edited after the import were kept: ") + kept);
         });
       };
       rd.onerror = function () { toast(T("That file could not be read.")); };
