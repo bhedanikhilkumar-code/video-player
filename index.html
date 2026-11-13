@@ -18150,6 +18150,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Find a playlist", "#plFilterIn"],
     ["Make a copy of a playlist", "#lhPlaylists"],
     ["Sort Continue watching", "#contSortBtn"],
     ["Data estimate", "#dataEstCard"],
@@ -18158,8 +18159,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Drop Shorts from the queue", "#qDropShortsBtn"],
     ["Play counts on list rows", "#lhHist"],
     ["Compact lists", "#a11yCompact"],
-    ["Two-week trend", "#trendCard"],
-    ["Mark a playlist as watched", "#lhPlaylists"]
+    ["Two-week trend", "#trendCard"]
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -26235,6 +26235,52 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Copy removed": ["कॉपी हटाई गई", "કૉપી કાઢી ગઈ"],
     "Make a copy of a playlist": ["प्लेलिस्ट की कॉपी बनाएं", "પ્લેલિસ્ટની કૉપી બનાવો"]
   });
+
+  // Find a playlist (round 253 new 5): saved playlists grow by import, weave, copy and
+  // "Save queue as playlist" until the right one is a thumb-cramp scroll away. A small
+  // search box above the list narrows it as you type (name match, case-insensitive), and
+  // hides itself until you have at least four playlists, where scrolling actually starts.
+  // The box re-applies after every playlist repaint and retranslates on language switch.
+  // Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Find a playlist...": ["प्लेलिस्ट खोजें...", "પ્લેલિસ્ટ શોધો..."],
+    "No playlist matches.": ["कोई प्लेलिस्ट नहीं मिली.", "કોઈ પ્લેલિસ્ટ મળી નહીં."],
+    "Find a playlist": ["प्लेलिस्ट खोजें", "પ્લેલિસ્ટ શોધો"]
+  });
+  (function () {
+    var list = $("plList"); if (!list || !list.parentNode) return;
+    var inp = document.createElement("input");
+    inp.type = "search"; inp.id = "plFilterIn"; inp.autocomplete = "off"; inp.spellcheck = false;
+    inp.className = "pl-filter"; inp.setAttribute("aria-label", T("Find a playlist"));
+    var msg = document.createElement("p"); msg.className = "hint"; msg.id = "plFilterMsg"; msg.hidden = true;
+    list.parentNode.insertBefore(inp, list); list.parentNode.insertBefore(msg, list);
+    var stF = document.createElement("style");
+    stF.textContent = ".pl-filter{width:100%;margin:2px 0 8px;padding:9px 12px;border-radius:12px;border:1px solid rgba(120,140,150,.35);background:rgba(255,255,255,.55);font:inherit;color:inherit;box-sizing:border-box}"
+      + ":root[data-theme=\"dark\"] .pl-filter{background:rgba(42,36,39,.55);border-color:rgba(255,255,255,.12)}"
+      + "html.low-trans .pl-filter{background:rgba(246,248,247,.97)}html.low-trans[data-theme=\"dark\"] .pl-filter{background:rgba(35,30,33,.97)}";
+    document.head.appendChild(stF);
+    function plFApply() {
+      var q = (inp.value || "").trim().toLowerCase();
+      inp.hidden = !(typeof playlists !== "undefined" && playlists && playlists.length >= 4) && !q;
+      var shown = 0, total = 0;
+      Array.prototype.forEach.call(list.children, function (li) {
+        var ix = li.getAttribute("data-playlist-index");
+        if (ix == null) { li.hidden = false; return; }
+        var pl = playlists[Number(ix)]; if (!pl) { li.hidden = false; return; }
+        total++;
+        var show = !q || (pl.name || "").toLowerCase().indexOf(q) >= 0;
+        li.hidden = !show; if (show) shown++;
+      });
+      msg.hidden = !(q && total > 0 && shown === 0);
+      if (!msg.hidden) msg.textContent = T("No playlist matches.");
+    }
+    inp.addEventListener("input", plFApply);
+    var _plRender253 = renderPlaylists;
+    renderPlaylists = function () { _plRender253.apply(this, arguments); plFApply(); };
+    (window.__relang = window.__relang || []).push(function () { inp.placeholder = T("Find a playlist..."); inp.setAttribute("aria-label", T("Find a playlist")); if (!msg.hidden) msg.textContent = T("No playlist matches."); });
+    inp.placeholder = T("Find a playlist...");
+    plFApply();
+  })();
 /*R244-END*/
 
 })();
@@ -28793,6 +28839,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Find a playlist", "find a playlist filter search saved playlists by name narrow list many playlists scroll", "#plFilterIn"],
       ["Make a copy of a playlist", "make a copy duplicate playlist clone variation season two gym version same videos new name", "#lhPlaylists"],
       ["Sort Continue watching", "sort continue watching order newest almost done just started a to z pick what to finish first resume list", "#contSortBtn"],
       ["Data estimate", "data estimate mobile data usage gb mb this month watching how much internet plan saver 480p rough guess", "#dataEstCard"],
