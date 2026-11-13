@@ -16556,6 +16556,33 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     sleepVidsRender();
   }
 
+  // Round 279 new 5: Sleep timer "Queue left" chip - stops when the queue finishes.
+  // The stop-after-videos chips only offered fixed counts (1, 2, 3, 5); this chip counts
+  // the videos left in the queue and stops right after the last one, so a bedtime queue
+  // never rolls into random picks. Tapping again cancels. Works on YouTube videos,
+  // translated in Hindi and Gujarati, in the feature finder and What's new.
+  (function () {
+    if (!sleepVidsChips) return;
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = "sleepQueueBtn279"; b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", function () {
+      if (!curId) { sleepLabel.textContent = T("Load a video first, then set this."); return; }
+      var left = (typeof lib === "object" && lib && Array.isArray(lib.queue)) ? lib.queue.length - (qPos >= 0 ? qPos : 0) : 0;
+      if (left < 1) { sleepLabel.textContent = T("The queue is empty."); return; }
+      b.dataset.v = String(left);
+      sleepVids = sleepVids === left ? 0 : left; sleepVidsRender();
+      if (sleepVids === left) toast(T("Will stop when the queue finishes."));
+    });
+    sleepVidsChips.appendChild(b);
+    function paint() { b.textContent = "\u23CF " + T("Queue left"); }
+    Object.assign(TR_MSG, {
+      "Queue left": ["\u0915\u094D\u092F\u0942 \u092C\u093E\u0915\u0940", "\u0A95\u0ACD\u0AAF\u0AC2 \u0AAC\u0ABE\u0A95\u0AC0"],
+      "Will stop when the queue finishes.": ["\u0915\u094D\u092F\u0942 \u0916\u0924\u094D\u092E \u0939\u094B\u0924\u0947 \u0930\u0941\u0915 \u091C\u093E\u090F\u0917\u093E.", "\u0A95\u0ACD\u0AAF\u0AC2 \u0AAA\u0AC2\u0AB0\u0AC0 \u0AA5\u0AA4\u0ABE\u0A82 \u0AB0\u0AC1\u0A95\u0ABE\u0A88 \u0A9C\u0AB6\u0AC7."],
+      "Stop when the queue finishes": ["\u0915\u094D\u092F\u0942 \u0916\u0924\u094D\u092E \u0939\u094B\u0924\u0947 \u0930\u094B\u0915\u0947\u0902", "\u0A95\u0ACD\u0AAF\u0AC2 \u0AAA\u0AC2\u0AB0\u0AC0 \u0AA5\u0ABE\u0AAF \u0A8F\u0A9F\u0AB2\u0AC7 \u0AB0\u0ACB\u0A95\u0ACB"]
+    });
+    (window.__relang = window.__relang || []).push(paint); paint();
+    WNEW.unshift(["Stop when the queue finishes", "#sleepQueueBtn279"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
+
   // Still watching? (round 74): if videos keep auto-playing with no tap or key at all, ask
   // before playing on - Netflix style - and leave the player stopped if nobody answers in
   // 30 seconds. Any tap or key anywhere resets the count. Choice remembered on this device.
@@ -34504,6 +34531,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Remember the picture look per video", "remember picture look per video brightness contrast colour tuning memory", "#picMemBtn279"],
       ["Rewind on resume choice", "rewind on resume choice seconds back half watched continue recap", "#rewBackRow279"],
       ["Sleep timer session recap", "sleep timer session recap summary minutes videos watched tonight good night", "#sleepVidsRow"],
+      ["Stop when the queue finishes", "sleep timer stop when queue finishes bedtime queue left videos end", "#sleepQueueBtn279"],
       ["Practice loop repeat count", "practice loop repeat count local ab passes 2 3 5 10 stop itself", "#lpLoopCountRow278"],
       ["File info for local files", "file info local name size type length picture bitrate codec details", "#lpInfoBtn278"],
       ["Auto chapters for local files", "auto chapters local file split every 5 10 minutes even parts markers", "#lpChAutoRow278"],
