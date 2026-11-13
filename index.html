@@ -1955,6 +1955,7 @@ setTimeout(done,3000);})();
           </div>
           <input class="slider" id="vol" type="range" min="0" max="100" step="1" value="80">
           <div class="row" id="volPreRow" style="margin-top:8px"><span class="label" id="volPreLab">One-tap volume</span><span class="chips" id="volPreChips"></span></div>
+          <div class="row" id="spkTestRow286" style="margin-top:8px"><button class="chip" id="spkTestBtn286" type="button">🔊 Test speakers</button><span class="hint" id="spkTestMsg286" role="status"></span></div>
           <div class="row" id="muteBreakRow" role="group" aria-label="Mute for a while" style="margin-top:8px"><span class="label" id="muteBreakLab">Mute for</span><span class="chips" id="muteBreakChips"></span></div>
           <p class="hint" id="muteBreakHint">Mutes the sound and brings it back by itself after the time you pick - handy for a loud ad or intro. Tap the counting chip again to bring the sound back sooner.</p>
           <div class="row" id="nightVolRow" style="margin-top:8px"><span class="label" id="nightVolLab">Night volume</span><span class="chips" id="nightVolChips"></span></div>
@@ -33417,6 +33418,54 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     build();
   })();
   WNEW.unshift(["Up next strip", "#upnext3"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  // Test speakers (round 286 new 4): earbuds and bluetooth speakers are easy to put on the
+  // wrong way, and a mono video never tells you. The Test speakers chip in Sound plays a
+  // soft two-second tone on the left channel, then the right, then both, through its own
+  // little Web Audio path (nothing is routed through the video, so nothing playing is
+  // disturbed) and says which side is sounding as it goes. Checked first: Choose the
+  // speaker picks an output device, the balance slider moves existing sound - nothing
+  // played a test tone. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Test speakers": ["\u0938\u094d\u092a\u0940\u0915\u0930 \u091c\u093e\u0901\u091a\u0947\u0902", "\u0ab8\u0acd\u0aaa\u0ac0\u0a95\u0ab0 \u0a9a\u0a95\u0abe\u0ab8\u0aa3\u0ac0"],
+    "Left\u2026": ["\u092c\u093e\u092f\u093e\u0901\u2026", "\u0aa1\u0abe\u0aac\u0ac1\u0a82\u2026"],
+    "Right\u2026": ["\u0926\u093e\u092f\u093e\u0901\u2026", "\u0a9c\u0abe\u0aae\u0aa3\u0ac1\u0a82\u2026"],
+    "Both\u2026": ["\u0926\u094b\u0928\u094b\u0902\u2026", "\u0aac\u0aa8\u0acd\u0aa8\u0ac7\u2026"],
+    "Done - left and right both sounded?": ["\u0939\u094b \u0917\u092f\u093e - \u0926\u094b\u0928\u094b\u0902 \u0924\u0930\u092b \u0938\u0941\u0928\u093e\u0908 \u0926\u093f\u092f\u093e?", "\u0aa5\u0a88 \u0a97\u0aaf\u0ac1\u0a82 - \u0aac\u0aa8\u0acd\u0aa8\u0ac7 \u0aac\u0abe\u0a9c\u0ac1 \u0ab8\u0a82\u0aad\u0ab3\u0abe\u0aaf\u0ac1\u0a82?"]
+  });
+  (function () {
+    var btn = $("spkTestBtn286"), msg = $("spkTestMsg286");
+    if (!btn) return;
+    var AC = window.AudioContext || window.webkitAudioContext, ctx = null, playing286 = false, timers = [];
+    function beep(pan, at) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine"; o.frequency.value = 660;
+      var t = ctx.currentTime + at;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.22, t + 0.05);
+      g.gain.setValueAtTime(0.22, t + 1.6);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 2.0);
+      var p = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      o.connect(g);
+      if (p) { p.pan.value = pan; g.connect(p); p.connect(ctx.destination); } else g.connect(ctx.destination);
+      o.start(t); o.stop(t + 2.05);
+    }
+    function stop() { timers.forEach(clearTimeout); timers = []; playing286 = false; btn.classList.remove("active"); }
+    btn.addEventListener("click", function () {
+      if (!AC) { if (msg) msg.textContent = ""; return; }
+      if (playing286) { stop(); if (msg) msg.textContent = ""; return; }
+      if (!ctx) { try { ctx = new AC(); } catch (e) { return; } }
+      if (ctx.state === "suspended") ctx.resume();
+      playing286 = true; btn.classList.add("active");
+      beep(-1, 0); beep(1, 2.3); beep(0, 4.6);
+      if (msg) msg.textContent = T("Left\u2026");
+      timers.push(setTimeout(function () { if (msg) msg.textContent = T("Right\u2026"); }, 2300));
+      timers.push(setTimeout(function () { if (msg) msg.textContent = T("Both\u2026"); }, 4600));
+      timers.push(setTimeout(function () { stop(); if (msg) msg.textContent = T("Done - left and right both sounded?"); }, 6800));
+    });
+    (window.__relang = window.__relang || []).push(function () { btn.textContent = "\ud83d\udd0a " + T("Test speakers"); if (msg && !playing286 && msg.textContent) msg.textContent = T("Done - left and right both sounded?"); });
+    btn.textContent = "\ud83d\udd0a " + T("Test speakers");
+  })();
+  WNEW.unshift(["Test speakers", "#spkTestBtn286"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   Object.assign(TR_MSG, {
     "Fade between songs": ["गानों के बीच फ़ेड", "ગીતો વચ્ચે ફેડ"],
     "🎚 Song fade: off": ["🎚 गाना फ़ेड: बंद", "🎚 ગીત ફેડ: બંધ"],
@@ -37636,6 +37685,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Auto-dim when idle", "auto dim screen idle dark display bedtime night no touch hands off fade light oled battery sleep timer pair", "#autoDimRow285"],
       ["Float on top", "float on top picture in picture window always on top floating controls other app window desktop mini player outside browser", "#pipFloatBtn286"],
       ["Up next strip", "up next strip plays after this next three queue videos thumbnails glance what plays next upcoming", "#upnext3"],
+      ["Test speakers", "test speakers left right channel check earbud headphone wrong way round stereo balance tone", "#spkTestBtn286"],
       ["Search by channel", "search by channel channel:name operator library search filter videos from one channel exclude channel", "#libSearch"],
       ["Fade between songs", "fade between songs tracks crossfade smooth transition melt music mode local files gapless soft ending beginning", "#lpFadeBtn285"],
       ["Hall sound", "hall sound reverb echo room concert space acoustics live feeling local files speaker depth", "#lpHallBtn285"],
