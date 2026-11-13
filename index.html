@@ -1942,6 +1942,7 @@ setTimeout(done,3000);})();
           <form id="fitTimeForm" class="fit-time-form">
             <label class="label" for="fitTimeMin" id="fitTimeLab">Finish within (minutes)</label>
             <div class="row"><input id="fitTimeMin" type="number" min="1" max="600" step="1" value="5" inputmode="numeric" required><button class="chip" type="submit" id="fitTimeGo">Fit remaining video</button></div>
+            <div class="chips" id="fitQuickChips" style="margin-top:8px"></div>
           </form>
           <p class="hint" id="fitTimeHint">Picks a speed from 1x to 2x for the part left to watch. An estimate for recorded videos; pauses, loops and ads can add time.</p>
           <p class="hint" id="fitTimeMsg" role="status" aria-live="polite"></p>
@@ -6154,6 +6155,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       msg.textContent = text;
     }
     function say(key, args) { messageKey = key; messageArgs = args || {}; renderFit(); }
+    // Fit-time quick chips (round 225): the budget box wants you to type minutes, which
+    // on a phone means opening the keyboard for a one-tap thought ("finish this in half
+    // an hour"). Four common budgets sit under the box; a tap fills it in and runs the
+    // same submit, so every check and message of the typed path applies unchanged.
+    Object.assign(TR_MSG, {
+      "Finish within {n} minutes": ["{n} मिनट में खत्म करें", "{n} મિનિટમાં પૂરું કરો"]
+    });
+    (function () {
+      var qbox = $("fitQuickChips");
+      if (!qbox) return;
+      function paintQuick() {
+        Array.prototype.forEach.call(qbox.children, function (c) {
+          c.textContent = c.dataset.v + " " + T("min");
+          c.setAttribute("aria-label", T("Finish within {n} minutes").replace("{n}", c.dataset.v));
+        });
+      }
+      [15, 30, 45, 60].forEach(function (v) {
+        var b = document.createElement("button");
+        b.type = "button"; b.className = "chip"; b.dataset.v = String(v);
+        b.addEventListener("click", function () {
+          inp.value = v;
+          if (form.requestSubmit) form.requestSubmit();
+          else form.dispatchEvent(new Event("submit", { cancelable: true }));
+        });
+        qbox.appendChild(b);
+      });
+      (window.__relang = window.__relang || []).push(paintQuick); paintQuick();
+    })();
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       var minutes = Number(inp.value);
@@ -16567,6 +16596,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Fit-time quick chips", "#fitQuickChips"],
     ["Speed step chips", "#speedStepUp"],
     ["One-tap volume", "#volPreChips"],
     ["Revert note edits", "#noteRevertBtn"],
@@ -16576,7 +16606,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Clear all notes with Undo", "#notesClearAllBtn"],
     ["Moments mark on lists", "#favList .moment-badge"],
     ["Import moments from a file", "#markFileBtn"],
-    ["Random moment", "#markRandBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23158,6 +23187,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Fit-time quick chips", "fit finish within minutes quick chips 15 30 45 60 one tap time budget speed lecture", "#fitQuickChips"],
       ["Speed step chips", "speed step up down one notch slower faster buttons phone no keyboard plus minus", "#speedStepUp"],
       ["One-tap volume", "one tap volume quick set half full loud 25 50 75 100 percent phone chips", "#volPreChips"],
       ["Revert note edits", "revert note edits undo mistake restore old text overwrite typed", "#noteRevertBtn"],
