@@ -2371,12 +2371,21 @@ setTimeout(done,3000);})();
         <button class="chip" id="plPasteBtn" type="button" aria-expanded="false">Paste a list of links</button>
         <button class="chip" id="queueTxtBtn" type="button">Save queue as text file</button>
         <button class="chip" id="queueTxtImportBtn" type="button">Add links from a text file</button>
+        <button class="chip" id="hxBtn" type="button" aria-expanded="false">Import a history file</button>
         <input id="queueTxtFile" type="file" accept="text/plain,.txt,.text,.md,.csv" hidden>
       </div>
       <div class="pl-paste" id="plPastePanel" hidden>
         <textarea class="note-box" id="plPasteBox" rows="5" maxlength="6000" aria-label="List of YouTube links" placeholder="One YouTube link per line"></textarea>
         <div class="row"><button class="chip" id="plPasteAdd" type="button">Add to queue</button> <button class="chip" id="plPasteCancel" type="button">Close</button></div>
         <p class="hint" id="plPasteMsg" role="status"></p>
+      </div>
+      <div class="pl-paste hx-panel" id="hxPanel" hidden>
+        <p class="hint" id="hxHint"></p>
+        <div class="row"><button class="chip" id="hxPick" type="button">Choose file</button> <select class="chip" id="hxRange"><option value="30">Last 30 days</option><option value="180">Last 6 months</option><option value="0">Everything</option></select> <select class="chip" id="hxDest"><option value="later">Add to Watch later</option><option value="fav">Add to favourites</option></select></div>
+        <input id="hxFile" type="file" accept="application/json,.json" hidden>
+        <p class="hint" id="hxSum" role="status"></p>
+        <p class="hint hx-prev" id="hxPrev" hidden></p>
+        <div class="row"><button class="chip" id="hxAdd" type="button" hidden></button> <button class="chip" id="hxClose" type="button">Close</button></div>
       </div>
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
@@ -17684,6 +17693,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Import a history file", "#hxBtn"],
     ["Drop long videos from the queue", "#qDropLongBtn"],
     ["Yesterday's videos to the queue", "#histYestBtn"],
     ["Random 5 favourites to the queue", "#favRand5Btn"],
@@ -17737,7 +17747,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Save all playlists as a text file", "#plAllTxtBtn"],
     ["Fit-time quick chips", "#fitQuickChips"],
     ["Speed step chips", "#speedStepUp"],
-    ["One-tap volume", "#volPreChips"],
+    ["One-tap volume", "#volPreChips"]
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -22188,6 +22198,99 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
 
+  // Import a Google Takeout history file (round 235 new 1): the text-file import reads only the first
+  // 6000 characters as plain lines, so a real watch-history.json from Google Takeout (megabytes of JSON)
+  // never worked. A new panel reads the file on this device, finds the videos (newest first, ads and
+  // removed videos skipped, duplicates merged), shows how many are new for the chosen time range and
+  // adds them to Watch later or Favourites with their real titles, with Undo. Nothing is uploaded.
+  Object.assign(TR_MSG, {
+    "Import a history file": ["हिस्ट्री फ़ाइल इम्पोर्ट करें", "હિસ્ટ્રી ફાઇલ ઇમ્પોર્ટ કરો"],
+    "Pick watch-history.json from Google Takeout. It is read on this device only.": ["Google Takeout की watch-history.json चुनें. यह सिर्फ़ इसी डिवाइस पर पढ़ी जाती है.", "Google Takeout ની watch-history.json પસંદ કરો. તે ફક્ત આ ડિવાઇસ પર વંચાય છે."],
+    "Choose file": ["फ़ाइल चुनें", "ફાઇલ પસંદ કરો"],
+    "Last 30 days": ["पिछले 30 दिन", "છેલ્લા 30 દિવસ"],
+    "Last 6 months": ["पिछले 6 महीने", "છેલ્લા 6 મહિના"],
+    "Everything": ["सब कुछ", "બધું"],
+    "Add to Watch later": ["बाद में देखें में जोड़ें", "પછી જોવામાં ઉમેરો"],
+    "Add to favourites": ["पसंदीदा में जोड़ें", "મનપસંદમાં ઉમેરો"],
+    "That is not a YouTube history file. Use watch-history.json from Google Takeout.": ["यह YouTube हिस्ट्री फ़ाइल नहीं है. Google Takeout की watch-history.json इस्तेमाल करें.", "આ YouTube હિસ્ટ્રી ફાઇલ નથી. Google Takeout ની watch-history.json વાપરો."],
+    "That file is too big (limit 40 MB).": ["यह फ़ाइल बहुत बड़ी है (सीमा 40 MB).", "આ ફાઇલ બહુ મોટી છે (મર્યાદા 40 MB)."],
+    "Nothing new to add in that range.": ["इस अवधि में जोड़ने के लिए कुछ नया नहीं है.", "આ સમયગાળામાં ઉમેરવા માટે કંઈ નવું નથી."],
+    "Watch later is full (50 videos).": ["बाद में देखें भर गया है (50 वीडियो).", "પછી જોવું ભરાઈ ગયું છે (50 વીડિયો)."],
+    "videos found": ["वीडियो मिले", "વીડિયો મળ્યા"],
+    "new in this range": ["इस अवधि में नए", "આ સમયગાળામાં નવા"],
+    "Imported from history file": ["हिस्ट्री फ़ाइल से जोड़े", "હિસ્ટ્રી ફાઇલમાંથી ઉમેર્યા"],
+    "Import undone": ["इम्पोर्ट वापस लिया", "ઇમ્પોર્ટ પાછું લીધું"],
+    "Close": ["बंद करें", "બંધ કરો"]
+  });
+  (function () { var st = document.createElement("style"); st.textContent = "#hxPrev{white-space:pre-line;overflow-wrap:anywhere}#hxSum{overflow-wrap:anywhere}"; document.head.appendChild(st); })();
+  (function () {
+    var btn = $("hxBtn"), fi = $("hxFile"), panel = $("hxPanel"); if (!btn || !fi || !panel) return;
+    var sum = $("hxSum"), rng = $("hxRange"), dest = $("hxDest"), addB = $("hxAdd"), closeB = $("hxClose"), pick = $("hxPick"), hint = $("hxHint"), prev = $("hxPrev");
+    var found = [];
+    function usable() {
+      var days = rng.value === "30" ? 30 : rng.value === "180" ? 180 : 0, cut = days ? Date.now() - days * 86400000 : 0, toLater = dest.value !== "fav", list = toLater ? lib.later : lib.favs;
+      var out = found.filter(function (x) { return (!days || x.t >= cut) && findIn(list, x.id) < 0; });
+      return { all: out, room: toLater ? Math.max(0, 50 - lib.later.length) : out.length, toLater: toLater };
+    }
+    function paint() {
+      btn.textContent = T("Import a history file"); hint.textContent = T("Pick watch-history.json from Google Takeout. It is read on this device only.");
+      pick.textContent = T("Choose file"); closeB.textContent = T("Close");
+      [["30", "Last 30 days"], ["180", "Last 6 months"], ["0", "Everything"]].forEach(function (r, i) { rng.options[i].textContent = T(r[1]); });
+      dest.options[0].textContent = T("Add to Watch later"); dest.options[1].textContent = T("Add to favourites");
+      rng.setAttribute("aria-label", T("Last 30 days") + " / " + T("Last 6 months") + " / " + T("Everything"));
+      dest.setAttribute("aria-label", T("Add to Watch later") + " / " + T("Add to favourites"));
+      refresh();
+    }
+    function refresh() {
+      if (!found.length) { sum.textContent = ""; addB.hidden = true; prev.hidden = true; return; }
+      var u = usable(), n = Math.min(u.all.length, u.room);
+      sum.textContent = found.length + " " + T("videos found") + " - " + u.all.length + " " + T("new in this range");
+      addB.hidden = false; addB.disabled = n === 0;
+      addB.textContent = (u.toLater ? T("Add to Watch later") : T("Add to favourites")) + " (" + n + ")";
+      prev.hidden = false; prev.textContent = u.all.slice(0, 4).map(function (x) { return "\u2022 " + (x.title || x.id); }).join("\n");
+    }
+    (window.__relang = window.__relang || []).push(paint);
+    btn.addEventListener("click", function () { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); if (!panel.hidden) { paint(); if (window.vpExpandSection) window.vpExpandSection("library"); } });
+    closeB.addEventListener("click", function () { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); });
+    pick.addEventListener("click", function () { fi.value = ""; fi.click(); });
+    rng.addEventListener("change", refresh); dest.addEventListener("change", refresh);
+    function parseHx(text) {
+      var data; try { data = JSON.parse(text); } catch (e) { return null; }
+      if (!Array.isArray(data)) return null;
+      var seen = {}, out = [], hit = 0;
+      data.forEach(function (e) {
+        if (!e || typeof e.titleUrl !== "string") return;
+        var id = parseVideoId(e.titleUrl); if (!id || seen[id]) return;
+        hit++;
+        if (e.details && /Google Ads/i.test(JSON.stringify(e.details))) return;
+        seen[id] = 1;
+        var ti = String(e.title || "").replace(/^(Watched|Viewed)\s+/i, "").trim(); if (/^https?:\/\//i.test(ti)) ti = "";
+        out.push({ id: id, title: ti.slice(0, 200), t: Date.parse(e.time) || 0 });
+      });
+      return hit || !data.length ? out : null;
+    }
+    fi.addEventListener("change", function () {
+      var f = fi.files && fi.files[0]; if (!f) return;
+      panel.hidden = false; btn.setAttribute("aria-expanded", "true"); found = [];
+      if (f.size > 40e6) { paint(); sum.textContent = T("That file is too big (limit 40 MB)."); return; }
+      var r = new FileReader();
+      r.onload = function () {
+        var got = parseHx(String(r.result || ""));
+        if (!got) { paint(); sum.textContent = T("That is not a YouTube history file. Use watch-history.json from Google Takeout."); return; }
+        found = got; paint();
+      };
+      r.readAsText(f);
+    });
+    addB.addEventListener("click", function () {
+      var u = usable(), pickN = u.all.slice(0, u.room);
+      if (!pickN.length) { toast(T(u.toLater && !u.room ? "Watch later is full (50 videos)." : "Nothing new to add in that range.")); return; }
+      var snap = JSON.stringify({ f: lib.favs, l: lib.later }), list = u.toLater ? lib.later : lib.favs;
+      pickN.forEach(function (x) { var row = { id: x.id, title: x.title || titleFor(x.id) }; if (u.toLater) row.ts = Date.now(); list.push(row); });
+      saveLib(); renderLib(); refresh();
+      toastUndo(T("Imported from history file") + " " + pickN.length, function () { var o = JSON.parse(snap); lib.favs = o.f; lib.later = o.l; saveLib(); renderLib(); refresh(); }, T("Import undone"));
+    });
+  })();
+
   // Drop long videos from the queue (round 234 new 5): Sort by length orders a queue and Fit-time picks videos for a window, but a short evening still meant removing the hour-long ones row by row. One chip removes every upcoming video whose learned length (from this session or Recently watched) is over 30 minutes (the playing video and videos with an unknown length stay), with the usual Undo toast. Hindi and Gujarati text, What's new and feature finder included.
   Object.assign(TR_MSG, {
     "Drop long videos from the queue": ["कतार से लंबे वीडियो हटाएं", "કતારમાંથી લાંબા વીડિયો કાઢો"],
@@ -24884,6 +24987,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Import a history file", "import google takeout watch history json youtube file bring old history favourites watch later migrate", "#hxBtn"],
       ["Drop long videos from the queue", "drop long videos queue remove over 30 minutes short evening length filter time tidy upcoming", "#qDropLongBtn"],
       ["Yesterday's videos to the queue", "yesterday videos queue history recently watched replay day before continue yesterday", "#histYestBtn"],
       ["Random 5 favourites to the queue", "random five favourites queue mix pick 5 shuffle add surprise evening playlist luck", "#favRand5Btn"],
