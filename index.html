@@ -2153,7 +2153,7 @@ setTimeout(done,3000);})();
         <div id="dlSubs"></div>
       </div>
       <div id="dlQWrap" hidden>
-        <div class="lib-head"><h3 id="lhDlQ">Download queue</h3><button class="chip" id="dlQRetry" type="button" hidden>Retry failed</button><button class="chip" id="dlQClearFin" type="button" hidden>Clear finished</button><button class="chip" id="dlQClear" type="button">Clear</button></div>
+        <div class="lib-head"><h3 id="lhDlQ">Download queue</h3><button class="chip" id="dlQRetry" type="button" hidden>Retry failed</button><button class="chip" id="dlQClearFin" type="button" hidden>Clear finished</button><button class="chip" id="dlQCopyBtn" type="button" hidden>Copy list</button><button class="chip" id="dlQClear" type="button">Clear</button></div>
         <ul class="lib-list" id="dlQ"></ul>
         <p class="hint">Items download one after another. Your browser may ask once to allow multiple downloads. Each finished file also gets a Save link (kept for 15 minutes).</p>
       </div>
@@ -4811,6 +4811,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   (window.__relang = window.__relang || []).push(function () { if (favShufBtn) { favShufBtn.textContent = T("🎲 Shuffle play"); favShufBtn.setAttribute("aria-label", T("Shuffle play favourites")); } });
   if (favShufBtn) favShufBtn.setAttribute("aria-label", T("Shuffle play favourites"));
+
+  // Round 219 new 3 (Copy the download queue) strings live here inside the main app
+  // closure - the download queue's own script block cannot see TR_MSG.
+  Object.assign(TR_MSG, {
+    "Copy the download queue": ["डाउनलोड कतार कॉपी करें", "ડાઉનલોડ કતાર કૉપી કરો"],
+    "Download queue copied": ["डाउनलोड कतार कॉपी हुई", "ડાઉનલોડ કતાર કૉપી થઈ"],
+    "Nothing in the download queue yet.": ["डाउनलोड कतार में अभी कुछ नहीं.", "ડાઉનલોડ કતારમાં હજી કંઈ નથી."]
+  });
 
   // Round 214 new 3: Wake all snoozed - snoozing hides a Watch-later video for days one row at a
   // time, but after a busy stretch the only way back was tapping each snooze chip in turn. One
@@ -15653,6 +15661,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Copy the download queue", "#dlQCopyBtn"],
     ["Save a history day as a playlist", ".hist-day-p"],
     ["Shuffle play favourites", "#favShufBtn"],
     ["Mute from the mini player", "#miniMute"],
@@ -20006,6 +20015,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
     qRetryRender();
     if (typeof qClearFinRender === "function") qClearFinRender();
+    if (typeof qCopyRender === "function") qCopyRender();
   }
   function qAdd(body, title) {
     if (Q.length >= 20) { showErr("The queue is full (20 items). Clear finished items first."); return false; }
@@ -20045,6 +20055,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (n) toastUndo(T("Cleared finished downloads: ") + n, function () { Q = snap; qRender(); }, T("Finished downloads restored"));
   });
   (window.__relang = window.__relang || []).push(qClearFinRender);
+
+  // Copy the download queue (round 219 new 3): the recent-downloads list had a Copy list
+  // chip, but the live queue did not, so moving a waiting batch to another device (or noting
+  // what is still coming) meant re-typing every link. The chip (shown only while the queue
+  // holds something) copies the items numbered - title, MP3 marker and status, then the
+  // link - through the shared hang-safe vpCopySafe helper, with the copy-tick feedback the
+  // other Copy list chips give. Hindi and Gujarati text, What's new and feature finder included.
+  var qCopyBtn = $("dlQCopyBtn");
+  function qCopyRender() { if (qCopyBtn) { qCopyBtn.hidden = !Q.length; qCopyBtn.textContent = T("Copy list"); qCopyBtn.setAttribute("aria-label", T("Copy the download queue")); } }
+  if (qCopyBtn) qCopyBtn.addEventListener("click", function () {
+    if (!Q.length) { showErr(T("Nothing in the download queue yet.")); return; }
+    var btn = this;
+    var text = Q.map(function (it, i) {
+      var tags = [];
+      if (it.body && it.body.kind === "mp3") tags.push("MP3");
+      if (it.status === "waiting") tags.push(T("Waiting"));
+      else if (it.status === "running") tags.push(T("Downloading ") + (it.progress || 0) + "%");
+      else if (it.status === "done") tags.push(T("Done"));
+      else tags.push(T("Failed"));
+      return (i + 1) + ". " + (it.title || hostOf(it.body.url)) + (tags.length ? " (" + tags.join(", ") + ")" : "") + "\n" + it.body.url;
+    }).join("\n");
+    vpCopySafe(text, function (ok) { if (ok && typeof copyTick === "function") copyTick(btn); toast(ok ? T("Download queue copied") : T("Could not copy. Try again.")); });
+  });
+  (window.__relang = window.__relang || []).push(qCopyRender);
+  qCopyRender();
   if (qRetryBtn) qRetryBtn.addEventListener("click", function () {
     var n = 0;
     Q.forEach(function (q) { if (q.status === "error") { q.status = "waiting"; q.err = ""; q.progress = 0; n++; } });
@@ -22064,6 +22099,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Snooze all in Watch later", "snooze all watch later park hide backlog every video one day wake undo", "#laterSnoozeAllBtn"],
       ["Copy all notes", "copy all notes clipboard share study text every saved note paste", "#notesCopyAllBtn"],
       ["Wake all snoozed videos", "wake all snoozed watch later sleeping hidden come back unsnooze every", "#laterWakeBtn"],
+      ["Copy the download queue", "copy download queue waiting batch links clipboard share move another device status", "#dlQCopyBtn"],
       ["Save a history day as a playlist", "save history day date heading as playlist keep themed evening replay named list", ".hist-day-p"],
       ["Shuffle play favourites", "shuffle play favourites random mix starred saved videos evening start play all", "#favShufBtn"],
       ["Shuffle play Watch later", "shuffle play watch later saved videos random mix evening start play all", "#laterShufBtn"],
