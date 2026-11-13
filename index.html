@@ -1946,7 +1946,7 @@ setTimeout(done,3000);})();
           </form>
           <p class="hint" id="fitTimeHint">Picks a speed from 1x to 2x for the part left to watch. An estimate for recorded videos; pauses, loops and ads can add time.</p>
           <p class="hint" id="fitTimeMsg" role="status" aria-live="polite"></p>
-          <div class="row" style="margin-top:10px"><button class="chip" id="chSpeedBtn" type="button" aria-pressed="false">⏩ Channel speed: off</button></div>
+          <div class="row" style="margin-top:10px"><button class="chip" id="chSpeedBtn" type="button" aria-pressed="false">⏩ Channel speed: off</button> <button class="chip" id="chSpeedClearBtn" type="button" hidden>Forget every channel speed</button></div>
           <p class="hint" id="chSpeedHint">Remember a speed for this channel and it applies by itself when one of its videos plays. A speed saved for the video itself wins.</p>
         </div>
 
@@ -13504,6 +13504,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     chSpeedBtn.classList.toggle("active", !!k);
     chSpeedBtn.setAttribute("aria-label", T("⏩ Channel speed") + " - " + T("Remember a speed for this channel and it applies by itself when one of its videos plays. A speed saved for the video itself wins."));
     chSpeedBtn.title = n ? n : "";
+    if (typeof chSpeedClearPaint === "function") chSpeedClearPaint();
   }
   if (chSpeedBtn) chSpeedBtn.addEventListener("click", function () {
     var n = chSpeedCurName();
@@ -13517,6 +13518,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       toast(T("Speed {s}x remembered for {c}.").replace("{s}", prefs.speed).replace("{c}", n));
     }
   });
+  // Forget every channel speed (round 225): channel speeds pile up quietly - each is set
+  // from one video, there is no list of them, and clearing meant loading a video from
+  // each channel and toggling it off. One chip forgets them all, says how many, and one
+  // Undo toast puts the whole set back (a speed set meanwhile is kept). The chip hides
+  // while there is nothing to forget.
+  Object.assign(TR_MSG, {
+    "Forget every channel speed": ["सभी चैनल स्पीड भूलें", "બધી ચેનલ સ્પીડ ભૂલો"],
+    "Forgot {n} channel speeds.": ["{n} चैनल स्पीड भुला दी गईं.", "{n} ચેનલ સ્પીડ ભૂલાઈ ગઈ."],
+    "Channel speeds restored.": ["चैनल स्पीड वापस आ गईं.", "ચેનલ સ્પીડ પાછી આવી."]
+  });
+  var chSpeedClearBtn = $("chSpeedClearBtn");
+  function chSpeedClearPaint() {
+    if (!chSpeedClearBtn) return;
+    chSpeedClearBtn.textContent = T("Forget every channel speed");
+    chSpeedClearBtn.hidden = Object.keys(chSpeed).length === 0;
+  }
+  if (chSpeedClearBtn) chSpeedClearBtn.addEventListener("click", function () {
+    var keys = Object.keys(chSpeed);
+    if (!keys.length) { chSpeedClearPaint(); return; }
+    var snap = {};
+    keys.forEach(function (k) { snap[k] = chSpeed[k]; });
+    chSpeed = {}; chSpeedSave(); chSpeedRender(); chSpeedClearPaint();
+    toastUndo(T("Forgot {n} channel speeds.").replace("{n}", keys.length), function () {
+      Object.keys(snap).forEach(function (k) { if (!(k in chSpeed)) chSpeed[k] = snap[k]; });
+      chSpeedSave(); chSpeedRender(); chSpeedClearPaint();
+    }, T("Channel speeds restored."));
+  });
+  (window.__relang = window.__relang || []).push(chSpeedClearPaint); chSpeedClearPaint();
   function chSpeedApply(id) {
     if (!id || id !== curId || chSpeedAppliedId === id) return;
     var n = chSpeedCurName(); if (!n) return; // wait for the channel name
@@ -16625,6 +16654,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Forget every channel speed", "#chSpeedClearBtn"],
     ["Save all playlists as a text file", "#plAllTxtBtn"],
     ["Fit-time quick chips", "#fitQuickChips"],
     ["Speed step chips", "#speedStepUp"],
@@ -16634,7 +16664,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Note times to moments", "#noteToMarksBtn"],
     ["Import notes from a file", "#notesImportBtn"],
     ["Clear all notes with Undo", "#notesClearAllBtn"],
-    ["Moments mark on lists", "#favList .moment-badge"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23216,6 +23245,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Forget every channel speed", "forget clear all channel speeds reset remembered per channel speed undo wipe", "#chSpeedClearBtn"],
       ["Save all playlists as a text file", "save all playlists one text file txt export backup titles links every playlist new phone", "#plAllTxtBtn"],
       ["Fit-time quick chips", "fit finish within minutes quick chips 15 30 45 60 one tap time budget speed lecture", "#fitQuickChips"],
       ["Speed step chips", "speed step up down one notch slower faster buttons phone no keyboard plus minus", "#speedStepUp"],
