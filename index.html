@@ -2408,7 +2408,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterWakeBtn" type="button" hidden>⏰ Wake all</button><button class="chip" id="laterSnoozeAllBtn" type="button" hidden>😴 Snooze all</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
-      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button></span></div>
+      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favQueueUnwBtn" type="button">➕ Queue unwatched</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button></span></div>
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
       <p class="hint" id="favTime" role="status"></p>
@@ -4734,6 +4734,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   (window.__relang = window.__relang || []).push(function () { if (laterQueueBtn) { laterQueueBtn.textContent = T("➕ Queue unwatched"); laterQueueBtn.setAttribute("aria-label", T("Add every unwatched Watch-later video to the queue")); } });
   if (laterQueueBtn) laterQueueBtn.setAttribute("aria-label", T("Add every unwatched Watch-later video to the queue"));
+
+  // Queue unwatched favourites (round 218 new 2): Watch later had a one-tap 'Queue unwatched'
+  // but favourites did not - building an evening out of the favourites you have not finished
+  // meant filtering by eye. The new chip mirrors the Watch-later one: it queues every favourite
+  // that is not finished (its own flag or the history's), skips ones already queued, stops at
+  // the 50-video queue limit and offers the same Undo.
+  Object.assign(TR_MSG, {
+    "Add every unwatched favourite to the queue": ["हर अनदेखा पसंदीदा कतार में डालें", "દરેક ન જોયેલું મનપસંદ કતારમાં નાખો"],
+    "No unwatched favourites to add to the queue.": ["कतार के लिए कोई अनदेखा पसंदीदा नहीं.", "કતાર માટે ન જોયેલું કોઈ મનપસંદ નથી."]
+  });
+  var favQueueUnwBtn = $("favQueueUnwBtn");
+  if (favQueueUnwBtn) favQueueUnwBtn.addEventListener("click", function () {
+    var snap = lib.queue.slice(), sp = qPos, add = [];
+    lib.favs.forEach(function (it) {
+      var hi = findIn(lib.hist, it.id);
+      var watched = it.done === true || (hi >= 0 && lib.hist[hi].done === true);
+      if (watched || findIn(lib.queue, it.id) >= 0) return;
+      if (lib.queue.length + add.length >= 50) return;
+      add.push({ id: it.id, title: it.title || "" });
+    });
+    if (!add.length) { showLibErr(T("No unwatched favourites to add to the queue.")); return; }
+    showLibErr("");
+    add.forEach(function (x) { lib.queue.push(x); });
+    saveLib(); renderLib();
+    toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+  });
+  (window.__relang = window.__relang || []).push(function () { if (favQueueUnwBtn) { favQueueUnwBtn.textContent = T("➕ Queue unwatched"); favQueueUnwBtn.setAttribute("aria-label", T("Add every unwatched favourite to the queue")); } });
+  if (favQueueUnwBtn) favQueueUnwBtn.setAttribute("aria-label", T("Add every unwatched favourite to the queue"));
 
   // Round 214 new 2: Shuffle play for Watch later - the queue and every playlist already had a
   // Shuffle play chip, but the saved-for-later pile did not: to start a mixed evening you had to
@@ -15545,6 +15573,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Queue unwatched favourites", "#favQueueUnwBtn"],
     ["Copy this day in history", ".hist-day-c"],
     ["Save a playlist as a text file", "#lhPlaylists"],
     ["Add the playing video to a playlist", "#infoPlBtn"],
@@ -15554,7 +15583,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Watch later count on the app icon", "#badgeLater"],
     ["Halve or double the loop", "#abNudgeRow"],
     ["Copy all notes", "#notesCopyAllBtn"],
-    ["Wake all snoozed videos", "#laterWakeBtn"],
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -22122,6 +22150,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Video reveal", "video reveal load fade glass soft intro transition frame pretty unveiling shine", "#revealChk"],
       ["Finish burst", "finish burst sparks celebration ribbon video ends done complete cheer confetti end", "#finChk"],
       ["Note mark on lists", "note mark pill lists rows library favourites watch later history queue search written remember see glance", "#notesH"],
+      ["Queue unwatched favourites", "queue unwatched favourites unfinished not watched add all bulk evening play saved", "#favQueueUnwBtn"],
       ["Copy your lists", "copy list watch later favourites history clipboard paste share chat titles links", "#laterCopyBtn"],
       ["Copy a playlist", "copy playlist list titles links clipboard paste share chat note text numbered", "#lhPlaylists"],
       ["Sort favourites by length", "sort favourites shortest length duration quick short video order time", "#favSortBtn"],
