@@ -7428,7 +7428,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   playerSlot.id = "playerSlot"; playerDock.id = "playerDock";
   frameBox.parentNode.insertBefore(playerSlot, frameBox); playerSlot.appendChild(playerDock); playerDock.appendChild(frameBox);
   var miniTools = document.createElement("div"); miniTools.id = "miniTools";
-  miniTools.innerHTML = '<button id="miniPrev" class="chip" type="button" aria-label="' + T("Previous video in queue") + '" title="' + T("Previous video in queue") + '">\u23ee</button><button id="miniRew" class="chip" type="button" aria-label="' + T("Back {n} seconds").replace("{n}", 10) + '">−10</button><button id="miniPlay" class="chip" type="button" aria-label="' + T("Play or pause") + '"></button><button id="miniFwd" class="chip" type="button" aria-label="' + T("Forward {n} seconds").replace("{n}", 10) + '">+10</button><button id="miniNext" class="chip" type="button" aria-label="' + T("Next video in queue") + '" title="' + T("Next video in queue") + '">\u23ed</button><button id="miniMute" class="chip" type="button" aria-label="' + T("\ud83d\udd0a Mute") + '">\ud83d\udd0a</button><button id="miniSide" class="chip" type="button" aria-label="' + T("Move mini player to the other side") + '">\u21c4</button><button id="miniBack" class="chip" type="button">' + T("Back to player") + '</button><button id="miniClose" class="chip" type="button" aria-label="' + T("Close mini player and pause") + '">' + T("✕ Pause") + '</button>';
+  miniTools.innerHTML = '<button id="miniPrev" class="chip" type="button" aria-label="' + T("Previous video in queue") + '" title="' + T("Previous video in queue") + '">\u23ee</button><button id="miniRew" class="chip" type="button" aria-label="' + T("Back {n} seconds").replace("{n}", 10) + '">−10</button><button id="miniPlay" class="chip" type="button" aria-label="' + T("Play or pause") + '"></button><button id="miniFwd" class="chip" type="button" aria-label="' + T("Forward {n} seconds").replace("{n}", 10) + '">+10</button><button id="miniNext" class="chip" type="button" aria-label="' + T("Next video in queue") + '" title="' + T("Next video in queue") + '">\u23ed</button><button id="miniMute" class="chip" type="button" aria-label="' + T("\ud83d\udd0a Mute") + '">\ud83d\udd0a</button><button id="miniLater" class="chip" type="button" aria-label="' + T("Save the playing video to Watch later") + '" title="' + T("Save the playing video to Watch later") + '">\ud83d\udd52</button><button id="miniSide" class="chip" type="button" aria-label="' + T("Move mini player to the other side") + '">\u21c4</button><button id="miniBack" class="chip" type="button">' + T("Back to player") + '</button><button id="miniClose" class="chip" type="button" aria-label="' + T("Close mini player and pause") + '">' + T("✕ Pause") + '</button>';
   playerDock.appendChild(miniTools);
   (function () {
     var root = document.documentElement, side = $("miniSide");
@@ -7458,6 +7458,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // to the full player or pressing M. One chip mutes and unmutes through the main mute
   // button's own path, mirrors its icon live, and re-labels on language change.
   (function () {
+    // Watch later from the mini player (round 220 new 4): the floating mini player could
+    // play, hop, skip and mute, but parking the video you are half-watching for later meant
+    // growing it back to the full player first. A 🕒 chip toggles Watch later for the video
+    // that is playing through the main button's own toggleLater path (so its toast, save-pop
+    // and undo wording all match), and says so plainly when nothing YouTube is loaded.
+    // Hindi and Gujarati text, What's new (kept at 10) and feature finder included.
+    Object.assign(TR_MSG, {
+      "Save the playing video to Watch later": ["चल रहा वीडियो बाद में देखें में सेव करें", "ચાલે તે વીડિયો પછી જુઓ માં સાચવો"],
+      "Load a YouTube video first, then save it to Watch later.": ["पहले कोई YouTube वीडियो चलाएं, फिर उसे बाद में देखें में सेव करें.", "પહેલા કોઈ YouTube વીડિયો ચલાવો, પછી તેને પછી જુઓ માં સાચવો."],
+      "Watch later from the mini player": ["मिनी प्लेयर से बाद में देखें में सेव करें", "મિનિ પ્લેયરથી પછી જુઓ માં સાચવો"]
+    });
+    var miniLater = $("miniLater");
+    if (miniLater) miniLater.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a YouTube video first, then save it to Watch later.")); return; }
+      toggleLater(curId);
+    });
+    (window.__relang = window.__relang || []).push(function () { if (miniLater) { miniLater.setAttribute("aria-label", T("Save the playing video to Watch later")); miniLater.title = T("Save the playing video to Watch later"); } });
     var mm = $("miniMute"); if (!mm || !muteBtn) return;
     function paint() {
       var isMuted = (muteBtn.textContent || "").indexOf("\ud83d\udd07") >= 0;
@@ -15827,6 +15844,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Watch later from the mini player", "#miniLater"],
     ["Sort stats by plays", "#statsPlaysBtn"],
     ["Queue all of Continue watching", "#contQueueBtn"],
     ["Clear watched favourites", "#favClrWBtn"],
@@ -15843,7 +15861,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Queue unwatched favourites", "#favQueueUnwBtn"],
     ["Copy this day in history", ".hist-day-c"],
     ["Save a playlist as a text file", "#lhPlaylists"],
-    ["Add the playing video to a playlist", "#infoPlBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -22497,6 +22514,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Finish burst", "finish burst sparks celebration ribbon video ends done complete cheer confetti end", "#finChk"],
       ["Note mark on lists", "note mark pill lists rows library favourites watch later history queue search written remember see glance", "#notesH"],
       ["Queue unwatched favourites", "queue unwatched favourites unfinished not watched add all bulk evening play saved", "#favQueueUnwBtn"],
+      ["Watch later from the mini player", "watch later mini player save parking floating docked small chip current video", "#miniLater"],
       ["Mute from the mini player", "mute unmute mini player sound silence volume floating docked pip small", "#miniMute"],
       ["Copy your picked local files", "copy selected local files list names sizes clipboard share note whatsapp music folder", "#lpCopyBtn"],
       ["Copy your saved channels", "copy saved channels list favourite channel names links clipboard share friend whatsapp", ".chan-copy"],
