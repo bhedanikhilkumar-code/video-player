@@ -2177,7 +2177,7 @@ setTimeout(done,3000);})();
       <input id="lpFile" type="file" multiple accept="video/*,audio/*" aria-label="Choose a video or audio file from your device" hidden>
       <div class="row" id="lpPickRow"><button class="chip" id="lpPickBtn" type="button">📁 Choose files</button><span class="hint" id="lpPickName" role="status">No file chosen</span></div>
       <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button><button class="chip" id="lpPip" type="button" hidden>PiP</button><button class="chip" id="lpClose" type="button" disabled>Close files</button></div>
-      <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><div class="row lp-qmodes"><button class="chip" id="lpShuffleBtn" type="button" aria-pressed="false">Shuffle: off</button><button class="chip" id="lpRepeatBtn" type="button" aria-pressed="false">Repeat all: off</button><button class="chip" id="lpCopyBtn" type="button">Copy list</button><button class="chip" id="lpTxtBtn" type="button">Save list as text file</button><button class="chip" id="lpSortBtn" type="button">Sort A to Z</button><button class="chip" id="lpSizeBtn" type="button">Sort by size</button></div><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
+      <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><div class="row lp-qmodes"><button class="chip" id="lpShuffleBtn" type="button" aria-pressed="false">Shuffle: off</button><button class="chip" id="lpRepeatBtn" type="button" aria-pressed="false">Repeat all: off</button><button class="chip" id="lpCopyBtn" type="button">Copy list</button><button class="chip" id="lpTxtBtn" type="button">Save list as text file</button><button class="chip" id="lpSortBtn" type="button">Sort A to Z</button><button class="chip" id="lpSizeBtn" type="button">Sort by size</button></div><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpTotalLine" hidden></p><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
       <p class="hint" id="lpSessionMsg" role="status">Select one or more local files. Notification and lock-screen controls are local-file only, where supported by your browser. They do not enable screen-off YouTube playback.</p>
       <video id="lpVideo" controls playsinline preload="metadata" crossorigin="anonymous" class="lp-video" hidden></video>
       <div class="lp-viz" id="lpViz" hidden><canvas id="lpVizCv" height="56"></canvas></div>
@@ -17251,6 +17251,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Total size of picked local files", "#lpTotalLine"],
     ["Hide shorts in history", "#histShortsBtn"],
     ["Watching since in Watch stats", "#statsSince"],
     ["Weekend vs weekday in Watch stats", "#statsWend"],
@@ -17317,6 +17318,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // closure - the local-files script block cannot see TR_MSG.
   Object.assign(TR_MSG, {
     "Sort by size": ["साइज़ से क्रमाएं", "સાઇઝથી ગોઠવો"],
+    "Total: {size} across {n} files": ["कुल: {n} फाइलों में {size}", "કુલ: {n} ફાઇલોમાં {size}"],
+    "Total size of picked files": ["चुनी गई फाइलों का कुल साइज़", "પસંદ કરેલી ફાઇલોનું કુલ સાઇઝ"],
+    "Total size of picked local files": ["चुनी गई लोकल फाइलों का कुल साइज़", "પસંદ કરેલી લોકલ ફાઇલોનું કુલ સાઇઝ"],
     "Sort the selected files from largest to smallest": ["चुनी फ़ाइलें सबसे बड़ी से सबसे छोटी क्रमाएं", "પસંદ કરેલી ફાઇલો સૌથી મોટીથી સૌથી નાની ગોઠવો"],
     "Files are already in size order.": ["फ़ाइलें पहले से साइज़ क्रम में हैं.", "ફાઇલો પહેલેથી સાઇઝ ક્રમમાં છે."],
     "Files sorted by size, largest first.": ["फ़ाइलें साइज़ से क्रमाईं, सबसे बड़ी पहले.", "ફાઇલો સાઇઝથી ગોઠવાઈ, સૌથી મોટી પહેલા."],
@@ -21856,8 +21860,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var sessionMsg = $("lpSessionMsg");
   var T = window.T || function (x) { return x; };
   var LP_DEF = sessionMsg.textContent;
+  // Total size of picked files (round 229 new 4): before queuing tonight's folder you
+  // could not tell whether the batch was 200 MB or 20 GB without adding the sizes in your
+  // head. A small line under the list adds them up (GB once the total passes a gigabyte)
+  // and updates on every pick, sort, shuffle or clear. Hindi and Gujarati text, What's
+  // new and feature finder; the translation strings live in the main closure like the
+  // other local-player strings.
+  function lpTotalPaint() {
+    var line = $("lpTotalLine"); if (!line) return;
+    if (!localFiles.length) { line.hidden = true; line.textContent = ""; return; }
+    var total = 0; localFiles.forEach(function (f) { total += f.size || 0; });
+    var size = total >= 1073741824 ? (total / 1073741824).toFixed(1) + " GB" : (total / 1048576).toFixed(total < 10485760 ? 1 : 0) + " MB";
+    line.hidden = false;
+    line.textContent = T("Total: {size} across {n} files").replace("{size}", size).replace("{n}", localFiles.length);
+    line.setAttribute("aria-label", T("Total size of picked files"));
+  }
+  (window.__relang = window.__relang || []).push(lpTotalPaint);
   function renderLocalQueue() {
     var wrap = $("lpQueueWrap"), list = $("lpQueue"); wrap.hidden = !localFiles.length; list.textContent = "";
+    lpTotalPaint();
     $("lpQueueH").textContent = T("Selected files") + " (" + localFiles.length + ")";
     $("lpQueueHint").textContent = T("Files stay on this device. Pick files again after a reload.");
     localFiles.forEach(function(f,i){
@@ -23913,6 +23934,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Only unwatched in history", "only unwatched history filter hide finished watched resume pile recently watched", "#histUnwBtn"],
       ["Clear watched favourites", "favourites clear watched finished seen clean tidy remove done backlog starred", "#favClrWBtn"],
       ["Only unwatched favourites", "only unwatched favourites filter hide watched finished starred list picking evening", "#favUnwBtn"],
+      ["Total size of picked local files", "total size sum picked local files storage space how big batch folder MB GB", "#lpTotalLine"],
       ["Sort picked files by size", "sort size largest smallest picked local files big heavy clip order size", "#lpSizeBtn"],
       ["Sort picked files A to Z", "sort picked selected local files alphabetically name order tidy folder track numbers", "#lpSortBtn"],
       ["Copy the download queue", "copy download queue waiting batch links clipboard share move another device status", "#dlQCopyBtn"],
