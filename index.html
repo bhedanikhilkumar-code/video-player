@@ -31538,6 +31538,60 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint); paint();
     WNEW.unshift(["Remember the rotation per video", "#rotMemBtn279"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   })();
+
+  // Round 279 new 2: Remember the picture look per video. A chip in Picture tuning saves
+  // the brightness, contrast and colour strength of the playing video and brings them back
+  // the next time it loads - one dark video no longer retunes every video. Up to 25
+  // videos are kept; the oldest drop off. Works with Picture look on YouTube videos and
+  // local files, translated in Hindi and Gujarati, in the feature finder and What's new.
+  (function () {
+    var KEY = "vp-picmem.v1";
+    var mem = {}, order = [];
+    try { var raw = JSON.parse(localStorage.getItem(KEY) || "null"); if (raw && typeof raw === "object") mem = raw; } catch (e) {}
+    try { var rawO = JSON.parse(localStorage.getItem(KEY + ".o") || "[]"); if (Array.isArray(rawO)) order = rawO; } catch (e) {}
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(mem)); localStorage.setItem(KEY + ".o", JSON.stringify(order)); return true; } catch (e) { return false; } }
+    function touch(id) { order = order.filter(function (x) { return x !== id; }); order.push(id); while (order.length > 25) { delete mem[order.shift()]; } }
+    var host = $("picPresets266"); if (!host) return;
+    var row = document.createElement("div"); row.className = "row"; row.style.marginTop = "10px";
+    var chip = document.createElement("button"); chip.type = "button"; chip.className = "chip"; chip.id = "picMemBtn279"; chip.setAttribute("aria-pressed", "false");
+    row.appendChild(chip); host.appendChild(row);
+    function on() { return !!(curId && mem[curId]); }
+    function paint() {
+      chip.textContent = "\uD83C\uDFA8 " + T("Remember this picture look") + ": " + (on() ? T("on") : T("off"));
+      chip.setAttribute("aria-pressed", String(on()));
+    }
+    chip.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first.")); return; }
+      if (on()) { delete mem[curId]; order = order.filter(function (x) { return x !== curId; }); persist(); toast(T("Picture look memory removed for this video.")); paint(); return; }
+      mem[curId] = { b: prefs.picBright, c: prefs.picContrast, s: prefs.picSat }; touch(curId);
+      if (!persist()) toast(T("Could not save: browser storage is full or blocked. Your latest changes may be lost - export a backup."));
+      else toast(T("Picture look remembered for this video."));
+      paint();
+    });
+    var lastId = null, appliedFor = null;
+    setInterval(function () {
+      if (curId !== lastId) { lastId = curId; appliedFor = null; paint(); }
+      if (!curId) return;
+      var m = mem[curId];
+      if (!m || appliedFor === curId) return;
+      if (typeof playerReady !== "undefined" && !playerReady) return;
+      if (m.b !== prefs.picBright || m.c !== prefs.picContrast || m.s !== prefs.picSat) {
+        prefs.picBright = m.b; prefs.picContrast = m.c; prefs.picSat = m.s; savePrefs();
+        if (typeof picPaint266 === "function") picPaint266();
+        toast(T("Remembered picture look back."));
+      }
+      appliedFor = curId;
+    }, 1000);
+    Object.assign(TR_MSG, {
+      "Remember this picture look": ["\u092F\u0939 \u092A\u093F\u0915\u094D\u091A\u0930 \u0932\u0941\u0915 \u092F\u093E\u0926 \u0930\u0916\u0947\u0902", "\u0A86 \u0AAA\u0ABF\u0A95\u0ACD\u0A9A\u0AB0 \u0AB2\u0AC1\u0A95 \u0AAF\u0ABE\u0AA6 \u0AB0\u0ABE\u0A96\u0ACB"],
+      "Picture look memory removed for this video.": ["\u0907\u0938 \u0935\u0940\u0921\u093F\u092F\u094B \u0915\u0940 \u092A\u093F\u0915\u094D\u091A\u0930 \u0932\u0941\u0915 \u092F\u093E\u0926 \u0939\u091F\u093E \u0926\u0940.", "\u0A86 \u0AB5\u0AC0\u0AA1\u0ABF\u0AAF\u0ACB\u0AA8\u0AC0 \u0AAA\u0ABF\u0A95\u0ACD\u0A9A\u0AB0 \u0AB2\u0AC1\u0A95 \u0AAF\u0ABE\u0AA6 \u0A95\u0ABE\u0AA2\u0AC0 \u0AA8\u0ABE\u0A96\u0AC0."],
+      "Picture look remembered for this video.": ["\u0907\u0938 \u0935\u0940\u0921\u093F\u092F\u094B \u0915\u0947 \u0932\u093F\u090F \u092A\u093F\u0915\u094D\u091A\u0930 \u0932\u0941\u0915 \u092F\u093E\u0926 \u0930\u0916\u0940.", "\u0A86 \u0AB5\u0AC0\u0AA1\u0ABF\u0AAF\u0ACB \u0AAE\u0ABE\u0A9F\u0AC7 \u0AAA\u0ABF\u0A95\u0ACD\u0A9A\u0AB0 \u0AB2\u0AC1\u0A95 \u0AAF\u0ABE\u0AA6 \u0AB0\u0ABE\u0A96\u0AC0."],
+      "Remembered picture look back.": ["\u092F\u093E\u0926 \u092A\u093F\u0915\u094D\u091A\u0930 \u0932\u0941\u0915 \u0935\u093E\u092A\u0938 \u0906 \u0917\u0908.", "\u0AAF\u0ABE\u0AA6 \u0AAA\u0ABF\u0A95\u0ACD\u0A9A\u0AB0 \u0AB2\u0AC1\u0A95 \u0AAA\u0ABE\u0A9B\u0AC0 \u0A86\u0AB5\u0AC0."],
+      "Remember the picture look per video": ["\u0939\u0930 \u0935\u0940\u0921\u093F\u092F\u094B \u0915\u093E \u092A\u093F\u0915\u094D\u091A\u0930 \u0932\u0941\u0915 \u092F\u093E\u0926 \u0930\u0916\u0947\u0902", "\u0AA6\u0AB0\u0AC7\u0A95 \u0AB5\u0AC0\u0AA1\u0ABF\u0AAF\u0ACB\u0AA8\u0AC1\u0A82 \u0AAA\u0ABF\u0A95\u0ACD\u0A9A\u0AB0 \u0AB2\u0AC1\u0A95 \u0AAF\u0ABE\u0AA6 \u0AB0\u0ABE\u0A96\u0ACB"]
+    });
+    (window.__relang = window.__relang || []).push(paint); paint();
+    WNEW.unshift(["Remember the picture look per video", "#picMemBtn279"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
   Object.assign(TR_MSG, {
     "Auto chapters:": ["ऑटो अध्याय:", "ઓટો પ્રકરણો:"],
     "Every {n} min": ["हर {n} मिनट", "દર {n} મિનિટ"],
@@ -34390,6 +34444,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Remember the A-B loop", "remember ab loop per video save practice points restore pinned", "#abMemBtn278"],
       ["Remember the speed per video", "remember speed per video pin playback rate lecture music", "#speedMemBtn278"],
       ["Remember the rotation per video", "remember rotation per video sideways phone clip turned picture rotate memory", "#rotMemBtn279"],
+      ["Remember the picture look per video", "remember picture look per video brightness contrast colour tuning memory", "#picMemBtn279"],
       ["Practice loop repeat count", "practice loop repeat count local ab passes 2 3 5 10 stop itself", "#lpLoopCountRow278"],
       ["File info for local files", "file info local name size type length picture bitrate codec details", "#lpInfoBtn278"],
       ["Auto chapters for local files", "auto chapters local file split every 5 10 minutes even parts markers", "#lpChAutoRow278"],
