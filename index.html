@@ -31197,6 +31197,54 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   WNEW.unshift(['Browse media folder','#folderBrowser276']);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 
+  // Round 277 new 1: Fill my break. Pick for me (round 114) suggests ONE video for a
+  // free-minutes budget; this fills the whole break in one tap: it walks Watch later
+  // from the oldest save and queues as many unwatched, length-known videos as fit the
+  // budget, so 20 free minutes become a ready run instead of one pick plus fresh
+  // guessing after every video. Snoozed, watched and already-queued videos are
+  // skipped, the 50 video queue cap is respected and nothing is removed from Watch
+  // later. Works on YouTube videos, translated in Hindi and Gujarati, listed in the
+  // feature finder and the What's new card.
+  Object.assign(TR_MSG, {
+    "Fill my break": ["मेरा ब्रेक भरें", "મારો બ્રેક ભરો"],
+    "Queue as many unwatched Watch later videos as fit, oldest first. Uses lengths the app has already learned.": ["उतने अनदेखे Watch later वीडियो कतार में डालें जितने समय में फिट हों, सबसे पुराने पहले. ऐप को ज्ञात लंबाइयों का उपयोग होता है.", "જેટલા ન જોયેલા Watch later વીડિયો સમયમાં ફિટ થાય તેટલા કતારમાં નાખો, સૌથી જૂના પહેલા. એપને ખબર હોય એવી લંબાઈ વપરાય છે."],
+    "Queued {n} videos ({m} min)": ["{n} वीडियो कतार में ({m} मिनट)", "{n} વીડિયો કતારમાં ({m} મિનિટ)"],
+    "Nothing fits in that time - the shortest unwatched video is about {m} min.": ["इतने समय में कुछ फिट नहीं - सबसे छोटा अनदेखा वीडियो करीब {m} मिनट का है.", "આટલા સમયમાં કંઈ ફિટ નથી - સૌથી ટૂંકો ન જોયેલો વીડિયો આશરે {m} મિનિટનો છે."],
+    "No unwatched videos with a known length - play a saved video once so the app learns its length.": ["ज्ञात लंबाई वाला कोई अनदेखा वीडियो नहीं - सेव किया वीडियो एक बार चलाएं ताकि ऐप उसकी लंबाई जान ले.", "જાણીતી લંબાઈવાળો કોઈ ન જોયેલો વીડિયો નથી - સેવ કરેલો વીડિયો એક વાર ચલાવો જેથી એપ તેની લંબાઈ જાણી લે."]
+  });
+  (function(){
+    var anchor=$('queueTime');if(!anchor||!anchor.parentNode)return;
+    var row=document.createElement('div');row.className='row';row.id='fillBreak277';row.style.marginTop='8px';
+    row.innerHTML='<span class="label" id="fillBreakLab277"></span><span class="chips" id="fillBreakChips277"></span>';
+    var hint=document.createElement('p');hint.className='hint';hint.id='fillBreakHint277';
+    var msg=document.createElement('p');msg.className='hint';msg.id='fillBreakMsg277';msg.setAttribute('role','status');
+    anchor.parentNode.insertBefore(row,anchor.nextSibling);
+    anchor.parentNode.insertBefore(hint,row.nextSibling);
+    anchor.parentNode.insertBefore(msg,hint.nextSibling);
+    var mins=30,chipBox=$('fillBreakChips277'),CHOICES=[10,20,30,45,60];
+    CHOICES.forEach(function(m){var b=document.createElement('button');b.type='button';b.className='chip'+(m===30?' active':'');b.setAttribute('aria-pressed',String(m===30));b.addEventListener('click',function(){mins=m;[].forEach.call(chipBox.children,function(c){c.classList.toggle('active',c===b);c.setAttribute('aria-pressed',String(c===b));});});chipBox.appendChild(b);});
+    var go=document.createElement('button');go.type='button';go.className='chip';go.id='fillBreakGo277';row.appendChild(go);
+    function paint(){$('fillBreakLab277').textContent=T('Fill my break')+':';go.textContent='\uD83E\uDDE9 '+T('Fill my break');hint.textContent=T('Queue as many unwatched Watch later videos as fit, oldest first. Uses lengths the app has already learned.');[].forEach.call(chipBox.children,function(c,i){c.textContent=CHOICES[i]+' '+T('min');});}
+    go.addEventListener('click',function(){
+      if(!lib.later.length){msg.textContent=T('Nothing saved for later yet. Load a video and tap Watch later.');return;}
+      var pool=lib.later.slice().reverse().filter(function(it){
+        if(laterSnoozed(it))return false;
+        var hi=findIn(lib.hist,it.id);if(hi>=0&&lib.hist[hi].done)return false;
+        if(findIn(lib.queue,it.id)>=0)return false;
+        var d=infoCache[it.id]&&infoCache[it.id].dur;return typeof d==='number'&&d>0;
+      });
+      if(!pool.length){msg.textContent=T('No unwatched videos with a known length - play a saved video once so the app learns its length.');return;}
+      var budget=mins*60,total=0,ids=[];
+      for(var i=0;i<pool.length;i++){var d=infoCache[pool[i].id].dur;if(total+d<=budget&&(lib.queue.length+ids.length)<50){ids.push(pool[i].id);total+=d;}}
+      if(!ids.length){var minD=Math.min.apply(null,pool.map(function(it){return infoCache[it.id].dur;}));msg.textContent=T('Nothing fits in that time - the shortest unwatched video is about {m} min.').replace('{m}',Math.max(1,Math.round(minD/60)));return;}
+      queueAdd(ids.join(' '));
+      msg.textContent=T('Queued {n} videos ({m} min)').replace('{n}',ids.length).replace('{m}',Math.max(1,Math.round(total/60)));
+      toast(msg.textContent);
+    });
+    (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
+  WNEW.unshift(['Fill my break','#fillBreak277']);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+
 
 
 
@@ -33944,6 +33992,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Fill my break", "fill my break free minutes time budget queue unwatched watch later oldest first length fit batch break", "#fillBreak277"],
       ["Queue length filter", "skip long short videos queue length minutes filter auto next too long too short", "#lenCard268"],
       ["Check saved videos", "dead links removed private unavailable broken videos clean queue watch later favourites check", "#chkCard268"],
       ["Voice control", "voice commands speak say pause play next hands free microphone talk control hinglish ruko agla awaaz", "#voiceCard269"],
