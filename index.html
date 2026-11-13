@@ -11763,6 +11763,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
   // ---- Library backup: export and import queue + favourites as a file ----
   var libBackupMsg = $("libBackupMsg");
+  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-music-mode.v1": /^[01]$/ };
   $("libExport").addEventListener("click", function () {
     if (typeof noteFlush === "function") noteFlush();
     if (typeof lyricsFlush === "function") lyricsFlush();
@@ -11790,6 +11791,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
     });
+    // Round 223 fix 2: small one-word settings kept under their own keys (list sort orders,
+    // Pause at moments, Watch later auto-remove and length filter, fade lengths, mini player
+    // side, Music mode) were not in the backup, so a restore on a new phone reset them. They
+    // now ride along as validated plain strings.
+    data.settings.rawKeys = {};
+    Object.keys(VP_RAW_KEYS).forEach(function (k) { try { var v = localStorage.getItem(k); if (v !== null && VP_RAW_KEYS[k].test(v)) data.settings.rawKeys[k] = v; } catch (e) {} });
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -11991,6 +11998,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1"].forEach(function (k) {
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
+          if (s.rawKeys && typeof s.rawKeys === "object" && !Array.isArray(s.rawKeys)) {
+            Object.keys(VP_RAW_KEYS).forEach(function (k) {
+              var v = s.rawKeys[k];
+              if (typeof v === "string" && VP_RAW_KEYS[k].test(v)) { try { localStorage.setItem(k, v); gotSettings = true; } catch (e) {} }
+            });
+          }
         }
         if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !cn && !csn && !cvn && !rtn && !hn && !sn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app.") + (capN ? " " + T("Not added because the list holds 50 at most: ") + capN + "." : ""); return; }
         saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
