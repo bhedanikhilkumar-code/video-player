@@ -30,3 +30,6 @@ console.log('round272 fix3 ok');
   ctx.prefs.r271.favFeed = false; assert.equal(ctx.qFavPeek272(), -1);
 }
 console.log('round272 new1 ok');
+// Fix 4: r271 must be a default pref so an import on a fresh device restores it.
+assert.ok(html.includes('r271: { block: [], words: [], favFeed: false }, '));
+console.log('round272 fix4 ok');
