@@ -2166,7 +2166,7 @@ setTimeout(done,3000);})();
         <p class="hint" id="dlQHintP">Items download one after another. Your browser may ask once to allow multiple downloads. Each finished file also gets a Save link (kept for 15 minutes).</p>
       </div>
       <div id="dlHistWrap" hidden>
-        <div class="lib-head"><h3 id="lhDlH">Recent downloads</h3><span class="row"><button class="chip" id="dlHistCopy" type="button">Copy list</button><button class="chip" id="dlHistClear" type="button">Clear</button></span></div>
+        <div class="lib-head"><h3 id="lhDlH">Recent downloads</h3><span class="row"><button class="chip" id="dlHistCopy" type="button">Copy list</button><button class="chip" id="dlHistTxtBtn" type="button">Save as text file</button><button class="chip" id="dlHistClear" type="button">Clear</button></span></div>
         <ul class="lib-list" id="dlHist"></ul>
       </div>
       <details class="dl-more"><summary>About downloads</summary><p class="hint">The server is on a free plan, so the first request can take up to a minute. Some sites (such as Vimeo and Facebook) block free servers. Only download content you have the right to download.</p></details>
@@ -12705,6 +12705,38 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
 
+  // Recent downloads as a text file (round 228 new 2): the list could be copied to the
+  // clipboard, but keeping a record of what you downloaded (or moving it to a machine whose
+  // clipboard you cannot reach) meant pasting somewhere first - the same gap the download
+  // queue had before its own text save. One chip writes the same numbered list - title, MP3
+  // marker, link - straight to a file, the etiquette the Watch later and notes saves use.
+  Object.assign(TR_MSG, {
+    "Save recent downloads as a text file": ["हाल के डाउनलोड टेक्स्ट फ़ाइल में सेव करें", "તાજેતરના ડાઉનલોડ ટેક્સ્ટ ફાઇલમાં સાચવો"],
+    "Download list saved as a text file": ["डाउनलोड सूची टेक्स्ट फ़ाइल में सेव हुई", "ડાઉનલોડ યાદી ટેક્સ્ટ ફાઇલમાં સાચવાઈ"],
+    "Recent downloads as a text file": ["हाल के डाउनलोड टेक्स्ट फ़ाइल में", "તાજેતરના ડાઉનલોડ ટેક્સ્ટ ફાઇલમાં"]
+  });
+  (function () {
+    var btn = $("dlHistTxtBtn"); if (!btn) return;
+    btn.addEventListener("click", function () {
+      var h = []; try { h = JSON.parse(localStorage.getItem("vp-dl-hist")); } catch (e) {}
+      if (!Array.isArray(h)) h = [];
+      h = h.filter(function (x) { return x && typeof x.url === "string" && x.url; });
+      if (!h.length) { toast(T("Nothing to copy yet.")); return; }
+      var text = h.map(function (x, i) { return (i + 1) + ". " + (x.title ? String(x.title) + (x.kind === "mp3" ? " (MP3)" : "") + " - " : (x.kind === "mp3" ? "(MP3) " : "")) + x.url; }).join("\n") + "\n";
+      try {
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+        a.download = "video-player-recent-downloads.txt";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        toast(T("Download list saved as a text file"));
+      } catch (e) { toast(T("Could not copy. Try again.")); }
+    });
+    (window.__relang = window.__relang || []).push(function () {
+      btn.textContent = T("Save as text file"); btn.setAttribute("aria-label", T("Save recent downloads as a text file"));
+    });
+  })();
+
   // Round 216 fix: a paste longer than the Notes (600) or Lyrics (4000) limit was cut by the
   // browser's maxlength with no word - a long song pasted into Lyrics just lost its ending.
   // The paste now says so, with the limit.
@@ -17079,6 +17111,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   var WNEW = [
     ["Surprise me in Recently watched", "#histSurpriseBtn"],
+    ["Recent downloads as a text file", "#dlHistTxtBtn"],
     ["Sort Watch later A to Z", "#laterSortAzBtn"],
     ["This month vs last month in Watch stats", "#statsMonthCmp"],
     ["Channel quality memory", "#chQualBtn"],
@@ -23734,6 +23767,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Battery saver suggestion", "battery saver suggestion low battery 20 percent offer turn on calm animations power saving phone", "#saverBatt"],
       ["Search the help", "search the help faq questions find answer filter help card type keyword support how do i", "#faqSearch"],
       ["Copy recent downloads", "copy recent downloads list clipboard links downloader history share paste titles mp3", "#dlHistCopy"],
+      ["Recent downloads as a text file", "save recent downloads text file export record keep list links downloader history", "#dlHistTxtBtn"],
       ["Watch later count on the app icon", "app icon badge watch later count number home screen installed pwa unwatched waiting saved videos", "#badgeLater"],
       ["Halve or double the loop", "halve double loop length scale a-b repeat window half twice longer shorter same middle practice", "#abNudgeRow"],
       ["Data Saver suggestion", "data saver suggestion phone system save data offer turn on less mobile data 480p thumbnails", "#saverData"],
