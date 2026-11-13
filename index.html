@@ -2431,7 +2431,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="histFinLine" role="status" hidden></p>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsPlaysBtn" type="button" aria-pressed="false">Sort by plays: off</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsCsvBtn" type="button">Save as spreadsheet (.csv)</button><button class="chip" id="statsCopyBtn" type="button">Copy my stats</button><button class="chip" id="statsClear" type="button">Clear</button></div>
-      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsWeek" role="status"></p><p class="hint" id="statsMonth" role="status" hidden></p><p class="hint" id="statsBest" role="status" hidden></p><p class="hint" id="statsAvg" role="status" hidden></p><p class="hint" id="statsWend" role="status" hidden></p><p class="hint" id="statsSince" role="status" hidden></p><p class="hint" id="statsMonthCmp" role="status" hidden></p><p class="hint" id="statsPerPlay" role="status" hidden></p><p class="hint" id="statsTopChan" role="status" hidden></p><div class="stats-days" id="statsDays"></div><div class="stats-hours-wrap" id="statsHoursWrap" hidden><p class="hint stats-hours-lab" id="statsHoursLab"></p><div class="stats-hours" id="statsHours"></div><p class="hint" id="statsHoursSum" role="status"></p></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><div class="goal-row" id="wgoalRow"><span class="hint" id="wgoalLab">Weekly goal:</span><span class="row" id="wgoalChips"></span></div><p class="hint" id="wgoalStatus" role="status"></p><div class="badges-wrap" id="badgesWrap" hidden><p class="hint badges-lab" id="badgesLab"></p><div class="badges" id="badges"></div></div><ul class="lib-list" id="statsList"></ul>
+      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsYest" role="status" hidden></p><p class="hint" id="statsWeek" role="status"></p><p class="hint" id="statsMonth" role="status" hidden></p><p class="hint" id="statsBest" role="status" hidden></p><p class="hint" id="statsAvg" role="status" hidden></p><p class="hint" id="statsWend" role="status" hidden></p><p class="hint" id="statsSince" role="status" hidden></p><p class="hint" id="statsMonthCmp" role="status" hidden></p><p class="hint" id="statsPerPlay" role="status" hidden></p><p class="hint" id="statsTopChan" role="status" hidden></p><div class="stats-days" id="statsDays"></div><div class="stats-hours-wrap" id="statsHoursWrap" hidden><p class="hint stats-hours-lab" id="statsHoursLab"></p><div class="stats-hours" id="statsHours"></div><p class="hint" id="statsHoursSum" role="status"></p></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><div class="goal-row" id="wgoalRow"><span class="hint" id="wgoalLab">Weekly goal:</span><span class="row" id="wgoalChips"></span></div><p class="hint" id="wgoalStatus" role="status"></p><div class="badges-wrap" id="badgesWrap" hidden><p class="hint badges-lab" id="badgesLab"></p><div class="badges" id="badges"></div></div><ul class="lib-list" id="statsList"></ul>
       <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
       <div class="goal-row" id="storRow"><p class="hint" id="storInfo" role="status"></p><button class="chip" id="storBtn" type="button">Refresh</button><button class="chip" id="storKeepBtn" type="button">Protect my data</button></div>
       <p class="hint" id="storKeepInfo" role="status" hidden></p>
@@ -13428,6 +13428,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         mcmpEl.textContent = T("Vs last month") + ": " + (pct >= 0 ? "+" : "") + pct + "% \u00b7 " + prevD.toLocaleDateString(mLoc2, { month: "long" }) + " " + fmtWatch(prevS);
       }
     }
+    // Yesterday in Watch stats (round 231 new 3): the card jumps from Today straight to
+    // the week, so last night's sitting - the one you most remember - had no line of its
+    // own. One line names yesterday's watch time next to the usual-day average, so a
+    // late night reads as bigger or smaller than your habit at a glance. Hidden until
+    // yesterday holds something. Hindi and Gujarati text, What's new and feature finder
+    // included.
+    var yestEl = $("statsYest");
+    if (yestEl) {
+      var ySecs = Math.floor(stats.days[dayKey(new Date(Date.now() - 86400000))] || 0);
+      var yShow = hasAny && ySecs > 0;
+      yestEl.hidden = !yShow; yestEl.textContent = "";
+      if (yShow) {
+        var ySum = 0, yN = 0;
+        Object.keys(stats.days).forEach(function (k) { var s2 = Math.floor(stats.days[k] || 0); if (s2 > 0) { ySum += s2; yN++; } });
+        var yAvg = yN > 1 ? Math.floor((ySum - ySecs) / (yN - 1)) : 0;
+        yestEl.textContent = T("Yesterday") + ": " + fmtWatch(ySecs) + (yAvg > 0 ? " \u00b7 " + T("usual day") + " " + fmtWatch(yAvg) : "");
+      }
+    }
     // Average watch per play (round 230 new 5): the totals say how much you watched and
     // the plays count how often, but the shape of a sitting - lots of short clips or a
     // few long watches - needed dividing one by the other. One line divides the total
@@ -17420,6 +17438,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Yesterday in Watch stats", "#statsYest"],
     ["Longest unwatched favourite", "#favStaleBtn"],
     ["More from this channel", "#infoChanMoreBtn"],
     ["Average watch per play", "#statsPerPlay"],
@@ -21595,6 +21614,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     uPaint();
   })();
 
+  Object.assign(TR_MSG, {
+    "Yesterday in Watch stats": ["वॉच आंकड़ों में कल", "વોચ આંકડામાં ગઈકાલ"],
+    "usual day": ["सामान्य दिन", "સામાન્ય દિવસ"]
+  });
+
   // Longest unwatched favourite (round 231 new 2): Surprise me picks a random favourite,
   // but the one worth rediscovering is usually the one you have not seen for the longest
   // time - and finding it meant reading every row. One chip under Favourites names that
@@ -24307,6 +24331,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Add the playing video to a playlist", "add playing now current video to playlist save collect organise picker", "#infoPlBtn"],
       ["More from this channel", "more from this channel same channel queue unwatched suggestions creator author like this playing video", "#infoChanMoreBtn"],
       ["Longest unwatched favourite", "longest unwatched favourite stale oldest not watched for a while rediscover star forgotten play", "#favStaleBtn"],
+      ["Yesterday in Watch stats", "yesterday watch stats time watched last night day before compare usual average day", "#statsYest"],
       ["Skip buttons in the mini player", "mini player skip back forward 10 seconds seek floating docked rewind hop", "#miniRew"],
       ["Find in lyrics", "find search lyrics words line song locate match jump next enter", "#lyrFindQ"],
       ["Snooze all in Watch later", "snooze all watch later park hide backlog every video one day wake undo", "#laterSnoozeAllBtn"],
