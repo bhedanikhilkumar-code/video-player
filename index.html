@@ -2418,6 +2418,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterWakeBtn" type="button" hidden>⏰ Wake all</button><button class="chip" id="laterSnoozeAllBtn" type="button" hidden>😴 Snooze all</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterSortAzBtn" type="button">Sort A to Z</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
+      <p class="hint" id="laterOldLine" role="status" hidden></p>
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favQueueUnwBtn" type="button">➕ Queue unwatched</button><button class="chip" id="favShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="favUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="favClrWBtn" type="button">Clear watched</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button><button class="chip" id="favSortAzBtn" type="button">Sort A to Z</button><button class="chip" id="favClearBtn" type="button">Clear</button></span></div>
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
@@ -5045,6 +5046,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   renderLib = function () { baseRenderLibHF(); histFinRender(); };
   (window.__relang = window.__relang || []).push(histFinRender);
   histFinRender();
+
+  // Oldest parked in Watch later (round 230 new 2): every row carries the date it was
+  // parked, but answering "what has waited longest?" in a long backlog meant scanning
+  // fifty dates. One line under the card names the oldest un-snoozed video and how long
+  // ago it was parked, so the most-stale save is one glance; snoozed videos are parked
+  // on purpose, so they do not count. It hides while fewer than two videos wait (one
+  // row shows its own date) and follows adds, removes, Wake all and Undo through the
+  // shared render. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Oldest parked": ["सबसे पुराना पार्क किया", "સૌથી જૂનું પાર્ક કરેલું"],
+    "Oldest parked in Watch later": ["बाद में देखें में सबसे पुराना", "પછી જુઓમાં સૌથી જૂનું"]
+  });
+  var laterOldLine = $("laterOldLine");
+  function laterOldRender() {
+    if (!laterOldLine) return;
+    var items = lib.later.filter(function (x) { return x && !laterSnoozed(x); });
+    var old = null;
+    items.forEach(function (x) { if (typeof x.ts === "number" && x.ts > 0 && (!old || x.ts < old.ts)) old = x; });
+    laterOldLine.hidden = !(items.length >= 2 && old);
+    if (!old || items.length < 2) { laterOldLine.textContent = ""; return; }
+    var d = Math.floor((Date.now() - old.ts) / 86400000);
+    var age = d <= 0 ? T("today") : d === 1 ? T("yesterday") : d + T(" days ago");
+    laterOldLine.textContent = T("Oldest parked") + ": " + (old.title || titleFor(old.id) || ("Video " + old.id)) + " · " + age;
+  }
+  var baseRenderLibLO = renderLib;
+  renderLib = function () { baseRenderLibLO(); laterOldRender(); };
+  (window.__relang = window.__relang || []).push(laterOldRender);
+  laterOldRender();
 
   // Round 219 new 3 (Copy the download queue) strings live here inside the main app
   // closure - the download queue's own script block cannot see TR_MSG.
@@ -17302,6 +17331,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Oldest parked in Watch later", "#laterOldLine"],
     ["Finished count in history", "#histFinLine"],
     ["App data size", "#dataSize"],
     ["Reset look and feel", "#resetLookBtn"],
@@ -24022,6 +24052,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Oldest parked in Watch later", "oldest parked watch later longest waiting stale backlog saved date ago forgot", "#laterOldLine"],
       ["Finished count in history", "finished count history how many watched done seen through completed split list", "#histFinLine"],
       ["Sleep timer from the page link", "sleep timer link url sleep=45 bookmark shortcut start timer on open home screen", "#ctl-sleep"],
       ["Count down only while playing", "sleep timer pause hold only while playing paused video does not count down phone call", "#sleepPlayOnly"],
