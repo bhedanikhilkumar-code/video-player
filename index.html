@@ -12678,6 +12678,30 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
           savePlaylists(); renderPlaylists();
         }, T("Copy removed"));
       });
+      // Sort a playlist by rating (round 254 new 5): a playlist could be sorted by
+      // title and by length, but not by the stars you gave - so a mixed songs or
+      // course list could not put the loved ones first without rebuilding it. One
+      // chip by Make a copy orders the list best-rated first (ties and unrated keep
+      // their order, unrated at the end); the usual Undo takes it back. Hindi and
+      // Gujarati text, What's new and feature finder included.
+      Object.assign(TR_MSG, {
+        "By rating": ["\u0930\u0947\u091f\u093f\u0902\u0917 \u0938\u0947", "\u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97\u0aa5\u0ac0"],
+        "Playlist sorted: best rated first": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u094d\u0930\u092e\u093f\u0924: \u0938\u092c\u0938\u0947 \u0905\u091a\u094d\u091b\u0947 \u0930\u0947\u091f\u0947\u0921 \u092a\u0939\u0932\u0947", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f \u0a97\u0acb\u0aa0\u0ab5\u0abe\u0a88: \u0ab8\u0acc\u0aa5\u0ac0 \u0ab8\u0abe\u0ab0\u0abe \u0ab0\u0ac7\u0a9f\u0ac7\u0aa1 \u0aaa\u0ab9\u0ac7\u0ab2\u0abe"],
+        "Rate at least 2 videos in this playlist first.": ["\u092a\u0939\u0932\u0947 \u0907\u0938 \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u0947 \u0915\u092e \u0938\u0947 \u0915\u092e 2 \u0935\u0940\u0921\u093f\u092f\u094b \u0930\u0947\u091f \u0915\u0930\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0a86 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0abe \u0a93\u0a9b\u0abe\u0aae\u0abe\u0a82 \u0a93\u0a9b\u0abe 2 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0ab0\u0ac7\u0a9f \u0a95\u0ab0\u0acb."],
+        "Add at least 2 videos to this playlist first.": ["\u092a\u0939\u0932\u0947 \u0907\u0938 \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u092e\u0947\u0902 \u0915\u092e \u0938\u0947 \u0915\u092e 2 \u0935\u0940\u0921\u093f\u092f\u094b \u091c\u094b\u0921\u093c\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0a86 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aae\u0abe\u0a82 \u0a93\u0a9b\u0abe\u0aae\u0abe\u0a82 \u0a93\u0a9b\u0abe 2 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a89\u0aae\u0ac7\u0ab0\u0acb."]
+      });
+      btn(T("By rating"), "", function () {
+        if (pl.items.length < 2) { plSay(T("Add at least 2 videos to this playlist first.")); return; }
+        var rated254 = [], unrated254 = [];
+        pl.items.forEach(function (x) { if (vpRateOf(x.id) > 0) rated254.push(x); else unrated254.push(x); });
+        if (rated254.length < 2) { plSay(T("Rate at least 2 videos in this playlist first.")); return; }
+        var snap254 = pl.items.slice();
+        rated254.sort(function (a, b) { return vpRateOf(b.id) - vpRateOf(a.id); });
+        pl.items = rated254.concat(unrated254);
+        savePlaylists(); renderPlaylists();
+        plSay(T("Playlist sorted: best rated first") + " \"" + pl.name + "\".");
+        toastUndo(T("Playlist sorted: best rated first") + " " + pl.name, function () { pl.items = snap254; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
+      });
       btn(T("Export"), "", function () {
         var data = { app: "hd-video-player", type: "playlist", version: 1, exportedAt: new Date().toISOString(),
           name: pl.name, items: pl.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) };
@@ -18184,14 +18208,14 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   Object.assign(TR_MSG, {
     "Sort queue by rating": ["\u0915\u0924\u093e\u0930 \u0930\u0947\u091f\u093f\u0902\u0917 \u0938\u0947 \u0915\u094d\u0930\u092e\u093f\u0924 \u0915\u0930\u0947\u0902", "\u0a95\u0aa4\u0abe\u0ab0 \u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97\u0aa5\u0ac0 \u0a97\u0acb\u0aa5\u0ab5\u0acb"],
     "Sort favourites by most played": ["\u092a\u0938\u0902\u0926\u0940\u0926\u093e \u0938\u092c\u0938\u0947 \u091c\u093c\u094d\u092f\u093e\u0926\u093e \u091a\u0932\u0947 \u0915\u0947 \u0939\u093f\u0938\u093e\u092c \u0938\u0947 \u0915\u094d\u0930\u092e\u093f\u0924 \u0915\u0930\u0947\u0902", "\u0aaa\u0ab8\u0a82\u0aa6\u0ac0\u0aa6\u0abe \u0ab8\u0acc\u0aa5\u0ac0 \u0ab5\u0aa7\u0ac1 \u0ab5\u0a97\u0ab0\u0ac7\u0ab2\u0abe \u0aaa\u0acd\u0ab0\u0aae\u0abe\u0aa3\u0ac7 \u0a97\u0acb\u0aa5\u0ab5\u0acb"],
-    "Reverse a playlist's order": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u093e \u0915\u094d\u0930\u092e \u0909\u0932\u091f\u0947\u0902", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0acb \u0a95\u0acd\u0ab0\u0aae \u0a89\u0ab2\u0a9f\u0abe\u0ab5\u0acb"]
+    "Sort a playlist by rating": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u094b \u0930\u0947\u091f\u093f\u0902\u0917 \u0938\u0947 \u0915\u094d\u0930\u092e \u092e\u0947\u0902 \u0932\u0917\u093e\u090f\u0902", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0ac7 \u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97\u0aa5\u0ac0 \u0a97\u0acb\u0aa0\u0ab5\u0acb"]
   });
   var WNEW = [
     ["Queue today", "#histTodayBtn"],
     ["Clear today", "#histClrTodayBtn"],
     ["Sort queue by rating", "#sortRateQueueBtn"],
     ["Sort favourites by most played", "#favSortPlaysBtn"],
-    ["Reverse a playlist's order", "#lhPlaylists"],
+    ["Sort a playlist by rating", "#lhPlaylists"],
     ["Find a playlist", "#plFilterIn"],
     ["Make a copy of a playlist", "#lhPlaylists"],
     ["Sort Continue watching", "#contSortBtn"],
@@ -29041,7 +29065,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Clear today", "clear today history remove only todays entries recently watched cleanup keep older", "#histClrTodayBtn"],
       ["Sort queue by rating", "sort queue by rating stars best rated first liked order stars queue order", "#sortRateQueueBtn"],
       ["Sort favourites by most played", "sort favourites most played play count real score order popular replay", "#favSortPlaysBtn"],
-      ["Reverse a playlist's order", "reverse playlist order flip videos backwards last first saved order undo", "#lhPlaylists"],
+      ["Sort a playlist by rating", "sort playlist by rating stars best rated first liked order stars playlist order undo", "#lhPlaylists"],
       ["Find a playlist", "find a playlist filter search saved playlists by name narrow list many playlists scroll", "#plFilterIn"],
       ["Make a copy of a playlist", "make a copy duplicate playlist clone variation season two gym version same videos new name", "#lhPlaylists"],
       ["Sort Continue watching", "sort continue watching order newest almost done just started a to z pick what to finish first resume list", "#contSortBtn"],
