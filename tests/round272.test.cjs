@@ -20,3 +20,13 @@ console.log('round272 fix2 ok');
 assert.ok(html.includes('function put(arr) { var o = cleanR271(prefs.r271); o.block = cleanR271({ block: arr }).block; prefs.r271 = o; savePrefs(); }'));
 assert.ok(!html.includes('prefs.r271 = cleanR271({ block: arr })'));
 console.log('round272 fix3 ok');
+// New 1: Favourites feed pick rule (least recently played favourite, never-played first, not queued, not playing).
+{
+  const vm = require('node:vm'); const a = html.indexOf('function qFavPeek272()'); const b = html.indexOf('function qFeedPull()', a);
+  const ctx = vm.createContext({ prefs: { r271: { favFeed: true } }, curId: 'cccccccccc1', lib: { favs: [{ id: 'aaaaaaaaaa1' }, { id: 'bbbbbbbbbb1' }, { id: 'cccccccccc1' }, { id: 'dddddddddd1' }], hist: [{ id: 'bbbbbbbbbb1' }, { id: 'aaaaaaaaaa1' }], queue: [] }, findIn(l, id) { return l.findIndex(x => x.id === id); } });
+  vm.runInContext(html.slice(a, b), ctx);
+  assert.equal(ctx.qFavPeek272(), 100003); // d: never played
+  ctx.lib.queue.push({ id: 'dddddddddd1' }); assert.equal(ctx.qFavPeek272(), 100000); // a: oldest in history (index 1)
+  ctx.prefs.r271.favFeed = false; assert.equal(ctx.qFavPeek272(), -1);
+}
+console.log('round272 new1 ok');

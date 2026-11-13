@@ -9256,11 +9256,33 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   (window.__relang = window.__relang || []).push(qFeedRender);
   qFeedRender();
+  // Favourites feed button (round 272 new 1), next to the Watch later feed button.
+  Object.assign(TR_MSG, {
+    "Favourites feed": ["पसंदीदा फ़ीड", "મનપસંદ ફીડ"],
+    "When the queue runs out, the favourite you have not played for the longest time plays next. It stays in Favourites.": ["कतार खत्म होते ही वह पसंदीदा चलता है जो सबसे लंबे समय से नहीं चला. वह पसंदीदा में ही रहता है.", "કતાર પૂરી થાય ત્યારે જે મનપસંદ સૌથી લાંબા સમયથી ચલાવ્યું નથી તે ચાલે છે. તે મનપસંદમાં જ રહે છે."],
+    "Next up from Favourites": ["पसंदीदा से अगला", "મનપસંદમાંથી આગળનું"]
+  });
+  var qFavBtn272 = null;
+  if (qFeedBtn && qFeedBtn.parentNode) {
+    qFavBtn272 = document.createElement("button"); qFavBtn272.type = "button"; qFavBtn272.className = qFeedBtn.className; qFavBtn272.id = "qFavFeedBtn272";
+    qFeedBtn.parentNode.insertBefore(qFavBtn272, qFeedBtn.nextSibling);
+    var favOn272 = function () { return !!(prefs.r271 && prefs.r271.favFeed === true); };
+    var favPaint272 = function () {
+      qFavBtn272.textContent = T("Favourites feed") + ": " + T(favOn272() ? "on" : "off");
+      qFavBtn272.setAttribute("aria-pressed", String(favOn272())); qFavBtn272.classList.toggle("active", favOn272());
+      qFavBtn272.setAttribute("aria-label", T("Favourites feed") + " - " + T("When the queue runs out, the favourite you have not played for the longest time plays next. It stays in Favourites."));
+    };
+    qFavBtn272.addEventListener("click", function () {
+      var o = cleanR271(prefs.r271); o.favFeed = !favOn272(); prefs.r271 = o; savePrefs(); favPaint272();
+      toast(T("Favourites feed") + ": " + T(o.favFeed ? "on" : "off"));
+    });
+    (window.__relang = window.__relang || []).push(favPaint272); favPaint272();
+  }
   // Index of the first pullable Watch later video, or -1: feed off, none saved, or every
   // row watched, snoozed, already queued, or the queue full.
   function qFeedPeek() {
-    if (prefs.laterFeed !== true) return -1;
     if (lib.queue.length >= 50) return -1;
+    if (prefs.laterFeed !== true) return qFavPeek272();
     for (var i = 0; i < lib.later.length; i++) {
       var it = lib.later[i];
       if (laterSnoozed(it)) continue;
@@ -9269,11 +9291,28 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (findIn(lib.queue, it.id) >= 0) continue;
       return i;
     }
-    return -1;
+    return qFavPeek272();
+  }
+  // Round 272 new 1: Favourites feed - when the queue runs out (and Watch later has nothing to pull, or its
+  // feed is off) the favourite you have not played for the longest time (never played first) joins the
+  // queue and plays. The favourite stays in Favourites. Off by default; kept in prefs.r271.favFeed.
+  function qFavPeek272() {
+    if (!(prefs.r271 && prefs.r271.favFeed === true)) return -1;
+    var best = -1, bestAge = -1;
+    for (var i = 0; i < lib.favs.length; i++) {
+      var f = lib.favs[i]; if (!f || f.id === curId || findIn(lib.queue, f.id) >= 0) continue;
+      var hi = findIn(lib.hist, f.id), age = hi < 0 ? 1e9 : hi;
+      if (age > bestAge) { bestAge = age; best = i; }
+    }
+    return best < 0 ? -1 : 100000 + best;
   }
   function qFeedPull() {
     var fi = qFeedPeek();
     if (fi < 0) return false;
+    if (fi >= 100000) {
+      var fv = lib.favs[fi - 100000]; lib.queue.push({ id: fv.id, title: fv.title || "" });
+      saveLib(); renderLib(); toast(T("Next up from Favourites") + ": " + (fv.title || fv.id)); return true;
+    }
     var it = lib.later.splice(fi, 1)[0];
     lib.queue.push({ id: it.id, title: it.title || "" });
     saveLib(); renderLib();
@@ -30148,7 +30187,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // queue (never the one playing) with Undo. Names come from the video's public title service, so a video
   // whose channel is not known yet is never skipped.
   function cleanR271(o) {
-    var out = { block: [], words: [] };
+    var out = { block: [], words: [], favFeed: false };
+    if (o && typeof o === "object" && !Array.isArray(o) && o.favFeed === true) out.favFeed = true;
     if (o && typeof o === "object" && !Array.isArray(o) && Array.isArray(o.words)) out.words = cleanWords271(o.words);
     if (o && typeof o === "object" && !Array.isArray(o) && Array.isArray(o.block)) o.block.forEach(function (n) {
       if (typeof n !== "string") return; n = n.replace(/\s+/g, " ").trim().slice(0, 60);
@@ -30329,6 +30369,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     } catch (e) {}
   }, 500);
   WNEW.unshift(["Skip by title words","#wordCard271"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  WNEW.unshift(["Favourites feed","#qFavFeedBtn272"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 })();
 </script>
 <script>
@@ -33026,6 +33067,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Finish by", "finish by clock time deadline speed needed how fast watch before time left catch up end at", "#finishCard269"],
       ["Ambient sounds", "ambient sound white pink brown noise rain ocean sleep focus study relax background masking tinnitus calm", "#ambCard270"],
       ["Blocked channels", "block channel skip hide mute creator never play queue next unwanted", "#blockCard271"],
+      ["Favourites feed", "favourites feed queue ends keep playing endless autoplay radio next favourite never played longest unplayed", "#qFavFeedBtn272"],
       ["Skip by title words", "skip title words keyword filter live trailer reaction shorts unwanted queue next block", "#wordCard271"],
       ["Play range", "start end trim play only part of video skip intro outro cut limit section", "#rangeCard268"],
       ["Eye rest", "eye break rest 20-20-20 pause look away tired eyes health reminder", "#eyeCard268"],
