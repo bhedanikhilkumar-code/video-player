@@ -18008,6 +18008,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Library words", "#wordsCard"],
     ["Rediscover", "#rediscoverCard"],
     ["Weekly plan", "#weekPlanCard"],
     ["Video tags", "#tagsCard"],
@@ -18017,7 +18018,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Mix builder", "#mixCard"],
     ["Unavailable video check", "#deadCard"],
     ["Restore points", "#restoreCard"],
-    ["Import preview", "#libImport"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24440,6 +24440,44 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var oldRL5=renderLib;renderLib=function(){oldRL5();if(card.open&&!document.activeElement.closest('#rediscoverCard'))paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Library words (round 245 new 5): with a few hundred saved videos you remember a word ("lofi",
+  // "lecture", "live") more than a title. This card counts the words that appear in the titles of
+  // your saved videos (queue, favourites, Watch later, playlists and history, each video counted once),
+  // ignores short and common filler words, and shows the top 15 that appear at least twice as chips.
+  // Tap a word to list the videos with it; then Queue them (up to 50, only those not queued) or save them as a playlist.
+  Object.assign(TR_MSG, {
+    "Library words": ["लाइब्रेरी शब्द", "લાઇબ્રેરી શબ્દો"],
+    "The words your saved video titles use most. Tap one to see those videos.": ["आपके सेव वीडियो के टाइटल में सबसे ज़्यादा आने वाले शब्द. किसी पर टैप करके वे वीडियो देखें.", "તમારા સેવ વીડિયોના શીર્ષકમાં સૌથી વધુ આવતા શબ્દો. કોઈ પર ટેપ કરી તે વીડિયો જુઓ."],
+    "Not enough repeated words yet.": ["अभी दोहराए गए शब्द काफ़ी नहीं हैं.", "હજી પૂરતા પુનરાવર્તિત શબ્દો નથી."],
+    "Queue these": ["ये कतार में", "આ કતારમાં"],
+    "Words playlist saved:": ["शब्द वाली प्लेलिस्ट सेव:", "શબ્દવાળી પ્લેલિસ્ટ સેવ:"],
+    "Added to the queue:": ["कतार में जुड़ा:", "કતારમાં ઉમેર્યા:"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='wordsCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div id="lwChips" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div><div id="lwList"></div><div class="row" id="lwAct" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div><p class="hint" id="lwMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var STOP={the:1,and:1,for:1,with:1,from:1,you:1,your:1,this:1,that:1,video:1,official:1,full:1,new:1,how:1,what:1,are:1,not:1,but:1,all:1,out:1,part:1,hd:1,feat:1,ft:1,episode:1,vol:1};
+  var sel=null;
+  function words(t){return String(t||'').toLowerCase().split(/[^a-z0-9\u0900-\u0dff]+/).filter(function(w,i,a){return w.length>=3&&!STOP[w]&&!/^[0-9]+$/.test(w)&&a.indexOf(w)===i;});}
+  function vids(){var seen={},out=[];function add(x){if(!validItem(x)||seen[x.id]||!x.title)return;seen[x.id]=1;out.push({id:x.id,title:x.title});}
+    lib.queue.forEach(add);lib.favs.forEach(add);lib.later.forEach(add);playlists.forEach(function(p){(p.items||[]).forEach(add);});lib.hist.forEach(add);return out;}
+  function paint(){card.querySelector('summary').textContent=T('Library words');card.querySelector('.r239-desc').textContent=T('The words your saved video titles use most. Tap one to see those videos.');
+    var vs=vids(),c={};vs.forEach(function(v){words(v.title).forEach(function(w){c[w]=(c[w]||0)+1;});});
+    var names=Object.keys(c).filter(function(w){return c[w]>=2;}).sort(function(a,b){return c[b]-c[a]||(a<b?-1:1);}).slice(0,15);
+    var box=$('lwChips');box.textContent='';if(sel&&names.indexOf(sel)<0)sel=null;
+    if(!names.length){var e=document.createElement('p');e.className='hint';e.textContent=T('Not enough repeated words yet.');box.appendChild(e);}
+    names.forEach(function(w){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=w+' ('+c[w]+')';b.setAttribute('aria-pressed',String(sel===w));b.addEventListener('click',function(){sel=sel===w?null:w;paint();});box.appendChild(b);});
+    var L=$('lwList'),A=$('lwAct');L.textContent='';A.textContent='';if(!sel)return;
+    var m=vs.filter(function(v){return words(v.title).indexOf(sel)>=0;});
+    m.slice(0,30).forEach(function(v){var p=document.createElement('p');p.className='hint';p.style.margin='3px 0';p.textContent=v.title;L.appendChild(p);});
+    function ab(t,fn){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T(t);b.addEventListener('click',fn);A.appendChild(b);}
+    ab('Queue these',function(){var n=0;m.forEach(function(v){if(findIn(lib.queue,v.id)<0&&lib.queue.length<50){lib.queue.push({id:v.id,title:v.title});n++;}});saveLib();renderLib();$('lwMsg').textContent=T('Added to the queue:')+' '+n;});
+    ab('Save as playlist',function(){if(playlists.length>=PL_MAX){$('lwMsg').textContent=T('Playlist list is full (30). Delete one first.');return;}var nm=sel,k=2;while(playlists.some(function(p){return p.name.toLowerCase()===nm.toLowerCase();}))nm=sel+' '+(k++);playlists.push({name:nm,items:m.slice(0,50).map(function(v){return {id:v.id,title:v.title};})});savePlaylists();renderPlaylists();$('lwMsg').textContent=T('Words playlist saved:')+' '+nm;});}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRL6=renderLib;renderLib=function(){oldRL6();if(card.open&&!document.activeElement.closest('#wordsCard'))paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -26998,6 +27036,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Library words", "library words keyword title common words tags topics cloud find group lofi lecture songs tap word queue playlist", "#wordsCard"],
       ["Rediscover", "rediscover forgotten favourites not played old months ago stale oldest unplayed bring back resurface", "#rediscoverCard"],
       ["Weekly plan", "weekly plan schedule weekday playlist monday study routine habit today plan calendar assign", "#weekPlanCard"],
       ["Video tags", "video tags labels tag words group favourites queue watch later workout exam category organise filter play tag", "#tagsCard"],
