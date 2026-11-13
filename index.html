@@ -2153,7 +2153,7 @@ setTimeout(done,3000);})();
         <div id="dlSubs"></div>
       </div>
       <div id="dlQWrap" hidden>
-        <div class="lib-head"><h3 id="lhDlQ">Download queue</h3><button class="chip" id="dlQRetry" type="button" hidden>Retry failed</button><button class="chip" id="dlQClearFin" type="button" hidden>Clear finished</button><button class="chip" id="dlQCopyBtn" type="button" hidden>Copy list</button><button class="chip" id="dlQClear" type="button">Clear</button></div>
+        <div class="lib-head"><h3 id="lhDlQ">Download queue</h3><button class="chip" id="dlQRetry" type="button" hidden>Retry failed</button><button class="chip" id="dlQClearFin" type="button" hidden>Clear finished</button><button class="chip" id="dlQCopyBtn" type="button" hidden>Copy list</button><button class="chip" id="dlQTxtBtn" type="button" hidden>Save as text file</button><button class="chip" id="dlQClear" type="button">Clear</button></div>
         <ul class="lib-list" id="dlQ"></ul>
         <p class="hint">Items download one after another. Your browser may ask once to allow multiple downloads. Each finished file also gets a Save link (kept for 15 minutes).</p>
       </div>
@@ -16047,6 +16047,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Save the download queue as text", "#dlQTxtBtn"],
     ["Copy link from the mini player", "#miniCopy"],
     ["Clear favourites", "#favClearBtn"],
     ["Shuffle play Recently watched", "#histShufBtn"],
@@ -16063,7 +16064,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Clear watched favourites", "#favClrWBtn"],
     ["Copy the continue watching list", "#contCopyBtn"],
     ["Only unwatched in history", "#histUnwBtn"],
-    ["Only unwatched favourites", "#favUnwBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -20529,6 +20529,40 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   (window.__relang = window.__relang || []).push(qCopyRender);
   qCopyRender();
+
+  // Save the download queue as a text file (round 222 new 5): the live queue could be
+  // copied to the clipboard, but keeping a waiting batch as a file (or moving it to a
+  // machine whose clipboard you cannot reach) meant pasting somewhere first. One chip,
+  // shown only while the queue holds something, saves the same numbered list - title, MP3
+  // marker and status, then the link - straight to a video-player-downloads.txt download,
+  // the same etiquette as the Watch later and notes text saves. Hindi and Gujarati text,
+  // What's new (capped) and feature finder included.
+  Object.assign(TR_MSG, {
+    "Save the download queue as a text file": ["\u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0924\u093e\u0930 \u091f\u0947\u0915\u094d\u0938\u094d\u091f \u092b\u093c\u093e\u0907\u0932 \u092e\u0947\u0902 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902", "\u0aa1\u0abe\u0a89\u0aa8\u0ab2\u0acb\u0aa1 \u0a95\u0aa4\u0abe\u0ab0 \u0a9f\u0ac7\u0a95\u0acd\u0ab8\u0acd\u0a9f \u0aab\u0abe\u0a87\u0ab2\u0aae\u0abe\u0a82 \u0ab8\u0abe\u0a9a\u0ab5\u0acb"],
+    "Download queue saved as a text file": ["\u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0924\u093e\u0930 \u091f\u0947\u0915\u094d\u0938\u094d\u091f \u092b\u093c\u093e\u0907\u0932 \u092e\u0947\u0902 \u0938\u0947\u0935 \u0939\u0941\u0908", "\u0aa1\u0abe\u0a89\u0aa8\u0ab2\u0acb\u0aa1 \u0a95\u0aa4\u0abe\u0ab0 \u0a9f\u0ac7\u0a95\u0acd\u0ab8\u0acd\u0a9f \u0aab\u0abe\u0a87\u0ab2\u0aae\u0abe\u0a82 \u0ab8\u0abe\u0a9a\u0ab5\u0abe\u0a88"],
+    "Save the download queue as text": ["\u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0915\u0924\u093e\u0930 \u091f\u0947\u0915\u094d\u0938\u094d\u091f \u092e\u0947\u0902 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902", "\u0aa1\u0abe\u0a89\u0aa8\u0ab2\u0acb\u0aa1 \u0a95\u0aa4\u0abe\u0ab0 \u0a9f\u0ac7\u0a95\u0acd\u0ab8\u0acd\u0a9f\u0aae\u0abe\u0a82 \u0ab8\u0abe\u0a9a\u0ab5\u0acb"]
+  });
+  var qTxtBtn = $("dlQTxtBtn");
+  function qTxtRender() { if (qTxtBtn) { qTxtBtn.hidden = !Q.length; qTxtBtn.textContent = T("Save as text file"); qTxtBtn.setAttribute("aria-label", T("Save the download queue as a text file")); } }
+  if (qTxtBtn) qTxtBtn.addEventListener("click", function () {
+    if (!Q.length) { showErr(T("Nothing in the download queue yet.")); return; }
+    var text = Q.map(function (it, i) {
+      var tags = [];
+      if (it.body && it.body.kind === "mp3") tags.push("MP3");
+      if (it.status === "waiting") tags.push(T("Waiting"));
+      else if (it.status === "running") tags.push(T("Downloading ") + (it.progress || 0) + "%");
+      else if (it.status === "done") tags.push(T("Done"));
+      else tags.push(T("Failed"));
+      return (i + 1) + ". " + (it.title || hostOf(it.body.url)) + (tags.length ? " (" + tags.join(", ") + ")" : "") + "\n" + it.body.url;
+    }).join("\n") + "\n";
+    try {
+      var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" })); a.download = "video-player-downloads.txt";
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      toast(T("Download queue saved as a text file"));
+    } catch (e) { toast(T("Could not copy. Try again.")); }
+  });
+  (window.__relang = window.__relang || []).push(qTxtRender);
+  qTxtRender();
   if (qRetryBtn) qRetryBtn.addEventListener("click", function () {
     var n = 0;
     Q.forEach(function (q) { if (q.status === "error") { q.status = "waiting"; q.err = ""; q.progress = 0; n++; } });
@@ -22616,6 +22650,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Save the download queue as text", "save download queue waiting batch links text file txt download keep move another device status", "#dlQTxtBtn"],
       ["Copy link from the mini player", "copy link url mini player floating docked share playing video youtu.be send friend", "#miniCopy"],
       ["Clear favourites", "clear all favourites remove every starred saved video fresh start undo wipe reset", "#favClearBtn"],
       ["Shuffle play Recently watched", "shuffle play history recently watched random mix replay evening songs start play", "#histShufBtn"],
