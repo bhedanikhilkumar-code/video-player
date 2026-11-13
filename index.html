@@ -2004,6 +2004,7 @@ setTimeout(done,3000);})();
           <div class="row" style="margin-top:10px" id="sleepVidsRow"><span class="label" id="sleepVidsLab">Stop after videos:</span><span class="chips" id="sleepVidsChips"></span></div>
           <div class="row" style="margin-top:10px" id="stillRow"><span class="label" id="stillLab">Still watching? after:</span><span class="chips" id="stillChips"></span></div>
           <div class="row" style="margin-top:10px;flex-wrap:nowrap;gap:8px" id="sleepAtRow"><label class="label" style="white-space:nowrap" for="sleepAtTime" id="sleepAtLab">Stop at clock time:</label><input id="sleepAtTime" type="time" value="23:00" style="width:112px;min-width:0"><button class="chip" id="sleepAtBtn" type="button">Set</button></div>
+          <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:8px" id="playAtRow"><button class="chip" id="playAtBtn" type="button">&#9200; Play at&hellip;</button><span class="label" id="playAtLabel" role="status"></span></div>
           <div class="row" style="margin-top:10px;flex-wrap:nowrap;gap:8px" id="premRow"><label class="label" style="white-space:nowrap" for="premTime" id="premLab">Premiere at clock time:</label><input id="premTime" type="time" value="20:00" style="width:112px;min-width:0"><button class="chip" id="premBtn" type="button">Set</button></div>
           <div class="row" style="margin-top:10px"><label for="sleepMinutes" id="sleepMinLab">Custom minutes</label><input id="sleepMinutes" type="number" min="1" max="720" value="20" style="width:90px"><button class="chip" id="sleepStart" type="button">Start timer</button></div>
           <div class="row" style="margin-top:10px"><button class="chip" id="sleepMore" type="button" hidden>Keep watching 10 more min</button> <button class="chip" id="sleepRepeat" type="button" hidden>Repeat</button> <button class="chip" id="sleepShrink" type="button" hidden>-10 min</button> <button class="chip" id="sleepExtend" type="button" hidden>+10 min</button></div>
@@ -18014,6 +18015,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Play at a clock time", "#playAtRow"],
     ["Playlist groups", "#plList"],
     ["Playlist default speed", "#plList"],
     ["Library words", "#wordsCard"],
@@ -18023,7 +18025,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Activity calendar", "#actCalCard"],
     ["Repeat titles", "#repeatCard"],
     ["Overlapping playlists", "#overlapCard"],
-    ["Mix builder", "#mixCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24644,6 +24645,64 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paintBar);
     paintBar();
   })();
+  // Play at... (round 246 new 3): the sleep timer stops playback at a time or after minutes, but
+  // nothing could START it - a 6 am bhajan, a study video at 5 pm, or a queue that begins when the
+  // break ends. The Play at chip in the Sleep timer card asks for a clock time (today, or tomorrow
+  // when it already passed), then plays the loaded video (or the queue's next one) at that moment
+  // and scrolls the player into view. The label shows the time left and the chip becomes Cancel;
+  // the page has to stay open, and the ask says so. One timer at a time, nothing is stored.
+  Object.assign(TR_MSG, {
+    "Play at a clock time": ["घड़ी के समय पर चलाएँ", "ઘડિયાળના સમયે ચલાવો"],
+    "Play at what time? (for example 18:30). The page must stay open.": ["किस समय चलाएँ? (जैसे 18:30). पेज खुला रहना चाहिए.", "કયા સમયે ચલાવવું? (જેમ કે 18:30). પેજ ખુલ્લું રહેવું જોઈએ."],
+    "Use HH:MM, like 18:30.": ["HH:MM लिखें, जैसे 18:30.", "HH:MM લખો, જેમ કે 18:30."],
+    "Plays at": ["चलेगा", "ચાલશે"],
+    "Cancel play at": ["Play at रद्द करें", "Play at રદ કરો"],
+    "Play at cancelled.": ["Play at रद्द हुआ.", "Play at રદ થયું."],
+    "Playing now - your Play at time came.": ["अभी चल रहा है - आपका Play at समय आ गया.", "હમણાં ચાલે છે - તમારો Play at સમય આવી ગયો."],
+    "Nothing to play - load a video or fill the queue first.": ["चलाने को कुछ नहीं - पहले वीडियो लोड करें या कतार भरें.", "ચલાવવા કંઈ નથી - પહેલા વીડિયો લોડ કરો કે કતાર ભરો."],
+    "in": ["में", "માં"]
+  });
+  (function () {
+    var btn = $("playAtBtn"), lab = $("playAtLabel"); if (!btn || !lab) return;
+    var timer = null, tick = null, target = 0;
+    function loc() { var l = document.documentElement.lang; return l === "hi" ? "hi-IN" : l === "gu" ? "gu-IN" : undefined; }
+    function paint() {
+      if (!timer) { btn.textContent = "\u23F0 " + T("Play at a clock time") + "\u2026"; lab.textContent = ""; return; }
+      btn.textContent = "\u2715 " + T("Cancel play at");
+      var left = Math.max(0, Math.round((target - Date.now()) / 60000));
+      var hh = Math.floor(left / 60), mm = left % 60;
+      lab.textContent = T("Plays at") + " " + new Date(target).toLocaleTimeString(loc(), { hour: "numeric", minute: "2-digit" }) +
+        " (" + T("in") + " " + (hh ? hh + " " + T("hr") + " " : "") + mm + " " + T("min") + ")";
+    }
+    function clearTimer(msg) {
+      if (timer) { clearTimeout(timer); timer = null; }
+      if (tick) { clearInterval(tick); tick = null; }
+      paint();
+      if (msg) toast(msg);
+    }
+    btn.addEventListener("click", async function () {
+      if (timer) { clearTimer(T("Play at cancelled.")); return; }
+      var a = await vpAsk(T("Play at what time? (for example 18:30). The page must stay open."), "");
+      if (a === null || a === undefined) return;
+      var m = String(a).trim().match(/^([01]?\d|2[0-3])[:.]([0-5]\d)$/);
+      if (!m) { toast(T("Use HH:MM, like 18:30.")); return; }
+      var d = new Date(); d.setHours(+m[1], +m[2], 0, 0);
+      if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1);
+      target = d.getTime();
+      timer = setTimeout(function () {
+        clearTimer();
+        if (curId) { send("playVideo"); }
+        else if (lib.queue.length) { playQueueAt(qPos >= 0 && qPos < lib.queue.length ? qPos : 0); }
+        else { toast(T("Nothing to play - load a video or fill the queue first.")); return; }
+        toast(T("Playing now - your Play at time came."));
+        if (frameBox && frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+      }, target - Date.now());
+      tick = setInterval(paint, 30000);
+      paint();
+    });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27202,6 +27261,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Play at a clock time", "play at clock time alarm start playback morning wake up schedule video queue begins later sleep timer card", "#playAtRow"],
       ["Playlist groups", "playlist groups group folder organise study music filter chip row above list file playlist under word tidy many playlists", "#plList"],
       ["Playlist default speed", "playlist default speed own rate per playlist study faster lectures music normal remember apply on play more menu", "#plList"],
       ["Library words", "library words keyword title common words tags topics cloud find group lofi lecture songs tap word queue playlist", "#wordsCard"],
