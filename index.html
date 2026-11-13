@@ -11850,6 +11850,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
 
+  // Round 216 fix: a paste longer than the Notes (600) or Lyrics (4000) limit was cut by the
+  // browser's maxlength with no word - a long song pasted into Lyrics just lost its ending.
+  // The paste now says so, with the limit.
+  Object.assign(TR_MSG, { "Pasted text was longer than the {max}-character limit - the end was cut off.": ["\u092a\u0947\u0938\u094d\u091f \u0915\u093f\u092f\u093e \u091f\u0947\u0915\u094d\u0938\u094d\u091f {max} \u0905\u0915\u094d\u0937\u0930\u094b\u0902 \u0915\u0940 \u0938\u0940\u092e\u093e \u0938\u0947 \u0932\u0902\u092c\u093e \u0925\u093e - \u0905\u0902\u0924 \u0915\u093e\u091f \u0926\u093f\u092f\u093e \u0917\u092f\u093e\u0964", "\u0aaa\u0ac7\u0ab8\u0acd\u0a9f \u0a95\u0ab0\u0ac7\u0ab2\u0acb \u0a9f\u0ac7\u0a95\u0acd\u0ab8\u0acd\u0a9f {max} \u0a85\u0a95\u0acd\u0ab7\u0ab0\u0acb\u0aa8\u0ac0 \u0aae\u0ab0\u0acd\u0aaf\u0abe\u0aa6\u0abe\u0aa5\u0ac0 \u0ab2\u0abe\u0a82\u0aac\u0acb \u0ab9\u0aa4\u0acb - \u0a85\u0a82\u0aa4 \u0a95\u0abe\u0aaa\u0ac0 \u0ab2\u0ac0\u0aa7\u0acb\u0964"] });
+  ["noteBox", "lyricsBox"].forEach(function (id) {
+    var box = $(id); if (!box) return;
+    box.addEventListener("paste", function (e) {
+      try {
+        var max = box.maxLength, cd = e.clipboardData, txt = cd ? cd.getData("text") : ""; if (!(max > 0) || !txt) return;
+        var room = max - (box.value.length - Math.abs(box.selectionEnd - box.selectionStart));
+        if (txt.length > room) toast(T("Pasted text was longer than the {max}-character limit - the end was cut off.").replace("{max}", max));
+      } catch (er) {}
+    });
+  });
   // Data Saver suggestion (round 215): many phones run with the system's Data Saver
   // always on, but the app's own Data saver (480p cap, no list thumbnails) sits in
   // Settings unnoticed. When the phone reports saveData, the app offers its matching
