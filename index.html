@@ -4653,6 +4653,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var snap = lib.later.slice(), dir = laterSortAzNext ? 1 : -1;
     var coll = (typeof Intl !== "undefined" && Intl.Collator) ? new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }) : null;
     named.sort(function (x, y) { var a = sortAzTitle(x), b = sortAzTitle(y); return dir * (coll ? coll.compare(a, b) : (a.toLowerCase() < b.toLowerCase() ? -1 : a.toLowerCase() > b.toLowerCase() ? 1 : 0)); });
+    // Round 228 fix: same conflict the favourites chip had - while the view-sort chip
+    // (Top rated / Shortest / A-Z / Oldest view) was on, the card drew that order over this
+    // physical one, so the sort the toast announced never showed. Reset the view sort to the
+    // manual order first; pinned and snoozed rows still float and sink as the card rules say.
+    if (typeof laterSort !== "undefined" && laterSort && laterSort.mode() !== "new") laterSort.set("new");
     lib.later = named.concat(unnamed); saveLib(); renderLib();
     toastUndo(dir === 1 ? T("Watch later sorted: A to Z") : T("Watch later sorted: Z to A"), function () { lib.later = snap; saveLib(); renderLib(); }, T("Watch later list restored"));
     laterSortAzNext = !laterSortAzNext; laterSortAzPaint();
@@ -5487,6 +5492,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     return {
       isAZ: function () { return mode === "az"; },
       mode: function () { return mode; },
+      set: function (m) { mode = (m === "az" || m === "rate" || m === "short" || m === "old") ? m : "new"; try { localStorage.setItem(key, mode); } catch (e) {} },
       toggle: function () { mode = mode === "new" ? "az" : (mode === "az" ? "rate" : (mode === "rate" ? "short" : (mode === "short" ? "old" : "new"))); try { localStorage.setItem(key, mode); } catch (e) {} },
       view: function (items) {
         if (mode === "new") return items;
