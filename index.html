@@ -2465,6 +2465,7 @@ setTimeout(done,3000);})();
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
       <p class="hint" id="favTime" role="status"></p>
+      <div class="row" id="listsCsv" style="margin-top:6px"></div>
       <p class="hint" id="favRateLine" role="status" hidden></p>
       <button class="chip" id="favStaleBtn" type="button" hidden></button>
       <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="histShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="histSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="histQueueBtn" type="button">Queue unfinished</button><button class="chip" id="histYestBtn" type="button">📅 Yesterday</button><button class="chip" id="histPlBtn" type="button">Save unfinished as playlist</button><button class="chip" id="histTrimBtn" type="button">Trim old history</button><button class="chip" id="histDoneBtn" type="button">Clear watched</button><button class="chip" id="histUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="histShortsBtn" type="button" aria-pressed="false">Hide shorts: off</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
@@ -17923,6 +17924,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Lists as CSV", "#listsCsvBtn"],
     ["Watch later overlap", "#laterOverlapBtn"],
     ["History as CSV", "#histCsvBtn"],
     ["Quick opens cleanup", "#histQuickBtn"],
@@ -23670,6 +23672,18 @@ toastUndo(T('Removed from Watch later:')+' '+gone,function(){lib.later=snap;save
 var mo=window.MutationObserver?new MutationObserver(function(){mo.disconnect();paint();attach();}):null;
 function attach(){if(!mo)return;['laterList','favList'].forEach(function(id){var e=$(id);if(e)mo.observe(e,{childList:true});});}
 attach();(window.__relang=window.__relang||[]).push(paint);paint();})();
+Object.assign(TR_MSG, {"Lists as CSV": ["लिस्ट CSV में", "લિસ્ટ CSV માં"], "No saved videos to export yet.": ["निर्यात के लिए अभी कोई सेव वीडियो नहीं", "નિકાસ માટે હજી કોઈ સાચવેલ વીડિયો નથી"], "Lists saved as CSV": ["लिस्ट CSV में सेव हुई", "લિસ્ટ CSV માં સચવાઈ"]});
+(function(){var row=$('listsCsv');if(!row)return;
+var b=document.createElement('button');b.type='button';b.className='chip';b.id='listsCsvBtn';row.appendChild(b);
+function paint(){b.textContent=T('Lists as CSV');}
+function q(v){v=String(v==null?'':v);if(/^[=+\-@\t\r]/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"';}
+b.addEventListener('click',function(){var rows=['list,title,link,saved_at'],n=0;
+[['favourites',lib.favs],['watch_later',lib.later],['queue',lib.queue]].forEach(function(p){p[1].forEach(function(x){n++;rows.push([p[0],q(x.title||x.id),q('https://youtu.be/'+x.id),q(x.ts?new Date(x.ts).toISOString():'')].join(','));});});
+if(!n){toast(T('No saved videos to export yet.'));return;}
+var blob=new Blob(['\ufeff'+rows.join('\r\n')+'\r\n'],{type:'text/csv;charset=utf-8'}),u=URL.createObjectURL(blob),a=document.createElement('a');
+a.href=u;a.download='video-player-lists.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u);},4000);
+toast(T('Lists saved as CSV'));});
+(window.__relang=window.__relang||[]).push(paint);paint();})();
 Object.assign(TR_MSG, {"Wind-down reminder": ["वाइंड-डाउन रिमाइंडर", "વાઇન્ડ-ડાઉન રિમાઇન્ડર"], "Wind-down reminder:": ["वाइंड-डाउन रिमाइंडर:", "વાઇન્ડ-ડાઉન રિમાઇન્ડર:"], "9 PM": ["रात 9 बजे", "રાતે 9"], "10 PM": ["रात 10 बजे", "રાતે 10"], "11 PM": ["रात 11 बजे", "રાતે 11"], "Winding down? A sleep timer can stop playback for you.": ["दिन ख़त्म हो रहा है? स्लीप टाइमर वीडियो अपने-आप रोक देगा.", "દિવસ પૂરો થાય છે? સ્લીપ ટાઇમર વીડિયો આપમેળે રોકી દેશે."], "Start 30-min timer": ["30 मिनट का टाइमर लगाएं", "30 મિનિટનો ટાઇમર લગાવો"], "Not now": ["अभी नहीं", "હજી નહીં"]});
 (function(){var card=$('ctl-sleep');if(!card)return;var row=document.createElement('div');row.className='row';row.id='windRow';row.style.marginTop='10px';var lab=document.createElement('span');lab.className='label';lab.id='windLab';var chips=document.createElement('span');chips.className='chips';chips.id='windChips';row.appendChild(lab);row.appendChild(chips);var at=$('sleepAtRow');card.insertBefore(row,at?at.nextSibling:null);
 var st=document.createElement('style');st.textContent='.wind-banner{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9995;width:min(430px,calc(100vw - 32px));padding:14px 16px;box-sizing:border-box;border:1px solid var(--hairline);border-radius:18px;background:var(--card);color:var(--ink);box-shadow:0 16px 50px #0005;text-align:center}.wind-banner[hidden]{display:none}.wind-banner p{margin:0 0 10px;font-size:15px}.wind-banner .row{justify-content:center}';document.head.appendChild(st);
@@ -26200,6 +26214,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Quick opens cleanup", "history clean quick opens accidental short glance seconds remove tapped by mistake", "#histQuickBtn"],
       ["History as CSV", "history csv spreadsheet excel export download sheet table", "#histCsvBtn"],
       ["Watch later overlap", "watch later favourites duplicate already saved overlap both lists clean remove", "#laterOverlapBtn"],
+      ["Lists as CSV", "favourites watch later queue csv spreadsheet excel export download", "#listsCsvBtn"],
       ["Scratch pad", "scratch pad quick note notepad free text ideas links jot down notes", "#scratchH"],
       ["Wind-down reminder", "wind down bedtime evening reminder sleep timer night stop playback habit", "#windRow"],
       ["This month's recap", "month recap summary 30 days monthly journal share watched busiest day copy text log", "#mrecapBtn"],
