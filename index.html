@@ -30435,7 +30435,50 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(qClearPaint273); qClearPaint273();
   }
   WNEW.unshift(["Clear queue","#qClearBtn273"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  // Now playing on the lock screen (round 273 new 2): on a phone, a playing local
+  // file already showed its name on the lock screen and in the notification shade,
+  // but a YouTube video showed nothing - the system player card stayed blank or
+  // kept the last app's title. The app now publishes the video's title, channel
+  // and thumbnail as Media Session metadata when a YouTube video loads (with two
+  // retries while the title request lands). Metadata only: no playback action
+  // handlers are set, so screen-off and background behaviour is exactly as
+  // before - this does not enable background YouTube playback. Nothing is saved.
+  // Hindi and Gujarati, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Now playing on the lock screen": ["लॉक स्क्रीन पर अब चल रहा है", "લૉક સ્ક્રીન પર હવે ચાલે છે"]
+  });
+  var msLast273 = "";
+  function msPaint273() {
+    if (!("mediaSession" in navigator) || typeof MediaMetadata !== "function") return;
+    try {
+      if (!curId) return;
+      var inf = (typeof infoCache === "object" && infoCache && infoCache[curId]) || {};
+      var qi = (qPos >= 0 && qPos < lib.queue.length && lib.queue[qPos] && lib.queue[qPos].id === curId) ? lib.queue[qPos] : null;
+      var title = inf.title || (qi && qi.title) || "";
+      if (!title) return;
+      var key = curId + "|" + title;
+      if (key === msLast273) return;
+      msLast273 = key;
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: title,
+        artist: inf.author || "",
+        album: "HD Video Player",
+        artwork: [
+          { src: "https://i.ytimg.com/vi/" + curId + "/hqdefault.jpg", sizes: "480x360", type: "image/jpeg" },
+          { src: "https://i.ytimg.com/vi/" + curId + "/mqdefault.jpg", sizes: "320x180", type: "image/jpeg" }
+        ]
+      });
+    } catch (e) {}
+  }
+  document.addEventListener("vp-video-loaded", function () {
+    msLast273 = "";
+    msPaint273();
+    setTimeout(msPaint273, 1500);
+    setTimeout(msPaint273, 5000);
+  });
+  WNEW.unshift(["Now playing on the lock screen","#player"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 })();
+
 
 </script>
 <script>
@@ -33133,6 +33176,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Finish by", "finish by clock time deadline speed needed how fast watch before time left catch up end at", "#finishCard269"],
       ["Ambient sounds", "ambient sound white pink brown noise rain ocean sleep focus study relax background masking tinnitus calm", "#ambCard270"],
       ["Blocked channels", "block channel skip hide mute creator never play queue next unwanted", "#blockCard271"],
+      ["Now playing on the lock screen", "lock screen notification media session now playing title channel thumbnail phone", "#player"],
       ["Clear queue", "clear empty remove whole queue all videos at once start fresh wipe", "#qClearBtn273"],
       ["Feed limit", "feed limit stop feeds after videos autoplay endless watch later favourites cap count", "#qFeedLimitBtn272"],
       ["Favourites feed", "favourites feed queue ends keep playing endless autoplay radio next favourite never played longest unplayed", "#qFavFeedBtn272"],
