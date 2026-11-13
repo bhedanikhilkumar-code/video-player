@@ -1915,6 +1915,7 @@ setTimeout(done,3000);})();
             <label class="label" for="vol"><span id="volLabT">Volume: </span><span id="volLabel">80%</span></label>
           </div>
           <input class="slider" id="vol" type="range" min="0" max="100" step="1" value="80">
+          <div class="row" id="volPreRow" style="margin-top:8px"><span class="label" id="volPreLab">One-tap volume</span><span class="chips" id="volPreChips"></span></div>
           <div class="row" id="muteBreakRow" role="group" aria-label="Mute for a while" style="margin-top:8px"><span class="label" id="muteBreakLab">Mute for</span><span class="chips" id="muteBreakChips"></span></div>
           <p class="hint" id="muteBreakHint">Mutes the sound and brings it back by itself after the time you pick - handy for a loud ad or intro. Tap the counting chip again to bring the sound back sooner.</p>
           <div class="row" id="nightVolRow" style="margin-top:8px"><span class="label" id="nightVolLab">Night volume</span><span class="chips" id="nightVolChips"></span></div>
@@ -6363,6 +6364,48 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     pvVolRec();
     if (window.__vpChVolNote) window.__vpChVolNote(v);
   });
+
+  /* One-tap volume (round 225): the slider is the exact control, but on a phone it is
+     fiddly when you just want half or full volume. Four chips set the volume in one tap,
+     through the slider's own input event so everything the slider does still happens
+     (saving, un-muting, per-video memory, night cap). The chips follow the slider and
+     every other volume change (fades, arrow keys, gestures), so one is highlighted only
+     while the volume really sits at its level. */
+  Object.assign(TR_MSG, {
+    "One-tap volume": ["एक टैप आवाज़", "એક ટૅપ અવાજ"],
+    "Set the volume to {n}%": ["आवाज़ {n}% करें", "અવાજ {n}% કરો"]
+  });
+  (function () {
+    var box = $("volPreChips"), lab = $("volPreLab");
+    if (!box) return;
+    function paintActive() {
+      Array.prototype.forEach.call(box.children, function (c) {
+        var on = Number(c.dataset.value) === Number(vol.value);
+        c.classList.toggle("active", on); c.setAttribute("aria-pressed", String(on));
+      });
+    }
+    function paintTexts() {
+      if (lab) lab.textContent = T("One-tap volume");
+      Array.prototype.forEach.call(box.children, function (c) {
+        c.setAttribute("aria-label", T("Set the volume to {n}%").replace("{n}", c.dataset.value));
+      });
+    }
+    [25, 50, 75, 100].forEach(function (v) {
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "chip"; b.dataset.value = String(v);
+      b.textContent = v + "%"; b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () {
+        vol.value = v;
+        vol.dispatchEvent(new Event("input", { bubbles: true }));
+        paintActive();
+      });
+      box.appendChild(b);
+    });
+    vol.addEventListener("input", paintActive);
+    if (window.MutationObserver && volLabel) new MutationObserver(paintActive).observe(volLabel, { childList: true, characterData: true, subtree: true });
+    (window.__relang = window.__relang || []).push(paintTexts);
+    paintTexts(); paintActive();
+  })();
 
   /* Night volume: between 10 pm and 7 am the sound is capped at the level picked here.
      The cap only limits what reaches the player, so the daytime volume stays saved. */
@@ -16491,6 +16534,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["One-tap volume", "#volPreChips"],
     ["Revert note edits", "#noteRevertBtn"],
     ["Copy note with link", "#noteShareBtn"],
     ["Note times to moments", "#noteToMarksBtn"],
@@ -16500,7 +16544,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Import moments from a file", "#markFileBtn"],
     ["Random moment", "#markRandBtn"],
     ["Shift all moments by 5 seconds", "#markShiftBackBtn"],
-    ["Clear all moments with Undo", "#markClearBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23082,6 +23125,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["One-tap volume", "one tap volume quick set half full loud 25 50 75 100 percent phone chips", "#volPreChips"],
       ["Revert note edits", "revert note edits undo mistake restore old text overwrite typed", "#noteRevertBtn"],
       ["Copy note with link", "copy note link title share paste chat youtu.be clipboard send", "#noteShareBtn"],
       ["Note times to moments", "note times moments save convert timestamps 1:23 bookmarks jump chorus study", "#noteToMarksBtn"],
