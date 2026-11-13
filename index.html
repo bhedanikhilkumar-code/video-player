@@ -2057,7 +2057,7 @@ setTimeout(done,3000);})();
           <textarea class="note-box" id="noteBox" maxlength="600" rows="4" disabled aria-labelledby="notesH"></textarea>
           <div class="note-meta"><span id="noteStatus" role="status"></span><span id="noteCount">0 / 600</span></div>
           <div class="marks-list" id="noteTimes"></div>
-          <div class="row"><button class="chip" id="noteTimeBtn" type="button" disabled>⏱ Add current time</button> <button class="chip vs-mic" id="noteMicBtn" type="button" aria-label="Speak your note" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button> <button class="chip" id="noteCopyBtn" type="button" disabled>📋 Copy note</button> <button class="chip" id="noteClearBtn" type="button" disabled>🗑 Clear note</button></div>
+          <div class="row"><button class="chip" id="noteTimeBtn" type="button" disabled>⏱ Add current time</button> <button class="chip vs-mic" id="noteMicBtn" type="button" aria-label="Speak your note" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button> <button class="chip" id="noteCopyBtn" type="button" disabled>📋 Copy note</button> <button class="chip" id="noteClearBtn" type="button" disabled>🗑 Clear note</button> <button class="chip" id="noteToMarksBtn" type="button" disabled>🔖 Times to moments</button></div>
           <p class="hint" id="notesHint">Write what you want to remember. Times like 1:23 in your note become buttons that jump there. Saved on this device, for each video.</p>
           <details class="note-find" id="noteFindBox">
             <summary id="noteFindSum">Find in all notes</summary>
@@ -15502,6 +15502,50 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
+  // Times to moments (round 224 new 3): a note's times (1:23) are tap-to-jump buttons, but
+  // they vanish with the note and are not in the Moments list, the Previous/Next/Random chips or
+  // the moments pills. One chip saves every time written in this video's note as a saved moment,
+  // named by the words after it, skips times that are already moments or past the end, respects
+  // the 30 limit, and offers one Undo.
+  Object.assign(TR_MSG, {
+    "🔖 Times to moments": ["🔖 समय को पल बनाएं", "🔖 સમયને ક્ષણ બનાવો"],
+    "No new times in this note to save as moments.": ["इस नोट में पल बनाने लायक नया समय नहीं है.", "આ નોંધમાં ક્ષણ બનાવવા જેવો નવો સમય નથી."],
+    "Moments added from the note: ": ["नोट से पल जोड़े: ", "નોંધમાંથી ક્ષણો ઉમેરી: "],
+    "Note times to moments": ["नोट के समय को पल बनाएं", "નોંધના સમયને ક્ષણ બનાવો"]
+  });
+  (function () {
+    var b = $("noteToMarksBtn"), nb = $("noteBox"); if (!b || !nb) return;
+    function paint() { b.textContent = T("🔖 Times to moments"); b.disabled = !curId || !nb.value.trim(); }
+    b.addEventListener("click", function () {
+      if (!curId) return;
+      noteFlush();
+      var id = curId, arr = marks[id] = marks[id] || [], have = {}, add = [], m, re = /(?:^|[^0-9:])((?:\d{1,2}:)?\d{1,2}:[0-5]\d)(?![0-9:])([^\n]*)/g, txt = nb.value, left = 30 - arr.length;
+      arr.forEach(function (x) { have[x.t] = 1; });
+      while ((m = re.exec(txt))) {
+        var p = m[1].split(":").map(Number), sec = p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + p[1];
+        if (have[sec] || (duration > 0 && sec >= duration)) continue;
+        if (add.length >= left) break;
+        have[sec] = 1;
+        add.push({ t: sec, name: m[2].replace(/^[\s\-\u2013:.,;)\]]+/, "").trim().slice(0, 40) || fmt(sec) });
+      }
+      if (!arr.length && !add.length) delete marks[id];
+      if (!add.length) { toast(T("No new times in this note to save as moments.")); return; }
+      add.forEach(function (x) { arr.push(x); });
+      arr.sort(function (a, c) { return a.t - c.t; });
+      marksSave(); renderMarks();
+      toastUndo(T("Moments added from the note: ") + add.length, function () {
+        var a2 = marks[id] || [], ts = {}; add.forEach(function (x) { ts[x.t] = x.name; });
+        marks[id] = a2.filter(function (x) { return !(x.t in ts && ts[x.t] === x.name); });
+        if (!marks[id].length) delete marks[id];
+        marksSave(); if (curId === id) renderMarks();
+      });
+    });
+    nb.addEventListener("input", paint);
+    (window.__relang = window.__relang || []).push(paint);
+    var rn0 = renderNotes; renderNotes = function () { var r = rn0.apply(this, arguments); paint(); return r; };
+    paint();
+  })();
+
   // Find in all notes: search every saved note and jump to the matching video.
   (function () {
     var inp = $("noteFindIn"), out = $("noteFindOut"); if (!inp || !out) return;
@@ -16379,6 +16423,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Note times to moments", "#noteToMarksBtn"],
     ["Import notes from a file", "#notesImportBtn"],
     ["Clear all notes with Undo", "#notesClearAllBtn"],
     ["Moments mark on lists", "#favList .moment-badge"],
@@ -16388,7 +16433,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Clear all moments with Undo", "#markClearBtn"],
     ["This month in Watch stats", "#statsMonth"],
     ["Save the download queue as text", "#dlQTxtBtn"],
-    ["Copy link from the mini player", "#miniCopy"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -22970,6 +23014,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Note times to moments", "note times moments save convert timestamps 1:23 bookmarks jump chorus study", "#noteToMarksBtn"],
       ["Import notes from a file", "import notes text file txt restore another phone load saved notes backup", "#notesImportBtn"],
       ["Clear all notes with Undo", "clear all notes delete wipe every note undo study session reset", "#notesClearAllBtn"],
       ["Moments mark on lists", "moments mark pill count lists rows library favourites watch later history queue bookmark saved moments at a glance", "#favList .moment-badge"],
