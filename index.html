@@ -19617,9 +19617,28 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var parts = [T("Queue") + " " + cnt(d.queue), T("Favourites") + " " + cnt(d.favourites || d.favs), T("Watch later") + " " + cnt(d.later), T("Playlists") + " " + cnt(d.playlists)];
     if (nMom) parts.push(T("Moments") + " " + nMom);
     if (nNotes) parts.push(T("Notes") + " " + nNotes);
+    // Round 230 fix 2: the checker counted queue, favourites, Watch later, playlists,
+    // moments and notes, then stopped - a backup holding history, watch stats, channels,
+    // ratings, lyrics or practice loops showed no sign of them, so "Check backup" could
+    // say "looks good" about a file missing exactly the part you cared about. Every
+    // section the export writes is now named with its count (stats has no rows to count,
+    // so a tick like Settings).
+    var objLen = function (o) { return o && typeof o === "object" && !Array.isArray(o) ? Object.keys(o).length : 0; };
+    if (cnt(d.history)) parts.push(T("History") + " " + cnt(d.history));
+    if (d.stats && typeof d.stats === "object" && ((d.stats.total > 0) || (d.stats.plays > 0))) parts.push(T("Watch stats") + " ✓");
+    if (cnt(d.channels)) parts.push(T("Channels") + " " + cnt(d.channels));
+    if (objLen(d.ratings)) parts.push(T("Ratings") + " " + objLen(d.ratings));
+    if (objLen(d.lyrics)) parts.push(T("Lyrics") + " " + objLen(d.lyrics));
+    if (objLen(d.practiceLoops)) parts.push(T("Practice loops") + " " + objLen(d.practiceLoops));
     parts.push(T("Settings") + " " + (d.settings ? "✓" : "✗"));
     return "✅ " + T("Backup from") + " " + (when || T("date unknown")) + " - " + parts.join(" · ") + ". " + T("Looks good - Import backup above merges it into this device.");
   }
+  Object.assign(TR_MSG, {
+    "Watch stats": ["वॉच स्टैट्स", "વૉચ સ્ટેટ્સ"],
+    "Channels": ["चैनल", "ચેનલો"],
+    "Ratings": ["रेटिंग", "રેટિંગ"],
+    "Practice loops": ["प्रैक्टिस लूप", "પ્રેક્ટિસ લૂપ"]
+  });
   window.__vpCheckBackup = backupCheckSummary;
   if ($("libCheck")) $("libCheck").addEventListener("click", function () { $("libCheckFile").click(); });
   if ($("libCheckFile")) $("libCheckFile").addEventListener("change", function () {
