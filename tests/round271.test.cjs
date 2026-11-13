@@ -18,3 +18,11 @@ function slice(from, to) { const a = html.indexOf(from); assert.ok(a >= 0, from 
   assert.equal(ctx.isBlocked271('Other', ['Blender']), false);
 }
 console.log('round271 new1 ok');
+// Fix 1: Tag videos, Weekly plan, Review desk and Today's list warn when storage is full.
+{
+  for (const v of ['tags', 'plan', 'rv', 'td']) {
+    assert.ok(html.includes("function save(){try{localStorage.setItem(KEY,JSON.stringify(" + v + "));}catch(e){if(typeof storageWarn==='function')storageWarn();}}"), v + ' save must warn');
+    assert.ok(!html.includes("JSON.stringify(" + v + "));}catch(e){}}"), v + ' must not swallow errors');
+  }
+}
+console.log('round271 fix1 ok');
