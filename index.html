@@ -33096,6 +33096,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.__vpWnew283 = function (name, sel) {
     try { WNEW.unshift([name, sel]); WNEW.length = Math.min(10, WNEW.length); wnewRender(); } catch (e) {}
   };
+  /* Round 284 fix 5: scripts outside this closure (the local view-mode IIFE) also read and
+     write the saved rotation - expose prefs and its saver the same way __vpWnew283 exposes
+     What's new, by reference, so both sides always see the same object. */
+  window.__vpPrefs = prefs;
+  window.__vpSavePrefs = savePrefs;
 })();
 
 
@@ -35205,7 +35210,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
      rotation in vp-lpview.v1 while the Rotate picture chips keep prefs.rot, so after a reload
      the chips could show 90 while the file played upright (verified live: identity transform
      with prefs.rot 90). The chips are the single saved angle; the view starts from it. */
-  if ([0, 90, 180, 270].indexOf(prefs.rot | 0) >= 0) st.rot = prefs.rot | 0;
+  var vpPrefs284 = window.__vpPrefs || { rot: 0 };
+  if ([0, 90, 180, 270].indexOf(vpPrefs284.rot | 0) >= 0) st.rot = vpPrefs284.rot | 0;
   function save() { try { localStorage.setItem(VK, JSON.stringify(st)); } catch (e) {} }
 
   var wrap = document.createElement("div"); wrap.id = "lpViewWrap";
@@ -35259,7 +35265,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   zr.value = st.zoom;
   function zShow() { zlv.textContent = zr.value + "%"; }
   zr.addEventListener("input", function () { st.zoom = Number(zr.value); save(); zShow(); apply(); });
-  rotBtn.addEventListener("click", function () { st.rot = (st.rot + 90) % 360; save(); apply(); prefs.rot = st.rot; if (typeof savePrefs === "function") savePrefs(); try { window.dispatchEvent(new CustomEvent("vp:rot", { detail: { from: "local" } })); } catch (e) {} });
+  rotBtn.addEventListener("click", function () { st.rot = (st.rot + 90) % 360; save(); apply(); vpPrefs284.rot = st.rot; if (typeof window.__vpSavePrefs === "function") window.__vpSavePrefs(); try { window.dispatchEvent(new CustomEvent("vp:rot", { detail: { from: "local" } })); } catch (e) {} });
   vid.addEventListener("loadedmetadata", apply);
   window.addEventListener("resize", function () { if (st.rot === 90 || st.rot === 270) apply(); });
   /* Round 284 fix 2b: the Rotate picture chips used to turn only the YouTube iframe while a
@@ -35267,7 +35273,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
      90 deg). The local view now follows the chips whenever a file is on screen. A stylesheet
      rule cannot do this because apply() sets an inline transform, which always wins. */
   window.addEventListener("vp:rot", function (ev) {
-    if (ev && ev.detail && ev.detail.from === "chips" && vid.src && !vid.hidden) { st.rot = prefs.rot | 0; save(); apply(); }
+    if (ev && ev.detail && ev.detail.from === "chips" && vid.src && !vid.hidden) { st.rot = vpPrefs284.rot | 0; save(); apply(); }
   });
 
   /* Round 284 new 4: portrait video suggestion - a phone video shot upright loads sideways
@@ -35293,7 +35299,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     rotSugNo.textContent = T("Not now");
     var portrait = vid.videoWidth > 0 && vid.videoHeight > vid.videoWidth;
     var key = vid.currentSrc || "";
-    rotSugShow(!!(portrait && (prefs.rot | 0) === 0 && !rotSugSeen[key]));
+    rotSugShow(!!(portrait && (vpPrefs284.rot | 0) === 0 && !rotSugSeen[key]));
   }
   rotSugYes.addEventListener("click", function () {
     rotSugSeen[vid.currentSrc || ""] = true; rotSugShow(false);
