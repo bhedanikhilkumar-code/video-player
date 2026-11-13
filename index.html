@@ -26558,6 +26558,60 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
 
+  // Weekly totals (round 256 new 4): Weekday rhythm shows WHICH days you watch on, but
+  // not HOW your weeks compare - whether this week is heavier or lighter than the ones
+  // before. This card adds up the saved daily totals (the last 100 days the app keeps)
+  // into Monday-start weeks and draws bars for the last 8 weeks, oldest first, with the
+  // best week named by its start date. Read-only, worked out on this device, honest when
+  // there is too little data, dates follow the app language. Hindi and Gujarati text,
+  // What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Weekly totals": ["\u0938\u093e\u092a\u094d\u0924\u093e\u0939\u093f\u0915 \u0915\u0941\u0932", "\u0ab8\u0abe\u0aaa\u0acd\u0aa4\u0abe\u0ab9\u0abf\u0a95 \u0a95\u0ac1\u0ab2"],
+    "How your weeks compare - watched total per week for the last 8 weeks, from this device.": ["\u0906\u092a\u0915\u0947 \u0939\u092b\u093c\u094d\u0924\u094b\u0902 \u0915\u0940 \u0924\u0941\u0932\u0928\u093e - \u092a\u093f\u091b\u0932\u0947 8 \u0939\u092b\u093c\u094d\u0924\u094b\u0902 \u0915\u093e \u092a\u094d\u0930\u0924\u093f-\u0939\u092b\u093c\u094d\u0924\u093e \u0915\u0941\u0932, \u0907\u0938\u0940 \u0921\u093f\u0935\u093e\u0907\u0938 \u0938\u0947.", "\u0aa4\u0aae\u0abe\u0ab0\u0abe \u0a85\u0aa0\u0ab5\u0abe\u0aa1\u0abf\u0aaf\u0abe\u0a93\u0aa8\u0ac0 \u0aa4\u0ac1\u0ab2\u0aa8\u0abe - \u0a9b\u0ac7\u0ab2\u0acd\u0ab2\u0abe 8 \u0a85\u0aa0\u0ab5\u0abe\u0aa1\u0abf\u0aaf\u0abe\u0aa8\u0ac1\u0a82 \u0aa6\u0ab0-\u0a85\u0aa0\u0ab5\u0abe\u0aa1\u0abf\u0aaf\u0ac1\u0a82 \u0a95\u0ac1\u0ab2, \u0a86 \u0aa1\u0abf\u0ab5\u0abe\u0a87\u0ab8 \u0aaa\u0ab0\u0aa5\u0ac0."],
+    "Best week:": ["\u0938\u092c\u0938\u0947 \u0905\u091a\u094d\u091b\u093e \u0939\u092b\u093c\u094d\u0924\u093e:", "\u0ab6\u0acd\u0ab0\u0ac7\u0ab7\u0acd\u0aa0 \u0a85\u0aa0\u0ab5\u0abe\u0aa1\u0abf\u0aaf\u0ac1\u0a82:"],
+    "week starting": ["\u0938\u0947 \u0936\u0941\u0930\u0942 \u0939\u092b\u093c\u0924\u093e", "\u0aa5\u0ac0 \u0ab6\u0ab0\u0ac2 \u0aa5\u0aa4\u0ac1\u0a82 \u0a85\u0aa0\u0ab5\u0abe\u0aa1\u0abf\u0aaf\u0ac1\u0a82"]
+  });
+  (function () {
+    var wd = $("weekdayCard"); if (!wd || !wd.parentNode) return;
+    var card = document.createElement("details"); card.id = "weeklyCard"; card.className = "r239-card";
+    card.innerHTML = '<summary></summary><p class="hint r239-desc"></p><div id="wkBars" role="img" style="display:flex;gap:6px;align-items:flex-end;height:84px;margin:10px 0 4px"></div><p class="hint" id="wkMain" role="status"></p>';
+    wd.parentNode.insertBefore(card, wd.nextSibling);
+    function mondayOf(y, m, d) { var dt = new Date(y, m, d); var off = (dt.getDay() + 6) % 7; dt.setDate(dt.getDate() - off); dt.setHours(0, 0, 0, 0); return dt; }
+    function paint() {
+      card.querySelector("summary").textContent = T("Weekly totals");
+      card.querySelector(".r239-desc").textContent = T("How your weeks compare - watched total per week for the last 8 weeks, from this device.");
+      var bars = $("wkBars"), main = $("wkMain"); bars.textContent = "";
+      var loc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : undefined;
+      var thisMon = mondayOf(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()).getTime();
+      var weeks = [], i, wk;
+      for (i = 7; i >= 0; i--) { wk = thisMon - i * 7 * 86400000; weeks.push({ start: wk, secs: 0 }); }
+      var idx = {}; weeks.forEach(function (w, j) { idx[w.start] = j; });
+      var days = 0;
+      Object.keys((stats && stats.days) || {}).forEach(function (k) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k), s = Number(stats.days[k]) || 0; if (!m || !(s > 0)) return;
+        var mon = mondayOf(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getTime();
+        if (mon in idx) { weeks[idx[mon]].secs += s; days++; }
+      });
+      var max = 0; weeks.forEach(function (w) { if (w.secs > max) max = w.secs; });
+      if (days < 2 || !(max > 0)) { bars.hidden = true; main.textContent = T("Not enough watching yet - watch on at least 2 different days to see a pattern."); return; }
+      bars.hidden = false;
+      var best = 0; weeks.forEach(function (w, j) { if (w.secs === max && best === 0) best = j; });
+      weeks.forEach(function (w, j) {
+        var nm = new Date(w.start).toLocaleDateString(loc, { day: "numeric", month: "short" });
+        var col = document.createElement("div"); col.style.cssText = "flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:10px;gap:3px";
+        var b = document.createElement("div"); b.style.cssText = "width:100%;border-radius:8px 8px 4px 4px;min-height:3px;background:" + (j === best ? "var(--teal,#14b8a6)" : "color-mix(in srgb, var(--teal,#14b8a6) 38%, transparent)") + ";height:" + Math.max(3, Math.round(w.secs / max * 56)) + "px";
+        b.title = T("week starting") + " " + nm + ": " + fmtWatch(w.secs);
+        var l = document.createElement("span"); l.textContent = nm; l.style.opacity = j === best ? "1" : ".7"; if (j === best) l.style.fontWeight = "700";
+        col.appendChild(b); col.appendChild(l); bars.appendChild(col);
+      });
+      bars.setAttribute("aria-label", weeks.map(function (w) { return new Date(w.start).toLocaleDateString(loc, { day: "numeric", month: "short" }) + " " + fmtWatch(w.secs); }).join(", "));
+      main.textContent = T("Best week:") + " " + T("week starting") + " " + new Date(weeks[best].start).toLocaleDateString(loc, { day: "numeric", month: "long" }) + " (" + fmtWatch(weeks[best].secs) + " " + T("total") + ")";
+    }
+    card.addEventListener("toggle", function () { if (card.open) paint(); });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+
   // Rate backlog (round 255 new 2): every rating tool in the app (sort, queue top rated,
   // let go of favourites) needs stars first, but rating meant opening each video. This card
   // sits under Favourites and lists up to 5 favourites or recently watched videos that have
