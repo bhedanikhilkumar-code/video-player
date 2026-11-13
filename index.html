@@ -30849,7 +30849,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   (function () {
     var vid = $("lpVideo"), btn = $("lpSilBtn"), hint = $("lpSilHint");
     if (!vid || !btn) return;
-    var analyser = null, buf = null, silentSince = null;
+    var analyser = null, buf = null, silentSince = null, silenceTarget276 = null;
     function tap() {
       if (analyser || !window.__lpCtx || !window.__lpMeterSource276) return;
       try { analyser = window.__lpCtx.createAnalyser(); analyser.fftSize = 2048; window.__lpMeterSource276.connect(analyser); buf = new Uint8Array(analyser.fftSize); } catch (e) {}
@@ -30869,12 +30869,17 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     (window.__relang = window.__relang || []).push(paint);
     btn.addEventListener("click", function () { prefs.sil275 = !prefs.sil275; savePrefs(); silentSince = null; paint(); });
-    vid.addEventListener("seeking", function () { silentSince = null; });
+    vid.addEventListener("seeking", function () {
+      if (silenceTarget276 !== null && Math.abs(vid.currentTime - silenceTarget276) < 0.3) return;
+      silenceTarget276 = null; silentSince = null;
+    });
+    vid.addEventListener("seeked", function () { silenceTarget276 = null; });
     setInterval(function () {
       if (!prefs.sil275) { silentSince = null; return; }
       var r = window.__lpRms275();
       if (r < 0) { silentSince = null; return; }
       if (vid.paused || vid.ended || !vid.currentSrc || vid.readyState < 2) { silentSince = null; return; }
+      if (vid.seeking) return;
       var dur = isFinite(vid.duration) ? vid.duration : 0;
       if (r < 0.008) {
         if (silentSince === null) { silentSince = vid.currentTime; return; }
@@ -30882,7 +30887,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         // Silent for 1.5s: hop 3s per tick until the sound returns or the file ends.
         if (dur && vid.currentTime >= dur - 0.6) { silentSince = null; return; }
         var nt = dur ? Math.min(vid.currentTime + 3, dur - 0.6) : vid.currentTime + 3;
-        vid.currentTime = nt;
+        silenceTarget276 = nt; vid.currentTime = nt;
       } else silentSince = null;
     }, 250);
     paint();
