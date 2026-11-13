@@ -2415,7 +2415,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="histQueueBtn" type="button">Queue unfinished</button><button class="chip" id="histPlBtn" type="button">Save unfinished as playlist</button><button class="chip" id="histTrimBtn" type="button">Trim old history</button><button class="chip" id="histDoneBtn" type="button">Clear watched</button><button class="chip" id="histUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
-      <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsCsvBtn" type="button">Save as spreadsheet (.csv)</button><button class="chip" id="statsCopyBtn" type="button">Copy my stats</button><button class="chip" id="statsClear" type="button">Clear</button></div>
+      <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsPlaysBtn" type="button" aria-pressed="false">Sort by plays: off</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsCsvBtn" type="button">Save as spreadsheet (.csv)</button><button class="chip" id="statsCopyBtn" type="button">Copy my stats</button><button class="chip" id="statsClear" type="button">Clear</button></div>
       <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsWeek" role="status"></p><p class="hint" id="statsTopChan" role="status" hidden></p><div class="stats-days" id="statsDays"></div><div class="stats-hours-wrap" id="statsHoursWrap" hidden><p class="hint stats-hours-lab" id="statsHoursLab"></p><div class="stats-hours" id="statsHours"></div><p class="hint" id="statsHoursSum" role="status"></p></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><div class="goal-row" id="wgoalRow"><span class="hint" id="wgoalLab">Weekly goal:</span><span class="row" id="wgoalChips"></span></div><p class="hint" id="wgoalStatus" role="status"></p><div class="badges-wrap" id="badgesWrap" hidden><p class="hint badges-lab" id="badgesLab"></p><div class="badges" id="badges"></div></div><ul class="lib-list" id="statsList"></ul>
       <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
       <div class="goal-row" id="storRow"><p class="hint" id="storInfo" role="status"></p><button class="chip" id="storBtn" type="button">Refresh</button><button class="chip" id="storKeepBtn" type="button">Protect my data</button></div>
@@ -12504,6 +12504,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (m === 60) { h += 1; m = 0; }
     return h > 0 ? h + " " + T("hr") + " " + m + " " + T("min") : m + " " + T("min");
   }
+  // Sort stats by plays (round 220 new 3): the top-videos list always ranked by total watch
+  // time, which buries the song you replay ten times under one long documentary you sat
+  // through once. A chip in the Watch stats head flips the ranking between watch time and
+  // play count (ties still fall to watch time), so both stories are one tap apart. The flip
+  // is a view choice, not a stored setting, and the list keeps its five-row cap either way.
+  // Hindi and Gujarati text, What's new (kept at 10) and feature finder included.
+  Object.assign(TR_MSG, {
+    "Sort by plays": ["सबसे ज़्यादा चले पहले", "સૌથી વધુ ચલાવેલા પહેલા"],
+    "Order the top videos by play count instead of watch time": ["टॉप वीडियो देखने के समय के बजाय चलने की गिनती से क्रमाएं", "ટૉપ વીડિયો જોવાના સમયને બદલે ચલાવવાની ગણતરીથી ગોઠવો"],
+    "Top videos now ordered by play count.": ["टॉप वीडियो अब चलने की गिनती से क्रम में हैं.", "ટૉપ વીડિયો હવે ચલાવવાની ગણતરીથી ક્રમમાં છે."],
+    "Top videos ordered by watch time.": ["टॉप वीडियो देखने के समय से क्रम में हैं.", "ટૉપ વીડિયો જોવાના સમયથી ક્રમમાં છે."],
+    "Sort stats by plays": ["स्टैट्स में सबसे ज़्यादा चले पहले", "સ્ટેટ્સમાં સૌથી વધુ ચલાવેલા પહેલા"]
+  });
+  var statsSortPlays = false;
+  var statsPlaysBtn = $("statsPlaysBtn");
+  function statsPlaysPaint() {
+    if (!statsPlaysBtn) return;
+    statsPlaysBtn.setAttribute("aria-pressed", String(statsSortPlays));
+    statsPlaysBtn.classList.toggle("active", statsSortPlays);
+    statsPlaysBtn.textContent = T("Sort by plays") + ": " + T(statsSortPlays ? "on" : "off");
+    statsPlaysBtn.setAttribute("aria-label", T("Order the top videos by play count instead of watch time"));
+  }
+  if (statsPlaysBtn) statsPlaysBtn.addEventListener("click", function () {
+    statsSortPlays = !statsSortPlays; statsPlaysPaint(); renderStats();
+    toast(statsSortPlays ? T("Top videos now ordered by play count.") : T("Top videos ordered by watch time."));
+  });
+  (window.__relang = window.__relang || []).push(statsPlaysPaint);
+  statsPlaysPaint();
   function renderStats() {
     var total = $("statsTotal"); if (!total) return;
     var ids = Object.keys(stats.videos);
@@ -12638,7 +12666,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     var ul = $("statsList"); ul.innerHTML = "";
     ids.map(function (id) { var v = stats.videos[id]; return { id: id, secs: v.secs || 0, plays: v.plays || 0, title: v.title || titleFor(id) || ("Video " + id) }; })
-      .sort(function (a, b) { return b.secs - a.secs; }).slice(0, 5)
+      .sort(function (a, b) { return statsSortPlays ? ((b.plays - a.plays) || (b.secs - a.secs)) : (b.secs - a.secs); }).slice(0, 5)
       .forEach(function (v) {
         var li = document.createElement("li"); li.className = "lib-item";
         var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
@@ -15799,6 +15827,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Sort stats by plays", "#statsPlaysBtn"],
     ["Queue all of Continue watching", "#contQueueBtn"],
     ["Clear watched favourites", "#favClrWBtn"],
     ["Copy the continue watching list", "#contCopyBtn"],
@@ -15815,7 +15844,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Copy this day in history", ".hist-day-c"],
     ["Save a playlist as a text file", "#lhPlaylists"],
     ["Add the playing video to a playlist", "#infoPlBtn"],
-    ["Skip buttons in the mini player", "#miniRew"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -22490,6 +22518,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Rain glass", "rain glass raindrops trickle window weather cozy water drops glass video pretty ambience", "#rainChk"],
       ["Dream orbs", "dream orbs soft lights bokeh drift paused video glow pretty calm breathe", "#orbsChk"],
       ["Add to playlist from any list", "add to playlist file organise folder any list row watch later favourites history save into playlist collection tidy", "#lhLater"],
+      ["Sort stats by plays", "stats sort plays most replayed count times played order top videos ranking", "#statsPlaysBtn"],
       ["Finish rate", "finish rate percent completed watched started videos stats insight how many finish end completion", "#lhStats"],
       ["Aurora glow", "aurora glow northern lights colours ribbons drift video frame pretty ambience sky", "#auroraChk"],
       ["Volume waves", "volume waves ripples rings sound level loud quiet feedback glass frame", "#vwaveChk"],
