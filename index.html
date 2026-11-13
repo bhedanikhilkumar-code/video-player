@@ -1739,7 +1739,7 @@ setTimeout(done,3000);})();
         <p>HD quality, speed, loop, queue and favourites</p>
       </div>
     </div>
-    <div class="row head-actions"><button class="chip" id="installBtn" type="button" aria-label="Install app" hidden><span class="install-label">Install app</span></button><button class="chip" id="simpleModeBtn" type="button" aria-pressed="false">Simple mode: off</button><button class="chip" id="langBtn" type="button" aria-label="Switch language">हिंदी</button><button class="chip" id="themeBtn" type="button" aria-label="Change theme">Theme: Auto</button></div>
+    <div class="row head-actions"><button class="chip" id="installBtn" type="button" aria-label="Install app" hidden><span class="install-label">Install app</span></button><button class="chip" id="simpleModeBtn" type="button" aria-pressed="false">Simple mode: off</button><button class="chip" id="carBtn287" type="button" aria-pressed="false">🚗 Car mode: off</button><button class="chip" id="langBtn" type="button" aria-label="Switch language">हिंदी</button><button class="chip" id="themeBtn" type="button" aria-label="Change theme">Theme: Auto</button></div>
   </header>
 
   <div class="nav-caption"><span>YOUR WORKSPACE</span><button class="chip sec-all-btn" id="secAllBtn" type="button">Collapse all</button><span>Swipe to explore &rarr;</span></div>
@@ -33617,6 +33617,104 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   Object.assign(TR_MSG, {
     "Waveform seek bar": ["वेवफ़ॉर्म सीक बार", "વેવફોર્મ સીક બાર"]
   });
+  // Car mode (round 287 new 5): at a red light or with the phone in a cradle, the normal
+  // page's small chips are impossible to hit. A chip in the header opens a full-screen
+  // glass panel with nothing but the video title and five big one-hand controls -
+  // previous, back 10 s, a huge play/pause, forward 10 s, next - plus a wide volume
+  // slider and a big exit. Every button drives the same controls the page uses (the
+  // play button, the queue's Previous/Next, the seek bar, the volume slider), so queue
+  // rules, resume and local files all keep their meaning; Escape also closes it, and the
+  // mode never saves itself on, so a fresh visit always opens the normal page. Checked
+  // first: Simple mode hides cards but keeps small controls, the mini player is for
+  // watching while scrolling - neither gives big driving controls. Hindi and Gujarati
+  // text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "🚗 Car mode: off": ["🚗 कार मोड: बंद", "🚗 કાર મોડ: બંધ"],
+    "🚗 Car mode: on": ["🚗 कार मोड: चालू", "🚗 કાર મોડ: ચાલુ"],
+    "Car mode": ["कार मोड", "કાર મોડ"],
+    "Big controls for the road. Escape or the button below closes.": ["सड़क के लिए बड़े कंट्रोल. बंद करने के लिए Escape या नीचे का बटन.", "રસ્તા માટે મોટા કંટ્રોલ. બંધ કરવા Escape કે નીચેનું બટન."],
+    "Exit car mode": ["कार मोड से बाहर निकलें", "કાર મોડમાંથી બહાર નિકળો"],
+    "Nothing is playing yet - start a video first.": ["अभी कुछ नहीं चल रहा - पहले एक वीडियो चलाएं.", "હજી કંઈ ચાલતું નથી - પહેલા એક વીડિયો ચલાવો."]
+  });
+  (function () {
+    var btn = $("carBtn287"); if (!btn) return;
+    var ov = null, tick = null, on = false;
+    var st = document.createElement("style");
+    st.textContent = "#vpCar287{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;background:rgba(12,16,24,.72);backdrop-filter:blur(28px) saturate(1.5);-webkit-backdrop-filter:blur(28px) saturate(1.5);color:#fff;text-align:center}"
+      + "html.high-contrast #vpCar287{background:#000;backdrop-filter:none;-webkit-backdrop-filter:none}"
+      + "#vpCar287 .car-title{font-size:clamp(18px,4.5vw,28px);font-weight:700;max-width:92vw;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}"
+      + "#vpCar287 .car-row{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}"
+      + "#vpCar287 .car-btn{min-width:64px;min-height:64px;border-radius:20px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.14);color:#fff;font-size:26px;font-weight:700;cursor:pointer;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}"
+      + "#vpCar287 .car-btn:active{transform:scale(.94)}"
+      + "#vpCar287 .car-play{min-width:96px;min-height:96px;border-radius:28px;font-size:40px}"
+      + "#vpCar287 .car-vol{width:min(78vw,480px);height:44px;accent-color:var(--teal,#0a8)}"
+      + "#vpCar287 .car-exit{margin-top:6px;padding:14px 28px;border-radius:999px;font-size:17px}"
+      + "#vpCar287 .car-hint{opacity:.75;font-size:14px;margin:0}"
+      + "@media (prefers-reduced-motion:reduce){#vpCar287 .car-btn:active{transform:none}}";
+    document.head.appendChild(st);
+    function localVid() { var v = $("lpVideo"); return (v && !v.hidden && v.currentSrc && !(window.__vpIsPlaying && window.__vpIsPlaying())) ? v : null; }
+    function isPlaying() {
+      var v = localVid(); if (v) return !v.paused && !v.ended;
+      return !!(window.__vpIsPlaying && window.__vpIsPlaying());
+    }
+    function playPause() {
+      var v = localVid();
+      if (v) { if (v.paused) { var p = v.play(); if (p && p.catch) p.catch(function () {}); } else v.pause(); return; }
+      if (!playBtn.disabled) playBtn.click();
+    }
+    function seekBy(d) {
+      var v = localVid();
+      if (v) { if (isFinite(v.duration)) v.currentTime = Math.max(0, Math.min(v.duration, v.currentTime + d)); return; }
+      if (!(duration > 0)) return;
+      manualSeek(Math.max(0, Math.min(duration, curTime + d)), curTime);
+    }
+    function paint() {
+      if (!ov) return;
+      var v = localVid();
+      var t = v ? (v.dataset.fileName276 || "") : (infoTitle && infoTitle.textContent) || "";
+      ov.querySelector(".car-title").textContent = t || T("Nothing is playing yet - start a video first.");
+      ov.querySelector(".car-play").textContent = isPlaying() ? "⏸" : "▶";
+      var vol = ov.querySelector(".car-vol"), mv = $("vol");
+      if (mv && document.activeElement !== vol) vol.value = mv.value;
+    }
+    function open() {
+      if (on) return; on = true;
+      ov = document.createElement("div"); ov.id = "vpCar287"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", T("Car mode"));
+      ov.innerHTML = '<div class="car-title"></div>'
+        + '<div class="car-row"><button type="button" class="car-btn car-prev" aria-label="' + T("Previous video in queue") + '">⏮</button>'
+        + '<button type="button" class="car-btn car-back" aria-label="' + T("Back {n} seconds").replace("{n}", 10) + '">⏪</button>'
+        + '<button type="button" class="car-btn car-play" aria-label="' + T("Play or pause") + '">▶</button>'
+        + '<button type="button" class="car-btn car-fwd" aria-label="' + T("Forward {n} seconds").replace("{n}", 10) + '">⏩</button>'
+        + '<button type="button" class="car-btn car-next" aria-label="' + T("Next video in queue") + '">⏭</button></div>'
+        + '<input type="range" class="car-vol" min="0" max="100" step="1" aria-label="' + T("Volume") + '">'
+        + '<p class="car-hint">' + T("Big controls for the road. Escape or the button below closes.") + '</p>'
+        + '<button type="button" class="car-btn car-exit">' + T("Exit car mode") + '</button>';
+      document.body.appendChild(ov);
+      ov.querySelector(".car-prev").addEventListener("click", function () { var b = $("prevQueueBtn"); if (b) b.click(); });
+      ov.querySelector(".car-next").addEventListener("click", function () { var b = $("nextBtn"); if (b) b.click(); });
+      ov.querySelector(".car-back").addEventListener("click", function () { seekBy(-(prefs.seekStep || 10)); });
+      ov.querySelector(".car-fwd").addEventListener("click", function () { seekBy(prefs.seekStep || 10); });
+      ov.querySelector(".car-play").addEventListener("click", playPause);
+      ov.querySelector(".car-exit").addEventListener("click", close);
+      ov.querySelector(".car-vol").addEventListener("input", function () {
+        var mv = $("vol"); if (mv) { mv.value = this.value; mv.dispatchEvent(new Event("input", { bubbles: true })); }
+      });
+      document.addEventListener("keydown", escClose, true);
+      tick = setInterval(paint, 700);
+      paint();
+      btn.textContent = T("🚗 Car mode: on"); btn.setAttribute("aria-pressed", "true"); btn.classList.add("active");
+    }
+    function escClose(e) { if (e.key === "Escape") { e.stopPropagation(); close(); } }
+    function close() {
+      if (!on) return; on = false;
+      clearInterval(tick); tick = null;
+      document.removeEventListener("keydown", escClose, true);
+      if (ov) { ov.remove(); ov = null; }
+      btn.textContent = T("🚗 Car mode: off"); btn.setAttribute("aria-pressed", "false"); btn.classList.remove("active");
+    }
+    btn.addEventListener("click", function () { if (on) close(); else open(); });
+    (window.__relang = window.__relang || []).push(function () { btn.textContent = T(on ? "🚗 Car mode: on" : "🚗 Car mode: off"); if (on) { close(); open(); } });
+  })();
   window.__vpPrefs = prefs;
   window.__vpSavePrefs = savePrefs;
 })();
@@ -37923,6 +38021,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Fade between songs", "fade between songs tracks crossfade smooth transition melt music mode local files gapless soft ending beginning", "#lpFadeBtn285"],
       ["Hall sound", "hall sound reverb echo room concert space acoustics live feeling local files speaker depth", "#lpHallBtn285"],
       ["Frame gallery", "frame gallery saved frames pictures screenshots keep inside app thumbnails download delete collection local files", "#lpGal285"],
+      ["Car mode", "car mode driving big controls huge buttons one hand road trip play pause next previous volume fullscreen overlay", "#carBtn287"],
       ["Waveform seek bar", "waveform seek bar sound shape audio peaks loud quiet parts song chorus local files music scrub visual", "#lpSeekBar"],
       ["Skip sponsors", "skip sponsors sponsored segment ad read promo self promotion sponsorblock community auto skip seek past", "#sponBtn287"],
       ["Wide sound", "wide sound stereo widen spread headphones speakers spacious narrow boxed local files music", "#lpWideBtn287"],
@@ -40263,6 +40362,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Skip sponsors", "#sponBtn287");
   window.__vpWnew283("Wide sound", "#lpWideBtn287");
   window.__vpWnew283("Waveform seek bar", "#lpSeekBar");
+  window.__vpWnew283("Car mode", "#carBtn287");
 })();
 </script>
 </body>
