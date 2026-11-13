@@ -2442,7 +2442,7 @@ setTimeout(done,3000);})();
       </div>
       <div class="row pl-import-row">
         <button class="chip" id="plAllTxtBtn" type="button">Save all playlists as a text file</button> <button class="chip" id="plAllCopyBtn" type="button">Copy all playlists</button> <button class="chip" id="plImportBtn" type="button">Import playlist</button>
-        <input id="plImportFile" type="file" accept="application/json,.json" hidden>
+        <input id="plImportFile" type="file" accept="application/json,.json,.m3u,.m3u8,audio/x-mpegurl" hidden>
         <button class="chip" id="plPasteBtn" type="button" aria-expanded="false">Paste a list of links</button>
         <button class="chip" id="queueTxtBtn" type="button">Save queue as text file</button>
         <button class="chip" id="queueTxtImportBtn" type="button">Add links from a text file</button>
@@ -13238,6 +13238,38 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       var rd = new FileReader();
       rd.onload = function () {
         try {
+          // Round 284 new 3: a playlist could leave the app as an .m3u (round 282) for
+          // VLC, Kodi and YouTube Music importers, but the same file could not come back
+          // - Import playlist read only this app's JSON, so an .m3u from any player (or
+          // from this app on another phone) ended in 'could not be read'. The same chip
+          // now reads extended M3U too: #PLAYLIST names the list (the file name is the
+          // fallback), #EXTINF lines carry the titles, watch/youtu.be/shorts links give
+          // the videos, other lines are skipped with a count. Same caps as a JSON import
+          // (50 videos, 30 playlists, duplicate names get a (2)).
+          var rawText = String(rd.result || "");
+          if (/^\s*#EXTM3U/i.test(rawText) || /\.m3u8?$/i.test(f.name || "")) {
+            var mName = "", mItems = [], mTitle = "", mSkip = 0;
+            rawText.split(/\r?\n/).forEach(function (ln) {
+              var t = ln.trim(); if (!t) return;
+              var pm = t.match(/^#PLAYLIST:(.*)$/i); if (pm) { mName = cleanName(pm[1]); return; }
+              var em = t.match(/^#EXTINF:[^,]*,(.*)$/i); if (em) { mTitle = em[1].trim().slice(0, 120); return; }
+              if (t.charAt(0) === "#") return;
+              var mm = t.match(/(?:v=|youtu\.be\/|shorts\/|embed\/|live\/)([\w-]{11})/);
+              var mid = mm ? mm[1] : (/^[\w-]{11}$/.test(t) ? t : "");
+              if (!mid || mItems.some(function (x) { return x.id === mid; })) { if (!mm && !/^[\w-]{11}$/.test(t)) mSkip++; mTitle = ""; return; }
+              if (mItems.length < 50) mItems.push({ id: mid, title: mTitle });
+              mTitle = "";
+            });
+            if (!mItems.length) { plSay(T("That file had no YouTube links.")); return; }
+            if (playlists.length >= PL_MAX) { plSay(T("You can keep up to ") + PL_MAX + T(" playlists. Delete one first.")); return; }
+            if (!mName) mName = cleanName((f.name || "").replace(/\.m3u8?$/i, ""));
+            if (!mName) mName = T("Imported playlist");
+            var mBase = mName, mk = 2; while (plFind(mName) >= 0) { mName = (mBase.slice(0, 34) + " (" + mk + ")"); mk++; }
+            playlists.push({ name: mName, items: mItems }); savePlaylists(); renderPlaylists();
+            plSay(T("Imported playlist") + " \"" + mName + "\"" + T(" with ") + mItems.length + " " + (mItems.length === 1 ? T("video") : T("videos")) + "." + (mSkip ? " " + mSkip + " " + T("lines were not YouTube links - skipped.") : ""));
+            toast(T("Playlist saved"));
+            return;
+          }
           var d = JSON.parse(rd.result);
           if (d && Array.isArray(d.playlists)) { plSay(T("That file is a full backup. Use Import backup above to restore it.")); return; }
           if (!d || typeof d.name !== "string" || !Array.isArray(d.items)) { plSay(T("That file did not have a playlist.")); return; }
@@ -13253,6 +13285,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       };
       rd.readAsText(f);
     });
+    // Deferred like the round 280/282 registrations: the What's new list is declared
+    // later in this script, so a direct call here would throw and lose the entry.
+    setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Import an .m3u playlist", "#plImportBtn"); }, 0);
   }
   // Save all playlists as one text file (round 225): a single playlist can already leave
   // as a .txt, but moving every playlist to a new phone (or keeping one readable backup)
@@ -32841,6 +32876,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Copy chapter list": ["चैप्टर सूची कॉपी करें", "ચેપ્ટર યાદી કૉપિ કરો"],
     "Chapter list copied": ["चैप्टर सूची कॉपी हुई", "ચેપ્ટર યાદી કૉપિ થઈ"],
     "Copy the chapter list": ["चैप्टर सूची कॉपी करें", "ચેપ્ટર યાદી કૉપિ કરો"],
+    "That file had no YouTube links.": ["उस फ़ाइल में कोई YouTube लिंक नहीं था.", "તે ફાઇલમાં કોઈ YouTube લિંક નહોતી."],
+    "lines were not YouTube links - skipped.": ["लाइनें YouTube लिंक नहीं थीं - छोड़ दी गईं.", "લાઇનો YouTube લિંક નહોતી - છોડી દીધી."],
+    "Import an .m3u playlist": [".m3u प्लेलिस्ट इम्पोर्ट करें", ".m3u પ્લેલિસ્ટ ઇમ્પોર્ટ કરો"],
     "Soft pause": ["\u0928\u0930\u092e \u0930\u0941\u0915\u093e\u0935\u091f", "\u0aa8\u0ab0\u0aae \u0a85\u0a9f\u0a95\u0abe\u0ab5"],
     "Soft pause on - the sound eases out and back in.": ["\u0928\u0930\u092e \u0930\u0941\u0915\u093e\u0935\u091f \u091a\u093e\u0932\u0942 - \u0906\u0935\u093e\u091c\u093c \u0927\u0940\u0930\u0947 \u0938\u0947 \u0998\u091f\u0924\u0940 \u0914\u0930 \u0932\u094c\u091f\u0924\u0940 \u0939\u0948.".replace("\u0998","\u0918"), "\u0aa8\u0ab0\u0aae \u0a85\u0a9f\u0a95\u0abe\u0ab5 \u0a9a\u0abe\u0ab2\u0ac1 - \u0a85\u0ab5\u0abe\u0a9c \u0aa7\u0ac0\u0ab0\u0ac7\u0aa5\u0ac0 \u0a98\u0a9f\u0ac7 \u0a9b\u0ac7 \u0a85\u0aa8\u0ac7 \u0aaa\u0abe\u0a9b\u0acb \u0a86\u0ab5\u0ac7 \u0a9b\u0ac7."],
     "Soft pause off.": ["\u0928\u0930\u092e \u0930\u0941\u0915\u093e\u0935\u091f \u092c\u0902\u0926.", "\u0aa8\u0ab0\u0aae \u0a85\u0a9f\u0a95\u0abe\u0ab5 \u0aac\u0a82\u0aa7."]
@@ -36277,6 +36315,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Chapter previous and next", "chapter previous next local file jump boundary section skip forward back buttons", "#lpChPrev"],
       ["Chapters from a typed list", "chapters paste typed list local file import bulk add 0:00 lines lecture", "#lpChPasteBox"],
       ["Copy the chapter list", "copy chapters text list local file clipboard export description", "#lpChCopy"],
+      ["Import an .m3u playlist", "import m3u m3u8 playlist file vlc kodi youtube music links back other phone", "#plImportBtn"],
       ["Mix a second ambient sound", "mix second ambient sound two blend rain brown noise ocean volume layer sleep focus", "#ambMixRow283"],
       ["Soft pause", "soft pause local files sound eases out fade resume click mid note gentle", "#lpSoftBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
