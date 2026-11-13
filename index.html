@@ -27035,6 +27035,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     pick.addEventListener("click", function () { file.click(); });
     file.addEventListener("change", function () {
+      if ($("bmFolders") && $("bmFolders").checked) return; // folders mode: handled by the playlist importer
       var f = file.files && file.files[0]; file.value = ""; if (!f) return;
       var rd = new FileReader();
       rd.onerror = function () { msg.textContent = T("That file could not be read as a bookmarks file."); };
@@ -27164,6 +27165,64 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     link.addEventListener("click", function (e) { e.preventDefault(); $("bmkMsg").textContent = T("Drag this button to your bookmarks bar - tapping it here does nothing."); });
     $("bmkCopy").addEventListener("click", function () { vpCopySafe(code(), function (ok) { $("bmkMsg").textContent = ok ? T("Bookmark code copied") : T("Could not copy. Try again."); }); });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+  // Bookmark folders as playlists (round 258 new 5): Import browser bookmarks put everything in
+  // one list, which loses how the bookmarks were sorted. A tick box under the destination makes
+  // each bookmarks folder that holds YouTube videos a saved playlist of the same name (folders
+  // with no video are skipped, a name already used becomes "Name (2)", the 30-playlist and
+  // 50-video caps are respected and named). Nothing goes to Watch later or Favourites in this
+  // mode, and Undo removes the playlists it made. Hindi and Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Make a playlist for each folder": ["हर फ़ोल्डर की एक प्लेलिस्ट बनाएँ", "દરેક ફોલ્ડરની એક પ્લેલિસ્ટ બનાવો"],
+    "Playlists made: {n}": ["प्लेलिस्ट बनीं: {n}", "પ્લેલિસ્ટ બની: {n}"],
+    "No bookmarks folder with new YouTube videos in that file.": ["उस फ़ाइल में नए YouTube वीडियो वाला कोई फ़ोल्डर नहीं.", "તે ફાઇલમાં નવા YouTube વીડિયો વાળું કોઈ ફોલ્ડર નથી."],
+    "{n} folders did not fit - you can keep 30 playlists.": ["{n} फ़ोल्डर नहीं जुड़े - 30 प्लेलिस्ट तक रख सकते हैं.", "{n} ફોલ્ડર ઉમેરાયા નહીં - 30 પ્લેલિસ્ટ સુધી રાખી શકાય."],
+    "Playlists removed.": ["प्लेलिस्ट हटाई गईं.", "પ્લેલિસ્ટ કાઢી નાખી."]
+  });
+  (function () {
+    var card = $("bmCard"), file = $("bmFile"), msg = $("bmMsg"); if (!card || !file) return;
+    var label = document.createElement("label"); label.style.cssText = "display:flex;gap:8px;align-items:center;margin:6px 0";
+    var box = document.createElement("input"); box.type = "checkbox"; box.id = "bmFolders"; var span = document.createElement("span"); label.appendChild(box); label.appendChild(span);
+    card.insertBefore(label, msg);
+    function paint() { span.textContent = T("Make a playlist for each folder"); }
+    function folders(text) {
+      var doc = new DOMParser().parseFromString(text, "text/html"), out = [];
+      Array.prototype.forEach.call(doc.querySelectorAll("h3"), function (h) {
+        var dl = h.nextElementSibling; while (dl && dl.tagName !== "DL") dl = dl.nextElementSibling;
+        if (!dl) dl = h.parentNode && h.parentNode.querySelector("dl"); if (!dl) return;
+        var items = [], seen = {};
+        Array.prototype.forEach.call(dl.querySelectorAll("a[href]"), function (a) {
+          if (a.closest("dl") !== dl) return;
+          if (!/^(https?:)?\/\/([a-z0-9-]+\.)*(youtube\.com|youtu\.be)\//i.test(a.getAttribute("href") || "")) return;
+          var id = parseVideoId(a.getAttribute("href")); if (!id || seen[id]) return;
+          seen[id] = 1; items.push({ id: id, title: (a.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120) });
+        });
+        if (items.length) out.push({ name: cleanName(h.textContent) || "Bookmarks", items: items });
+      });
+      return out;
+    }
+    // The plain import handler above does nothing while the box is ticked.
+    file.addEventListener("change", function (e) {
+      if (!box.checked) return;
+      var f = file.files && file.files[0]; file.value = ""; if (!f) return;
+      var rd = new FileReader();
+      rd.onerror = function () { msg.textContent = T("That file could not be read as a bookmarks file."); };
+      rd.onload = function () {
+        var fl = folders(String(rd.result || "")), snap = playlists.slice(), made = 0, skipped = 0;
+        fl.forEach(function (fo) {
+          if (playlists.length >= PL_MAX) { skipped++; return; }
+          var nm = fo.name, k = 2; while (plFind(nm) >= 0) { nm = cleanName(fo.name.slice(0, 34) + " (" + k + ")"); k++; }
+          playlists.push({ name: nm, items: fo.items.slice(0, 50) }); made++;
+        });
+        if (!made) { msg.textContent = skipped ? T("{n} folders did not fit - you can keep 30 playlists.").replace("{n}", skipped) : T("No bookmarks folder with new YouTube videos in that file."); return; }
+        savePlaylists(); renderPlaylists();
+        msg.textContent = T("Playlists made: {n}").replace("{n}", made) + (skipped ? " " + T("{n} folders did not fit - you can keep 30 playlists.").replace("{n}", skipped) : "");
+        toastUndo(msg.textContent, function () { playlists.length = 0; snap.forEach(function (p) { playlists.push(p); }); savePlaylists(); renderPlaylists(); msg.textContent = T("Playlists removed."); }, T("Playlists removed."));
+      };
+      rd.readAsText(f);
+    }, false);
     (window.__relang = window.__relang || []).push(paint);
     paint();
   })();
@@ -29993,6 +30052,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Dust off favourites", "dust off favourites not played lately forgotten queue bring back old favourites history", "#dustCard"],
       ["List overlap", "list overlap duplicates watch later already queued favourite remove tidy clean up", "#laterOverlapCard"],
       ["Import browser bookmarks", "import browser bookmarks bookmarks.html chrome safari firefox edge export youtube links watch later favourites move switch", "#bmCard"],
+      ["Bookmark folders as playlists", "bookmark folders playlists import browser bookmarks make a playlist for each folder organise sorted", "#bmFolders"],
       ["Export as browser bookmarks", "export browser bookmarks bookmarks.html chrome safari firefox edge save queue favourites watch later playlists folders backup", "#bmExpCard"],
       ["Open from any page", "open from any page bookmarklet bookmark bar drag youtube tab current time send video here browser", "#bmkCard"],
       ["Channels as OPML", "channels opml rss feed export feedly inoreader netnewswire subscriptions saved channels reader", "#chanOpmlBtn"],
