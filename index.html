@@ -2417,7 +2417,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="queueTime" role="status"></p>
       </div>
       <p class="hint" id="libListMsg" role="status"></p>
-      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterWakeBtn" type="button" hidden>⏰ Wake all</button><button class="chip" id="laterSnoozeAllBtn" type="button" hidden>😴 Snooze all</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterSortAzBtn" type="button">Sort A to Z</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterQuickBtn" type="button">⚡ Quick wins</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterWakeBtn" type="button" hidden>⏰ Wake all</button><button class="chip" id="laterSnoozeAllBtn" type="button" hidden>😴 Snooze all</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterSortAzBtn" type="button">Sort A to Z</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
       <p class="hint" id="laterOldLine" role="status" hidden></p>
@@ -17493,6 +17493,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Quick wins", "#laterQuickBtn"],
     ["Moments across videos", "#marksTotal"],
     ["Continue watching done-by clock", "#contTime"],
     ["Yesterday in Watch stats", "#statsYest"],
@@ -21839,6 +21840,43 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     paint();
   })();
 
+  // Quick wins (round 232 new 1): a backlog evening often starts with "just clear the
+  // short ones", but picking every 5-minute-or-less video out of a long Watch later list
+  // meant reading every row's length. One chip queues them all at once: every un-snoozed,
+  // unwatched Watch later video whose length the app has learned is 5 minutes or less,
+  // skipping the playing video, ones already queued and stopping at the 50-video limit,
+  // with the usual Undo toast. Lengths are learned once a video plays here; videos with
+  // no learned length are left for the eye, and the toast says so honestly when there is
+  // nothing to offer. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Quick wins": ["झटपट वीडियो", "ઝટપટ વીડિયો"],
+    "Queue every Watch later video that takes 5 minutes or less": ["हर 5 मिनट या उससे छोटा वॉच लेटर वीडियो कतार में डालें", "દરેક 5 મિનિટ કે તેથી ટૂંકો પછી-જુઓ વીડિયો કતારમાં નાખો"],
+    "No short videos (5 minutes or less) with a learned length in Watch later.": ["वॉच लेटर में ज्ञात लंबाई वाला कोई छोटा वीडियो (5 मिनट या कम) नहीं.", "પછી-જુઓમાં જ્ઞાત લંબાઈવાળો કોઈ ટૂંકો વીડિયો (5 મિનિટ કે ઓછો) નથી."]
+  });
+  (function () {
+    var btn = $("laterQuickBtn"); if (!btn) return;
+    function paint() { btn.textContent = "\u26A1 " + T("Quick wins"); btn.setAttribute("aria-label", T("Queue every Watch later video that takes 5 minutes or less")); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      var snap = lib.queue.slice(), sp = qPos, add = [];
+      lib.later.forEach(function (x) {
+        if (!x || !x.id || x.id === curId) return;
+        if (laterSnoozed(x)) return;
+        var hi = findIn(lib.hist, x.id);
+        if (hi >= 0 && lib.hist[hi].done) return;
+        var d = (infoCache[x.id] && infoCache[x.id].dur) || (hi >= 0 && lib.hist[hi].dur) || 0;
+        if (typeof d !== "number" || d <= 0 || d > 300) return;
+        if (findIn(lib.queue, x.id) >= 0 || findIn(add, x.id) >= 0) return;
+        if (lib.queue.length + add.length >= 50) return;
+        add.push({ id: x.id, title: x.title || titleFor(x.id) || "" });
+      });
+      if (!add.length) { toast(T("No short videos (5 minutes or less) with a learned length in Watch later.")); return; }
+      add.forEach(function (x) { lib.queue.push(x); });
+      saveLib(); renderLib();
+      toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    });
+  })();
+
   // Drop a YouTube link (round 209 new 1): drag a video link from another browser tab,
   // the address bar or another app and let go anywhere on the page - a single link plays
   // here, several links go into the queue. A frosted glass veil says so while you drag.
@@ -24391,6 +24429,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Quick wins", "quick wins short videos 5 minutes less clear backlog watch later queue all shorts fast evening", "#laterQuickBtn"],
       ["Average watch per play", "average watch per play typical sitting length each play minutes short clips long videos stats", "#statsPerPlay"],
       ["Playlists at a glance", "playlists at a glance total videos length whole collection organised how much all combined", "#plTotalLine"],
       ["Average rating in Favourites", "average rating favourites stars mean score how good starred pile rated", "#favRateLine"],
