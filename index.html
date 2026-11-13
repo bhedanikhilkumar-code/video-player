@@ -14746,7 +14746,21 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     stats = { total: 0, plays: 0, videos: {}, days: {}, hours: {} }; saveStats(); renderStats();
     if (snap.plays || snap.total) toastUndo(T("Watch stats cleared"), function () { stats = snap; saveStats(); renderStats(); }, T("Watch stats restored"));
   });
-  window.addEventListener("pagehide", saveStats);
+  // Round 272 fix 2: with the app open twice (installed app plus a browser tab), the tab that was
+  // idle kept the stats it read at start-up and wrote them back when it closed or next saved, wiping
+  // the other tab's watch time. Closing now saves only if this tab has unsaved watch time, and a
+  // stats save from another tab is adopted here (unless this tab has unsaved time of its own).
+  window.addEventListener("pagehide", function () { if (statsDirty) { statsDirty = false; saveStats(); } });
+  window.addEventListener("storage", function (e) {
+    if (e.key !== STATS_KEY || !e.newValue || statsDirty) return;
+    try {
+      var o = JSON.parse(e.newValue);
+      if (!o || typeof o.total !== "number" || !o.videos || typeof o.videos !== "object") return;
+      if (!o.days || typeof o.days !== "object") o.days = {};
+      if (!o.hours || typeof o.hours !== "object") o.hours = {};
+      stats = o; renderStats();
+    } catch (err) {}
+  });
   renderStats();
 
   // Watch stats: Save as text file - totals, the last 7 days and most-watched videos, made on the device.

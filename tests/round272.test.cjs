@@ -11,3 +11,8 @@ for (const [fn, key] of [['saveStats', 'STATS_KEY'], ['binSave', 'BIN_KEY'], ['v
   assert.ok(!/catch \(e\) \{\} \}$/.test(line), fn + ' must not swallow the error');
 }
 console.log('round272 fix1 ok');
+// Fix 2: stats cross-tab.
+assert.ok(html.includes('window.addEventListener("pagehide", function () { if (statsDirty) { statsDirty = false; saveStats(); } });'));
+assert.ok(!html.includes('window.addEventListener("pagehide", saveStats);'));
+assert.ok(html.includes('e.key !== STATS_KEY || !e.newValue || statsDirty'));
+console.log('round272 fix2 ok');
