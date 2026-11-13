@@ -2413,7 +2413,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="queueTime" role="status"></p>
       </div>
       <p class="hint" id="libListMsg" role="status"></p>
-      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterWakeBtn" type="button" hidden>⏰ Wake all</button><button class="chip" id="laterSnoozeAllBtn" type="button" hidden>😴 Snooze all</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterWakeBtn" type="button" hidden>⏰ Wake all</button><button class="chip" id="laterSnoozeAllBtn" type="button" hidden>😴 Snooze all</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterSortAzBtn" type="button">Sort A to Z</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favQueueUnwBtn" type="button">➕ Queue unwatched</button><button class="chip" id="favShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="favUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="favClrWBtn" type="button">Clear watched</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button><button class="chip" id="favSortAzBtn" type="button">Sort A to Z</button><button class="chip" id="favClearBtn" type="button">Clear</button></span></div>
@@ -4632,6 +4632,33 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     shareMsg.textContent = findIn(lib.later, curId) >= 0 ? T("Saved to Watch later.") : T("Removed from Watch later.");
   });
   if (laterClearBtn) laterClearBtn.addEventListener("click", function () { var snap = lib.later.slice(); lib.later = []; saveLib(); renderLib(); if (snap.length) toastUndo(T("Watch later list cleared"), function () { lib.later = snap; saveLib(); renderLib(); }, T("Watch later list restored")); });
+  // Sort Watch later A to Z (round 227 new 5): the backlog parks videos in the order they
+  // were saved, which is right for "what did I park first" but wrong for "where is that one
+  // lecture" in a forty-video pile; the queue, playlists and favourites can already be
+  // ordered by name. One tap orders the whole list by title with the queue's reader
+  // (numbers read as numbers, case ignored; videos whose title is not known yet stay at
+  // the end), a second tap flips Z to A, and Undo restores the exact parked order.
+  Object.assign(TR_MSG, {
+    "Sort Watch later A to Z": ["Watch later A से Z क्रम में", "Watch later A થી Z ક્રમમાં"],
+    "Watch later sorted: A to Z": ["Watch later क्रमित: A से Z", "Watch later ગોઠવાયું: A થી Z"],
+    "Watch later sorted: Z to A": ["Watch later क्रमित: Z से A", "Watch later ગોઠવાયું: Z થી A"],
+    "Need at least 2 videos with known titles in Watch later to sort.": ["क्रम के लिए Watch later में कम से कम 2 ज्ञात शीर्षकों वाले वीडियो चाहिए.", "ગોઠવવા Watch later માં ઓછામાં ઓછા 2 જાણીતા શીષ્ષકવાળા વીડિયો જોઈએ."]
+  });
+  var laterSortAzBtn = $("laterSortAzBtn"), laterSortAzNext = true;
+  function laterSortAzPaint() { if (laterSortAzBtn) { laterSortAzBtn.textContent = laterSortAzNext ? T("Sort A to Z") : T("Sort: Z to A"); laterSortAzBtn.setAttribute("aria-label", T("Sort Watch later A to Z")); } }
+  if (laterSortAzBtn) laterSortAzBtn.addEventListener("click", function () {
+    var named = [], unnamed = [];
+    lib.later.forEach(function (x) { if (sortAzTitle(x)) named.push(x); else unnamed.push(x); });
+    if (named.length < 2) { toast(T("Need at least 2 videos with known titles in Watch later to sort.")); return; }
+    var snap = lib.later.slice(), dir = laterSortAzNext ? 1 : -1;
+    var coll = (typeof Intl !== "undefined" && Intl.Collator) ? new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }) : null;
+    named.sort(function (x, y) { var a = sortAzTitle(x), b = sortAzTitle(y); return dir * (coll ? coll.compare(a, b) : (a.toLowerCase() < b.toLowerCase() ? -1 : a.toLowerCase() > b.toLowerCase() ? 1 : 0)); });
+    lib.later = named.concat(unnamed); saveLib(); renderLib();
+    toastUndo(dir === 1 ? T("Watch later sorted: A to Z") : T("Watch later sorted: Z to A"), function () { lib.later = snap; saveLib(); renderLib(); }, T("Watch later list restored"));
+    laterSortAzNext = !laterSortAzNext; laterSortAzPaint();
+  });
+  (window.__relang = window.__relang || []).push(laterSortAzPaint);
+  laterSortAzPaint();
   // Watch later: Clear watched (round 118). One tap drops every saved video whose
   // history entry is marked watched - the same test the Only-unwatched filter uses -
   // so the backlog cleans up after a watching run. Undo brings the whole list back.
@@ -17007,6 +17034,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Sort Watch later A to Z", "#laterSortAzBtn"],
     ["This month vs last month in Watch stats", "#statsMonthCmp"],
     ["Channel quality memory", "#chQualBtn"],
     ["Sort favourites A to Z", "#favSortAzBtn"],
@@ -23707,6 +23735,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Loop B to the video end", "loop b to the video end ab repeat outro tail last part finish end", "#abBEndBtn"],
       ["Sort favourites A to Z", "sort favourites a to z z to a order title name arrange starred list alphabet", "#favSortAzBtn"],
       ["Channel quality memory", "channel quality remember per channel 1080 720 4k auto applies by itself music movie", "#chQualBtn"],
+      ["Sort Watch later A to Z", "sort watch later a to z z to a order title name arrange backlog list alphabet", "#laterSortAzBtn"],
       ["Speed change pill", "speed pill popup confirm rate change 2x", "#ctl-speed"],
       ["Up next countdown with thumbnail", "up next countdown thumbnail preview auto next picture", "#lhQueue"],
       ["Finish within (minutes)", "finish fit budget minutes time speed lecture", "#fitTimeForm"],
