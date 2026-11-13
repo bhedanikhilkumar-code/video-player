@@ -4527,6 +4527,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // Round 219 fix 1: while the library search box has text the 30-row fold must not cap
     // the list - a search could never reach favourites 31+ and the fold row itself was
     // matched against a real video (see the note in applyLibSearch). Searching renders all.
+    Object.assign(TR_MSG, {
+      "Add a reason - why a favourite": ["वजह जोड़ें - पसंदीदा क्यों", "કારણ ઉમેરો - પસંદગી શા માટે"],
+      "Why is this a favourite? Shown on its Favourites row": ["यह पसंदीदा क्यों है? इसकी पसंदीदा पंक्ति पर दिखता है", "આ પસંદગી શા માટે છે? તેની પસંદગીની પંક્તિ પર દેખાય છે"],
+      "Reason on a favourite": ["पसंदीदा पर वजह", "પસંદગી પર કારણ"]
+    });
     var fvSearchOn219 = !!(libSearch && libSearch.value && libSearch.value.trim());
     var fvAll206 = favView(), fvShow206 = (favFoldOpen || fvSearchOn219 || fvAll206.length <= 30) ? fvAll206 : fvAll206.slice(0, 30);
     fillList(favList, fvShow206, (prefs.favRated === true && lib.favs.length) ? T("No favourite has a star rating yet. Turn the filter off to see the full list.") : (prefs.favUnwatched === true && lib.favs.length) ? T("Every favourite is watched. Turn the filter off to see the full list.") : T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) {
@@ -4535,7 +4540,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var snapFv = lib.favs.slice();
       lib.favs.splice(fIdx, 1); saveLib(); renderLib();
       toastUndo(T("Removed from favourites"), function () { lib.favs = snapFv; saveLib(); renderLib(); }, T("Favourites restored"));
-    }, null, [{ label: "\ud83d\udccc", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinFav(item.id); } }, plRowAction(), queueRowAction()], "fav");
+    }, null, [{ label: "\ud83d\udccc", aria: function (item) { return item.pin ? T("Pinned") : T("Pin"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinFav(item.id); } }, { label: "\u270E", aria: function (item) { return item.why ? T("Edit the saved reason") : T("Add a reason - why a favourite"); }, cls: "why-chip", fn: async function (item) {
+      /* Round 284 new 5: a saved reason on a favourite - Watch later rows can carry a "why I
+         parked this" note (round 233) and the shared row renderer already shows one on any
+         list, but favourites had no way to write it, so a fortnight-old favourite could not
+         say what it was for. The pencil chip asks, saves on the item (the library save and
+         the backup export/import carry it), and the row shows the thought bubble like a
+         Watch later row. Hindi and Gujarati text, What's new and feature finder included. */
+      var fi284 = findIn(lib.favs, item.id); if (fi284 < 0) return;
+      var v284 = await vpAsk(item.why ? T("Edit the reason for this video (empty clears it)") : T("Why is this a favourite? Shown on its Favourites row"), lib.favs[fi284].why || "");
+      if (v284 === null || v284 === undefined) return;
+      v284 = String(v284).trim().slice(0, 120);
+      if (v284) lib.favs[fi284].why = v284; else delete lib.favs[fi284].why;
+      saveLib(); renderLib();
+      toast(v284 ? T("Reason saved on the row.") : T("Reason removed."));
+    } }, plRowAction(), queueRowAction()], "fav");
+    if (!window.__vpWnewFavWhy284 && window.__vpWnew283) { window.__vpWnewFavWhy284 = 1; window.__vpWnew283("Reason on a favourite", "#favList"); }
     if (fvAll206.length > 30 && !fvSearchOn219) {
       var foldLi = document.createElement("li"); foldLi.className = "lib-empty fav-fold-row";
       var foldBtn = document.createElement("button"); foldBtn.className = "chip"; foldBtn.type = "button";
@@ -13459,7 +13479,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     var data = { app: "hd-video-player", version: 2, exportedAt: new Date().toISOString(),
       queue: lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }),
       queuePos: (qPos >= 0 && qPos < lib.queue.length && lib.queue[qPos]) ? lib.queue[qPos].id : null,
-      favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "", pin: x.pin === true }; }),
+      favourites: lib.favs.map(function (x) { var o = { id: x.id, title: x.title || "", pin: x.pin === true }; if (typeof x.why === "string" && x.why.trim()) o.why = x.why.slice(0, 200); return o; }),
       later: lib.later.map(function (x) { var o = { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (laterSnoozed(x)) o.snoozeUntil = x.snoozeUntil; if (typeof x.why === "string" && x.why.trim()) o.why = x.why.slice(0, 200); return o; }),
       playlists: playlists.map(function (p) { var o = { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; if (p.pinned === true) o.pinned = true; if (typeof p.note === "string" && p.note) o.note = p.note.slice(0, 80); if (typeof p.group === "string" && p.group) o.group = p.group.slice(0, 30); if (typeof p.lastPlay === "number" && p.lastPlay > 0) o.lastPlay = p.lastPlay; if (typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3) o.speed = p.speed; return o; }),
       moments: (function () { var o = {}; Object.keys(marks).forEach(function (id) { if (Array.isArray(marks[id]) && marks[id].length) o[id] = marks[id].map(function (m) { return { t: m.t, name: m.name || "" }; }); }); return o; })(),
@@ -13594,7 +13614,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         var qn = 0, fn = 0, capN = 0;
         q.forEach(function (x) { if (validItem(x) && findIn(lib.queue, x.id) < 0 && lib.queue.length >= 50) capN++; if (validItem(x) && findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: typeof x.title === "string" ? x.title : "" }); qn++; } });
         if (typeof d.queuePos === "string") { var iqPos = findIn(lib.queue, d.queuePos); if (iqPos >= 0) qPos = iqPos; }
-        fv.forEach(function (x) { if (validItem(x) && findIn(lib.favs, x.id) < 0) { lib.favs.push({ id: x.id, title: typeof x.title === "string" ? x.title : "", pin: x.pin === true }); fn++; } });
+        fv.forEach(function (x) { if (validItem(x) && findIn(lib.favs, x.id) < 0) { var fo284 = { id: x.id, title: typeof x.title === "string" ? x.title : "", pin: x.pin === true }; if (typeof x.why === "string" && x.why.trim()) fo284.why = x.why.slice(0, 200); lib.favs.push(fo284); fn++; } });
         var pn = 0;
         (Array.isArray(d.playlists) ? d.playlists : []).forEach(function (p) {
           if (!p || typeof p.name !== "string" || !Array.isArray(p.items) || playlists.length >= PL_MAX) return;
@@ -36367,6 +36387,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Copy the chapter list", "copy chapters text list local file clipboard export description", "#lpChCopy"],
       ["Import an .m3u playlist", "import m3u m3u8 playlist file vlc kodi youtube music links back other phone", "#plImportBtn"],
       ["Portrait video rotate suggestion", "portrait video rotate suggestion upright tall phone video sideways auto detect turn 90 head tilt", "#lpRotSuggest"],
+      ["Reason on a favourite", "favourite reason why note remember what it was for saved purpose favourites row pencil", "#favList"],
       ["Mix a second ambient sound", "mix second ambient sound two blend rain brown noise ocean volume layer sleep focus", "#ambMixRow283"],
       ["Soft pause", "soft pause local files sound eases out fade resume click mid note gentle", "#lpSoftBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
