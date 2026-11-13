@@ -3297,6 +3297,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Moment saved": ["पल सेव हुआ", "ક્ષણ સેવ થઈ"],
    "No moments saved yet.": ["अभी कोई पल सेव नहीं है.", "હજી કોઈ ક્ષણ સેવ નથી."],
    "All moments saved as a text file": ["सारे पल टेक्स्ट फ़ाइल में सेव हुए", "બધા ક્ષણો ટેક્સ્ટ ફાઇલમાં સચવાયા"],
+   "Moment restored": ["पल वापस आ गया", "ક્ષણ પાછી આવી"],
    "Moment removed": ["पल हटाया गया", "ક્ષણ હટાઈ"],
    "Moments copied": ["पल कॉपी हुए", "ક્ષણો કૉપી થઈ"],
    "Copy link to moment": ["इस पल का लिंक कॉपी करें", "આ ક્ષણની લિંક કૉપી કરો"],
@@ -14750,9 +14751,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var del = document.createElement("button"); del.type = "button"; del.className = "chip mark-x"; del.textContent = "\u2715";
       del.setAttribute("aria-label", T("Delete moment") + " " + fmt(m.t));
       del.addEventListener("click", function () {
-        var arr = marks[curId] || [];
-        marks[curId] = arr.filter(function (x) { return x.t !== m.t; });
-        marksSave(); renderMarks(); toast(T("Moment removed"));
+        // Round 223 fix 1: a removed moment was gone for good (no Undo, unlike a cleared note
+        // or a removed channel row), and an emptied list left an empty entry behind.
+        var vid = curId, arr = marks[vid] || [], gone = { t: m.t, name: m.name };
+        marks[vid] = arr.filter(function (x) { return x.t !== m.t; });
+        if (!marks[vid].length) delete marks[vid];
+        marksSave(); renderMarks();
+        toastUndo(T("Moment removed"), function () {
+          var a2 = marks[vid] = marks[vid] || [];
+          if (!a2.some(function (x) { return x.t === gone.t; }) && a2.length < 30) { a2.push(gone); a2.sort(function (x, y) { return x.t - y.t; }); }
+          marksSave(); if (curId === vid) renderMarks();
+        }, T("Moment restored"));
       });
       // Round 213 new: a moment's name was fixed at save time; the pencil renames it in place.
       var rn = document.createElement("button"); rn.type = "button"; rn.className = "chip mark-x"; rn.textContent = "\u270F";
