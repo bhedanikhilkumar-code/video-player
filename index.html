@@ -22320,6 +22320,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
 
+  // Round 235 fix: two open tabs (or the installed app plus a browser tab) each held their own copy of the
+  // library and wrote the whole thing on every change, so the tab that saved last silently wiped what
+  // the other one had just added (a favourite, a Watch later save, queue rows). A storage event from
+  // the other tab now refreshes this tab's lists (queue place kept by video id) before its next save.
+  window.addEventListener("storage", function (e) {
+    if (e.key !== LIB_KEY || !e.newValue) return;
+    try {
+      var o = JSON.parse(e.newValue); if (!o || typeof o !== "object") return;
+      var curQ = (qPos >= 0 && lib.queue[qPos]) ? lib.queue[qPos].id : null;
+      if (Array.isArray(o.hist)) lib.hist = o.hist.filter(validItem).slice(0, HIST_MAX);
+      if (Array.isArray(o.favs)) lib.favs = o.favs.filter(validItem);
+      if (Array.isArray(o.queue)) lib.queue = o.queue.filter(validItem).slice(0, 50);
+      if (Array.isArray(o.later)) lib.later = o.later.filter(validItem).slice(0, 50);
+      var pos = curQ ? findIn(lib.queue, curQ) : -1; qPos = pos;
+      renderLib();
+    } catch (err) {}
+  });
+
   // Drop long videos from the queue (round 234 new 5): Sort by length orders a queue and Fit-time picks videos for a window, but a short evening still meant removing the hour-long ones row by row. One chip removes every upcoming video whose learned length (from this session or Recently watched) is over 30 minutes (the playing video and videos with an unknown length stay), with the usual Undo toast. Hindi and Gujarati text, What's new and feature finder included.
   Object.assign(TR_MSG, {
     "Drop long videos from the queue": ["कतार से लंबे वीडियो हटाएं", "કતારમાંથી લાંબા વીડિયો કાઢો"],
