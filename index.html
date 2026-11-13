@@ -8280,10 +8280,28 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
     WNEW.unshift(['Sleep timer stops ambient sound','#ambCard270']);WNEW.length=Math.min(10,WNEW.length);wnewRender();
     sleepFadeRestore();
-    markActive(sleepChips, "0"); sleepLabel.textContent = T("Sleep timer finished - paused. Press Play to continue.");
+    markActive(sleepChips, "0");
+    var sessMsg279 = "";
+    if (window.__vpSleepSess279 && window.__vpSleepSess279.at) {
+      var sMin279 = Math.max(1, Math.round((Date.now() - window.__vpSleepSess279.at) / 60000));
+      var sVids279 = (typeof stats === "object" && stats && typeof stats.plays === "number") ? Math.max(0, stats.plays - window.__vpSleepSess279.plays) : 0;
+      sessMsg279 = " " + T("This session: {m} min, {n} videos").replace("{m}", sMin279).replace("{n}", sVids279);
+      window.__vpSleepSess279 = null;
+    }
+    sleepLabel.textContent = T("Sleep timer finished - paused. Press Play to continue.") + sessMsg279;
     if (typeof sleepRepeatPaint === "function") sleepRepeatPaint();
     if (typeof sleepMorePaint === "function") sleepMorePaint();
   }
+
+  // Round 279 new 4: Sleep timer session recap. When the sleep timer ends the night, the
+  // status line now also says how long the session ran and how many videos played since
+  // the timer was set - a small good-night summary. Works on YouTube videos, translated
+  // in Hindi and Gujarati, in the feature finder and What's new.
+  Object.assign(TR_MSG, {
+    "This session: {m} min, {n} videos": ["\u0907\u0938 \u0938\u0924\u094D\u0930 \u092E\u0947\u0902: {m} \u092E\u093F\u0928\u091F, {n} \u0935\u0940\u0921\u093F\u092F\u094B", "\u0A86 \u0AB8\u0A82\u0A9A\u0AB0\u0AA3\u0AAE\u0ABE\u0A82: {m} \u0AAE\u0ABF\u0AA8\u0ABF\u0A9F, {n} \u0AB5\u0AC0\u0AA1\u0ABF\u0AAF\u0ACB"],
+    "Sleep timer session recap": ["\u0938\u094D\u0932\u0940\u092A \u091F\u093E\u0907\u092E\u0930 \u0938\u0924\u094D\u0930 \u0938\u093E\u0930", "\u0AB8\u0ACD\u0AB2\u0AC0\u0AAA \u0A9F\u0ABE\u0A87\u0AAE\u0AB0 \u0AB8\u0A82\u0A9A\u0AB0\u0AA3 \u0AB8\u0ABE\u0AB0"]
+  });
+  WNEW.unshift(["Sleep timer session recap", "#sleepVidsRow"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   function sleepSet(mins, endMs) {
     if (sleepTick) clearInterval(sleepTick);
     sleepFadeRestore();
@@ -8294,6 +8312,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     try { if (sleepEnd) localStorage.setItem("vp-sleep-end.v1", String(sleepEnd)); else localStorage.removeItem("vp-sleep-end.v1"); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
     markActive(sleepChips, String(mins)); sleepRender();
     toast(endMs ? T("Sleep timer: until ") + sleepClockTxt : mins ? T("Sleep timer: ") + mins + " " + T("min") : T("Sleep timer off"));
+    if (sleepEnd) { try { window.__vpSleepSess279 = { at: Date.now(), plays: (typeof stats === "object" && stats && typeof stats.plays === "number") ? stats.plays : 0 }; } catch (e) {} } else window.__vpSleepSess279 = null;
     sleepTick = mins ? setInterval(checkSleep, 1000) : null;
   }
   [[0, "Off"], [10, "10 min"], [15, "15 min"], [30, "30 min"], [45, "45 min"], [60, "60 min"]].forEach(function(o) {
@@ -34484,6 +34503,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Remember the rotation per video", "remember rotation per video sideways phone clip turned picture rotate memory", "#rotMemBtn279"],
       ["Remember the picture look per video", "remember picture look per video brightness contrast colour tuning memory", "#picMemBtn279"],
       ["Rewind on resume choice", "rewind on resume choice seconds back half watched continue recap", "#rewBackRow279"],
+      ["Sleep timer session recap", "sleep timer session recap summary minutes videos watched tonight good night", "#sleepVidsRow"],
       ["Practice loop repeat count", "practice loop repeat count local ab passes 2 3 5 10 stop itself", "#lpLoopCountRow278"],
       ["File info for local files", "file info local name size type length picture bitrate codec details", "#lpInfoBtn278"],
       ["Auto chapters for local files", "auto chapters local file split every 5 10 minutes even parts markers", "#lpChAutoRow278"],
