@@ -31207,6 +31207,67 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   WNEW.unshift(['Browse media folder','#folderBrowser276']);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 
+  // Round 277 new 4: Save a clip. A good moment inside a long local recording meant
+  // keeping the whole file; this cuts the part between two marked points into its own
+  // WebM video the browser saves like any download. Recording runs in real time (a
+  // one-minute clip takes a minute) with a live state line and a Cancel that keeps
+  // nothing; a clip can be at most 10 minutes. Local files only, nothing is uploaded;
+  // browsers without captureStream/MediaRecorder get a clear message. Checked first:
+  // only the server-side downloader trim existed, nothing for local files. Works with
+  // the local player, translated in Hindi and Gujarati, in the finder and What's new.
+  Object.assign(TR_MSG, {
+    "Save a clip": ["क्लिप सेव करें", "ક્લિપ સાચવો"],
+    "Cut the part between two marked points of the playing local file into its own WebM video. Recording runs in real time; keep this tab open. Local files only; nothing is uploaded.": ["चल रही लोकल फ़ाइल के दो चुने बिंदुओं के बीच का हिस्सा अपनी WebM वीडियो में काटें. रिकॉर्डिंग असली समय में चलती है; यह टैब खुला रखें. सिर्फ लोकल फ़ाइलें; कुछ अपलोड नहीं होता.", "ચાલતી લોકલ ફાઇલના બે પસંદ કરેલા બિંદુઓ વચ્ચેનો ભાગ પોતાની WebM વીડિયોમાં કાપો. રેકોર્ડિંગ વાસ્તવિક સમયમાં ચાલે છે; આ ટૅબ ખુલ્લી રાખો. ફક્ત લોકલ ફાઇલો; કંઈ અપલોડ થતું નથી."],
+    "Clip start here": ["क्लिप शुरुआत यहां", "ક્લિપ શરૂઆત અહીં"],
+    "Clip end here": ["क्लिप अंत यहां", "ક્લિપ અંત અહીં"],
+    "Recording clip": ["क्लिप रिकॉर्ड हो रही", "ક્લિપ રેકોર્ડ થઈ રહી છે"],
+    "Clip ready - save it with the button.": ["क्लिप तैयार है - बटन से सेव करें.", "ક્લિપ તૈયાર છે - બટનથી સાચવો."],
+    "Clip cancelled.": ["क्लिप रद्द हुई.", "ક્લિપ રદ થઈ."],
+    "Set both ends of the clip first.": ["पहले क्लिप के दोनों सिरे तय करें.", "પહેલા ક્લિપના બંને છેડા નક્કી કરો."],
+    "The clip can be at most 10 minutes.": ["क्लिप अधिकतम 10 मिनट की हो सकती है.", "ક્લિપ વધુમાં વધુ 10 મિનિટની હોઈ શકે."],
+    "Recording is not supported in this browser.": ["इस ब्राउज़र में रिकॉर्डिंग सपोर्ट नहीं है.", "આ બ્રાઉઝરમાં રેકોર્ડિંગ સપોર્ટ નથી."]
+  });
+  (function(){
+    var v=$('lpVideo'),anchor=$('lpPickRow');if(!v||!anchor)return;
+    var box=document.createElement('details');box.className='lp-workbench';box.id='clipCut277';
+    box.innerHTML='<summary></summary><p class="hint" data-i="Cut the part between two marked points of the playing local file into its own WebM video. Recording runs in real time; keep this tab open. Local files only; nothing is uploaded."></p><div class="row" style="flex-wrap:wrap"><button type="button" class="chip" id="clipA277"></button><button type="button" class="chip" id="clipB277"></button><button type="button" class="chip" id="clipGo277" data-i="Save clip"></button><button type="button" class="chip" id="clipCancel277" data-i="Cancel" hidden></button><a class="chip" id="clipSave277" download="clip.webm" data-i="Save clip" hidden></a></div><p class="hint" id="clipState277" role="status"></p>';
+    anchor.after(box);
+    var a=$('clipA277'),b=$('clipB277'),go=$('clipGo277'),cancel=$('clipCancel277'),save=$('clipSave277'),state=$('clipState277');
+    var tA=null,tB=null,rec=null,chunks=[],url=null,run=0;
+    function ft(t){return typeof fmt==='function'?fmt(Math.floor(t)):Math.floor(t/60)+':'+String(Math.floor(t%60)).padStart(2,'0');}
+    function paint(){box.querySelector('summary').textContent=T('Save a clip');box.querySelectorAll('[data-i]').forEach(function(el){el.textContent=T(el.getAttribute('data-i'));});a.textContent=T('Clip start here')+(tA!=null?' ('+ft(tA)+')':'');b.textContent=T('Clip end here')+(tB!=null?' ('+ft(tB)+')':'');}
+    function clearSave(){if(url)URL.revokeObjectURL(url);url=null;save.hidden=true;save.removeAttribute('href');}
+    function stopRec(){run++;rec=null;cancel.hidden=true;go.disabled=false;}
+    a.addEventListener('click',function(){if(!v.currentSrc||!isFinite(v.duration)){state.textContent=T('Choose a local video first.');return;}tA=v.currentTime;paint();});
+    b.addEventListener('click',function(){if(!v.currentSrc||!isFinite(v.duration)){state.textContent=T('Choose a local video first.');return;}tB=v.currentTime;paint();});
+    cancel.addEventListener('click',function(){var r=rec;stopRec();chunks=[];if(r){try{r.ondataavailable=null;r.onstop=null;r.stop();}catch(e){}}state.textContent=T('Clip cancelled.');});
+    v.addEventListener('loadstart',function(){var r=rec;stopRec();if(r){try{r.ondataavailable=null;r.onstop=null;r.stop();}catch(e){}}chunks=[];tA=tB=null;clearSave();state.textContent='';paint();});
+    go.addEventListener('click',function(){
+      if(!v.currentSrc||!isFinite(v.duration)||v.duration<=0){state.textContent=T('Choose a local video first.');return;}
+      if(tA==null||tB==null||tB<=tA){state.textContent=T('Set both ends of the clip first.');return;}
+      if(tB-tA>600){state.textContent=T('The clip can be at most 10 minutes.');return;}
+      var capF=v.captureStream||v.mozCaptureStream;
+      if(typeof capF!=='function'||typeof MediaRecorder==='undefined'){state.textContent=T('Recording is not supported in this browser.');return;}
+      clearSave();chunks=[];var token=++run;
+      var mime='';['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].forEach(function(m){if(!mime&&MediaRecorder.isTypeSupported(m))mime=m;});
+      var stream=capF.call(v),rec2;try{rec2=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);}catch(e){state.textContent=T('Recording is not supported in this browser.');return;}
+      rec=rec2;go.disabled=true;cancel.hidden=false;
+      rec2.ondataavailable=function(e){if(e.data&&e.data.size)chunks.push(e.data);};
+      rec2.onstop=function(){
+        stream.getTracks().forEach(function(t){try{t.stop();}catch(e){}});
+        if(token!==run)return;
+        go.disabled=false;cancel.hidden=true;
+        if(!chunks.length){state.textContent=T('Recording is not supported in this browser.');return;}
+        var blob=new Blob(chunks,{type:mime||'video/webm'});url=URL.createObjectURL(blob);save.href=url;save.hidden=false;state.textContent=T('Clip ready - save it with the button.');
+      };
+      var onT=function(){if(v.currentTime>=tB){v.removeEventListener('timeupdate',onT);v.pause();rec=null;try{rec2.stop();}catch(e){}}};
+      var begin=function(){if(token!==run)return;v.addEventListener('timeupdate',onT);try{rec2.start(250);}catch(e){stopRec();state.textContent=T('Recording is not supported in this browser.');return;}var p=v.play();if(p&&p.catch)p.catch(function(){});state.textContent=T('Recording clip')+' · '+ft(tA)+' \u2192 '+ft(tB);};
+      if(Math.abs(v.currentTime-tA)>0.3){v.currentTime=tA;var onS=function(){v.removeEventListener('seeked',onS);begin();};v.addEventListener('seeked',onS);}else begin();
+    });
+    (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
+  WNEW.unshift(['Save a clip','#clipCut277']);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+
   // Round 277 new 2: Goodnight. Bedtime meant setting the sleep timer in one card
   // and starting the rain/noise in another; one chip now does both - it starts the
   // sleep timer with the minutes used last time (30 by default) and starts the
@@ -34032,6 +34093,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Save a clip", "cut save clip segment piece local video webm record capture download part between points", "#clipCut277"],
       ["Sleep timer stops ambient sound", "sleep timer stops ambient sound rain noise silence automatically night off", "#ambCard270"],
       ["Goodnight", "goodnight sleep timer ambient sound one tap bed night rain noise rest", "#goodnightBtn277"],
       ["Fill my break", "fill my break free minutes time budget queue unwatched watch later oldest first length fit batch break", "#fillBreak277"],
