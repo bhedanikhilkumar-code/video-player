@@ -2349,6 +2349,7 @@ setTimeout(done,3000);})();
       <div id="continueWrap" hidden>
         <div class="lib-head"><h3 id="lhContinue">Continue watching</h3><span class="row"><button class="chip" id="contQueueBtn" type="button">Queue all</button><button class="chip" id="contShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="contCopyBtn" type="button">Copy list</button><button class="chip" id="contTxtBtn" type="button">Save as text file</button><button class="chip" id="contClearBtn" type="button">Clear all</button></span></div>
         <ul class="lib-list" id="continueList"></ul>
+        <p class="hint" id="contTime" role="status" hidden></p>
         <p class="lib-empty" id="continueEmpty" hidden><span class="lib-empty-ic" aria-hidden="true">&#9654;</span><span id="continueEmptyTx">Nothing to continue yet. Watch any video for 10 seconds and it will wait for you here.</span></p>
       </div>
       <div class="lib-head"><h3 id="lhPlaylists">Saved playlists</h3></div>
@@ -5097,6 +5098,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Play a random unwatched video from Recently watched": ["हाल में देखे गए से कोई अधूरा वीडियो चलाएं", "તાજેતરમાં જોયેલામાંથી અધૂરો વીડિયો ચલાવો"],
     "Nothing in Recently watched yet.": ["हिस्ट्री में अभी कुछ नहीं है.", "હિસ્ટ્રીમાં હજી કંઈ નથી."],
     "Surprise me in Recently watched": ["हिस्ट्री में सरप्राइज़ मी", "હિસ્ટ્રીમાં સરપ્રાઇઝ મી"]
+  });
+  Object.assign(TR_MSG, {
+    "Total left": ["कुल बचा समय", "કુલ બચેલો સમય"],
+    "Continue watching total time left": ["देखना जारी रखें में कुल बचा समय", "ચાલુ જોવામાં કુલ બચેલો સમય"]
   });
   var histSurpriseBtn = $("histSurpriseBtn");
   if (histSurpriseBtn) histSurpriseBtn.addEventListener("click", function () {
@@ -15050,6 +15055,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       });
       li.appendChild(open); li.appendChild(act); ul.appendChild(li);
     });
+    // Total time left (round 228 new 4): every row shows its own "2 min left", but planning
+    // a break around the whole rotation meant adding those in your head. One line under the
+    // card sums the same visible rows (the card caps at six, and the count says how many),
+    // so "can I finish all of this before dinner" is one glance. Hidden while fewer than two
+    // rows wait, where the per-row lines already answer it.
+    var ctEl = $("contTime");
+    if (ctEl) {
+      var ctN = items.length, ctTot = 0;
+      items.forEach(function (x) { ctTot += Math.max(0, x.dur - x.t); });
+      ctEl.hidden = ctN < 2;
+      ctEl.textContent = ctN < 2 ? "" : T("Total left") + ": " + fmtWatch(ctTot) + " \u00b7 " + ctN + " " + (ctN === 1 ? T("video") : T("videos"));
+    }
   }
   renderContinue();
 
@@ -17136,6 +17153,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Surprise me in Recently watched", "#histSurpriseBtn"],
     ["Recent downloads as a text file", "#dlHistTxtBtn"],
     ["Copy all playlists", "#plAllCopyBtn"],
+    ["Continue watching total time left", "#contTime"],
     ["Sort Watch later A to Z", "#laterSortAzBtn"],
     ["This month vs last month in Watch stats", "#statsMonthCmp"],
     ["Channel quality memory", "#chQualBtn"],
@@ -23791,6 +23809,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Battery saver suggestion", "battery saver suggestion low battery 20 percent offer turn on calm animations power saving phone", "#saverBatt"],
       ["Search the help", "search the help faq questions find answer filter help card type keyword support how do i", "#faqSearch"],
       ["Copy all playlists", "copy all playlists clipboard every playlist titles links paste chat notes share collection", "#plAllCopyBtn"],
+      ["Continue watching total time left", "continue watching total time left sum minutes remaining whole list evening plan finish", "#contTime"],
       ["Copy recent downloads", "copy recent downloads list clipboard links downloader history share paste titles mp3", "#dlHistCopy"],
       ["Recent downloads as a text file", "save recent downloads text file export record keep list links downloader history", "#dlHistTxtBtn"],
       ["Watch later count on the app icon", "app icon badge watch later count number home screen installed pwa unwatched waiting saved videos", "#badgeLater"],
