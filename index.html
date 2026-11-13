@@ -13631,12 +13631,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var nowD = new Date(), curP = dayKey(nowD).slice(0, 7);
       var prevD = new Date(nowD.getFullYear(), nowD.getMonth() - 1, 1), prevP = dayKey(prevD).slice(0, 7);
       var curS = 0, prevS = 0;
-      Object.keys(stats.days).forEach(function (k) { var p = k.slice(0, 7); if (p === curP) curS += Math.floor(stats.days[k] || 0); else if (p === prevP) prevS += Math.floor(stats.days[k] || 0); });
+      // Round 234 fix: last month was counted in full against a month still in progress, so on
+      // the 3rd the line read -90% although nothing was wrong. Last month is now cut at the
+      // same day of the month as today (clamped to its length), so the percentage compares
+      // like with like, and the label shows the days it covers (e.g. October 1-13).
+      var cutDay = Math.min(nowD.getDate(), new Date(nowD.getFullYear(), nowD.getMonth(), 0).getDate());
+      Object.keys(stats.days).forEach(function (k) { var p = k.slice(0, 7); if (p === curP) curS += Math.floor(stats.days[k] || 0); else if (p === prevP && parseInt(k.slice(8, 10), 10) <= cutDay) prevS += Math.floor(stats.days[k] || 0); });
       if (curS > 0 && prevS > 0) {
         var pct = Math.round((curS - prevS) / prevS * 100);
         var mLoc2 = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-US";
         mcmpEl.hidden = false;
-        mcmpEl.textContent = T("Vs last month") + ": " + (pct >= 0 ? "+" : "") + pct + "% \u00b7 " + prevD.toLocaleDateString(mLoc2, { month: "long" }) + " " + fmtWatch(prevS);
+        mcmpEl.textContent = T("Vs last month") + ": " + (pct >= 0 ? "+" : "") + pct + "% \u00b7 " + prevD.toLocaleDateString(mLoc2, { month: "long" }) + " 1-" + cutDay + " " + fmtWatch(prevS);
       }
     }
     // Yesterday in Watch stats (round 231 new 3): the card jumps from Today straight to
