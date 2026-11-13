@@ -30134,7 +30134,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // queue (never the one playing) with Undo. Names come from the video's public title service, so a video
   // whose channel is not known yet is never skipped.
   function cleanR271(o) {
-    var out = { block: [] };
+    var out = { block: [], words: [] };
+    if (o && typeof o === "object" && !Array.isArray(o) && Array.isArray(o.words)) out.words = cleanWords271(o.words);
     if (o && typeof o === "object" && !Array.isArray(o) && Array.isArray(o.block)) o.block.forEach(function (n) {
       if (typeof n !== "string") return; n = n.replace(/\s+/g, " ").trim().slice(0, 60);
       if (!n || out.block.length >= 30 || out.block.some(function (x) { return x.toLowerCase() === n.toLowerCase(); })) return;
@@ -30227,6 +30228,93 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     } catch (e) {}
   }, 500);
   WNEW.unshift(["Blocked channels","#blockCard271"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  // Round 271 new 2: Skip by title words - type words (for example "live", "trailer", "reaction") and when the
+  // queue moves on (by itself or with Next) a video whose title contains one of them is skipped, 5 in a row at
+  // most. A video you pick yourself always plays. The words are matched as whole words, ignoring case, so
+  // "live" does not skip "deliver"; up to 10 words, kept in prefs.r271.words (so in the backup).
+  function cleanWords271(a) {
+    var out = []; if (!Array.isArray(a)) return out;
+    a.forEach(function (w) {
+      if (typeof w !== "string") return; w = w.replace(/\s+/g, " ").trim().slice(0, 30);
+      if (!w || out.length >= 10 || out.some(function (x) { return x.toLowerCase() === w.toLowerCase(); })) return; out.push(w);
+    });
+    return out;
+  }
+  function titleHit271(title, words) {
+    title = " " + String(title || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ") + " ";
+    for (var i = 0; i < words.length; i++) {
+      var w = " " + String(words[i]).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim() + " ";
+      if (w.length > 2 && title.indexOf(w) >= 0) return words[i];
+    }
+    return "";
+  }
+  Object.assign(TR_MSG, {
+    "Skip by title words": ["शीर्षक के शब्दों से छोड़ें", "શીર્ષકના શબ્દોથી છોડો"],
+    "When the queue moves on, a video whose title has one of these words is skipped. A video you pick yourself always plays.": ["कतार आगे बढ़ते समय जिस वीडियो के शीर्षक में इनमें से कोई शब्द हो वह छोड़ दिया जाता है. आप खुद चुनें तो वीडियो चलता है.", "કતાર આગળ વધે ત્યારે જે વીડિયોના શીર્ષકમાં આમાંથી કોઈ શબ્દ હોય તે છોડી દેવાય છે. તમે જાતે પસંદ કરો તો વીડિયો ચાલે છે."],
+    "A word to skip": ["छोड़ने वाला शब्द", "છોડવાનો શબ્દ"],
+    "Add word": ["शब्द जोड़ें", "શબ્દ ઉમેરો"],
+    "No words yet.": ["अभी कोई शब्द नहीं.", "હજી કોઈ શબ્દ નથી."],
+    "Word list is full (10).": ["शब्द सूची भर गई है (10).", "શબ્દ યાદી ભરાઈ ગઈ છે (10)."],
+    "Skipped a video with \"{w}\" in the title.": ["शीर्षक में \"{w}\" वाला वीडियो छोड़ा.", "શીર્ષકમાં \"{w}\" વાળો વીડિયો છોડ્યો."],
+    "{w} removed.": ["{w} हटाया.", "{w} કાઢ્યું."]
+  });
+  (function () {
+    var card = card268("wordCard271", "Skip by title words", "#blockCard271"); if (!card) return;
+    var hint = document.createElement("p"); hint.className = "hint"; card.appendChild(hint);
+    var row = document.createElement("div"); row.className = "row"; row.style.cssText = "gap:8px;align-items:center"; card.appendChild(row);
+    var inp = document.createElement("input"); inp.type = "text"; inp.id = "wordIn271"; inp.maxLength = 30; inp.autocomplete = "off"; inp.style.cssText = "min-height:40px;padding:6px 14px;border-radius:999px;flex:1;min-width:0;font:inherit"; row.appendChild(inp);
+    var add = document.createElement("button"); add.type = "button"; add.className = "chip"; add.id = "wordAdd271"; row.appendChild(add);
+    var list = document.createElement("div"); list.className = "chips"; list.id = "wordList271"; list.style.marginTop = "8px"; card.appendChild(list);
+    var sub = document.createElement("p"); sub.className = "hint"; card.appendChild(sub);
+    function get() { return cleanWords271((cleanR271(prefs.r271) || {}).words); }
+    function put(w) { var o = cleanR271(prefs.r271); o.words = cleanWords271(w); prefs.r271 = o; savePrefs(); }
+    function addWord() {
+      var v = inp.value.replace(/\s+/g, " ").trim(); if (!v) return; var w = get();
+      if (w.some(function (x) { return x.toLowerCase() === v.toLowerCase(); })) { inp.value = ""; return; }
+      if (w.length >= 10) { toast(T("Word list is full (10).")); return; }
+      w.push(v); put(w); inp.value = ""; paint();
+    }
+    add.addEventListener("click", addWord);
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); addWord(); } });
+    function paint() {
+      var w = get();
+      hint.textContent = T("When the queue moves on, a video whose title has one of these words is skipped. A video you pick yourself always plays.");
+      inp.placeholder = T("A word to skip"); inp.setAttribute("aria-label", T("A word to skip")); add.textContent = T("Add word");
+      list.textContent = "";
+      w.forEach(function (n) {
+        var x = document.createElement("button"); x.type = "button"; x.className = "chip active"; x.textContent = n + " \u2715";
+        x.setAttribute("aria-label", T("{w} removed.").replace("{w}", n));
+        x.addEventListener("click", function () { put(get().filter(function (y) { return y !== n; })); paint(); });
+        list.appendChild(x);
+      });
+      sub.textContent = w.length ? "" : T("No words yet.");
+    }
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+  var wdPrev271 = null, wdAdv271 = false, wdChain271 = 0, wdDone271 = null, wdSince271 = 0, wdNextAt271 = 0, wdPrevCur271 = 0, wdPrevDur271 = 0;
+  document.addEventListener("click", function (e) { var b = e.target && e.target.closest && e.target.closest("#nextBtn"); if (b) wdNextAt271 = Date.now(); }, true);
+  setInterval(function () {
+    try {
+      if (!curId || !ready) return;
+      if (wdPrev271 !== curId) {
+        wdAdv271 = wdPrev271 !== null && ((wdPrevDur271 > 0 && wdPrevCur271 >= wdPrevDur271 - 6) || Date.now() - wdNextAt271 < 6000);
+        if (!wdAdv271) wdChain271 = 0;
+        wdPrev271 = curId; wdDone271 = null; wdSince271 = Date.now();
+      }
+      wdPrevCur271 = curTime; wdPrevDur271 = duration;
+      var ws = cleanWords271((cleanR271(prefs.r271) || {}).words);
+      if (!wdAdv271 || wdDone271 === curId || !ws.length) return;
+      var title = (infoCache[curId] && infoCache[curId].title) || "";
+      if (!title) { var qi = lib.queue[qPos]; title = qi && qi.id === curId ? qi.title : ""; }
+      if (!title) { if (Date.now() - wdSince271 > 8000) wdDone271 = curId; return; }
+      wdDone271 = curId;
+      var hit = titleHit271(title, ws); if (!hit) { wdChain271 = 0; return; }
+      var nb = $("nextBtn"); if (wdChain271 >= 5 || !nb || nb.disabled || !(lib.queue.length > 0)) return;
+      wdChain271++; wdNextAt271 = Date.now();
+      toast(T("Skipped a video with \"{w}\" in the title.").replace("{w}", hit)); nb.click();
+    } catch (e) {}
+  }, 500);
+  WNEW.unshift(["Skip by title words","#wordCard271"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 })();
 </script>
 <script>
@@ -32924,6 +33012,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Finish by", "finish by clock time deadline speed needed how fast watch before time left catch up end at", "#finishCard269"],
       ["Ambient sounds", "ambient sound white pink brown noise rain ocean sleep focus study relax background masking tinnitus calm", "#ambCard270"],
       ["Blocked channels", "block channel skip hide mute creator never play queue next unwanted", "#blockCard271"],
+      ["Skip by title words", "skip title words keyword filter live trailer reaction shorts unwanted queue next block", "#wordCard271"],
       ["Play range", "start end trim play only part of video skip intro outro cut limit section", "#rangeCard268"],
       ["Eye rest", "eye break rest 20-20-20 pause look away tired eyes health reminder", "#eyeCard268"],
       ["Voice announcements", "read title aloud speak announce now playing voice speech driving low vision", "#announceCard268"],
@@ -35741,16 +35830,16 @@ html.high-contrast #scBox b.key-echo, html.high-contrast #scHelpOverlay b.key-ec
    when you type in them. Pure look: no setting, nothing new is saved, typing, paste and
    search work as before. Dark theme gets a dark well, High contrast a strong solid edge,
    Low-end mode and Calm/reduced motion drop the glow animation. */
-:root #linkInput, :root #dlUrl, :root #libSearch, :root #plName, :root #markFindIn, :root #noteFindIn, :root #noteBox, :root #markPasteText, :root #lyricsBox, :root #plPasteBox, :root #reportText { background: linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.92)); border: 1px solid rgba(58,180,152,.3); box-shadow: inset 0 2px 5px rgba(30,70,64,.12), inset 0 -1px 0 rgba(255,255,255,.95), 0 1px 0 rgba(255,255,255,.85); transition: border-color .2s ease, box-shadow .25s ease, transform .2s ease; }
-:root #linkInput:hover, :root #dlUrl:hover, :root #libSearch:hover, :root #plName:hover, :root #markFindIn:hover, :root #noteFindIn:hover, :root #noteBox:hover, :root #markPasteText:hover, :root #lyricsBox:hover, :root #plPasteBox:hover, :root #reportText:hover { border-color: rgba(58,180,152,.6); }
-:root #linkInput:focus, :root #dlUrl:focus, :root #libSearch:focus, :root #plName:focus, :root #markFindIn:focus, :root #noteFindIn:focus, :root #noteBox:focus, :root #markPasteText:focus, :root #lyricsBox:focus, :root #plPasteBox:focus, :root #reportText:focus { border-color: rgba(58,180,152,.88); box-shadow: inset 0 2px 5px rgba(30,70,64,.1), 0 0 0 4px rgba(58,180,152,.22), 0 6px 18px rgba(30,70,64,.14); transform: translateY(-1px); }
+:root #linkInput, :root #dlUrl, :root #libSearch, :root #plName, :root #markFindIn, :root #noteFindIn, :root #noteBox, :root #markPasteText, :root #lyricsBox, :root #plPasteBox, :root #reportText, :root #wordIn271 { background: linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,.92)); border: 1px solid rgba(58,180,152,.3); box-shadow: inset 0 2px 5px rgba(30,70,64,.12), inset 0 -1px 0 rgba(255,255,255,.95), 0 1px 0 rgba(255,255,255,.85); transition: border-color .2s ease, box-shadow .25s ease, transform .2s ease; }
+:root #linkInput:hover, :root #dlUrl:hover, :root #libSearch:hover, :root #plName:hover, :root #markFindIn:hover, :root #noteFindIn:hover, :root #noteBox:hover, :root #markPasteText:hover, :root #lyricsBox:hover, :root #plPasteBox:hover, :root #reportText:hover, :root #wordIn271:hover { border-color: rgba(58,180,152,.6); }
+:root #linkInput:focus, :root #dlUrl:focus, :root #libSearch:focus, :root #plName:focus, :root #markFindIn:focus, :root #noteFindIn:focus, :root #noteBox:focus, :root #markPasteText:focus, :root #lyricsBox:focus, :root #plPasteBox:focus, :root #reportText:focus, :root #wordIn271:focus { border-color: rgba(58,180,152,.88); box-shadow: inset 0 2px 5px rgba(30,70,64,.1), 0 0 0 4px rgba(58,180,152,.22), 0 6px 18px rgba(30,70,64,.14); transform: translateY(-1px); }
 :root[data-theme="dark"] #linkInput, :root[data-theme="dark"] #dlUrl, :root[data-theme="dark"] #libSearch, :root[data-theme="dark"] #plName, :root[data-theme="dark"] #markFindIn, :root[data-theme="dark"] #noteFindIn, :root[data-theme="dark"] #noteBox, :root[data-theme="dark"] #markPasteText, :root[data-theme="dark"] #lyricsBox, :root[data-theme="dark"] #plPasteBox, :root[data-theme="dark"] #reportText { background: linear-gradient(180deg, rgba(0,0,0,.34), rgba(255,255,255,.06)); border-color: rgba(127,210,191,.28); box-shadow: inset 0 2px 6px rgba(0,0,0,.45), inset 0 -1px 0 rgba(255,255,255,.1); }
 :root[data-theme="dark"] #linkInput:focus, :root[data-theme="dark"] #dlUrl:focus, :root[data-theme="dark"] #libSearch:focus, :root[data-theme="dark"] #plName:focus, :root[data-theme="dark"] #markFindIn:focus, :root[data-theme="dark"] #noteFindIn:focus, :root[data-theme="dark"] #noteBox:focus, :root[data-theme="dark"] #markPasteText:focus, :root[data-theme="dark"] #lyricsBox:focus, :root[data-theme="dark"] #plPasteBox:focus, :root[data-theme="dark"] #reportText:focus { border-color: rgba(127,210,191,.85); box-shadow: inset 0 2px 6px rgba(0,0,0,.45), 0 0 0 4px rgba(127,210,191,.3), 0 6px 18px rgba(0,0,0,.4); }
 :root input#libSearch, :root input#markFindIn, :root input#noteFindIn { -webkit-appearance: none; appearance: none; border-radius: 14px; padding-left: 14px; padding-right: 14px; }
 :root input#libSearch::-webkit-search-cancel-button { cursor: pointer; }
 html.high-contrast #linkInput, html.high-contrast #dlUrl, html.high-contrast #libSearch, html.high-contrast #plName, html.high-contrast #markFindIn, html.high-contrast #noteFindIn, html.high-contrast #noteBox, html.high-contrast #markPasteText, html.high-contrast #lyricsBox, html.high-contrast #plPasteBox, html.high-contrast #reportText { background: var(--card, #fff) !important; border: 2px solid var(--ink, #000) !important; box-shadow: none !important; transform: none !important; }
 html.low-fx #linkInput, html.low-fx #dlUrl, html.low-fx #libSearch, html.low-fx #plName, html.low-fx #markFindIn, html.low-fx #noteFindIn, html.low-fx #noteBox, html.low-fx #markPasteText, html.low-fx #lyricsBox, html.low-fx #plPasteBox, html.low-fx #reportText, html.calm-motion #linkInput:focus, html.calm-motion #dlUrl:focus, html.calm-motion #libSearch:focus, html.calm-motion #noteBox:focus { transition: none; transform: none !important; box-shadow: none; }
-@media (prefers-reduced-motion: reduce) { :root #linkInput, :root #dlUrl, :root #libSearch, :root #plName, :root #noteBox, :root #lyricsBox, :root #reportText { transition: none; } :root #linkInput:focus, :root #dlUrl:focus, :root #libSearch:focus, :root #noteBox:focus { transform: none; } }
+@media (prefers-reduced-motion: reduce) { :root #linkInput, :root #dlUrl, :root #libSearch, :root #plName, :root #noteBox, :root #lyricsBox, :root #reportText, :root #wordIn271 { transition: none; } :root #linkInput:focus, :root #dlUrl:focus, :root #libSearch:focus, :root #noteBox:focus { transform: none; } }
 </style>
 <style id="r185-glass-file-picker">
 /* Glass file picker (round 185): the Choose files button in Local file was a flat teal block

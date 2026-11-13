@@ -8,9 +8,10 @@ function slice(from, to) { const a = html.indexOf(from); assert.ok(a >= 0, from 
 // New 1: Blocked channels list rules.
 {
   const ctx = vm.createContext({});
+  vm.runInContext(slice('function cleanWords271(', 'Object.assign(TR_MSG, {\n    "Skip by title words"'), ctx);
   vm.runInContext(slice('function cleanR271(', 'Object.assign(TR_MSG, {\n    "Blocked channels"'), ctx);
   const c = ctx.cleanR271;
-  assert.equal(JSON.stringify(c(null)), '{"block":[]}');
+  assert.equal(JSON.stringify(c(null)), JSON.stringify({ block: [], words: [] }));
   assert.equal(JSON.stringify(c({ block: ['Blender', 'blender', ' Rick  Astley ', 5, {}, ''] }).block), '["Blender","Rick Astley"]');
   assert.equal(c({ block: Array.from({ length: 40 }, (_, i) => 'c' + i) }).block.length, 30);
   assert.equal(ctx.isBlocked271('BLENDER', ['Blender']), true);
@@ -26,3 +27,16 @@ console.log('round271 new1 ok');
   }
 }
 console.log('round271 fix1 ok');
+// New 2: Skip by title words rules.
+{
+  const ctx = vm.createContext({});
+  vm.runInContext(slice('function cleanWords271(', 'Object.assign(TR_MSG, {\n    "Skip by title words"'), ctx);
+  assert.equal(JSON.stringify(ctx.cleanWords271([' Live ', 'live', 'trailer', 7, ''])), '["Live","trailer"]');
+  assert.equal(ctx.cleanWords271(Array.from({ length: 15 }, (_, i) => 'w' + i)).length, 10);
+  assert.equal(ctx.titleHit271('Big Show LIVE from Delhi!', ['live']), 'live');
+  assert.equal(ctx.titleHit271('We deliver olives', ['live']), '');
+  assert.equal(ctx.titleHit271('Official Trailer #2', ['trailer']), 'trailer');
+  assert.equal(ctx.titleHit271('anything', []), '');
+  assert.equal(ctx.titleHit271('a b', ['']), '');
+}
+console.log('round271 new2 ok');
