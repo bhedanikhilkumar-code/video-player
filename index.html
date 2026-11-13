@@ -7297,7 +7297,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   playerSlot.id = "playerSlot"; playerDock.id = "playerDock";
   frameBox.parentNode.insertBefore(playerSlot, frameBox); playerSlot.appendChild(playerDock); playerDock.appendChild(frameBox);
   var miniTools = document.createElement("div"); miniTools.id = "miniTools";
-  miniTools.innerHTML = '<button id="miniPrev" class="chip" type="button" aria-label="' + T("Previous video in queue") + '" title="' + T("Previous video in queue") + '">\u23ee</button><button id="miniRew" class="chip" type="button" aria-label="' + T("Back {n} seconds").replace("{n}", 10) + '">−10</button><button id="miniPlay" class="chip" type="button" aria-label="' + T("Play or pause") + '"></button><button id="miniFwd" class="chip" type="button" aria-label="' + T("Forward {n} seconds").replace("{n}", 10) + '">+10</button><button id="miniNext" class="chip" type="button" aria-label="' + T("Next video in queue") + '" title="' + T("Next video in queue") + '">\u23ed</button><button id="miniSide" class="chip" type="button" aria-label="' + T("Move mini player to the other side") + '">\u21c4</button><button id="miniBack" class="chip" type="button">' + T("Back to player") + '</button><button id="miniClose" class="chip" type="button" aria-label="' + T("Close mini player and pause") + '">' + T("✕ Pause") + '</button>';
+  miniTools.innerHTML = '<button id="miniPrev" class="chip" type="button" aria-label="' + T("Previous video in queue") + '" title="' + T("Previous video in queue") + '">\u23ee</button><button id="miniRew" class="chip" type="button" aria-label="' + T("Back {n} seconds").replace("{n}", 10) + '">−10</button><button id="miniPlay" class="chip" type="button" aria-label="' + T("Play or pause") + '"></button><button id="miniFwd" class="chip" type="button" aria-label="' + T("Forward {n} seconds").replace("{n}", 10) + '">+10</button><button id="miniNext" class="chip" type="button" aria-label="' + T("Next video in queue") + '" title="' + T("Next video in queue") + '">\u23ed</button><button id="miniMute" class="chip" type="button" aria-label="' + T("\ud83d\udd0a Mute") + '">\ud83d\udd0a</button><button id="miniSide" class="chip" type="button" aria-label="' + T("Move mini player to the other side") + '">\u21c4</button><button id="miniBack" class="chip" type="button">' + T("Back to player") + '</button><button id="miniClose" class="chip" type="button" aria-label="' + T("Close mini player and pause") + '">' + T("✕ Pause") + '</button>';
   playerDock.appendChild(miniTools);
   (function () {
     var root = document.documentElement, side = $("miniSide");
@@ -7322,6 +7322,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     miniBar.addEventListener("pointercancel", function () { drag = false; });
   })();
   $("miniPlay").addEventListener("click", function () { if (!playBtn.disabled) playBtn.click(); });
+  // Mini player mute chip (round 218 new 5): the floating mini player could play, pause, hop
+  // and skip, but silencing the video for a moment (a call, someone talking) meant returning
+  // to the full player or pressing M. One chip mutes and unmutes through the main mute
+  // button's own path, mirrors its icon live, and re-labels on language change.
+  (function () {
+    var mm = $("miniMute"); if (!mm || !muteBtn) return;
+    function paint() {
+      var isMuted = (muteBtn.textContent || "").indexOf("\ud83d\udd07") >= 0;
+      mm.textContent = isMuted ? "\ud83d\udd07" : "\ud83d\udd0a";
+      mm.setAttribute("aria-label", isMuted ? T("\ud83d\udd07 Unmute") : T("\ud83d\udd0a Mute"));
+      mm.setAttribute("aria-pressed", String(isMuted));
+    }
+    mm.addEventListener("click", function () { muteBtn.click(); paint(); });
+    if (window.MutationObserver) new MutationObserver(paint).observe(muteBtn, { childList: true, characterData: true, subtree: true });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
   // Mini player skip buttons (round 217 new 3): the floating mini player had play,
   // previous and next, but no way to hop back ten seconds to catch a missed line -
   // the single most-used player control - without returning to the full player. A
@@ -15591,6 +15608,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Mute from the mini player", "#miniMute"],
     ["Copy your picked local files", "#lpCopyBtn"],
     ["Copy your saved channels", ".chan-copy"],
     ["Queue unwatched favourites", "#favQueueUnwBtn"],
@@ -15598,7 +15616,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Save a playlist as a text file", "#lhPlaylists"],
     ["Add the playing video to a playlist", "#infoPlBtn"],
     ["Skip buttons in the mini player", "#miniRew"],
-    ["Find in lyrics", "#lyrFindQ"],
     ["Snooze all in Watch later", "#laterSnoozeAllBtn"],
     ["Halve or double the loop", "#abNudgeRow"],
   ];
@@ -22188,6 +22205,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Finish burst", "finish burst sparks celebration ribbon video ends done complete cheer confetti end", "#finChk"],
       ["Note mark on lists", "note mark pill lists rows library favourites watch later history queue search written remember see glance", "#notesH"],
       ["Queue unwatched favourites", "queue unwatched favourites unfinished not watched add all bulk evening play saved", "#favQueueUnwBtn"],
+      ["Mute from the mini player", "mute unmute mini player sound silence volume floating docked pip small", "#miniMute"],
       ["Copy your picked local files", "copy selected local files list names sizes clipboard share note whatsapp music folder", "#lpCopyBtn"],
       ["Copy your saved channels", "copy saved channels list favourite channel names links clipboard share friend whatsapp", ".chan-copy"],
       ["Copy your lists", "copy list watch later favourites history clipboard paste share chat titles links", "#laterCopyBtn"],
