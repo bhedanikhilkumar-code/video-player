@@ -32094,6 +32094,71 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
     WNEW.unshift(["Your own shortcut keys", "#xkRow280"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   })();
+  // Round 281 new 4: Split this video into even parts. A three-hour lecture or mix has
+  // no chapters unless the creator typed them - the local-file player already splits a
+  // recording into even parts ("Auto chapters"), but a YouTube video had to be marked
+  // part by part by hand. Chips in the Saved moments card now cut the playing video
+  // into 2, 3 or 4 even parts in one tap: named moments ("Part 2", "Part 3"...) land on
+  // the seek bar as dots and in the moments list, skipping spots that already hold a
+  // moment and honestly saying how many were added. One Undo restores the moment list
+  // exactly as it was. Nothing is stored beyond the moments themselves; retranslates,
+  // feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Split into even parts": ["बराबर हिस्सों में बांटें", "સરખા ભાગોમાં વહેંચો"],
+    "Split into parts:": ["हिस्सों में बांटें:", "ભાગોમાં વહેંચો:"],
+    "Wait for the video to load its length.": ["वीडियो की लंबाई लोड होने दें.", "વીડિયોની લંબાઈ લોડ થવા દો."],
+    "Added {n} part markers.": ["{n} पार्ट मार्कर जुड़े.", "{n} પાર્ટ માર્કર ઉમેરાયા."],
+    "No part markers were needed - those spots already have moments.": ["पार्ट मार्कर की ज़रूरत नहीं थी - उन जगहों पर पहले से पल हैं.", "પાર્ટ માર્કરની જરૂર નહોતી - તે જગ્યાએ પહેલેથી ક્ષણો છે."],
+    "Part": ["भाग", "ભાગ"],
+    "Moment list is full (30).": ["पलों की लिस्ट भर गई (30).", "ક્ષણોની યાદી ભરાઈ ગઈ (30)."],
+    "Moments restored.": ["पल वापस आए.", "ક્ષણો પાછી આવી."]
+  });
+  (function () {
+    var row = null;
+    function ensure() {
+      if (row || !$("markAddBtn")) return;
+      row = document.createElement("div"); row.className = "row"; row.id = "splitRow281"; row.style.marginTop = "6px";
+      var lab = document.createElement("span"); lab.className = "label"; lab.id = "splitLab281"; row.appendChild(lab);
+      [2, 3, 4].forEach(function (n) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = String(n); b.setAttribute("data-n", String(n));
+        b.addEventListener("click", function () { splitInto(n); });
+        row.appendChild(b);
+      });
+      var anchor = $("markAddBtn").closest(".row");
+      anchor.parentNode.insertBefore(row, anchor.nextSibling);
+    }
+    function splitInto(n) {
+      if (!curId) { toast(T("Load a video first, then save a moment.")); return; }
+      if (!(duration > 0)) { toast(T("Wait for the video to load its length.")); return; }
+      var arr = marks[curId] = marks[curId] || [];
+      var snap = arr.slice();
+      var added = 0;
+      for (var k = 1; k < n; k++) {
+        var t = Math.round(duration * k / n);
+        if (t < 2 || t > duration - 2) continue;
+        if (arr.some(function (x) { return Math.abs(x.t - t) < 2; })) continue;
+        if (arr.length >= 30) { toast(T("Moment list is full (30).")); break; }
+        arr.push({ t: t, name: T("Part") + " " + (k + 1) }); added++;
+      }
+      if (!added) { toast(T("No part markers were needed - those spots already have moments.")); if (!arr.length) delete marks[curId]; return; }
+      arr.sort(function (a, b) { return a.t - b.t; });
+      marksSave(); renderMarks(); if (window.__vpSeekMarks) window.__vpSeekMarks();
+      var vid = curId;
+      toastUndo(T("Added {n} part markers.").replace("{n}", added), function () {
+        if (!snap.length) delete marks[vid]; else marks[vid] = snap;
+        marksSave(); if (curId === vid) { renderMarks(); if (window.__vpSeekMarks) window.__vpSeekMarks(); }
+      }, T("Moments restored."));
+    }
+    function paint() {
+      ensure(); if (!row) return;
+      $("splitLab281").textContent = T("Split into parts:");
+      row.setAttribute("aria-label", T("Split into even parts"));
+    }
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+    WNEW.unshift(["Split into even parts", "#splitRow281"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
+
   // Round 281 new 3: Rate right after finishing. Star ratings drive the top-rated queue,
   // the rated filter and the favourites average, but a rating only happens if you think of
   // the little stars on the Now playing card - most videos end unrated and the good ones
@@ -35250,6 +35315,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Split into even parts", "split video into even parts auto chapters moments part markers long lecture mix divide", "#splitRow281"],
       ["Rate right after finishing", "rate after finishing video ends quick stars favourite unrated prompt enjoyed", "#rateRow"],
       ["Watch later grouped by channel", "watch later group by channel creator folders sections tidy backlog organised", "#laterGroupBtn281"],
       ["Hold a row for quick actions", "hold press long press right click row quick actions play now play next add queue watch later favourite remove action sheet", "#library"],
