@@ -12924,7 +12924,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     // Round 231 fix 1: the focus session choices (auto-pick) rode no backup - vp-focus.v1
     // is counted by Reset all settings since round 229, but it was missing here, so a
     // restore on a new phone silently turned the focus auto choice back on.
-    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1"].forEach(function (k) {
+    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1", "vp-today.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
     });
     // Round 223 fix 2: small one-word settings kept under their own keys (list sort orders,
@@ -13175,7 +13175,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
             savePrefs(); gotSettings = true; }
           if (s.queueModes && typeof s.queueModes === "object") { ["shuffle", "repeat", "auto"].forEach(function (k) { if (typeof s.queueModes[k] === "boolean") queueModes[k] = s.queueModes[k]; }); try { localStorage.setItem("vp-queue-modes.v1", JSON.stringify(queueModes)); } catch (e) {} gotSettings = true; }
           if (s.vmem && typeof s.vmem === "object") { Object.keys(s.vmem).forEach(function (k) { vmem[k] = s.vmem[k]; }); vmemSave(); gotSettings = true; }
-          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1"].forEach(function (k) {
+          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1", "vp-today.v1"].forEach(function (k) {
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
           if (s.rawKeys && typeof s.rawKeys === "object" && !Array.isArray(s.rawKeys)) {
@@ -18031,6 +18031,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Today's list", "#todayCard"],
     ["Where is this video?", "#whereCard"],
     ["Around this time", "#aroundCard"],
     ["Watch later triage", "#triageCard"],
@@ -18039,8 +18040,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Review reminders", "#reviewCard"],
     ["Title tidy", "#titleTidyCard"],
     ["Take it to YouTube", "#ytTakeCard"],
-    ["Weave playlists", "#weaveCard"],
-    ["Import YouTube subscriptions", "#chanImportRow"]
+    ["Weave playlists", "#weaveCard"]
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25197,6 +25197,45 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   card.addEventListener('toggle',function(){if(card.open)paint();});
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Today's list (round 248 new 5): up to 5 videos you decide to watch today, ticked off by
+  // themselves when History shows you finished them today. It starts empty each new day (the date
+  // is stored with the list), shows "2 of 3 done", and has Play and Remove per video. Stored as
+  // vp-today.v1 on this device and carried by the backup.
+  Object.assign(TR_MSG, {
+    "Today's list": ["आज की सूची", "આજની યાદી"],
+    "Pick up to 5 videos for today. They tick off when you finish them. The list starts fresh every day.": ["आज के लिए 5 तक वीडियो चुनें. पूरा देखते ही वे टिक हो जाते हैं. सूची हर दिन नई शुरू होती है.", "આજ માટે 5 સુધી વીડિયો પસંદ કરો. પૂરી જોતાં જ તે ટિક થઈ જાય છે. યાદી દર રોજ નવી શરૂ થાય છે."],
+    "Add to today": ["आज में जोड़ें", "આજમાં ઉમેરો"],
+    "{n} of {t} done": ["{t} में से {n} पूरे", "{t} માંથી {n} પૂરા"],
+    "Done": ["हो गया", "થઈ ગયું"],
+    "All done for today.": ["आज का सब पूरा.", "આજનું બધું પૂરું."],
+    "Today's list is full at 5.": ["आज की सूची 5 पर भरी है.", "આજની યાદી 5 પર ભરેલી છે."],
+    "Nothing on today's list yet.": ["आज की सूची में अभी कुछ नहीं.", "આજની યાદીમાં હજી કંઈ નથી."],
+    "Added to today's list.": ["आज की सूची में जुड़ा.", "આજની યાદીમાં ઉમેર્યું."],
+    "Already on today's list.": ["पहले से आज की सूची में है.", "પહેલેથી આજની યાદીમાં છે."]
+  });
+  (function(){var host=$('plList');if(!host)return;var KEY='vp-today.v1';
+  function dayKey(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
+  var td={d:dayKey(),v:[]};try{var r0=JSON.parse(localStorage.getItem(KEY)||'null');if(r0&&typeof r0==='object'&&/^\d{4}-\d{2}-\d{2}$/.test(r0.d)&&Array.isArray(r0.v)){var seen={};td.d=r0.d;r0.v.forEach(function(x){if(x&&typeof x.id==='string'&&/^[\w-]{11}$/.test(x.id)&&!seen[x.id]&&td.v.length<5){seen[x.id]=1;td.v.push({id:x.id,t:String(x.t||'').slice(0,120)});}});}}catch(e){}
+  function fresh(){if(td.d!==dayKey()){td={d:dayKey(),v:[]};save();}}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(td));}catch(e){}}
+  var card=document.createElement('details');card.id='todayCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0"><select id="tdPick" style="flex:1;min-width:0"></select><button type="button" class="chip" id="tdAdd"></button></div><p class="hint" id="tdProg"></p><div id="tdList"></div><p class="hint" id="tdMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var stT=document.createElement('style');stT.textContent='#todayCard .td-r{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}#todayCard .td-t{flex:1 1 100%;font-size:14px;overflow-wrap:anywhere}#todayCard .td-ok{font-size:12px;padding:3px 10px;border-radius:999px;background:rgba(58,180,152,.2);font-weight:650}';document.head.appendChild(stT);
+  function known(){var m={},o=[];[lib.later,lib.favs,lib.queue,lib.hist].forEach(function(l){(l||[]).forEach(function(x){if(x&&validItem(x)&&!m[x.id]){m[x.id]=1;o.push({id:x.id,title:x.title||titleFor(x.id)||x.id});}});});return o;}
+  function isDone(id){var h=findIn(lib.hist,id);if(h<0)return false;var x=lib.hist[h],s=new Date();s.setHours(0,0,0,0);return x.done===true&&typeof x.ts==='number'&&x.ts>=s.getTime();}
+  function paint(){fresh();card.querySelector('summary').textContent=T("Today's list");card.querySelector('.r239-desc').textContent=T('Pick up to 5 videos for today. They tick off when you finish them. The list starts fresh every day.');
+    var s=$('tdPick'),keep=s.value;s.textContent='';var o0=document.createElement('option');o0.value='';o0.textContent=T('Pick a video');s.appendChild(o0);known().forEach(function(k){if(td.v.some(function(x){return x.id===k.id;}))return;var o=document.createElement('option');o.value=k.id;o.textContent=k.title;o.dataset.t=k.title;s.appendChild(o);});s.value=keep;if(s.value!==keep)s.value='';
+    $('tdAdd').textContent=T('Add to today');var L=$('tdList');L.textContent='';var nd=0;
+    td.v.forEach(function(x){var d=isDone(x.id);if(d)nd++;var r=document.createElement('div');r.className='td-r';var t=document.createElement('div');t.className='td-t';t.textContent=x.t||titleFor(x.id)||x.id;r.appendChild(t);
+      if(d){var k=document.createElement('span');k.className='td-ok';k.textContent='✓ '+T('Done');r.appendChild(k);}else{var p=document.createElement('button');p.type='button';p.className='chip';p.textContent=T('Play');p.setAttribute('aria-label',T('Play')+': '+(x.t||x.id));p.addEventListener('click',function(){if(findIn(lib.queue,x.id)<0){if(lib.queue.length>=50){$('tdMsg').textContent=T('The queue is full at 50 videos. Remove some first.');return;}lib.queue.unshift({id:x.id,title:x.t||titleFor(x.id)||''});}var i=findIn(lib.queue,x.id);saveLib();renderLib();playQueueAt(i);if(frameBox&&frameBox.scrollIntoView)frameBox.scrollIntoView({behavior:window.vpReducedMotion()?'auto':'smooth',block:'center'});});r.appendChild(p);}
+      var rm=document.createElement('button');rm.type='button';rm.className='chip';rm.textContent=T('Remove');rm.setAttribute('aria-label',T('Remove')+': '+(x.t||x.id));rm.addEventListener('click',function(){td.v=td.v.filter(function(y){return y.id!==x.id;});save();paint();});r.appendChild(rm);L.appendChild(r);});
+    $('tdProg').textContent=td.v.length?(nd===td.v.length?T('All done for today.'):T('{n} of {t} done').replace('{n}',nd).replace('{t}',td.v.length)):T("Nothing on today's list yet.");}
+  $('tdAdd').addEventListener('click',function(){fresh();var s=$('tdPick');if(!s.value){$('tdMsg').textContent=T('Pick a video first.');return;}if(td.v.some(function(x){return x.id===s.value;})){$('tdMsg').textContent=T("Already on today's list.");return;}if(td.v.length>=5){$('tdMsg').textContent=T("Today's list is full at 5.");return;}td.v.push({id:s.value,t:(s.selectedOptions[0]&&s.selectedOptions[0].dataset.t||'').slice(0,120)});save();s.value='';paint();$('tdMsg').textContent=T("Added to today's list.");});
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRL8=renderLib;renderLib=function(){oldRL8();if(card.open&&!(document.activeElement&&document.activeElement.closest('#todayCard')))paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27759,6 +27798,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later triage", "watch later triage one at a time oldest first decide keep remove favourite play clean backlog", "#triageCard"],
       ["Around this time", "around this time of day morning afternoon evening night usually watch history suggestions hour", "#aroundCard"],
       ["Where is this video?", "where is this video find locate which list saved queue favourites watch later history playlist search by title link", "#whereCard"],
+      ["Today's list", "today's list daily plan up to 5 videos tick off done today checklist", "#todayCard"],
       ["Video of the day", "video of the day daily pick one video a day favourites watch later habit same all day unwatched first", "#dailyPickCard"],
       ["Review reminders", "review reminders spaced repetition learn remember study lesson revisit 1 3 7 14 30 days due again", "#reviewCard"],
       ["Title tidy", "title tidy clean titles official video hd lyrics tags brackets rename remove junk saved titles library", "#titleTidyCard"],
