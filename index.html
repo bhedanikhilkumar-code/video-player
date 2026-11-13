@@ -31482,6 +31482,62 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "File info for local files": ["लोकल फ़ाइलों की जानकारी", "લોકલ ફાઇલોની માહિતી"]
   });
   WNEW.unshift(["File info for local files", "#lpInfoBtn278"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+
+  // Round 279 new 1: Remember the rotation per video. A chip under Rotate picture saves
+  // the playing video's turn (0/90/180/270) and brings it back the next time that video
+  // loads - handy for phone clips shot sideways. Up to 25 videos are kept; the oldest
+  // drop off. Turning the picture by hand afterwards is not written back - tap the chip
+  // again to update the memory. Works on YouTube videos, translated in Hindi and
+  // Gujarati, listed in the feature finder and the What's new card.
+  (function () {
+    var KEY = "vp-rotmem.v1";
+    var mem = {}, order = [];
+    try { var raw = JSON.parse(localStorage.getItem(KEY) || "null"); if (raw && typeof raw === "object") mem = raw; } catch (e) {}
+    try { var rawO = JSON.parse(localStorage.getItem(KEY + ".o") || "[]"); if (Array.isArray(rawO)) order = rawO; } catch (e) {}
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(mem)); localStorage.setItem(KEY + ".o", JSON.stringify(order)); return true; } catch (e) { return false; } }
+    function touch(id) { order = order.filter(function (x) { return x !== id; }); order.push(id); while (order.length > 25) { delete mem[order.shift()]; } }
+    var rotRowEl = $("rotRow"); if (!rotRowEl || !rotRowEl.parentNode) return;
+    var row = document.createElement("div"); row.className = "row"; row.style.marginTop = "6px";
+    var chip = document.createElement("button"); chip.type = "button"; chip.className = "chip"; chip.id = "rotMemBtn279"; chip.setAttribute("aria-pressed", "false");
+    row.appendChild(chip); rotRowEl.parentNode.insertBefore(row, rotRowEl.nextSibling);
+    function on() { return !!(curId && mem[curId] != null); }
+    function paint() {
+      chip.textContent = "\uD83D\uDD04 " + T("Remember this rotation") + ": " + (on() ? T("on") : T("off"));
+      chip.setAttribute("aria-pressed", String(on()));
+    }
+    chip.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first.")); return; }
+      if (on()) { delete mem[curId]; order = order.filter(function (x) { return x !== curId; }); persist(); toast(T("Rotation memory removed for this video.")); paint(); return; }
+      mem[curId] = [0, 90, 180, 270].indexOf(prefs.rot) >= 0 ? prefs.rot : 0; touch(curId);
+      if (!persist()) toast(T("Could not save: browser storage is full or blocked. Your latest changes may be lost - export a backup."));
+      else toast(T("Rotation remembered for this video: ") + mem[curId] + "\u00B0");
+      paint();
+    });
+    var lastId = null, appliedFor = null;
+    setInterval(function () {
+      if (curId !== lastId) { lastId = curId; appliedFor = null; paint(); }
+      if (!curId) return;
+      var m = mem[curId];
+      if (m == null || appliedFor === curId) return;
+      if (typeof playerReady !== "undefined" && !playerReady) return;
+      if (m !== prefs.rot) {
+        prefs.rot = m; savePrefs();
+        if (typeof rotApply === "function") rotApply();
+        if (typeof rotRender === "function") rotRender();
+        toast(T("Remembered rotation back: ") + m + "\u00B0");
+      }
+      appliedFor = curId;
+    }, 1000);
+    Object.assign(TR_MSG, {
+      "Remember this rotation": ["\u092F\u0939 \u0930\u094B\u091F\u0947\u0936\u0928 \u092F\u093E\u0926 \u0930\u0916\u0947\u0902", "\u0A86 \u0AB0\u0ACB\u0A9F\u0AC7\u0AB6\u0AA8 \u0AAF\u0ABE\u0AA6 \u0AB0\u0ABE\u0A96\u0ACB"],
+      "Rotation memory removed for this video.": ["\u0907\u0938 \u0935\u0940\u0921\u093F\u092F\u094B \u0915\u0940 \u0930\u094B\u091F\u0947\u0936\u0928 \u092F\u093E\u0926 \u0939\u091F\u093E \u0926\u0940.", "\u0A86 \u0AB5\u0AC0\u0AA1\u0ABF\u0AAF\u0ACB\u0AA8\u0AC0 \u0AB0\u0ACB\u0A9F\u0AC7\u0AB6\u0AA8 \u0AAF\u0ABE\u0AA6 \u0A95\u0ABE\u0AA2\u0AC0 \u0AA8\u0ABE\u0A96\u0AC0."],
+      "Rotation remembered for this video: ": ["\u0907\u0938 \u0935\u0940\u0921\u093F\u092F\u094B \u0915\u0947 \u0932\u093F\u090F \u0930\u094B\u091F\u0947\u0936\u0928 \u092F\u093E\u0926 \u0930\u0916\u093E: ", "\u0A86 \u0AB5\u0AC0\u0AA1\u0ABF\u0AAF\u0ACB \u0AAE\u0ABE\u0A9F\u0AC7 \u0AB0\u0ACB\u0A9F\u0AC7\u0AB6\u0AA8 \u0AAF\u0ABE\u0AA6 \u0AB0\u0ABE\u0A96\u0ACD\u0AAF\u0AC1\u0A82: "],
+      "Remembered rotation back: ": ["\u092F\u093E\u0926 \u0930\u094B\u091F\u0947\u0936\u0928 \u0935\u093E\u092A\u0938: ", "\u0AAF\u0ABE\u0AA6 \u0AB0\u0ACB\u0A9F\u0AC7\u0AB6\u0AA8 \u0AAA\u0ABE\u0A96\u0AC1\u0A82: "],
+      "Remember the rotation per video": ["\u0939\u0930 \u0935\u0940\u0921\u093F\u092F\u094B \u0915\u093E \u0930\u094B\u091F\u0947\u0936\u0928 \u092F\u093E\u0926 \u0930\u0916\u0947\u0902", "\u0AA6\u0AB0\u0AC7\u0A95 \u0AB5\u0AC0\u0AA1\u0ABF\u0AAF\u0ACB\u0AA8\u0AC1\u0A82 \u0AB0\u0ACB\u0A9F\u0AC7\u0AB6\u0AA8 \u0AAF\u0ABE\u0AA6 \u0AB0\u0ABE\u0A96\u0ACB"]
+    });
+    (window.__relang = window.__relang || []).push(paint); paint();
+    WNEW.unshift(["Remember the rotation per video", "#rotMemBtn279"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
   Object.assign(TR_MSG, {
     "Auto chapters:": ["ऑटो अध्याय:", "ઓટો પ્રકરણો:"],
     "Every {n} min": ["हर {n} मिनट", "દર {n} મિનિટ"],
@@ -34333,6 +34389,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var FEATS = [
       ["Remember the A-B loop", "remember ab loop per video save practice points restore pinned", "#abMemBtn278"],
       ["Remember the speed per video", "remember speed per video pin playback rate lecture music", "#speedMemBtn278"],
+      ["Remember the rotation per video", "remember rotation per video sideways phone clip turned picture rotate memory", "#rotMemBtn279"],
       ["Practice loop repeat count", "practice loop repeat count local ab passes 2 3 5 10 stop itself", "#lpLoopCountRow278"],
       ["File info for local files", "file info local name size type length picture bitrate codec details", "#lpInfoBtn278"],
       ["Auto chapters for local files", "auto chapters local file split every 5 10 minutes even parts markers", "#lpChAutoRow278"],
