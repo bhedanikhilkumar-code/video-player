@@ -2360,7 +2360,7 @@ setTimeout(done,3000);})();
         <button class="chip" id="plAddCurBtn" type="button">Add current video</button>
       </div>
       <div class="row pl-import-row">
-        <button class="chip" id="plImportBtn" type="button">Import playlist</button>
+        <button class="chip" id="plAllTxtBtn" type="button">Save all playlists as a text file</button> <button class="chip" id="plImportBtn" type="button">Import playlist</button>
         <input id="plImportFile" type="file" accept="application/json,.json" hidden>
         <button class="chip" id="plPasteBtn" type="button" aria-expanded="false">Paste a list of links</button>
         <button class="chip" id="queueTxtBtn" type="button">Save queue as text file</button>
@@ -11813,6 +11813,35 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       rd.readAsText(f);
     });
   }
+  // Save all playlists as one text file (round 225): a single playlist can already leave
+  // as a .txt, but moving every playlist to a new phone (or keeping one readable backup)
+  // meant exporting each one by hand. One chip writes them all into a single file - each
+  // playlist as its name, then the same numbered titles-and-links the single-list save
+  // produces, sections split by a ---- line. Playlists with no videos are skipped.
+  Object.assign(TR_MSG, {
+    "Save all playlists as a text file": ["सभी प्लेलिस्ट टेक्स्ट फ़ाइल में सेव करें", "બધી પ્લેલિસ્ટ ટેક્સ્ટ ફાઇલમાં સાચવો"],
+    "No saved playlists yet.": ["अभी कोई सेव प्लेलिस्ट नहीं.", "હજી કોઈ સાચવેલી પ્લેલિસ્ટ નથી."],
+    "All {n} playlists saved as a text file.": ["सभी {n} प्लेलिस्ट टेक्स्ट फ़ाइल में सेव हुईं.", "બધી {n} પ્લેલિસ્ટ ટેક્સ્ટ ફાઇલમાં સાચવાઈ."]
+  });
+  var plAllTxtBtn = $("plAllTxtBtn");
+  function plAllTxtPaint() { if (plAllTxtBtn) plAllTxtBtn.textContent = T("Save all playlists as a text file"); }
+  if (plAllTxtBtn) plAllTxtBtn.addEventListener("click", function () {
+    var withItems = playlists.filter(function (p) { return p.items.length; });
+    if (!withItems.length) { plSay(T("No saved playlists yet.")); return; }
+    var text = withItems.map(function (p) {
+      return p.name + "\n\n" + p.items.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n\n");
+    }).join("\n\n----\n\n") + "\n";
+    try {
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+      a.download = "video-player-playlists.txt";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      plSay(T("All {n} playlists saved as a text file.").replace("{n}", withItems.length));
+    } catch (e) { plSay(T("Could not copy. Try again.")); }
+  });
+  (window.__relang = window.__relang || []).push(plAllTxtPaint); plAllTxtPaint();
+
   function playMusicList(pl) {
     if (!pl || !pl.items.length) { plSay(T("No Music playlist yet. Add videos to your queue, then tap Save queue as Music.")); return; }
     lib.queue = pl.items.map(function(x){return {id:x.id,title:x.title};}); qPos=-1; resetShuffle();
@@ -16596,6 +16625,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Save all playlists as a text file", "#plAllTxtBtn"],
     ["Fit-time quick chips", "#fitQuickChips"],
     ["Speed step chips", "#speedStepUp"],
     ["One-tap volume", "#volPreChips"],
@@ -16605,7 +16635,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Import notes from a file", "#notesImportBtn"],
     ["Clear all notes with Undo", "#notesClearAllBtn"],
     ["Moments mark on lists", "#favList .moment-badge"],
-    ["Import moments from a file", "#markFileBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23187,6 +23216,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Save all playlists as a text file", "save all playlists one text file txt export backup titles links every playlist new phone", "#plAllTxtBtn"],
       ["Fit-time quick chips", "fit finish within minutes quick chips 15 30 45 60 one tap time budget speed lecture", "#fitQuickChips"],
       ["Speed step chips", "speed step up down one notch slower faster buttons phone no keyboard plus minus", "#speedStepUp"],
       ["One-tap volume", "one tap volume quick set half full loud 25 50 75 100 percent phone chips", "#volPreChips"],
