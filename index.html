@@ -11491,20 +11491,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     while ((m = re.exec(q))) {
       if (m[2] !== undefined) { if (m[2].trim()) (m[1] ? r.not : r.words).push(m[2].trim()); continue; }
       var w = m[3];
-      if (/^(is|has):(fav|favs|favourite|favorite|later|queued|queue|new|played|note|notes)$/.test(w)) { r.ops.push(w.replace(/s$/, "").replace("favourite", "fav").replace("favorite", "fav").replace("queued", "queue")); continue; }
+      // Round 260 fix 2: "-is:fav" (leave out) was read as the plain word "is:fav", so it hid nothing,
+      // and "is:favourites" / "is:favorites" were not recognised. A leading - now negates an
+      // operator, and the plural favourite spellings work.
+      var om = /^(-?)((?:is|has):(?:fav|favs|favourite|favourites|favorite|favorites|later|queued|queue|new|played|note|notes))$/.exec(w);
+      if (om) { r.ops.push(om[1] + om[2].replace(/(avourites|avorites|avourite|avorite|avs)$/, "av").replace(/s$/, "").replace("queued", "queue")); continue; }
       if (w.length > 1 && w.charAt(0) === "-") r.not.push(w.slice(1)); else r.words.push(w);
     }
     sqCache259 = { q: q, r: r }; return r;
   }
   function sqOps259(id, ops) {
     for (var i = 0; i < ops.length; i++) {
-      var o = ops[i], ok;
+      var o = ops[i], ok, neg = o.charAt(0) === "-"; if (neg) o = o.slice(1);
       if (o === "is:fav") ok = findIn(lib.favs, id) >= 0;
       else if (o === "is:later") ok = findIn(lib.later, id) >= 0;
       else if (o === "is:queue") ok = findIn(lib.queue, id) >= 0;
       else if (o === "is:new" || o === "is:played") { var rec = typeof stats === "object" && stats && stats.videos ? stats.videos[id] : null; var pl = rec && rec.plays > 0; ok = o === "is:new" ? !pl : !!pl; }
       else ok = typeof notes !== "undefined" && notes && typeof notes[id] === "string" && notes[id].trim() !== "";
-      if (!ok) return false;
+      if (neg ? ok : !ok) return false;
     }
     return true;
   }
