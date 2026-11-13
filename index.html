@@ -18281,6 +18281,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Playlist resume": ["प्लेलिस्ट जारी रखें", "પ્લેલિસ્ટ ચાલુ રાખો"]
   });
   var WNEW = [
+    ["Listening practice", "#listeningCard261"],
     ["Transcript reader", "#transcriptCard261"],
     ["Deck exchange", "#deckExchange261"],
     ["Review desk", "#reviewDesk261"],
@@ -18290,7 +18291,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Spread channels", "#spreadCard"],
     ["Playlist resume", "#plList"],
     ["Copied link prompt", "#clipCard"],
-    ["Speed ramp", "#rampCard"],
   ];
   // Round 256: the two new sort names need Hindi/Gujarati for the What's new card
   // (their chips were translated in their own commits; the card renders through T()).
@@ -27673,6 +27673,30 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     $('trSearch261').addEventListener('input',function(){page=0;paint();});$('trPrev261').addEventListener('click',function(){if(page>0)page--;paint();});$('trNext261').addEventListener('click',function(){page++;paint();});$('trCurrent261').addEventListener('click',function(){var t=clock(),i=cues.findIndex(function(c){return t>=c.start&&t<c.end;});if(i<0){toast(T('No subtitle at the current time.'));return;}$('trSearch261').value='';page=Math.floor(i/PAGE);paint();var b=card.querySelector('[data-cue261="'+i+'"]');if(b)b.scrollIntoView({block:'nearest'});});$('trTarget261').addEventListener('change',function(){listeners.forEach(function(fn){fn();});highlight();});var timer=null;card.addEventListener('toggle',function(){clearInterval(timer);if(card.open){highlight();timer=setInterval(function(){if(card.open&&!document.hidden)highlight();},500);}});(window.__relang=window.__relang||[]).push(paint);paint();return {read:function(){return cues.slice();},seek:seek,pause:pause,clock:clock,listen:function(fn){listeners.push(fn);}};
   })();
 
+  // Round 261: listen-and-type exercises from the user's own transcript, not speech recognition.
+  Object.assign(TR_MSG, {
+    "Listening practice": ["सुनकर लिखने का अभ्यास", "સાંભળીને લખવાનો અભ્યાસ"],
+    "Load your own captions in Transcript reader. Play a line, type what you hear, then compare. The matching video stays in the normal player.": ["ट्रांसक्रिप्ट रीडर में अपने सबटाइटल खोलें. पंक्ति सुनें, जो सुना वह लिखें, फिर तुलना करें. मेल खाता वीडियो सामान्य प्लेयर में रहता है.", "લખાણ વાચકમાં તમારા સબટાઇટલ ખોલો. પંક્તિ સાંભળો, જે સાંભળ્યું તે લખો, પછી સરખાવો. મેળ ખાતો વીડિયો સામાન્ય પ્લેયરમાં રહે છે."],
+    "Play this line": ["यह पंक्ति सुनें", "આ પંક્તિ સાંભળો"], "Stop line": ["पंक्ति रोकें", "પંક્તિ રોકો"],
+    "Type what you hear": ["जो सुना वह लिखें", "જે સાંભળ્યું તે લખો"], "Compare answer": ["जवाब की तुलना करें", "જવાબ સરખાવો"],
+    "Previous line": ["पिछली पंक्ति", "પાછલી પંક્તિ"], "Next line": ["अगली पंक्ति", "આગલી પંક્તિ"],
+    "Start over": ["फिर शुरू करें", "ફરી શરૂ કરો"],
+    "Matches after ignoring case, punctuation and spacing.": ["बड़े-छोटे अक्षर, विराम और खाली जगह छोड़कर मेल खाता है.", "નાના-મોટા અક્ષર, વિરામ અને ખાલી જગ્યા છોડીને મેળ ખાય છે."],
+    "Compare your text with the caption below.": ["नीचे के सबटाइटल से अपना पाठ मिलाएं.", "નીચેના સબટાઇટલ સાથે તમારું લખાણ સરખાવો."],
+    "Load captions in Transcript reader first.": ["पहले ट्रांसक्रिप्ट रीडर में सबटाइटल खोलें.", "પહેલાં લખાણ વાચકમાં સબટાઇટલ ખોલો."],
+    "Line {a} of {b} · {t}": ["पंक्ति {a}/{b} · {t}", "પંક્તિ {a}/{b} · {t}"],
+    "Write something before comparing.": ["तुलना करने से पहले कुछ लिखें.", "સરખાવતાં પહેલાં કંઈક લખો."]
+  });
+  (function(){
+    if(!transcript261)return;var index=0,running=false,checked=false,result='',timer=null;
+    var card=mkCard('listeningCard261','transcriptCard261','<p class="hint" id="lsLine261" role="status"></p><div id="lsWork261" hidden><div class="row"><button type="button" class="chip" id="lsPlay261"></button><button type="button" class="chip" id="lsStop261"></button></div><label for="lsInput261" id="lsInputL261"></label><textarea rows="3" maxlength="4000" id="lsInput261" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea><button type="button" class="chip" id="lsCheck261"></button><p class="hint" id="lsResult261" role="status"></p><div id="lsAnswer261" class="desk-stage261" hidden></div><div class="row" style="margin-top:12px"><button type="button" class="chip" id="lsPrev261"></button><button type="button" class="chip" id="lsNext261"></button><button type="button" class="chip" id="lsReset261"></button></div></div>');if(!card)return;
+    function stop(){if(running)transcript261.pause();running=false;clearInterval(timer);timer=null;}
+    function normal(s){return s.normalize('NFC').toLocaleLowerCase().replace(/[^\p{L}\p{N}\p{M}\s]/gu,'').replace(/\s+/g,' ').trim();}
+    function paint(){var cues=transcript261.read(),x=cues[index];card.querySelector('summary').textContent=T('Listening practice');card.querySelector('.r239-desc').textContent=T('Load your own captions in Transcript reader. Play a line, type what you hear, then compare. The matching video stays in the normal player.');[['lsPlay261','Play this line'],['lsStop261','Stop line'],['lsInputL261','Type what you hear'],['lsCheck261','Compare answer'],['lsPrev261','Previous line'],['lsNext261','Next line'],['lsReset261','Start over']].forEach(function(a){$(a[0]).textContent=T(a[1]);});$('lsWork261').hidden=!x;$('lsLine261').textContent=x?T('Line {a} of {b} · {t}').replace('{a}',index+1).replace('{b}',cues.length).replace('{t}',fmt(x.start)+' - '+fmt(x.end)):T('Load captions in Transcript reader first.');$('lsAnswer261').hidden=!checked;$('lsAnswer261').textContent=x?x.text:'';$('lsResult261').textContent=result?T(result):'';$('lsPrev261').disabled=index===0;$('lsNext261').disabled=index>=cues.length-1;$('lsStop261').disabled=!running;}
+    function move(to){stop();index=to;checked=false;result='';$('lsInput261').value='';paint();}
+    $('lsPlay261').addEventListener('click',function(){stop();var x=transcript261.read()[index];if(!x||!transcript261.seek(x.start))return;running=true;paint();timer=setInterval(function(){if(document.hidden||transcript261.clock()>=x.end){stop();paint();}},100);});$('lsStop261').addEventListener('click',function(){stop();paint();});$('lsCheck261').addEventListener('click',function(){var x=transcript261.read()[index];if(!x)return;if(!$('lsInput261').value.trim()){toast(T('Write something before comparing.'));return;}stop();checked=true;result=normal($('lsInput261').value)===normal(x.text)?'Matches after ignoring case, punctuation and spacing.':'Compare your text with the caption below.';paint();});$('lsPrev261').addEventListener('click',function(){if(index>0)move(index-1);});$('lsNext261').addEventListener('click',function(){if(index<transcript261.read().length-1)move(index+1);});$('lsReset261').addEventListener('click',function(){move(0);});transcript261.listen(function(){if(running){send('pauseVideo');var v=$('lpVideo');if(v)v.pause();}move(0);});document.addEventListener('visibilitychange',function(){if(document.hidden&&running){stop();paint();}});card.addEventListener('toggle',function(){if(!card.open){stop();paint();}});(window.__relang=window.__relang||[]).push(paint);paint();
+  })();
+
   // Saved searches (round 260 new 1): the library search box remembers the last few searches,
   // but they scroll away and cannot be kept. A search such as "is:later -shorts" that is
   // worth repeating can now be saved with one tap (up to 10), and shows as a chip under the
@@ -30825,6 +30849,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Listening practice", "listening practice language dictation listen type compare captions exercises transcription", "#listeningCard261"],
       ["Transcript reader", "transcript reader srt vtt captions search subtitle lines replay time text file", "#transcriptCard261"],
       ["Deck exchange", "deck import export tsv anki question answer flashcards portable transfer", "#deckExchange261"],
       ["Review desk", "review due cards study flashcard spaced repetition reveal practice recall", "#reviewDesk261"],
