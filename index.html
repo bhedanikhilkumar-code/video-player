@@ -12907,7 +12907,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     // Round 231 fix 1: the focus session choices (auto-pick) rode no backup - vp-focus.v1
     // is counted by Reset all settings since round 229, but it was missing here, so a
     // restore on a new phone silently turned the focus auto choice back on.
-    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1"].forEach(function (k) {
+    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
     });
     // Round 223 fix 2: small one-word settings kept under their own keys (list sort orders,
@@ -13156,7 +13156,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
             savePrefs(); gotSettings = true; }
           if (s.queueModes && typeof s.queueModes === "object") { ["shuffle", "repeat", "auto"].forEach(function (k) { if (typeof s.queueModes[k] === "boolean") queueModes[k] = s.queueModes[k]; }); try { localStorage.setItem("vp-queue-modes.v1", JSON.stringify(queueModes)); } catch (e) {} gotSettings = true; }
           if (s.vmem && typeof s.vmem === "object") { Object.keys(s.vmem).forEach(function (k) { vmem[k] = s.vmem[k]; }); vmemSave(); gotSettings = true; }
-          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1"].forEach(function (k) {
+          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1"].forEach(function (k) {
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
           if (s.rawKeys && typeof s.rawKeys === "object" && !Array.isArray(s.rawKeys)) {
@@ -18008,6 +18008,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Customize shortcuts", "#keymapCard"],
     ["Playlist QR code", "#plList"],
     ["Hide shorts in favourites", "#favShortsBtn"],
     ["Continue on another device", "#handoffBtn"],
@@ -18017,7 +18018,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Watch later overlap", "#laterOverlapBtn"],
     ["History as CSV", "#histCsvBtn"],
     ["Quick opens cleanup", "#histQuickBtn"],
-    ["History tidy-up", "#histKeepBtn"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23797,6 +23797,80 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     });
   });
   })();
+  // Customize shortcuts (round 243 new 1): the player's letter shortcuts were fixed, and some
+  // collide with a screen reader, a Hindi/Gujarati layout habit or plain muscle memory (K to
+  // pause, J and L to seek). A card in Help lets you give twelve actions a new key: tap an
+  // action, press the key you want. A key a built-in shortcut already uses swaps with it, so
+  // nothing ever ends up with two jobs; keys the player keeps for other jobs are refused.
+  // Implemented as a capture-phase translator in front of the real key handler: it turns your
+  // key into the original one and re-dispatches it, so the existing handler, its guards for
+  // text fields and held keys, and every other listener keep working unchanged. Remembered on
+  // this device, rides the backup, Reset restores the defaults.
+  Object.assign(TR_MSG, {
+    "Customize shortcuts": ["शॉर्टकट बदलें", "શૉર્ટકટ બદલો"],
+    "Tap an action, then press the key you want for it. A key that another action uses swaps with it.": ["किसी एक्शन पर टैप करें, फिर उसके लिए मनचाही कुंजी दबाएं. जो कुंजी किसी और एक्शन की है, वह आपस में बदल जाती है.", "કોઈ ક્રિયા પર ટૅપ કરો, પછી તેના માટે ગમતી કી દબાવો. બીજી ક્રિયાની કી હોય તો બંને અદલાબદલી થાય છે."],
+    "Press a key...": ["कोई कुंजी दबाएं...", "કોઈ કી દબાવો..."],
+    "Next in queue": ["कतार में अगला", "કતારમાં આગળનો"],
+    "Repeat toggle": ["दोहराना चालू/बंद", "ફરી ચલાવવું ચાલુ/બંધ"],
+    "Save to favourites": ["पसंदीदा में सेव करें", "મનપસંદમાં સાચવો"],
+    "Faster speed": ["तेज़ स्पीड", "ઝડપી સ્પીડ"],
+    "Slower speed": ["धीमी स्पीड", "ધીમી સ્પીડ"],
+    "Shortcut set:": ["शॉर्टकट सेट:", "શૉર્ટકટ સેટ:"],
+    "swapped with": ["से अदला-बदली", "સાથે અદલાબદલી"],
+    "is kept by the player for another job.": ["प्लेयर में दूसरे काम के लिए रखी है.", "પ્લેયરમાં બીજા કામ માટે રાખેલી છે."],
+    "Use a single letter, number or symbol.": ["एक अक्षर, अंक या चिह्न इस्तेमाल करें.", "એક અક્ષર, અંક કે ચિહ્ન વાપરો."],
+    "Shortcuts back to default.": ["शॉर्टकट डिफ़ॉल्ट पर लौटे.", "શૉર્ટકટ ડિફૉલ્ટ પર પાછા."],
+    "Reset shortcuts": ["शॉर्टकट रीसेट करें", "શૉર્ટકટ રીસેટ કરો"],
+    "Dark theme toggle": ["डार्क थीम बदलें", "ડાર્ક થીમ બદલો"],
+    "Shortcut cancelled.": ["शॉर्टकट बदलना रद्द.", "શૉર્ટકટ બદલવું રદ."]
+  });
+  (function(){var host=$('help');if(!host)return;
+  var KEY='vp-keymap.v1';
+  var ACTS=[['play','k','Play or pause'],['back','j','Back 10 seconds'],['fwd','l','Forward 10 seconds'],['mute','m','Mute or unmute'],['fs','f','Fullscreen toggle'],['cc','c','Captions toggle'],['next','n','Next in queue'],['loop','r','Repeat toggle'],['fav','h','Save to favourites'],['fast','>','Faster speed'],['slow','<','Slower speed'],['theme','d','Dark theme toggle']];
+  var KEPT='abxpstqgwuiyzeo,.0123456789';
+  var map={};
+  function defaults(){var m={};ACTS.forEach(function(a){m[a[0]]=a[1];});return m;}
+  function load(){map=defaults();try{var s=JSON.parse(localStorage.getItem(KEY)||'null');if(s&&typeof s==='object'&&!Array.isArray(s)){var seen={};ACTS.forEach(function(a){var v=s[a[0]];if(typeof v==='string'&&v.length===1&&!/\s/.test(v)&&!seen[v]){map[a[0]]=v;seen[v]=1;}});
+    var all={},dup=false;ACTS.forEach(function(a){if(all[map[a[0]]])dup=true;all[map[a[0]]]=1;});if(dup)map=defaults();}}catch(e){map=defaults();}}
+  function save(){var changed={};ACTS.forEach(function(a){if(map[a[0]]!==a[1])changed[a[0]]=map[a[0]];});try{if(Object.keys(changed).length)localStorage.setItem(KEY,JSON.stringify(changed));else localStorage.removeItem(KEY);}catch(e){if(typeof storageWarn==='function')storageWarn();}}
+  load();
+  var fwd={},blocked={};
+  function rebuild(){fwd={};blocked={};ACTS.forEach(function(a){if(map[a[0]]!==a[1]){fwd[map[a[0]]]=a[1];}});ACTS.forEach(function(a){if(map[a[0]]!==a[1]&&!fwd[a[1]])blocked[a[1]]=1;});}
+  rebuild();
+  function norm(e){var k=e.key;if(typeof k==='string'&&k.length===1&&k.charCodeAt(0)>127&&/^Key[A-Z]$/.test(e.code||''))k=e.code.slice(3).toLowerCase();if(typeof k==='string'&&k.length===1&&/[A-Z]/.test(k))k=k.toLowerCase();return k;}
+  function typing(e){var t=e.target,tag=t&&t.tagName;return !!(t&&t.isContentEditable)||tag==='TEXTAREA'||tag==='SELECT'||tag==='SUMMARY'||tag==='A'||(tag==='INPUT'&&t.type!=='range')||(tag==='BUTTON'&&(e.key===' '||e.key==='Enter'));}
+  var card=document.createElement('details');card.id='keymapCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="km-grid" id="kmGrid"></div><p class="hint" id="kmMsg" role="status"></p><div class="row"><button class="chip" type="button" id="kmReset"></button></div>';
+  var st=document.createElement('style');st.textContent='.km-grid{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;margin:8px 0}.km-grid .km-name{font-size:14px}.km-grid .km-key{min-width:56px;font-weight:700;font-variant-numeric:tabular-nums}.km-grid .km-key.is-armed{outline:2px solid var(--teal);box-shadow:0 0 0 4px rgba(58,138,119,.2)}.km-grid .km-key.is-changed{background:linear-gradient(165deg,rgba(58,138,119,.22),rgba(255,255,255,.55))}';document.head.appendChild(st);
+  host.appendChild(card);
+  var armed=null,msg=$('kmMsg');
+  function show(k){return k===' '?'Space':k.length===1&&/[a-z]/.test(k)?k.toUpperCase():k;}
+  function paint(){card.querySelector('summary').textContent=T('Customize shortcuts');card.querySelector('.r239-desc').textContent=T('Tap an action, then press the key you want for it. A key that another action uses swaps with it.');$('kmReset').textContent=T('Reset shortcuts');var g=$('kmGrid');g.textContent='';
+    ACTS.forEach(function(a){var n=document.createElement('span');n.className='km-name';n.textContent=T(a[2]);var b=document.createElement('button');b.type='button';b.className='chip km-key'+(map[a[0]]!==a[1]?' is-changed':'')+(armed===a[0]?' is-armed':'');b.dataset.act=a[0];b.textContent=armed===a[0]?T('Press a key...'):show(map[a[0]]);b.setAttribute('aria-label',T(a[2])+': '+show(map[a[0]]));b.setAttribute('aria-pressed',armed===a[0]?'true':'false');b.addEventListener('click',function(){armed=armed===a[0]?null:a[0];msg.textContent='';paint();});g.appendChild(n);g.appendChild(b);});}
+  function assign(act,k){var a=ACTS.filter(function(x){return x[0]===act;})[0];if(!a)return;var old=map[act];if(k===old){return;}
+    var other=null;ACTS.forEach(function(x){if(x[0]!==act&&map[x[0]]===k)other=x;});
+    if(other){map[other[0]]=old;map[act]=k;msg.textContent=T(a[2])+': '+show(k)+' - '+T(other[2])+' '+T('swapped with')+' '+show(old);}
+    else if(KEPT.indexOf(k)>=0){msg.textContent=show(k)+' '+T('is kept by the player for another job.');return;}
+    else{map[act]=k;msg.textContent=T('Shortcut set:')+' '+T(a[2])+' = '+show(k);}
+    save();rebuild();}
+  document.addEventListener('keydown',function(e){
+    if(armed){if(e.ctrlKey||e.metaKey||e.altKey||e.key==='Shift'||e.key==='Control'||e.key==='Alt'||e.key==='Meta'||e.key==='Tab')return;e.preventDefault();e.stopImmediatePropagation();
+      if(e.key==='Escape'){armed=null;msg.textContent=T('Shortcut cancelled.');paint();return;}
+      var k=norm(e);if(typeof k!=='string'||k.length!==1||/\s/.test(k)){msg.textContent=T('Use a single letter, number or symbol.');return;}
+      var act=armed;armed=null;assign(act,k);paint();return;}
+    if(!e.isTrusted&&e.__km)return;
+    if(e.ctrlKey||e.metaKey||e.altKey||e.__km||typing(e))return;
+    var k2=norm(e);if(typeof k2!=='string')return;
+    if(fwd[k2]!==undefined){e.preventDefault();e.stopImmediatePropagation();if(e.repeat&&!/^[jl<>]$/.test(fwd[k2]))return;var ev=new KeyboardEvent('keydown',{key:fwd[k2],bubbles:true,cancelable:true,repeat:e.repeat});ev.__km=1;(e.target||document).dispatchEvent(ev);return;}
+    if(blocked[k2]){e.stopImmediatePropagation();}
+  },true);
+  $('kmReset').addEventListener('click',function(){map=defaults();armed=null;save();rebuild();msg.textContent=T('Shortcuts back to default.');paint();});
+  card.addEventListener('toggle',function(){if(!card.open){armed=null;}paint();});
+  window.addEventListener('storage',function(e){if(e.key===KEY){load();rebuild();paint();}});
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  window.__vpKeymapReload=function(){load();rebuild();paint();};
+  })();
+/*R243-END*/
 
 })();
 </script>
@@ -25357,7 +25431,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Round 238 fix 2: Reset all settings left the picture look, screen dim, framing grid, zoom, flip,
   // Break reminder, Keep screen awake, Fullscreen rotate and Stats on video as they were, although
   // the dialog promises settings go back to defaults. They are cleared with the rest now.
-  var KEYS = ["vp-prefs.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1", "vp-stillwatch.v1", "vp-ctl-use.v1",
+  var KEYS = ["vp-prefs.v1", "vp-keymap.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1", "vp-stillwatch.v1", "vp-ctl-use.v1",
     "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1"];
   btn.addEventListener("click", async function () {
     if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices, downloader choices, list sort orders, fade, focus and mini player choices. Your queue, favourites, playlists, history and stats are kept."))) return;
@@ -26354,6 +26428,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Customize shortcuts", "customize shortcuts rebind remap keyboard keys change letter swap hotkey accessibility screen reader layout", "#keymapCard"],
       ["Playlist QR code", "playlist qr code scan share link phone tv friend camera", "#plList"],
       ["Hide shorts in favourites", "favourites hide shorts short clips minute filter clean music list", "#favShortsBtn"],
       ["Continue on another device", "handoff continue another device tv laptop link current position queue transfer phone", "#handoffBtn"],
