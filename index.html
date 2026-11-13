@@ -2339,7 +2339,7 @@ setTimeout(done,3000);})();
         <button class="chip" type="button" data-scope="hist" aria-pressed="false">History</button>
       </div>
       <div id="continueWrap" hidden>
-        <div class="lib-head"><h3 id="lhContinue">Continue watching</h3><span class="row"><button class="chip" id="contQueueBtn" type="button">Queue all</button><button class="chip" id="contShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="contCopyBtn" type="button">Copy list</button></span></div>
+        <div class="lib-head"><h3 id="lhContinue">Continue watching</h3><span class="row"><button class="chip" id="contQueueBtn" type="button">Queue all</button><button class="chip" id="contShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="contCopyBtn" type="button">Copy list</button><button class="chip" id="contClearBtn" type="button">Clear all</button></span></div>
         <ul class="lib-list" id="continueList"></ul>
         <p class="lib-empty" id="continueEmpty" hidden><span class="lib-empty-ic" aria-hidden="true">&#9654;</span><span id="continueEmptyTx">Nothing to continue yet. Watch any video for 10 seconds and it will wait for you here.</span></p>
       </div>
@@ -14361,6 +14361,36 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   (window.__relang = window.__relang || []).push(function () { if (contShufBtn) { contShufBtn.textContent = T("🎲 Shuffle play"); contShufBtn.setAttribute("aria-label", T("Shuffle play Continue watching")); } });
   if (contShufBtn) contShufBtn.setAttribute("aria-label", T("Shuffle play Continue watching"));
 
+  // Clear all of Continue watching (round 221 new 3): a finished-binge pile of half-watched
+  // videos could only be removed row by row (each with its own Undo), so wiping a stale
+  // rotation took a dozen taps. One chip clears every Continue watching entry under the same
+  // rule the rows use (saved position back to zero, the history entry itself untouched), and
+  // one Undo toast restores every position exactly. Hindi and Gujarati text, What's new
+  // (capped) and feature finder included.
+  Object.assign(TR_MSG, {
+    "Clear all": ["सभी हटाएं", "બધું કાઢો"],
+    "Clear every Continue watching video": ["देखना जारी रखें के सभी वीडियो हटाएं", "ચાલુ જોવાની દરેક વીડિયો કાઢો"],
+    "Continue watching cleared": ["देखना जारी रखें साफ़ हुआ", "ચાલુ જોવાનું સાફ થયું"],
+    "All positions restored": ["सभी स्थितियां वापस आईं", "બધી સ્થિતિ પાછી આવી"],
+    "No continue watching videos to clear.": ["हटाने के लिए कोई जारी वीडियो नहीं.", "કાઢવા માટે કોઈ ચાલુ વીડિયો નથી."],
+    "Clear all of Continue watching": ["देखना जारी रखें सभी हटाएं", "ચાલુ જોવાનું બધું કાઢો"]
+  });
+  var contClearBtn = $("contClearBtn");
+  if (contClearBtn) contClearBtn.addEventListener("click", function () {
+    var hit = [];
+    lib.hist.forEach(function (h) {
+      if (!h || !h.id || !(h.t >= 10 && h.dur > 0 && h.t < h.dur - 5)) return;
+      hit.push(h);
+    });
+    if (!hit.length) { toast(T("No continue watching videos to clear.")); return; }
+    var snap = hit.map(function (h) { return [h, h.t]; });
+    hit.forEach(function (h) { h.t = 0; });
+    saveLib(); renderLib();
+    toastUndo(T("Continue watching cleared"), function () { snap.forEach(function (p) { p[0].t = p[1]; }); saveLib(); renderLib(); }, T("All positions restored"));
+  });
+  (window.__relang = window.__relang || []).push(function () { if (contClearBtn) { contClearBtn.textContent = T("Clear all"); contClearBtn.setAttribute("aria-label", T("Clear every Continue watching video")); } });
+  if (contClearBtn) contClearBtn.setAttribute("aria-label", T("Clear every Continue watching video"));
+
   // Sleep timer: also offer "stop when this video ends" (pauses instead of auto-next).
   var sleepAtEnd = false;
   var sleepVids = 0;
@@ -15901,6 +15931,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Clear all of Continue watching", "#contClearBtn"],
     ["Shuffle play Continue watching", "#contShufBtn"],
     ["Favourite from the mini player", "#miniFav"],
     ["Sort picked files by size", "#lpSizeBtn"],
@@ -15917,7 +15948,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Shuffle play favourites", "#favShufBtn"],
     ["Mute from the mini player", "#miniMute"],
     ["Copy your picked local files", "#lpCopyBtn"],
-    ["Copy your saved channels", ".chan-copy"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -22432,6 +22462,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Clear all of Continue watching", "clear all continue watching remove every half watched stale rotation reset positions undo wipe", "#contClearBtn"],
       ["Shuffle play Continue watching", "shuffle play continue watching resume unfinished random mix evening half watched start play", "#contShufBtn"],
       ["Favourite from the mini player", "favourite star mini player floating docked save like keep playing video bookmark heart", "#miniFav"],
       ["Save a playlist as a text file", "save playlist text file download txt titles links readable export keep", "#lhPlaylists"],
