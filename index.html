@@ -26854,6 +26854,47 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
 
+  // Weekend vs weekdays (round 257 new 3): Weekday rhythm shows each day, but not the simple
+  // question "am I a weekend watcher?". This card splits the saved daily totals (last 100
+  // days) into Saturday-Sunday and Monday-Friday, draws one two-colour bar with both shares,
+  // and compares the average on a day you actually watch. Read-only, on this device. Hindi
+  // and Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Weekend vs weekdays": ["सप्ताहांत बनाम सप्ताह के दिन", "સપ્તાહાંત વિરુદ્ધ અઠવાડિયાના દિવસો"],
+    "How much of your watching happens on weekends (Sat-Sun) versus weekdays, from the last 100 days on this device.": ["आपकी देखने की कितनी हिस्सेदारी सप्ताहांत (शनि-रवि) में है और कितनी बाकी दिनों में, पिछले 100 दिन, इसी डिवाइस से.", "તમારા જોવાનો કેટલો હિસ્સો સપ્તાહાંત (શનિ-રવિ) માં અને કેટલો બાકીના દિવસોમાં, છેલ્લા 100 દિવસ, આ ડિવાઇસ પરથી."],
+    "Weekdays {a}%": ["सप्ताह के दिन {a}%", "અઠવાડિયાના દિવસો {a}%"],
+    "Weekend {b}%": ["सप्ताहांत {b}%", "સપ્તાહાંત {b}%"],
+    "On a day you watch, weekends average {x} and weekdays {y}.": ["जिस दिन आप देखते हैं, सप्ताहांत में औसत {x} और बाकी दिनों में {y}.", "જે દિવસે તમે જુઓ છો, સપ્તાહાંતમાં સરેરાશ {x} અને બાકીના દિવસોમાં {y}."],
+    "Watch on at least one weekend day and one weekday to compare.": ["तुलना के लिए कम से कम एक सप्ताहांत और एक सामान्य दिन देखें.", "સરખામણી માટે ઓછામાં ઓછો એક સપ્તાહાંત અને એક સામાન્ય દિવસ જુઓ."]
+  });
+  (function () {
+    var card = mkCard("weekendCard", "weeklyCard", '<div id="wkeBar" role="img" style="display:flex;height:16px;border-radius:9px;overflow:hidden;margin:10px 0 6px"></div><p class="hint" id="wkeMain" role="status"></p>'); if (!card) return;
+    function paint() {
+      card.querySelector("summary").textContent = T("Weekend vs weekdays");
+      card.querySelector(".r239-desc").textContent = T("How much of your watching happens on weekends (Sat-Sun) versus weekdays, from the last 100 days on this device.");
+      var bar = $("wkeBar"), main = $("wkeMain"); bar.textContent = "";
+      var we = 0, wd = 0, weN = 0, wdN = 0;
+      Object.keys((stats && stats.days) || {}).forEach(function (k) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k), s = Number(stats.days[k]) || 0; if (!m || !(s > 0)) return;
+        var g = new Date(+m[1], +m[2] - 1, +m[3]).getDay();
+        if (g === 0 || g === 6) { we += s; weN++; } else { wd += s; wdN++; }
+      });
+      if (!weN || !wdN) { bar.hidden = true; main.textContent = T("Watch on at least one weekend day and one weekday to compare."); return; }
+      bar.hidden = false;
+      var a = Math.round(wd / (wd + we) * 100), b = 100 - a;
+      var s1 = document.createElement("span"), s2 = document.createElement("span");
+      s1.style.cssText = "width:" + a + "%;background:color-mix(in srgb, var(--teal,#14b8a6) 45%, transparent)";
+      s2.style.cssText = "width:" + b + "%;background:var(--teal,#14b8a6)";
+      bar.appendChild(s1); bar.appendChild(s2);
+      var txt = T("Weekdays {a}%").replace("{a}", a) + " · " + T("Weekend {b}%").replace("{b}", b);
+      bar.setAttribute("aria-label", txt);
+      main.textContent = txt + ". " + T("On a day you watch, weekends average {x} and weekdays {y}.").replace("{x}", fmtWatch(we / weN)).replace("{y}", fmtWatch(wd / wdN));
+    }
+    card.addEventListener("toggle", function () { if (card.open) paint(); });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+
   // Sort Watch later by most played (round 256 new 1): Watch later could be sorted A to Z
   // and by rating, but not by what you actually replay - so a parked favourite you have
   // watched ten times sat mixed in with videos you opened once and dropped. A chip by
@@ -29652,6 +29693,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Queue this week", "queue this week last 7 days watched history back into queue replay series evenings", "#histWeekBtn"],
       ["Break tracker", "break tracker gap days since last watched longest break away streak habit pause watch stats", "#breakCard"],
       ["Variety check", "variety check videos spread top video share focused balanced varied repeat one video watch stats", "#varietyCard"],
+      ["Weekend vs weekdays", "weekend vs weekdays saturday sunday split share percent average day watch stats habit", "#weekendCard"],
       ["Weekly totals", "weekly totals weeks compare best week bars watch stats last 8 weeks trend heavier lighter", "#weeklyCard"],
       ["Share Watch later", "share watch later link send backlog list another device phone add replace", "#laterShareBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
