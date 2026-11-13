@@ -18048,6 +18048,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Let go of favourites", "#favLetGoCard"],
     ["Sort: Longest first", "#lhLaterSortBtn"],
     ["Find a moment", "#momFindCard"],
     ["Watch sessions", "#sessCard"],
@@ -18057,7 +18058,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Watch later triage", "#triageCard"],
     ["Favourites duel", "#duelCard"],
     ["Video of the day", "#dailyPickCard"],
-    ["Review reminders", "#reviewCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25341,6 +25341,47 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   card.addEventListener('toggle',function(){if(card.open)paint();});
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Let go of favourites (round 249 new 4): Rediscover brings old favourites back, but a long
+  // list also needs pruning - the 1-star rating you never removed, the video you saved two years
+  // ago and never once played. This card lists those candidates (rated 1-2 stars, or never
+  // started; pinned rows are left alone), all ticked for review, and Remove selected takes them
+  // out with Undo. Nothing changes until you tap remove.
+  Object.assign(TR_MSG, {
+    "Let go of favourites": ["पसंदीदा छोड़ें", "મનપસંદ છોડો"],
+    "Candidates to remove: rated 1-2 stars or never played. Tick them off and remove them, with Undo.": ["हटाने के उम्मीदवार: 1-2 स्टार रेटेड या कभी न चलाए गए. उन्हें चुनें और Undo के साथ हटाएँ.", "કાઢવાના ઉમેદવાર: 1-2 સ્ટાર રેટેડ કે ક્યારેય ન ચલાવેલા. તેમને પસંદ કરી Undo સાથે કાઢો."],
+    "Your favourites look loved - nothing to let go of.": ["आपके पसंदीदा सब प्यारे हैं - छोड़ने लायक कुछ नहीं.", "તમારા મનપસંદ બધા વાલા છે - છોડવા જેવું કંઈ નથી."],
+    "Rated 1-2 stars": ["1-2 स्टार रेटेड", "1-2 સ્ટાર રેટેડ"],
+    "Never played": ["कभी नहीं चलाया", "ક્યારેય ન ચલાવ્યો"],
+    "Remove selected": ["चुने हुए हटाएँ", "પસંદ કરેલા કાઢો"],
+    "Favourites removed:": ["पसंदीदा हटाए:", "મનપસંદ કાઢ્યા:"],
+    "Favourites restored": ["पसंदीदा वापस आए", "મનપસંદ પાછા આવ્યા"],
+    "Select all": ["सब चुनें", "બધા પસંદ કરો"],
+    "Select none": ["कोई नहीं", "કોઈ નહીં"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='favLetGoCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="row" id="lgTools" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div><div id="lgList"></div><p class="hint" id="lgMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var stL=document.createElement('style');stL.textContent='#favLetGoCard .lg-r{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}#favLetGoCard .lg-t{flex:1 1 100%;font-size:14px;overflow-wrap:anywhere}#favLetGoCard .lg-w{font-size:12px;opacity:.75}';document.head.appendChild(stL);
+  function cands(){return (lib.favs||[]).filter(function(x){if(!validItem(x)||x.pin)return false;var r=vpRateOf(x.id);if(r>=1&&r<=2)return true;var h=findIn(lib.hist,x.id);return h<0;});}
+  function paint(){card.querySelector('summary').textContent=T('Let go of favourites');card.querySelector('.r239-desc').textContent=T('Candidates to remove: rated 1-2 stars or never played. Tick them off and remove them, with Undo.');
+    var L=$('lgList'),T2=$('lgTools'),M=$('lgMsg');L.textContent='';T2.textContent='';M.textContent='';
+    var c=cands();
+    if(!c.length){var p=document.createElement('p');p.className='hint';p.textContent=T('Your favourites look loved - nothing to let go of.');L.appendChild(p);return;}
+    var boxes=[];
+    function ab(tx,fn){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T(tx);b.addEventListener('click',fn);T2.appendChild(b);return b;}
+    ab('Select all',function(){boxes.forEach(function(b){b.checked=true;});});
+    ab('Select none',function(){boxes.forEach(function(b){b.checked=false;});});
+    ab('Remove selected',function(){var ids={};boxes.forEach(function(b){if(b.checked)ids[b.dataset.id]=1;});var n=Object.keys(ids).length;if(!n){M.textContent=T('Pick a video first.');return;}
+      var snap=lib.favs.slice();lib.favs=lib.favs.filter(function(x){return !(x&&ids[x.id]);});saveLib();renderLib();
+      M.textContent=T('Favourites removed:')+' '+n;toastUndo(T('Favourites removed:')+' '+n,function(){lib.favs=snap;saveLib();renderLib();},T('Favourites restored'));paint();});
+    c.forEach(function(x){var r=document.createElement('label');r.className='lg-r';r.style.display='flex';var cb=document.createElement('input');cb.type='checkbox';cb.checked=true;cb.dataset.id=x.id;cb.setAttribute('aria-label',(x.title||titleFor(x.id)||x.id));boxes.push(cb);r.appendChild(cb);
+      var w=document.createElement('span');w.style.flex='1 1 auto';w.style.minWidth='0';var t=document.createElement('div');t.className='lg-t';t.textContent=x.title||titleFor(x.id)||x.id;w.appendChild(t);
+      var rt=vpRateOf(x.id);var why=document.createElement('div');why.className='lg-w';why.textContent=(rt>=1&&rt<=2)?T('Rated 1-2 stars'):T('Never played');w.appendChild(why);r.appendChild(w);L.appendChild(r);});}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRL10=renderLib;renderLib=function(){oldRL10();if(card.open&&!(document.activeElement&&document.activeElement.closest('#favLetGoCard')))paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27903,6 +27944,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later triage", "watch later triage one at a time oldest first decide keep remove favourite play clean backlog", "#triageCard"],
       ["Around this time", "around this time of day morning afternoon evening night usually watch history suggestions hour", "#aroundCard"],
       ["Where is this video?", "where is this video find locate which list saved queue favourites watch later history playlist search by title link", "#whereCard"],
+      ["Let go of favourites", "let go of favourites prune clean remove rated low 1 2 star never played unpinned tidy list undo", "#favLetGoCard"],
       ["Sort: Longest first", "sort longest first length long big video documentary movie watch later favourites history order organise evening", "#lhLaterSortBtn"],
       ["Find a moment", "find a moment search saved moments name second jump play from here bookmark marked solo", "#momFindCard"],
       ["Watch sessions", "watch sessions sittings evening grouped history 3 hour gap queue again put back on span finished minutes", "#sessCard"],
