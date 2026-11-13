@@ -18008,6 +18008,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Weekly plan", "#weekPlanCard"],
     ["Video tags", "#tagsCard"],
     ["Activity calendar", "#actCalCard"],
     ["Repeat titles", "#repeatCard"],
@@ -18017,7 +18018,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Restore points", "#restoreCard"],
     ["Import preview", "#libImport"],
     ["Library check", "#libCheckCard"],
-    ["Print your lists", "#printCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24345,6 +24345,54 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var oldRL4=renderLib;renderLib=function(){oldRL4();if(card.open&&!document.activeElement.closest('#tagsCard'))paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Weekly plan (round 245 new 3): a habit is "Study on Monday, music on Friday", but a playlist
+  // only knows its own name. This card gives each weekday one saved playlist (or none). The top line
+  // says what today's plan is, how many videos and about how long (only lengths the app knows are
+  // counted, the rest are named), with Play today and Add to queue (Play has Undo). A plan that points at a
+  // renamed or deleted playlist is flagged, never guessed. Stored as vp-plan.v1 and in the backup.
+  Object.assign(TR_MSG, {
+    "Weekly plan": ["साप्ताहिक प्लान", "સાપ્તાહિક પ્લાન"],
+    "Pick a saved playlist for each weekday. Today's plan plays in one tap.": ["हर दिन के लिए एक सेव प्लेलिस्ट चुनें. आज का प्लान एक टैप में चलेगा.", "દરેક દિવસ માટે એક સેવ પ્લેલિસ્ટ પસંદ કરો. આજનો પ્લાન એક ટેપમાં ચાલશે."],
+    "Today": ["आज", "આજે"],
+    "No playlist": ["कोई प्लेलिस्ट नहीं", "કોઈ પ્લેલિસ્ટ નથી"],
+    "Nothing planned for today.": ["आज के लिए कुछ प्लान नहीं.", "આજ માટે કંઈ પ્લાન નથી."],
+    "Play today": ["आज का चलाएँ", "આજનો ચલાવો"],
+    "Plan's playlist was renamed or deleted:": ["प्लान की प्लेलिस्ट का नाम बदला या हट गई:", "પ્લાનની પ્લેલિસ્ટનું નામ બદલાયું કે કાઢી નંખાઈ:"],
+    "lengths not known yet": ["लंबाई अभी पता नहीं", "લંબાઈ હજી ખબર નથી"],
+    "That playlist is empty.": ["वह प्लेलिस्ट खाली है.", "તે પ્લેલિસ્ટ ખાલી છે."],
+    "Today's plan replaced the queue:": ["आज के प्लान ने कतार बदली:", "આજના પ્લાને કતાર બદલી:"],
+    "Today's plan added to the queue:": ["आज का प्लान कतार में जुड़ा:", "આજનો પ્લાન કતારમાં ઉમેર્યો:"],
+    "Queue restored": ["कतार वापस आई", "કતાર પાછી આવી"]
+  });
+  (function(){var host=$('plList');if(!host)return;var KEY='vp-plan.v1';
+  var plan={};try{var p0=JSON.parse(localStorage.getItem(KEY)||'{}');if(p0&&typeof p0==='object'&&!Array.isArray(p0))for(var d=0;d<7;d++)if(typeof p0[d]==='string'&&p0[d])plan[d]=p0[d].slice(0,60);}catch(e){}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(plan));}catch(e){}}
+  var card=document.createElement('details');card.id='weekPlanCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><p id="wpToday" class="wp-today" role="status"></p><div class="row" id="wpAct" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div><div id="wpDays"></div><p class="hint" id="wpMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var st=document.createElement('style');st.textContent='#weekPlanCard .wp-today{font-weight:650;margin:6px 0}#weekPlanCard .wp-d{display:flex;align-items:center;gap:8px;margin:6px 0}#weekPlanCard .wp-d label{flex:0 0 96px;font-size:14px}#weekPlanCard .wp-d select{flex:1;min-width:0}#weekPlanCard .wp-d.now label{font-weight:750;color:var(--teal)}#weekPlanCard .wp-warn{color:#b3261e}';document.head.appendChild(st);
+  function loc(){var l=document.documentElement.lang;return l==='hi'?'hi-IN':l==='gu'?'gu-IN':undefined;}
+  function find(n){for(var i=0;i<playlists.length;i++)if(playlists[i].name===n)return playlists[i];return null;}
+  function wname(i){return new Date(2024,0,7+i).toLocaleDateString(loc(),{weekday:'long'});}
+  function paint(){card.querySelector('summary').textContent=T('Weekly plan');card.querySelector('.r239-desc').textContent=T("Pick a saved playlist for each weekday. Today's plan plays in one tap.");
+    var td=new Date().getDay(),box=$('wpDays');box.textContent='';
+    for(var i=0;i<7;i++){(function(i){var r=document.createElement('div');r.className='wp-d'+(i===td?' now':'');var l=document.createElement('label');l.textContent=wname(i);l.htmlFor='wpSel'+i;var s=document.createElement('select');s.id='wpSel'+i;
+      var o0=document.createElement('option');o0.value='';o0.textContent=T('No playlist');s.appendChild(o0);
+      playlists.forEach(function(p){var o=document.createElement('option');o.value=p.name;o.textContent=p.name;s.appendChild(o);});
+      if(plan[i]&&!find(plan[i])){var o=document.createElement('option');o.value=plan[i];o.textContent=plan[i]+' ⚠';s.appendChild(o);}
+      s.value=plan[i]||'';s.addEventListener('change',function(){if(s.value)plan[i]=s.value;else delete plan[i];save();paint();});r.appendChild(l);r.appendChild(s);box.appendChild(r);})(i);}
+    var tdn=plan[td],pl=tdn?find(tdn):null,t=$('wpToday'),A=$('wpAct');A.textContent='';t.className='wp-today';
+    if(!tdn){t.textContent=T('Today')+': '+T('Nothing planned for today.');}
+    else if(!pl){t.textContent=T('Today')+': '+T("Plan's playlist was renamed or deleted:")+' '+tdn;t.className='wp-today wp-warn';}
+    else{var tot=0,unk=0,its=pl.items||[];its.forEach(function(x){var d=plItemDuration(x);if(d)tot+=d;else unk++;});
+      t.textContent=T('Today')+': '+pl.name+' - '+its.length+' '+T(its.length===1?'video':'videos')+(tot?' · ~'+Math.max(1,Math.round(tot/60))+' '+T('min'):'')+(unk?' · '+unk+' '+T('lengths not known yet'):'');
+      function ab(tx,fn){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T(tx);A.appendChild(b);b.addEventListener('click',fn);}
+      ab('Play today',function(){if(!its.length){$('wpMsg').textContent=T('That playlist is empty.');return;}var snap=lib.queue.slice();lib.queue=its.slice(0,50).map(function(x){return {id:x.id,title:x.title||''};});qPos=-1;saveLib();renderLib();toastUndo(T("Today's plan replaced the queue:")+' '+lib.queue.length,function(){lib.queue=snap;qPos=-1;saveLib();renderLib();},T('Queue restored'));playQueueAt(0);});
+      ab('Add to queue',function(){var n=0;its.forEach(function(x){if(findIn(lib.queue,x.id)<0&&lib.queue.length<50){lib.queue.push({id:x.id,title:x.title||''});n++;}});saveLib();renderLib();$('wpMsg').textContent=T("Today's plan added to the queue:")+' '+n;});}}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRP2=renderPlaylists;renderPlaylists=function(){oldRP2.apply(this,arguments);if(card.open&&!document.activeElement.closest('#weekPlanCard'))paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -26903,6 +26951,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Weekly plan", "weekly plan schedule weekday playlist monday study routine habit today plan calendar assign", "#weekPlanCard"],
       ["Video tags", "video tags labels tag words group favourites queue watch later workout exam category organise filter play tag", "#tagsCard"],
       ["Activity calendar", "activity calendar month heatmap streak days watched grid consistency habit calendar view", "#actCalCard"],
       ["Repeat titles", "repeat titles duplicate same title different link reupload copies saved twice keep one clean library", "#repeatCard"],
