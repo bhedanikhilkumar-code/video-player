@@ -31005,7 +31005,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   (function () {
     var vid = $("lpVideo"), btn = $("lpSinkBtn"), hint = $("lpSinkHint");
     if (!vid || !btn) return;
-    if (typeof vid.setSinkId !== "function" || !navigator.mediaDevices) return;
+    var AC276 = window.AudioContext || window.webkitAudioContext;
+    if (!AC276 || typeof AC276.prototype.setSinkId !== "function" || !navigator.mediaDevices) return;
     var picker = typeof navigator.mediaDevices.selectAudioOutput === "function" ? navigator.mediaDevices.selectAudioOutput.bind(navigator.mediaDevices) : null;
     var outs = [], outIdx = -1;
     function label(d, i) { return (d && d.label) || (T("Speaker") + " " + (i + 1)); }
@@ -31023,7 +31024,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     btn.addEventListener("click", function () {
       if (picker) {
         picker().then(function (d) {
-          return vid.setSinkId(d.deviceId).then(function () { showPicked(d.label || T("🔊 Speaker")); });
+          return window.vpSetLocalSink276(d.deviceId).then(function () { showPicked(d.label || T("🔊 Speaker")); });
         }).catch(function (err) {
           if (err && (err.name === "NotAllowedError" || err.name === "NotFoundError")) return;
           toast(T("This tab's sound could not be moved there."));
@@ -31038,7 +31039,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         if (!outs.length) { toast(T("This tab's sound could not be moved there.")); return; }
         outIdx = (outIdx + 1) % outs.length;
         var d = outs[outIdx];
-        vid.setSinkId(d.deviceId).then(function () { showPicked(label(d, outIdx)); }).catch(function () { toast(T("This tab's sound could not be moved there.")); });
+        window.vpSetLocalSink276(d.deviceId).then(function () { showPicked(label(d, outIdx)); }).catch(function () { toast(T("This tab's sound could not be moved there.")); });
       }).catch(function () { toast(T("This tab's sound could not be moved there.")); });
     });
     paint();
@@ -31594,6 +31595,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     window.__lpMeterSource276 = pan || comp;
     window.__lpNode = node; window.__lpCtx = ctx;
   }
+  // The media element is rerouted into Web Audio; the context owns the real output.
+  window.vpSetLocalSink276 = function (id) {
+    try { ensureAudio(); if(!ctx || typeof ctx.setSinkId !== 'function') return Promise.reject(new Error('unsupported')); return ctx.setSinkId(id); }
+    catch(e) { return Promise.reject(e); }
+  };
   var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, night: false, bal: 0, eq: { b: 0, m: 0, t: 0 } };
   try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.ccBg === "none" || sv.ccBg === "solid") lp.ccBg = sv.ccBg; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; if (typeof sv.bal === "number" && sv.bal >= -100 && sv.bal <= 100) lp.bal = Math.round(sv.bal); if (sv.mono === true) lp.mono = true; } } catch (e) {}
   gain.value = lp.gain;
