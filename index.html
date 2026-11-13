@@ -13019,7 +13019,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
           playlists.push({ name: nm, pinned: p.pinned === true ? true : undefined, note: typeof p.note === "string" && p.note ? p.note.slice(0, 80) : undefined, group: typeof p.group === "string" && p.group ? p.group.slice(0, 30) : undefined, lastPlay: typeof p.lastPlay === "number" && p.lastPlay > 0 ? p.lastPlay : undefined, speed: typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3 ? p.speed : undefined, items: items }); pn++;
         });
         var ln = 0;
-        (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length >= 50) capN++; if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { var li2 = { id: x.id, title: typeof x.title === "string" ? x.title : "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (typeof x.snoozeUntil === "number" && x.snoozeUntil > Date.now() && x.snoozeUntil < Date.now() + 30 * 864e5) li2.snoozeUntil = x.snoozeUntil; if (typeof x.why === "string" && x.why.trim()) li2.why = x.why.slice(0, 200); lib.later.push(li2); ln++; } });
+        (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length >= 50) capN++; if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { var li2 = { id: x.id, title: typeof x.title === "string" ? x.title : "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (typeof x.snoozeUntil === "number" && x.snoozeUntil > Date.now() && x.snoozeUntil < Date.now() + 30 * 864e5) li2.snoozeUntil = x.snoozeUntil; if (typeof x.why === "string" && x.why.trim()) li2.why = x.why.slice(0, 200); if (typeof x.due === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x.due)) li2.due = x.due; lib.later.push(li2); ln++; } });
         var cn = 0;
         if (Array.isArray(d.channels) && typeof vpChans !== "undefined") {
           d.channels.forEach(function (c) {
@@ -18048,6 +18048,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Watch by dates", "#dueCard"],
     ["Most played", "#mostPlayedCard"],
     ["Let go of favourites", "#favLetGoCard"],
     ["Sort: Longest first", "#lhLaterSortBtn"],
@@ -18057,7 +18058,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Where is this video?", "#whereCard"],
     ["Around this time", "#aroundCard"],
     ["Watch later triage", "#triageCard"],
-    ["Favourites duel", "#duelCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25415,6 +25415,50 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   card.addEventListener('toggle',function(){if(card.open)paint();});
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Watch by dates (round 250 new 1): Watch later is where good intentions go to sleep - a
+  // video parked "for the weekend" still sits there a month later. This card lets you give a
+  // parked video a day to watch it by; overdue ones float to the top with a red badge so the
+  // plan does not rot. The date rides the backup like the rest of Watch later. Nothing plays
+  // or moves until you tap Play.
+  Object.assign(TR_MSG, {
+    "Watch by dates": ["देखने की तारीखें", "જોવાની તારીખો"],
+    "Give a parked video a day to watch it by. Overdue ones float to the top so the plan does not rot.": ["पार्क किए वीडियो को देखने की तारीख दें. जिनकी तारीख निकल गई वे सबसे ऊपर दिखते हैं, ताकि प्लान सड़े नहीं.", "પાર્ક કરેલા વીડિયોને જોવાની તારીખ આપો. જેની તારીખ નિકળી ગઈ તે સૌથી ઉપર દેખાય, જેથી પ્લાન બગડે નહીં."],
+    "Nothing parked in Watch later yet.": ["वॉच लेटर में अभी कुछ नहीं रखा.", "વોચ લેટરમાં હજી કંઈ નથી."],
+    "Overdue": ["तारीख निकली", "તારીખ નિકળી"],
+    "Date saved:": ["तारीख सेव हुई:", "તારીખ સાચવાઈ:"],
+    "Date cleared": ["तारीख हटाई", "તારીખ કાઢી"],
+    "Clear date": ["तारीख हटाएँ", "તારીખ કાઢો"],
+    "Set a date": ["तारीख लगाएँ", "તારીખ નાખો"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='dueCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div id="dueList"></div><p class="hint" id="dueMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var stD=document.createElement('style');stD.textContent='#dueCard .due-r{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}#dueCard .due-t{flex:1 1 100%;font-size:14px;overflow-wrap:anywhere}#dueCard .due-b{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;border:1px solid var(--hairline);margin-left:6px}#dueCard .due-b.over{background:#a33;color:#fff;border-color:#a33}html.high-contrast #dueCard .due-b{border-color:currentColor}html.high-contrast #dueCard .due-b.over{background:currentColor;color:var(--card)}';document.head.appendChild(stD);
+  function locD(){var l=document.documentElement.lang;return l==='hi'?'hi-IN':l==='gu'?'gu-IN':undefined;}
+  function todayStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function prettyD(s){var p=s.split('-');var d=new Date(+p[0],+p[1]-1,+p[2]);return d.toLocaleDateString(locD(),{weekday:'short',day:'numeric',month:'short'});}
+  function playD(id,t){if(findIn(lib.queue,id)<0){if(lib.queue.length>=50){$('dueMsg').textContent=T('The queue is full at 50 videos. Remove some first.');return;}lib.queue.unshift({id:id,title:t||titleFor(id)||''});}var i=findIn(lib.queue,id);saveLib();renderLib();playQueueAt(i);if(frameBox&&frameBox.scrollIntoView)frameBox.scrollIntoView({behavior:window.vpReducedMotion()?'auto':'smooth',block:'center'});}
+  function paint(){card.querySelector('summary').textContent=T('Watch by dates');card.querySelector('.r239-desc').textContent=T('Give a parked video a day to watch it by. Overdue ones float to the top so the plan does not rot.');
+    var L=$('dueList');L.textContent='';$('dueMsg').textContent='';
+    var items=(lib.later||[]).filter(validItem);
+    if(!items.length){var p=document.createElement('p');p.className='hint';p.textContent=T('Nothing parked in Watch later yet.');L.appendChild(p);return;}
+    var today=todayStr();
+    var rows=items.slice().sort(function(a,b){var da=typeof a.due==='string'?a.due:'9999-12-31',db=typeof b.due==='string'?b.due:'9999-12-31';return da<db?-1:da>db?1:0;});
+    rows.slice(0,20).forEach(function(x){var r=document.createElement('div');r.className='due-r';
+      var t=document.createElement('div');t.className='due-t';t.textContent=x.title||titleFor(x.id)||x.id;
+      if(x.due){var b=document.createElement('span');b.className='due-b'+(x.due<today?' over':'');b.textContent=prettyD(x.due)+(x.due<today?' · '+T('Overdue'):'');t.appendChild(b);}
+      r.appendChild(t);
+      var inp=document.createElement('input');inp.type='date';inp.className='chip';inp.value=typeof x.due==='string'?x.due:'';inp.setAttribute('aria-label',T('Set a date')+': '+(x.title||x.id));r.appendChild(inp);
+      inp.addEventListener('change',function(){var v=inp.value;if(v&&!/^\d{4}-\d{2}-\d{2}$/.test(v))return;if(v)x.due=v;else delete x.due;saveLib();renderLib();$('dueMsg').textContent=v?T('Date saved:')+' '+prettyD(v):T('Date cleared');paint();});
+      if(x.due){var c=document.createElement('button');c.type='button';c.className='chip';c.textContent=T('Clear date');c.setAttribute('aria-label',T('Clear date')+': '+(x.title||x.id));c.addEventListener('click',function(){delete x.due;saveLib();renderLib();$('dueMsg').textContent=T('Date cleared');paint();});r.appendChild(c);}
+      var pb=document.createElement('button');pb.type='button';pb.className='chip';pb.textContent=T('Play');pb.setAttribute('aria-label',T('Play')+': '+(x.title||x.id));pb.addEventListener('click',function(){playD(x.id,x.title);});r.appendChild(pb);
+      L.appendChild(r);});
+    if(rows.length>20){var m=document.createElement('p');m.className='hint';m.textContent=T('and {n} more').replace('{n}',rows.length-20);L.appendChild(m);}}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRL11=renderLib;renderLib=function(){oldRL11();if(card.open&&!(document.activeElement&&document.activeElement.closest('#dueCard')))paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27973,7 +28017,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
-      ["Favourites duel", "favourites duel tournament head to head pick better video champion rank compare two videos bracket", "#duelCard"],
+      ["Watch by dates", "watch by date due deadline overdue parked watch later day plan red badge schedule", "#dueCard"],
       ["Watch later triage", "watch later triage one at a time oldest first decide keep remove favourite play clean backlog", "#triageCard"],
       ["Around this time", "around this time of day morning afternoon evening night usually watch history suggestions hour", "#aroundCard"],
       ["Where is this video?", "where is this video find locate which list saved queue favourites watch later history playlist search by title link", "#whereCard"],
