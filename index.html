@@ -29736,8 +29736,14 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // screen or press ` / Esc to bring everything back; the video resumes only if this feature
   // paused it. Nothing keeps playing behind the cover (the player stays a normal, visible player).
   function cleanR269(o) {
-    var out = { escHide: 0, shake: 0, snaps: [] };
+    var out = { escHide: 0, shake: 0, snaps: [], amb: { k: "rain", v: 50, m: 0, duck: 1 } };
     if (!o || typeof o !== "object" || Array.isArray(o)) return out;
+    if (o.amb && typeof o.amb === "object" && !Array.isArray(o.amb)) {
+      if (["white", "pink", "brown", "rain", "ocean"].indexOf(o.amb.k) >= 0) out.amb.k = o.amb.k;
+      if (typeof o.amb.v === "number" && isFinite(o.amb.v)) out.amb.v = Math.min(100, Math.max(0, Math.round(o.amb.v)));
+      if ([15, 30, 60].indexOf(o.amb.m) >= 0) out.amb.m = o.amb.m;
+      if (o.amb.duck === 0) out.amb.duck = 0;
+    }
     if (o.escHide === 1) out.escHide = 1; if (o.shake === 1 || o.shake === 2) out.shake = o.shake;
     if (Array.isArray(o.snaps)) o.snaps.forEach(function (s) {
       if (out.snaps.length >= 5 || !s || !Array.isArray(s.q) || !(+s.t > 0)) return;
@@ -30001,6 +30007,127 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     setInterval(paint, 2000);
   })();
   WNEW.unshift(["Finish by","#finishCard269"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  // Round 270 new 1: Ambient sounds - soft generated noise (white, pink, brown, rain, ocean) made
+  // on the device with Web Audio, so it needs no internet and no video. It can stay under a video
+  // (lowered while one plays) or play alone, with its own volume and stop timer.
+  var AMB270 = ["white", "pink", "brown", "rain", "ocean"];
+  function ambFill270(kind, arr, rnd) {
+    rnd = rnd || Math.random; var n = arr.length, i, w, last = 0;
+    if (kind === "pink" || kind === "rain") {
+      var b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      for (i = 0; i < n; i++) {
+        w = rnd() * 2 - 1;
+        b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.969 * b2 + w * 0.153852;
+        b3 = 0.8665 * b3 + w * 0.3104856; b4 = 0.55 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.016898;
+        arr[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11; b6 = w * 0.115926;
+      }
+    } else if (kind === "brown" || kind === "ocean") {
+      for (i = 0; i < n; i++) { w = rnd() * 2 - 1; last = (last + 0.02 * w) / 1.02; arr[i] = last * 3.5; }
+    } else { for (i = 0; i < n; i++) arr[i] = (rnd() * 2 - 1) * 0.6; }
+    for (i = 0; i < n; i++) arr[i] = Math.max(-1, Math.min(1, arr[i]));
+    // make the loop seamless: fade the last 2000 samples into the first ones
+    var f = Math.min(2000, n >> 2);
+    for (i = 0; i < f; i++) { var t = i / f; arr[n - f + i] = arr[n - f + i] * (1 - t) + arr[i] * t; }
+    return arr;
+  }
+  function ambGain270(v, ducked, duck) { v = Math.max(0, Math.min(100, +v || 0)) / 100; return v * v * 0.6 * (ducked && duck ? 0.4 : 1); }
+  Object.assign(TR_MSG, {
+    "Ambient sounds": ["आसपास की आवाज़ें", "આસપાસના અવાજો"],
+    "A soft background sound made on your device - no internet needed. It can stay under a video or play alone.": ["आपके डिवाइस पर बनी हल्की बैकग्राउंड आवाज़ - इंटरनेट नहीं चाहिए. यह वीडियो के नीचे या अकेले चल सकती है.", "તમારા ડિવાઇસ પર બનેલો હળવો બેકગ્રાઉન્ડ અવાજ - ઇન્ટરનેટ જોઈતું નથી. તે વીડિયો નીચે કે એકલો ચાલી શકે છે."],
+    "White noise": ["सफ़ेद शोर", "સફેદ અવાજ"], "Pink noise": ["गुलाबी शोर", "ગુલાબી અવાજ"], "Brown noise": ["भूरा शोर", "બ્રાઉન અવાજ"],
+    "Rain": ["बारिश", "વરસાદ"], "Ocean": ["समुद्र", "સમુદ્ર"],
+    "Play ambient sound": ["आवाज़ चलाएँ", "અવાજ વગાડો"], "Stop ambient sound": ["आवाज़ रोकें", "અવાજ બંધ કરો"],
+    "Ambient volume": ["आवाज़ का स्तर", "અવાજનું સ્તર"],
+    "Lower it while a video plays": ["वीडियो चलते समय धीमी करें", "વીડિયો ચાલે ત્યારે ધીમો કરો"],
+    "Stop ambient sound after": ["इतने समय बाद आवाज़ रोकें", "આટલા સમય પછી અવાજ બંધ કરો"],
+    "No timer": ["टाइमर नहीं", "ટાઇમર નથી"], "{n} min": ["{n} मिनट", "{n} મિનિટ"],
+    "Playing {name}.": ["{name} चल रही है.", "{name} ચાલી રહ્યું છે."],
+    "Playing {name}, stops in {n} min.": ["{name} चल रही है, {n} मिनट में रुकेगी.", "{name} ચાલી રહ્યું છે, {n} મિનિટમાં બંધ થશે."],
+    "Ambient sound stopped.": ["आवाज़ रुक गई.", "અવાજ બંધ થયો."],
+    "Sound is not available in this browser.": ["इस ब्राउज़र में आवाज़ उपलब्ध नहीं है.", "આ બ્રાઉઝરમાં અવાજ ઉપલબ્ધ નથી."]
+  });
+  (function () {
+    var card = card268("ambCard270", "Ambient sounds", "#finishCard269"); if (!card) return;
+    var NAMES = { white: "White noise", pink: "Pink noise", brown: "Brown noise", rain: "Rain", ocean: "Ocean" };
+    var hint = document.createElement("p"); hint.className = "hint"; card.appendChild(hint);
+    var kinds = document.createElement("div"); kinds.className = "chips"; kinds.setAttribute("role", "group"); card.appendChild(kinds);
+    var kb = {}; AMB270.forEach(function (k) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.k = k; kinds.appendChild(b); kb[k] = b;
+      b.addEventListener("click", function () { var a = amb(); a.k = k; putAmb(a); if (ctx) start(); paint(); });
+    });
+    var vrow = document.createElement("div"); vrow.className = "row"; vrow.style.cssText = "margin-top:8px;align-items:center;gap:8px"; card.appendChild(vrow);
+    var vl = document.createElement("label"); vl.className = "label"; vl.htmlFor = "ambVol270"; vrow.appendChild(vl);
+    var vr = document.createElement("input"); vr.type = "range"; vr.min = "0"; vr.max = "100"; vr.id = "ambVol270"; vrow.appendChild(vr);
+    var drow = document.createElement("label"); drow.className = "dl-chk"; var dc = document.createElement("input"); dc.type = "checkbox"; dc.id = "ambDuck270";
+    var dt = document.createElement("span"); drow.appendChild(dc); drow.appendChild(document.createTextNode(" ")); drow.appendChild(dt); card.appendChild(drow);
+    var trow = document.createElement("div"); trow.className = "row"; trow.style.cssText = "margin-top:8px;align-items:center;gap:8px"; card.appendChild(trow);
+    var tl = document.createElement("span"); tl.className = "label"; trow.appendChild(tl);
+    var tchips = document.createElement("span"); tchips.className = "chips"; trow.appendChild(tchips);
+    var tb = {}; [0, 15, 30, 60].forEach(function (m) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; tchips.appendChild(b); tb[m] = b;
+      b.addEventListener("click", function () { var a = amb(); a.m = m; putAmb(a); if (ctx) arm(); paint(); });
+    });
+    var go = document.createElement("button"); go.type = "button"; go.className = "chip"; go.id = "ambGo270"; card.appendChild(go);
+    var st = document.createElement("span"); st.className = "label"; st.id = "ambStatus270"; st.setAttribute("role", "status"); st.style.display = "block"; card.appendChild(st);
+    var ctx = null, src = null, gain = null, filt = null, lfo = null, lfoG = null, stopAt = 0, stopT = 0;
+    function amb() { var a = cleanR269(prefs.r269).amb; return { k: a.k, v: a.v, m: a.m, duck: a.duck }; }
+    function putAmb(a) { prefs.r269 = cleanR269(prefs.r269); prefs.r269.amb = a; prefs.r269 = cleanR269(prefs.r269); savePrefs(); }
+    function level() { var a = amb(); return ambGain270(a.v, !!playing, a.duck === 1); }
+    function teardown() {
+      try { if (src) src.stop(); } catch (e) {} try { if (lfo) lfo.stop(); } catch (e) {}
+      src = lfo = null; clearTimeout(stopT); stopAt = 0;
+    }
+    function start() {
+      var AC = window.AudioContext || window.webkitAudioContext; if (!AC) { toast(T("Sound is not available in this browser.")); return false; }
+      try {
+        if (!ctx) ctx = new AC(); if (ctx.state === "suspended") ctx.resume();
+        teardown();
+        var a = amb(), len = ctx.sampleRate * 4, buf = ctx.createBuffer(1, len, ctx.sampleRate);
+        ambFill270(a.k, buf.getChannelData(0));
+        src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+        gain = ctx.createGain(); gain.gain.value = 0;
+        var node = src;
+        if (a.k === "rain") { var hp = ctx.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 700; var lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 7000; node.connect(hp); hp.connect(lp); node = lp; }
+        if (a.k === "ocean") {
+          var o = ctx.createBiquadFilter(); o.type = "lowpass"; o.frequency.value = 500; node.connect(o); node = o;
+          lfo = ctx.createOscillator(); lfo.frequency.value = 0.11; lfoG = ctx.createGain(); lfoG.gain.value = 0.45;
+          lfo.connect(lfoG); lfoG.connect(gain.gain); lfo.start();
+        }
+        node.connect(gain); gain.connect(ctx.destination); src.start();
+        gain.gain.setTargetAtTime(level(), ctx.currentTime, 0.4);
+        arm(); return true;
+      } catch (e) { toast(T("Sound is not available in this browser.")); return false; }
+    }
+    function stop(say) {
+      if (!ctx || !src) return;
+      try { gain.gain.cancelScheduledValues(ctx.currentTime); gain.gain.setTargetAtTime(0, ctx.currentTime, 0.3); } catch (e) {}
+      var s = src, l = lfo; src = lfo = null; clearTimeout(stopT); stopAt = 0;
+      setTimeout(function () { try { s.stop(); } catch (e) {} try { if (l) l.stop(); } catch (e) {} }, 1500);
+      if (say) toast(T("Ambient sound stopped.")); paint();
+    }
+    function arm() {
+      clearTimeout(stopT); stopAt = 0; var a = amb();
+      if (a.m > 0 && src) { stopAt = Date.now() + a.m * 60000; stopT = setTimeout(function () { stop(true); }, a.m * 60000); }
+    }
+    go.addEventListener("click", function () { if (src) stop(true); else if (start()) toast(T("Playing {name}.").replace("{name}", T(NAMES[amb().k]))); paint(); });
+    vr.addEventListener("input", function () { var a = amb(); a.v = +vr.value; putAmb(a); if (src) gain.gain.setTargetAtTime(level(), ctx.currentTime, 0.1); });
+    dc.addEventListener("change", function () { var a = amb(); a.duck = dc.checked ? 1 : 0; putAmb(a); if (src) gain.gain.setTargetAtTime(level(), ctx.currentTime, 0.4); });
+    var lastPlaying = null;
+    setInterval(function () { if (src && lastPlaying !== !!playing) { lastPlaying = !!playing; gain.gain.setTargetAtTime(level(), ctx.currentTime, 0.6); } if (src) paint(); }, 1000);
+    function paint() {
+      var a = amb(); hint.textContent = T("A soft background sound made on your device - no internet needed. It can stay under a video or play alone.");
+      AMB270.forEach(function (k) { kb[k].textContent = T(NAMES[k]); kb[k].classList.toggle("active", a.k === k); kb[k].setAttribute("aria-pressed", a.k === k ? "true" : "false"); });
+      vl.textContent = T("Ambient volume"); vr.value = String(a.v); vr.setAttribute("aria-label", T("Ambient volume"));
+      dc.checked = a.duck === 1; dt.textContent = T("Lower it while a video plays");
+      tl.textContent = T("Stop ambient sound after");
+      [0, 15, 30, 60].forEach(function (m) { tb[m].textContent = m ? T("{n} min").replace("{n}", m) : T("No timer"); tb[m].classList.toggle("active", a.m === m); tb[m].setAttribute("aria-pressed", a.m === m ? "true" : "false"); });
+      go.textContent = src ? T("Stop ambient sound") : T("Play ambient sound"); go.classList.toggle("active", !!src);
+      if (src) { var left = stopAt ? Math.max(1, Math.ceil((stopAt - Date.now()) / 60000)) : 0; st.textContent = left ? T("Playing {name}, stops in {n} min.").replace("{name}", T(NAMES[a.k])).replace("{n}", left) : T("Playing {name}.").replace("{name}", T(NAMES[a.k])); }
+      else st.textContent = "";
+    }
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+  WNEW.unshift(["Ambient sounds","#ambCard270"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 })();
 </script>
 <script>
@@ -32696,6 +32823,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Shake to control", "shake phone next video play pause motion sensor accelerometer wet hands gesture skip", "#shakeCard269"],
       ["Queue snapshots", "save queue snapshot restore previous queue backup undo clear shuffle mood bring back list version", "#snapCard269"],
       ["Finish by", "finish by clock time deadline speed needed how fast watch before time left catch up end at", "#finishCard269"],
+      ["Ambient sounds", "ambient sound white pink brown noise rain ocean sleep focus study relax background masking tinnitus calm", "#ambCard270"],
       ["Play range", "start end trim play only part of video skip intro outro cut limit section", "#rangeCard268"],
       ["Eye rest", "eye break rest 20-20-20 pause look away tired eyes health reminder", "#eyeCard268"],
       ["Voice announcements", "read title aloud speak announce now playing voice speech driving low vision", "#announceCard268"],

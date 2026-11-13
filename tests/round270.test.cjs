@@ -42,3 +42,29 @@ console.log('round270 fix2 ok');
   assert.equal(c2.timeOf('https://youtu.be/dQw4w9WgXcQ?t=junk'), 0);
 }
 console.log('round270 fix3 ok');
+// New 1: Ambient sounds - generators, level rule, saved setting cleaning.
+{
+  const ctx = vm.createContext({ Math, Array, Float32Array });
+  vm.runInContext(slice('function ambFill270(', 'Object.assign(TR_MSG, {\n    "Ambient sounds"'), ctx);
+  let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const energy = (a) => a.reduce((s, x) => s + x * x, 0) / a.length;
+  const hf = (a) => { let s = 0; for (let i = 1; i < a.length; i++) s += (a[i] - a[i - 1]) ** 2; return s / a.length; };
+  const out = {};
+  for (const k of ['white', 'pink', 'brown', 'rain', 'ocean']) {
+    const a = ctx.ambFill270(k, new Float32Array(16000), rnd); out[k] = a;
+    assert.ok(energy(a) > 0.0005, k + ' must not be silent');
+    assert.ok(a.every((x) => x >= -1 && x <= 1), k + ' must stay in range');
+  }
+  assert.ok(hf(out.white) / energy(out.white) > hf(out.brown) / energy(out.brown) * 5, 'brown is smoother than white');
+  assert.equal(ctx.ambGain270(0, false, true), 0);
+  assert.ok(ctx.ambGain270(100, true, true) < ctx.ambGain270(100, false, true));
+  assert.equal(ctx.ambGain270(100, true, false), ctx.ambGain270(100, false, false));
+  const c2 = vm.createContext({});
+  vm.runInContext(slice('function cleanR269(o) {', '  Object.assign(TR_MSG, {\n    "Privacy screen"'), c2);
+  const d = c2.cleanR269(null).amb; assert.deepEqual(JSON.parse(JSON.stringify(d)), { k: 'rain', v: 50, m: 0, duck: 1 });
+  const e = JSON.parse(JSON.stringify(c2.cleanR269({ amb: { k: 'x', v: 900, m: 7, duck: 0 } }).amb));
+  assert.deepEqual(e, { k: 'rain', v: 100, m: 0, duck: 0 });
+  assert.equal(c2.cleanR269({ amb: [] }).amb.k, 'rain');
+  assert.equal(c2.cleanR269({ amb: { k: 'ocean', m: 30 } }).amb.m, 30);
+}
+console.log('round270 new1 ok');
