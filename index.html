@@ -2382,7 +2382,8 @@ setTimeout(done,3000);})();
       <div class="pl-paste hx-panel" id="hxPanel" hidden>
         <p class="hint" id="hxHint"></p>
         <div class="row"><button class="chip" id="hxPick" type="button">Choose file</button> <select class="chip" id="hxRange"><option value="30">Last 30 days</option><option value="180">Last 6 months</option><option value="0">Everything</option></select> <select class="chip" id="hxDest"><option value="later">Add to Watch later</option><option value="fav">Add to favourites</option></select></div>
-        <input id="hxFile" type="file" accept="application/json,.json" hidden>
+        <select class="chip" id="hxFolder" hidden></select>
+        <input id="hxFile" type="file" accept="application/json,.json,text/html,.html,.htm" hidden>
         <p class="hint" id="hxSum" role="status"></p>
         <p class="hint hx-prev" id="hxPrev" hidden></p>
         <div class="row"><button class="chip" id="hxAdd" type="button" hidden></button> <button class="chip" id="hxClose" type="button">Close</button></div>
@@ -22220,20 +22221,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "new in this range": ["इस अवधि में नए", "આ સમયગાળામાં નવા"],
     "Imported from history file": ["हिस्ट्री फ़ाइल से जोड़े", "હિસ્ટ્રી ફાઇલમાંથી ઉમેર્યા"],
     "Import undone": ["इम्पोर्ट वापस लिया", "ઇમ્પોર્ટ પાછું લીધું"],
-    "Close": ["बंद करें", "બંધ કરો"]
+    "Close": ["बंद करें", "બંધ કરો"],
+    "All folders": ["सभी फ़ोल्डर", "બધા ફોલ્ડર"],
+    "Pick watch-history.json from Google Takeout or a bookmarks .html file exported from your browser. It is read on this device only.": ["Google Takeout की watch-history.json या ब्राउज़र से एक्सपोर्ट की गई bookmarks .html फ़ाइल चुनें. यह सिर्फ़ इसी डिवाइस पर पढ़ी जाती है.", "Google Takeout ની watch-history.json અથવા બ્રાઉઝરમાંથી એક્સપોર્ટ કરેલી bookmarks .html ફાઇલ પસંદ કરો. તે ફક્ત આ ડિવાઇસ પર વંચાય છે."],
+    "That is not a history or bookmarks file with YouTube videos in it.": ["इस फ़ाइल में YouTube वीडियो वाली हिस्ट्री या बुकमार्क नहीं हैं.", "આ ફાઇલમાં YouTube વીડિયોવાળી હિસ્ટ્રી કે બુકમાર્ક નથી."]
   });
   (function () { var st = document.createElement("style"); st.textContent = "#hxPrev{white-space:pre-line;overflow-wrap:anywhere}#hxSum{overflow-wrap:anywhere}"; document.head.appendChild(st); })();
   (function () {
     var btn = $("hxBtn"), fi = $("hxFile"), panel = $("hxPanel"); if (!btn || !fi || !panel) return;
     var sum = $("hxSum"), rng = $("hxRange"), dest = $("hxDest"), addB = $("hxAdd"), closeB = $("hxClose"), pick = $("hxPick"), hint = $("hxHint"), prev = $("hxPrev");
-    var found = [];
+    var found = [], folderSel = $("hxFolder");
     function usable() {
       var days = rng.value === "30" ? 30 : rng.value === "180" ? 180 : 0, cut = days ? Date.now() - days * 86400000 : 0, toLater = dest.value !== "fav", list = toLater ? lib.later : lib.favs;
-      var out = found.filter(function (x) { return (!days || x.t >= cut) && findIn(list, x.id) < 0; });
+      var out = found.filter(function (x) { return (!days || !x.t || x.t >= cut) && (!folderSel.value || x.f === folderSel.value) && findIn(list, x.id) < 0; });
       return { all: out, room: toLater ? Math.max(0, 50 - lib.later.length) : out.length, toLater: toLater };
     }
     function paint() {
-      btn.textContent = T("Import a history file"); hint.textContent = T("Pick watch-history.json from Google Takeout. It is read on this device only.");
+      btn.textContent = T("Import a history file"); hint.textContent = T("Pick watch-history.json from Google Takeout or a bookmarks .html file exported from your browser. It is read on this device only."); folderSel.options.length && (folderSel.options[0].textContent = T("All folders"));
       pick.textContent = T("Choose file"); closeB.textContent = T("Close");
       [["30", "Last 30 days"], ["180", "Last 6 months"], ["0", "Everything"]].forEach(function (r, i) { rng.options[i].textContent = T(r[1]); });
       dest.options[0].textContent = T("Add to Watch later"); dest.options[1].textContent = T("Add to favourites");
@@ -22253,7 +22257,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     btn.addEventListener("click", function () { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); if (!panel.hidden) { paint(); if (window.vpExpandSection) window.vpExpandSection("library"); } });
     closeB.addEventListener("click", function () { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); });
     pick.addEventListener("click", function () { fi.value = ""; fi.click(); });
-    rng.addEventListener("change", refresh); dest.addEventListener("change", refresh);
+    rng.addEventListener("change", refresh); folderSel.addEventListener("change", refresh); dest.addEventListener("change", refresh);
     function parseHx(text) {
       var data; try { data = JSON.parse(text); } catch (e) { return null; }
       if (!Array.isArray(data)) return null;
@@ -22269,15 +22273,36 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       });
       return hit || !data.length ? out : null;
     }
+    function parseBm(text) {
+      var doc; try { doc = new DOMParser().parseFromString(text, "text/html"); } catch (e) { return null; }
+      var seen = {}, out = [];
+      doc.querySelectorAll("a[href]").forEach(function (a) {
+        var id = parseVideoId(a.getAttribute("href") || ""); if (!id || seen[id]) return; seen[id] = 1;
+        var f = "", el = a.parentElement;
+        for (; el; el = el.parentElement) { if (el.tagName === "DL" && el.previousElementSibling && el.previousElementSibling.tagName === "H3") { f = el.previousElementSibling.textContent.trim(); break; } }
+        out.push({ id: id, title: (a.textContent || "").trim().slice(0, 200), t: (parseInt(a.getAttribute("add_date"), 10) || 0) * 1000, f: f });
+      });
+      return out.length ? out : null;
+    }
+    function fillFolders() {
+      var counts = {}; found.forEach(function (x) { if (x.f) counts[x.f] = (counts[x.f] || 0) + 1; });
+      var names = Object.keys(counts); folderSel.innerHTML = "";
+      if (!names.length) { folderSel.hidden = true; return; }
+      var o = document.createElement("option"); o.value = ""; o.textContent = T("All folders"); folderSel.appendChild(o);
+      names.sort().forEach(function (n) { var op = document.createElement("option"); op.value = n; op.textContent = n + " (" + counts[n] + ")"; folderSel.appendChild(op); });
+      folderSel.hidden = false;
+    }
     fi.addEventListener("change", function () {
       var f = fi.files && fi.files[0]; if (!f) return;
+      folderSel.hidden = true; folderSel.innerHTML = "";
       panel.hidden = false; btn.setAttribute("aria-expanded", "true"); found = [];
       if (f.size > 40e6) { paint(); sum.textContent = T("That file is too big (limit 40 MB)."); return; }
       var r = new FileReader();
       r.onload = function () {
-        var got = parseHx(String(r.result || ""));
-        if (!got) { paint(); sum.textContent = T("That is not a YouTube history file. Use watch-history.json from Google Takeout."); return; }
-        found = got; paint();
+        var txt = String(r.result || ""), isHtml = /^\s*(<!doctype|<html|<dl|<a\s)/i.test(txt) || /\.html?$/i.test(f.name);
+        var got = isHtml ? parseBm(txt) : parseHx(txt);
+        if (!got) { paint(); sum.textContent = T(isHtml ? "That is not a history or bookmarks file with YouTube videos in it." : "That is not a YouTube history file. Use watch-history.json from Google Takeout."); return; }
+        found = got; if (isHtml) fillFolders(); paint();
       };
       r.readAsText(f);
     });
