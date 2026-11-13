@@ -26895,6 +26895,51 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
 
+  // Dust off favourites (round 257 new 4): favourites you have not played lately (not in
+  // the recent history, not already queued) are easy to forget. This card lists up to 5 of
+  // them, each with a + Queue button, plus a Queue these button that adds all listed ones
+  // (50-cap respected) with Undo. Hindi and Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Dust off favourites": ["पसंदीदा फिर से निकालें", "મનપસંદ ફરી કાઢો"],
+    "Favourites that are not in your recent history - queue a few to bring them back.": ["ऐसे पसंदीदा जो हाल के इतिहास में नहीं हैं - कुछ को कतार में डालकर वापस लाएं.", "એવા મનપસંદ જે તાજેતરના ઇતિહાસમાં નથી - થોડાને કતારમાં મૂકી પાછા લાવો."],
+    "All your favourites were played recently (or are queued).": ["आपके सभी पसंदीदा हाल में चले हैं (या कतार में हैं).", "તમારા બધા મનપસંદ તાજેતરમાં વાગ્યા છે (અથવા કતારમાં છે)."],
+    "+ Queue": ["+ कतार", "+ કતાર"],
+    "Queue these {n}": ["ये {n} कतार में डालें", "આ {n} કતારમાં મૂકો"],
+    "{n} favourites added to the queue": ["{n} पसंदीदा कतार में जोड़े", "{n} મનપસંદ કતારમાં ઉમેર્યા"]
+  });
+  (function () {
+    var card = mkCard("dustCard", "weeklyCard", '<ul class="lib-list" id="dustList"></ul><p><button type="button" class="chip" id="dustAll"></button></p>'); if (!card) return;
+    function pick() {
+      return lib.favs.filter(function (x) { return x && x.id && findIn(lib.hist, x.id) < 0 && findIn(lib.queue, x.id) < 0; }).slice(0, 5);
+    }
+    function paint() {
+      card.querySelector("summary").textContent = T("Dust off favourites");
+      card.querySelector(".r239-desc").textContent = T("Favourites that are not in your recent history - queue a few to bring them back.");
+      var ul = $("dustList"), all = $("dustAll"), list = pick(); ul.textContent = "";
+      all.hidden = list.length < 2; all.textContent = T("Queue these {n}").replace("{n}", list.length);
+      if (!list.length) { var li0 = document.createElement("li"); li0.className = "hint"; li0.textContent = T("All your favourites were played recently (or are queued)."); ul.appendChild(li0); return; }
+      list.forEach(function (x) {
+        var li = document.createElement("li"); li.style.cssText = "display:flex;gap:8px;align-items:center;padding:6px 0";
+        var t = document.createElement("span"); t.textContent = x.title || x.id; t.style.cssText = "flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = T("+ Queue");
+        b.setAttribute("aria-label", T("+ Queue") + ": " + (x.title || x.id));
+        b.addEventListener("click", function () { add([x]); });
+        li.appendChild(t); li.appendChild(b); ul.appendChild(li);
+      });
+    }
+    function add(items) {
+      var snap = lib.queue.slice(), sp = qPos, n = 0;
+      items.forEach(function (x) { if (lib.queue.length < 50 && findIn(lib.queue, x.id) < 0) { lib.queue.push({ id: x.id, title: x.title || titleFor(x.id) || "" }); n++; } });
+      if (!n) { toast(T("The queue is full at 50 videos. Remove some first.")); return; }
+      saveLib(); renderLib(); paint();
+      toastUndo(n === 1 ? T("1 video added to the queue") : T("{n} favourites added to the queue").replace("{n}", n), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); paint(); }, T("Queue restored"));
+    }
+    $("dustAll").addEventListener("click", function () { add(pick()); });
+    card.addEventListener("toggle", function () { if (card.open) paint(); });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+
   // Sort Watch later by most played (round 256 new 1): Watch later could be sorted A to Z
   // and by rating, but not by what you actually replay - so a parked favourite you have
   // watched ten times sat mixed in with videos you opened once and dropped. A chip by
@@ -29694,6 +29739,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Break tracker", "break tracker gap days since last watched longest break away streak habit pause watch stats", "#breakCard"],
       ["Variety check", "variety check videos spread top video share focused balanced varied repeat one video watch stats", "#varietyCard"],
       ["Weekend vs weekdays", "weekend vs weekdays saturday sunday split share percent average day watch stats habit", "#weekendCard"],
+      ["Dust off favourites", "dust off favourites not played lately forgotten queue bring back old favourites history", "#dustCard"],
       ["Weekly totals", "weekly totals weeks compare best week bars watch stats last 8 weeks trend heavier lighter", "#weeklyCard"],
       ["Share Watch later", "share watch later link send backlog list another device phone add replace", "#laterShareBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
