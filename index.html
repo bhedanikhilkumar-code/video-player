@@ -26355,6 +26355,49 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
     });
   })();
+
+  // Clear today (round 254 new 2): history cleanup came in two sizes - Trim old (30 days
+  // and older) or Clear everything. A messy lunch-break binge of videos you never want to
+  // resume had no middle option. Clear today drops only the entries watched since midnight
+  // and keeps the rest of the list; the resume entry goes only when it points at one of the
+  // removed videos, and Undo brings the whole day back. Hindi and Gujarati text, What's new
+  // and feature finder included.
+  Object.assign(TR_MSG, {
+    "Clear today": ["\u0906\u091c \u0915\u093e \u0938\u093e\u092b \u0915\u0930\u0947\u0902", "\u0a86\u0a9c\u0aa8\u0ac1\u0a82 \u0ab8\u0abe\u0aab \u0a95\u0ab0\u0acb"],
+    "Remove today's videos from Recently watched": ["Recently watched \u0938\u0947 \u0906\u091c \u0915\u0947 \u0935\u0940\u0921\u093f\u092f\u094b \u0939\u091f\u093e\u090f\u0902", "Recently watched \u0aae\u0abe\u0a82\u0aa5\u0ac0 \u0a86\u0a9c\u0aa8\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a95\u0abe\u0aa2\u0acb"],
+    "Nothing watched today yet.": ["\u0906\u091c \u0905\u092d\u0940 \u0915\u0941\u091b \u0928\u0939\u0940\u0902 \u0926\u0947\u0916\u093e.", "\u0a86\u0a9c\u0ac7 \u0ab9\u0a9c\u0ac0 \u0a95\u0a82\u0a88 \u0a9c\u0acb\u0aaf\u0ac1\u0a82 \u0aa8\u0aa5\u0ac0."],
+    "Today's history cleared": ["\u0906\u091c \u0915\u0940 \u0939\u093f\u0938\u094d\u091f\u094d\u0930\u0940 \u0938\u093e\u092b \u0939\u0941\u0908", "\u0a86\u0a9c\u0aa8\u0ac0 \u0ab9\u0abf\u0ab8\u0acd\u0a9f\u0acd\u0ab0\u0ac0 \u0ab8\u0abe\u0aab \u0aa5\u0a88"],
+    "Today's history restored": ["\u0906\u091c \u0915\u0940 \u0939\u093f\u0938\u094d\u091f\u094d\u0930\u0940 \u0935\u093e\u092a\u0938 \u0906\u0908", "\u0a86\u0a9c\u0aa8\u0ac0 \u0ab9\u0abf\u0ab8\u0acd\u0a9f\u0acd\u0ab0\u0ac0 \u0aaa\u0abe\u0a9b\u0ac0 \u0a86\u0ab5\u0ac0"],
+    "1 video removed": ["1 \u0935\u0940\u0921\u093f\u092f\u094b \u0939\u091f\u093e\u092f\u093e \u0917\u092f\u093e", "1 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a95\u0abe\u0aa2\u0acd\u0aaf\u0acb"],
+    "videos removed": ["\u0935\u0940\u0921\u093f\u092f\u094b \u0939\u091f\u093e\u090f \u0917\u090f", "\u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a95\u0abe\u0aa2\u0acd\u0aaf\u0abe"]
+  });
+  (function () {
+    var clr = $("clearHistBtn"); if (!clr || !clr.parentNode) return;
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "chip"; btn.id = "histClrTodayBtn";
+    clr.parentNode.insertBefore(btn, clr);
+    function paint() { btn.textContent = T("Clear today"); btn.setAttribute("aria-label", T("Remove today's videos from Recently watched")); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      var d0 = new Date(); d0.setHours(0, 0, 0, 0);
+      var start = d0.getTime();
+      var gone = lib.hist.filter(function (h) { return h && typeof h.ts === "number" && h.ts >= start; });
+      if (!gone.length) { toast(T("Nothing watched today yet.")); return; }
+      var snap = lib.hist.slice(), res = null, resGone = false;
+      try { res = localStorage.getItem("vp-resume.v1"); } catch (e) {}
+      var goneIds = {}; gone.forEach(function (h) { goneIds[h.id] = true; });
+      try { var rk0 = JSON.parse(res || "null"); if (rk0 && rk0.id && goneIds[rk0.id]) { localStorage.removeItem("vp-resume.v1"); resGone = true; var rb = $("resumeBox"); if (rb) rb.hidden = true; } } catch (e) {}
+      lib.hist = lib.hist.filter(function (h) { return !(h && typeof h.ts === "number" && h.ts >= start); });
+      saveLib(); renderLib();
+      toastUndo(gone.length === 1 ? T("1 video removed") : gone.length + " " + T("videos removed"), function () {
+        lib.hist = snap; saveLib();
+        if (resGone) { try { if (res != null) localStorage.setItem("vp-resume.v1", res); } catch (e) {} }
+        renderLib();
+        if (typeof renderContinue === "function") renderContinue();
+        if (typeof resumeRender === "function") resumeRender();
+      }, T("Today's history restored"));
+    });
+  })();
 /*R244-END*/
 
 })();
