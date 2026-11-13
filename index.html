@@ -2205,7 +2205,7 @@ setTimeout(done,3000);})();
       <h2 id="lpHeading">Play a file with volume boost</h2>
       <input id="lpFile" type="file" multiple accept="video/*,audio/*" aria-label="Choose a video or audio file from your device" hidden>
       <div class="row" id="lpPickRow"><button class="chip" id="lpPickBtn" type="button">📁 Choose files</button><span class="hint" id="lpPickName" role="status">No file chosen</span></div>
-      <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button><button class="chip" id="lpPip" type="button" hidden>PiP</button><button class="chip" id="lpClose" type="button" disabled>Close files</button></div>
+      <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button><button class="chip" id="lpPip" type="button" hidden>PiP</button><button class="chip" id="lpCastBtn" type="button" hidden>📺 Cast</button><button class="chip" id="lpClose" type="button" disabled>Close files</button></div>
       <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><div class="row lp-qmodes"><button class="chip" id="lpShuffleBtn" type="button" aria-pressed="false">Shuffle: off</button><button class="chip" id="lpRepeatBtn" type="button" aria-pressed="false">Repeat all: off</button><button class="chip" id="lpCopyBtn" type="button">Copy list</button><button class="chip" id="lpTxtBtn" type="button">Save list as text file</button><button class="chip" id="lpSortBtn" type="button">Sort A to Z</button><button class="chip" id="lpSizeBtn" type="button">Sort by size</button><button class="chip" id="lpDateBtn" type="button">Sort by date</button></div><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpTotalLine" hidden></p><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
       <p class="hint" id="lpSessionMsg" role="status">Select one or more local files. Notification and lock-screen controls are local-file only, where supported by your browser. They do not enable screen-off YouTube playback.</p>
       <video id="lpVideo" controls playsinline preload="metadata" crossorigin="anonymous" class="lp-video" hidden></video>
@@ -30783,6 +30783,45 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Nothing is saved. Hindi and Gujarati (feature finder and What's new) included.
   Object.assign(TR_MSG, { "Local playlist keys": ["लोकल प्लेलिस्ट कीज़", "લોકલ પ્લેલિસ્ટ કીઝ"] });
   WNEW.unshift(["Local playlist keys","#lpPickBtn"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  // Cast to TV (round 275 new 1): a local file only played on the device's own
+  // screen. Where the browser supports the Remote Playback API (Chrome and Edge
+  // on desktop and Android), a Cast button sits beside PiP and sends the playing
+  // local file to a Chromecast or Android TV on the same wifi through the
+  // browser's own device picker. The button stays hidden where the API is
+  // missing (Safari, Firefox) and becomes Stop casting while connected, so one
+  // more tap hands playback back to this screen. YouTube videos keep using the
+  // YouTube player's own cast control (a site cannot cast its player). Nothing
+  // is saved. Hindi and Gujarati, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Cast to TV": ["टीवी पर कास्ट", "ટીવી પર કાસ્ટ"],
+    "📺 Cast": ["📺 कास्ट", "📺 કાસ્ટ"],
+    "Cast: connecting…": ["कास्ट: जुड़ रहा है…", "કાસ્ટ: જોડાઈ રહ્યું છે…"],
+    "📺 Stop casting": ["📺 कास्ट बंद करें", "📺 કાસ્ટ બંધ કરો"],
+    "Pick a file first, then cast it.": ["पहले एक फ़ाइल चुनें, फिर कास्ट करें.", "પહેલા એક ફાઇલ પસંદ કરો, પછી કાસ્ટ કરો."],
+    "No cast device took the video. Is the TV on the same wifi?": ["कोई कास्ट डिवाइस नहीं मिला. क्या टीवी उसी wifi पर है?", "કોઈ કાસ્ટ ડિવાઇસ ન મળ્યું. ટીવી એજ wifi પર છે?"]
+  });
+  (function () {
+    var vid = $("lpVideo"), btn = $("lpCastBtn");
+    if (!vid || !btn) return;
+    if (!vid.remote || typeof vid.remote.prompt !== "function") return;
+    var state = "off";
+    function paint() {
+      btn.hidden = false;
+      btn.textContent = state === "on" ? T("📺 Stop casting") : state === "ing" ? T("Cast: connecting…") : T("📺 Cast");
+      btn.setAttribute("aria-pressed", state === "off" ? "false" : "true");
+      btn.classList.toggle("active", state !== "off");
+    }
+    (window.__relang = window.__relang || []).push(paint);
+    btn.addEventListener("click", function () {
+      if (!vid.currentSrc) { toast(T("Pick a file first, then cast it.")); return; }
+      vid.remote.prompt().catch(function () { toast(T("No cast device took the video. Is the TV on the same wifi?")); });
+    });
+    vid.remote.addEventListener("connecting", function () { state = "ing"; paint(); });
+    vid.remote.addEventListener("connect", function () { state = "on"; paint(); toast(T("Cast to TV") + " ✓"); });
+    vid.remote.addEventListener("disconnect", function () { state = "off"; paint(); });
+    paint();
+  })();
+  WNEW.unshift(["Cast to TV","#lpCastBtn"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 })();
 
 
@@ -33510,6 +33549,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Ambient sounds", "ambient sound white pink brown noise rain ocean sleep focus study relax background masking tinnitus calm", "#ambCard270"],
       ["Blocked channels", "block channel skip hide mute creator never play queue next unwanted", "#blockCard271"],
       ["Mouse wheel seek", "mouse wheel scroll seek bar scrub laptop desktop shift fine step", "#seek"],
+      ["Cast to TV", "cast to tv chromecast android television big screen remote playback living room local file wifi", "#lpCastBtn"],
       ["Local playlist keys", "local playlist keys n p next previous file home end start keyboard shortcut several files", "#lpPickBtn"],
       ["Swipe to remove", "swipe remove queue row left phone touch delete drop gesture undo", "#queueList"],
       ["Copy frame", "copy frame screenshot clipboard image paste chat local video picture still capture", "#lpShotCopyBtn"],
