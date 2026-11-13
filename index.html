@@ -12907,7 +12907,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     // Round 231 fix 1: the focus session choices (auto-pick) rode no backup - vp-focus.v1
     // is counted by Reset all settings since round 229, but it was missing here, so a
     // restore on a new phone silently turned the focus auto choice back on.
-    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1"].forEach(function (k) {
+    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
     });
     // Round 223 fix 2: small one-word settings kept under their own keys (list sort orders,
@@ -13156,7 +13156,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
             savePrefs(); gotSettings = true; }
           if (s.queueModes && typeof s.queueModes === "object") { ["shuffle", "repeat", "auto"].forEach(function (k) { if (typeof s.queueModes[k] === "boolean") queueModes[k] = s.queueModes[k]; }); try { localStorage.setItem("vp-queue-modes.v1", JSON.stringify(queueModes)); } catch (e) {} gotSettings = true; }
           if (s.vmem && typeof s.vmem === "object") { Object.keys(s.vmem).forEach(function (k) { vmem[k] = s.vmem[k]; }); vmemSave(); gotSettings = true; }
-          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1"].forEach(function (k) {
+          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1"].forEach(function (k) {
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
           if (s.rawKeys && typeof s.rawKeys === "object" && !Array.isArray(s.rawKeys)) {
@@ -18008,6 +18008,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Video tags", "#tagsCard"],
     ["Activity calendar", "#actCalCard"],
     ["Repeat titles", "#repeatCard"],
     ["Overlapping playlists", "#overlapCard"],
@@ -18017,7 +18018,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Import preview", "#libImport"],
     ["Library check", "#libCheckCard"],
     ["Print your lists", "#printCard"],
-    ["Customize shortcuts", "#keymapCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24278,6 +24278,73 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   card.addEventListener('toggle',function(){if(card.open)paint();});
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Video tags (round 245 new 2): lists hold videos but nothing lets you group them by your own words
+  // ("workout", "exam", "mom") across Favourites, the queue and Watch later. This card tags any saved
+  // video (or the one playing) with short words (20 characters, 8 per video, 40 different tags in
+  // all), lists your tags with counts, and for a chosen tag shows its videos with a remove-tag button,
+  // plus Play tag, Add to queue and Delete tag (with Undo). Tags live under vp-tags.v1 and ride the
+  // backup. A video missing from every list keeps its tag but is shown by its id.
+  Object.assign(TR_MSG, {
+    "Video tags": ["वीडियो टैग", "વીડિયો ટેગ"],
+    "Tag videos with your own words, then play or queue everything with a tag.": ["वीडियो को अपने शब्दों से टैग करें, फिर किसी टैग के सारे वीडियो चलाएँ या कतार में डालें.", "વીડિયોને તમારા શબ્દોથી ટેગ કરો, પછી કોઈ ટેગના બધા વીડિયો ચલાવો કે કતારમાં ઉમેરો."],
+    "Video to tag": ["टैग करने का वीडियो", "ટેગ કરવાનો વીડિયો"],
+    "Tag (e.g. workout)": ["टैग (जैसे वर्कआउट)", "ટેગ (જેમ કે વર્કઆઉટ)"],
+    "Add tag": ["टैग जोड़ें", "ટેગ ઉમેરો"],
+    "Now playing": ["अभी चल रहा है", "હમણાં ચાલે છે"],
+    "Type a tag first.": ["पहले टैग लिखें.", "પહેલા ટેગ લખો."],
+    "Pick a video first.": ["पहले वीडियो चुनें.", "પહેલા વીડિયો પસંદ કરો."],
+    "That video already has 8 tags.": ["इस वीडियो में पहले से 8 टैग हैं.", "આ વીડિયોમાં પહેલેથી 8 ટેગ છે."],
+    "You already use 40 different tags. Delete one first.": ["आप पहले से 40 अलग टैग इस्तेमाल करते हैं. पहले एक हटाएँ.", "તમે પહેલેથી 40 અલગ ટેગ વાપરો છો. પહેલા એક કાઢો."],
+    "Tagged:": ["टैग लगाया:", "ટેગ લગાવ્યો:"],
+    "Already has that tag.": ["यह टैग पहले से है.", "આ ટેગ પહેલેથી છે."],
+    "No tags yet.": ["अभी कोई टैग नहीं.", "હજી કોઈ ટેગ નથી."],
+    "Play tag": ["टैग चलाएँ", "ટેગ ચલાવો"],
+    "Delete tag": ["टैग हटाएँ", "ટેગ કાઢો"],
+    "Tag deleted:": ["टैग हटाया:", "ટેગ કાઢ્યો:"],
+    "Tags restored": ["टैग वापस आए", "ટેગ પાછા આવ્યા"],
+    "Remove tag from": ["से टैग हटाएँ", "માંથી ટેગ કાઢો"],
+    "Tag added to the queue:": ["टैग के वीडियो कतार में:", "ટેગના વીડિયો કતારમાં:"],
+    "Tag replaced the queue:": ["टैग ने कतार बदली:", "ટેગે કતાર બદલી:"],
+    "Queue restored": ["कतार वापस आई", "કતાર પાછી આવી"]
+  });
+  (function(){var host=$('plList');if(!host)return;var KEY='vp-tags.v1';
+  var tags={};try{var t0=JSON.parse(localStorage.getItem(KEY)||'{}');if(t0&&typeof t0==='object'&&!Array.isArray(t0))Object.keys(t0).forEach(function(id){if(/^[a-zA-Z0-9_-]{11}$/.test(id)&&Array.isArray(t0[id])){var a=t0[id].filter(function(x){return typeof x==='string'&&x;}).map(function(x){return x.slice(0,20);}).slice(0,8);if(a.length)tags[id]=a;}});}catch(e){}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(tags));}catch(e){}}
+  var card=document.createElement('details');card.id='tagsCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="row tg-row"><select id="tgVid"></select><input type="text" id="tgIn" maxlength="20"><button type="button" class="chip" id="tgAdd"></button></div><div id="tgChips" class="tg-chips"></div><div id="tgList"></div><div class="row" id="tgAct" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div><p class="hint" id="tgMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var st=document.createElement('style');st.textContent='#tagsCard .tg-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}#tagsCard .tg-row select{flex:1 1 180px;min-width:0}#tagsCard .tg-row input{flex:1 1 110px;min-width:0}#tagsCard .tg-chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}#tagsCard .tg-chips .chip[aria-pressed="true"]{background:var(--teal);color:#04231d}#tagsCard .tg-v{display:flex;gap:6px;align-items:center;margin:4px 0}#tagsCard .tg-v span{flex:1;min-width:0}';document.head.appendChild(st);
+  var sel=null;
+  function norm(s){return String(s||'').toLowerCase().replace(/\s+/g,' ').trim().slice(0,20);}
+  function titleOf(id){var all=[].concat(lib.favs,lib.queue,lib.later,lib.hist);for(var i=0;i<all.length;i++)if(all[i]&&all[i].id===id&&all[i].title)return all[i].title;playlists.forEach(function(p){});return titleFor(id)||id;}
+  function candidates(){var seen={},out=[];if(curId&&/^[a-zA-Z0-9_-]{11}$/.test(curId)){seen[curId]=1;out.push({id:curId,title:T('Now playing')+': '+(titleFor(curId)||curId)});}
+    [lib.favs,lib.queue,lib.later].forEach(function(l){l.forEach(function(x){if(validItem(x)&&!seen[x.id]&&out.length<100){seen[x.id]=1;out.push({id:x.id,title:x.title||x.id});}});});return out;}
+  function counts(){var c={};Object.keys(tags).forEach(function(id){tags[id].forEach(function(t){c[t]=(c[t]||0)+1;});});return c;}
+  function idsOf(t){return Object.keys(tags).filter(function(id){return tags[id].indexOf(t)>=0;});}
+  function say(m){$('tgMsg').textContent=m;}
+  function paint(){card.querySelector('summary').textContent=T('Video tags');card.querySelector('.r239-desc').textContent=T('Tag videos with your own words, then play or queue everything with a tag.');
+    var v=$('tgVid'),prev=v.value,cs=candidates();v.textContent='';v.setAttribute('aria-label',T('Video to tag'));cs.forEach(function(c){var o=document.createElement('option');o.value=c.id;o.textContent=c.title.slice(0,60);v.appendChild(o);});if(prev&&cs.some(function(c){return c.id===prev;}))v.value=prev;
+    $('tgIn').placeholder=T('Tag (e.g. workout)');$('tgIn').setAttribute('aria-label',T('Tag (e.g. workout)'));$('tgAdd').textContent=T('Add tag');
+    var c=counts(),names=Object.keys(c).sort(function(a,b){return c[b]-c[a]||(a<b?-1:1);}),box=$('tgChips');box.textContent='';
+    if(sel&&!c[sel])sel=null;
+    if(!names.length){var e=document.createElement('p');e.className='hint';e.textContent=T('No tags yet.');box.appendChild(e);}
+    names.forEach(function(n){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=n+' ('+c[n]+')';b.setAttribute('aria-pressed',String(sel===n));b.addEventListener('click',function(){sel=sel===n?null:n;paint();});box.appendChild(b);});
+    var L=$('tgList');L.textContent='';var A=$('tgAct');A.textContent='';
+    if(!sel)return;
+    idsOf(sel).forEach(function(id){var d=document.createElement('div');d.className='tg-v';var s=document.createElement('span');s.className='hint';s.textContent=titleOf(id);var r=document.createElement('button');r.type='button';r.className='chip';r.textContent='×';r.setAttribute('aria-label',T('Remove tag from')+' '+titleOf(id));r.addEventListener('click',function(){tags[id]=tags[id].filter(function(x){return x!==sel;});if(!tags[id].length)delete tags[id];save();paint();});d.appendChild(s);d.appendChild(r);L.appendChild(d);});
+    function ab(t,fn){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T(t);b.addEventListener('click',fn);A.appendChild(b);}
+    function items(){return idsOf(sel).map(function(id){return {id:id,title:titleOf(id)===id?'':titleOf(id)};});}
+    ab('Play tag',function(){var it=items().slice(0,50);if(!it.length)return;var snap=lib.queue.slice();lib.queue=it;qPos=-1;saveLib();renderLib();toastUndo(T('Tag replaced the queue:')+' '+it.length,function(){lib.queue=snap;qPos=-1;saveLib();renderLib();},T('Queue restored'));playQueueAt(0);});
+    ab('Add to queue',function(){var n=0;items().forEach(function(x){if(findIn(lib.queue,x.id)<0&&lib.queue.length<50){lib.queue.push(x);n++;}});saveLib();renderLib();say(T('Tag added to the queue:')+' '+n);});
+    ab('Delete tag',function(){var name=sel,snap=JSON.parse(JSON.stringify(tags));Object.keys(tags).forEach(function(id){tags[id]=tags[id].filter(function(x){return x!==name;});if(!tags[id].length)delete tags[id];});sel=null;save();paint();toastUndo(T('Tag deleted:')+' '+name,function(){Object.keys(tags).forEach(function(k){delete tags[k];});Object.keys(snap).forEach(function(k){tags[k]=snap[k];});save();paint();},T('Tags restored'));});}
+  $('tgAdd').addEventListener('click',function(){var id=$('tgVid').value,t=norm($('tgIn').value);if(!id){say(T('Pick a video first.'));return;}if(!t){say(T('Type a tag first.'));$('tgIn').focus();return;}
+    var a=tags[id]||[];if(a.indexOf(t)>=0){say(T('Already has that tag.'));return;}if(a.length>=8){say(T('That video already has 8 tags.'));return;}if(!counts()[t]&&Object.keys(counts()).length>=40){say(T('You already use 40 different tags. Delete one first.'));return;}
+    a.push(t);tags[id]=a;save();$('tgIn').value='';sel=t;paint();say(T('Tagged:')+' '+t+' - '+titleOf(id));});
+  $('tgIn').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('tgAdd').click();}});
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRL4=renderLib;renderLib=function(){oldRL4();if(card.open&&!document.activeElement.closest('#tagsCard'))paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -26836,6 +26903,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Video tags", "video tags labels tag words group favourites queue watch later workout exam category organise filter play tag", "#tagsCard"],
       ["Activity calendar", "activity calendar month heatmap streak days watched grid consistency habit calendar view", "#actCalCard"],
       ["Repeat titles", "repeat titles duplicate same title different link reupload copies saved twice keep one clean library", "#repeatCard"],
       ["Overlapping playlists", "overlapping playlists duplicate similar merge combine same videos tidy share half dedupe playlists", "#overlapCard"],
