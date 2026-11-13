@@ -8303,7 +8303,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     sleepSet(0, d.getTime());
     try { localStorage.setItem("vp-sleep-clock.v1", JSON.stringify({ end: d.getTime(), txt: sleepClockTxt })); } catch (e) {}
   });
-  try { var scs = JSON.parse(localStorage.getItem("vp-sleep-clock.v1") || "null"); if (scs && scs.end === Number(localStorage.getItem("vp-sleep-end.v1"))) sleepClockTxt = scs.txt; } catch (e) {}
+  // Round 252 fix 5: a restored timer trusted the clock text saved with it, so it kept the
+  // language it was first written in after the app language changed (and timers saved before
+  // the round 252 sleep-clock fix kept the browser locale). Recompute it from the stored end
+  // time in the current app language - on restore and on every language switch while a
+  // clock-set timer runs (the one-second tick repaints the chip).
+  try { var scs = JSON.parse(localStorage.getItem("vp-sleep-clock.v1") || "null"); if (scs && scs.end === Number(localStorage.getItem("vp-sleep-end.v1"))) sleepClockTxt = sleepStopClock(scs.end); } catch (e) {}
+  (window.__relang = window.__relang || []).push(function () { if (sleepClockTxt && sleepEnd) sleepClockTxt = sleepStopClock(sleepEnd); });
   markActive(sleepChips, "0");
   try { sleepEnd = Number(localStorage.getItem("vp-sleep-end.v1")) || 0; } catch(e) {}
   // Round 226 fix 2: after a reload with a timer still running the Off chip stayed lit (the
