@@ -17974,6 +17974,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Continue on another device", "#handoffBtn"],
     ["Playlist note", "#plList"],
     ["All-time recap", "#arecapBtn"],
     ["Lists as CSV", "#listsCsvBtn"],
@@ -23721,6 +23722,44 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   btn.addEventListener('click',function(){panel.hidden=!panel.hidden;btn.setAttribute('aria-expanded',String(!panel.hidden));paint();});
   (window.__relang=window.__relang||[]).push(paint);paint();})();
 
+  // Continue on another device (round 242 new 3): the queue share link carries the queue and
+  // 'Share at this time' carries the position, but moving a whole evening's watching to the TV
+  // or laptop meant two copies and a mental merge. One chip in Share & save copies a single
+  // handoff link: this video at the current second (?v=&from=, which the app itself opens at
+  // the right spot) plus the upcoming queue as the shareable ?q= block, so the other device
+  // offers to add exactly what was lined up. Nothing is uploaded; the link holds everything.
+  // (The QR dialog translations here also serve the playlist QR chip in the share block, which
+  // cannot reach TR_MSG itself - the same class of bug round 220 new 5 hit.)
+  Object.assign(TR_MSG, {
+    "Continue on another device": ["दूसरे डिवाइस पर जारी रखें", "બીજા ડિવાઇસ પર ચાલુ રાખો"],
+    "Handoff link copied": ["हैंडऑफ़ लिंक कॉपी हुआ", "હેન્ડઑફ લિંક કોપી થઈ"],
+    "Load a video first, then share from it.": ["पहले एक वीडियो लोड करें, फिर उससे शेयर करें.", "પહેલા વીડિયો લોડ કરો, પછી તેમાંથી શેર કરો."],
+    "The link opens this video at this second and offers your upcoming queue on the other device.": ["लिंक इसी सेकंड से यह वीडियो खोलता है और दूसरे डिवाइस पर आपकी आगे की कतार देता है.", "લિંક આ જ સેકન્ડથી આ વીડિયો ખોલે છે અને બીજા ડિવાઇસ પર તમારી આગળની કતાર આપે છે."],
+    "Scan to open this playlist": ["इस प्लेलिस्ट को खोलने के लिए स्कैन करें", "આ પ્લેલિસ્ટ ખોલવા સ્કેન કરો"],
+    "QR code could not be drawn - the link below still works.": ["QR कोड नहीं बन सका - नीचे दिया लिंक फिर भी काम करता है.", "QR કોડ બની શક્યો નથી - નીચેની લિંક છતાં કામ કરે છે."],
+    "Copy link": ["लिंक कॉपी करें", "લિંક કોપી કરો"],
+    "Link copied": ["लिंक कॉपी हुई", "લિંક કોપી થઈ"],
+    "Copy this link": ["यह लिंक कॉपी करें", "આ લિંક કોપી કરો"]
+  });
+  (function(){var row=document.querySelector('#ctl-share .row');if(!row)return;
+  var b=document.createElement('button');b.type='button';b.className='chip';b.id='handoffBtn';
+  row.appendChild(b);
+  function paint(){b.textContent='\u{1F4F1} '+T('Continue on another device');}
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  b.addEventListener('click',function(){
+    if(!curId){toast(T('Load a video first, then share from it.'));return;}
+    var t=Math.max(0,Math.floor(curTime||0));
+    var link=location.origin+location.pathname+'?v='+curId+(t>=5?'&from='+t:'');
+    var from=qPos>=0?qPos+1:0, up=lib.queue.slice(from,from+20);
+    if(up.length){var b64=btoa(unescape(encodeURIComponent(JSON.stringify({v:up.map(function(x){return [x.id,String(x.title||'').slice(0,120)];})})))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');link+='&q='+b64;}
+    vpCopySafe(link,function(ok){
+      toast(ok?T('Handoff link copied'):T('Could not copy - select the text and copy it by hand.'));
+      if(ok){var m=$('shareMsg');if(m)m.textContent=T('The link opens this video at this second and offers your upcoming queue on the other device.');}
+      else vpAsk(T('Copy this link'),link,{readonly:true,okLabel:T('Done')});
+    });
+  });
+  })();
+
 })();
 </script>
 <script>
@@ -26232,6 +26271,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Continue on another device", "handoff continue another device tv laptop link current position queue transfer phone", "#handoffBtn"],
       ["Playlist note", "playlist note remark memo description purpose reason rename edit line", "#plList"],
       ["All-time recap", "all time recap total watched best day ever overall summary stats everything whole", "#arecapBtn"],
       ["History tidy-up", "history clean tidy older delete remove days keep old recently watched", "#histKeepBtn"],
