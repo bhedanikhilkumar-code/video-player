@@ -31039,6 +31039,55 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
   WNEW.unshift(["Choose the speaker","#lpSinkBtn"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  // Round 276: local-only contact sheet, decoded in a separate media element.
+  Object.assign(TR_MSG, {
+    "Video contact sheet": ["वीडियो कॉन्टैक्ट शीट", "વીડિયો કોન્ટેક્ટ શીટ"],
+    "Create a timestamped picture of 6 or 12 scenes without moving playback. Local video files only; nothing is uploaded.": ["प्लेबैक बदले बिना 6 या 12 दृश्यों की समय वाली तस्वीर बनाएं. सिर्फ लोकल वीडियो; कुछ अपलोड नहीं होता.", "પ્લેબેક બદલ્યા વિના 6 કે 12 દૃશ્યોની સમયવાળી તસવીર બનાવો. ફક્ત લોકલ વીડિયો; કંઈ અપલોડ થતું નથી."],
+    "Scenes": ["दृश्य", "દૃશ્યો"], "Build contact sheet": ["कॉन्टैक्ट शीट बनाएं", "કોન્ટેક્ટ શીટ બનાવો"],
+    "Save contact sheet": ["कॉन्टैक्ट शीट सहेजें", "કોન્ટેક્ટ શીટ સાચવો"],
+    "Choose a local video first.": ["पहले लोकल वीडियो चुनें.", "પહેલા લોકલ વીડિયો પસંદ કરો."],
+    "Building scenes": ["दृश्य बन रहे हैं", "દૃશ્યો બની રહ્યા છે"],
+    "Contact sheet ready.": ["कॉन्टैक्ट शीट तैयार है.", "કોન્ટેક્ટ શીટ તૈયાર છે."],
+    "Could not build this video. Try a smaller local file.": ["यह वीडियो नहीं बन सका. छोटी लोकल फ़ाइल आज़माएं.", "આ વીડિયો બનાવી શકાયો નહીં. નાની લોકલ ફાઇલ અજમાવો."],
+    "Contact sheet cancelled.": ["कॉन्टैक्ट शीट रद्द की गई.", "કોન્ટેક્ટ શીટ રદ કરી."],
+    "Timestamped video scenes": ["समय वाले वीडियो दृश्य", "સમયવાળા વીડિયો દૃશ્યો"]
+  });
+  (function () {
+    var v=$('lpVideo'), host=$('lpCtl'); if(!v||!host)return;
+    var box=document.createElement('details');box.className='lp-workbench';box.id='contactSheet276';
+    box.innerHTML='<summary></summary><p class="hint" data-i="Create a timestamped picture of 6 or 12 scenes without moving playback. Local video files only; nothing is uploaded."></p><div class="row" style="flex-wrap:wrap"><label for="sheetCount276" data-i="Scenes"></label><select id="sheetCount276" class="chip"><option>6</option><option>12</option></select><button type="button" class="chip" id="sheetBuild276" data-i="Build contact sheet"></button><button type="button" class="chip" id="sheetCancel276" data-i="Cancel" hidden></button><a class="chip" id="sheetSave276" download="video-contact-sheet.png" data-i="Save contact sheet" hidden></a></div><p class="hint" id="sheetStatus276" role="status"></p><img id="sheetImage276" hidden style="display:block;max-width:100%;height:auto;border-radius:14px" alt="">';
+    host.insertBefore(box,host.firstChild);box.querySelector('summary').textContent=T('Video contact sheet');
+    var build=$('sheetBuild276'),cancel=$('sheetCancel276'),save=$('sheetSave276'),image=$('sheetImage276'),status=$('sheetStatus276');
+    var run=0,worker=null,url=null,state='',progress='';
+    function paint(){box.querySelector('summary').textContent=T('Video contact sheet');box.querySelectorAll('[data-i]').forEach(function(el){el.textContent=T(el.dataset.i);});image.alt=T('Timestamped video scenes');status.textContent=T(state)+(progress?' '+progress:'');}
+    function clear(){if(url)URL.revokeObjectURL(url);url=null;save.hidden=true;save.removeAttribute('href');image.hidden=true;image.removeAttribute('src');}
+    function stop(){run++;if(worker){worker.pause();worker.removeAttribute('src');worker.load();worker=null;}build.disabled=false;cancel.hidden=true;}
+    function time(t){var m=Math.floor(t/60),sec=Math.floor(t%60);return m+':'+String(sec).padStart(2,'0');}
+    function wait(el,event,act){return new Promise(function(resolve,reject){var t=setTimeout(fail,10000);function clean(){clearTimeout(t);el.removeEventListener(event,done);el.removeEventListener('error',fail);}function done(){clean();resolve();}function fail(){clean();reject(new Error('decode'));}el.addEventListener(event,done,{once:true});el.addEventListener('error',fail,{once:true});try{act();}catch(e){fail();}});}
+    cancel.addEventListener('click',function(){stop();state='Contact sheet cancelled.';progress='';paint();});
+    v.addEventListener('loadstart',function(){stop();clear();state='';progress='';paint();});
+    build.addEventListener('click',async function(){
+      if(!v.currentSrc||!isFinite(v.duration)||!v.videoWidth||v.duration<=0){state='Choose a local video first.';paint();return;}
+      stop();clear();var token=run,src=v.currentSrc,count=Number($('sheetCount276').value),w=document.createElement('video');worker=w;w.muted=true;w.preload='auto';w.crossOrigin='anonymous';w.playsInline=true;build.disabled=true;cancel.hidden=false;
+      state='Building scenes';progress='0 / '+count;paint();
+      try{
+        await wait(w,'loadeddata',function(){w.src=src;w.load();});if(token!==run)return;
+        var cw=960,tile=320,th=Math.round(tile*w.videoHeight/w.videoWidth);th=Math.max(80,Math.min(320,th));
+        var cv=document.createElement('canvas');cv.width=cw;cv.height=48+Math.ceil(count/3)*(th+32);var cx=cv.getContext('2d');cx.fillStyle='#101820';cx.fillRect(0,0,cv.width,cv.height);cx.fillStyle='#fff';cx.font='18px system-ui';cx.fillText(T('Video contact sheet'),16,30);
+        for(var i=0;i<count;i++){
+          var t=(i+0.5)*w.duration/count;await wait(w,'seeked',function(){w.currentTime=t;});if(token!==run)return;
+          var x=(i%3)*tile,y=48+Math.floor(i/3)*(th+32);var scale=Math.min(tile/w.videoWidth,th/w.videoHeight),dw=w.videoWidth*scale,dh=w.videoHeight*scale;
+          cx.drawImage(w,x+(tile-dw)/2,y+(th-dh)/2,dw,dh);cx.fillStyle='#fff';cx.font='16px system-ui';cx.fillText(time(t),x+12,y+th+22);progress=(i+1)+' / '+count;paint();
+        }
+        var blob=await new Promise(function(resolve){cv.toBlob(resolve,'image/png');});if(token!==run)return;if(!blob)throw new Error('canvas');
+        url=URL.createObjectURL(blob);image.src=url;image.hidden=false;save.href=url;save.hidden=false;state='Contact sheet ready.';progress='';
+      }catch(e){if(token===run){state='Could not build this video. Try a smaller local file.';progress='';}}
+      finally{if(token===run){stop();paint();}}
+    });
+    (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
+  WNEW.unshift(['Video contact sheet','#contactSheet276']);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+
 })();
 
 
@@ -33769,6 +33818,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Cast to TV", "cast to tv chromecast android television big screen remote playback living room local file wifi", "#lpCastBtn"],
       ["Skip silence", "skip silence quiet pauses auto jump ahead lectures voice notes silent parts fast forward local file", "#lpSilBtn"],
       ["Loudness match", "loudness match auto volume leveling steady same loudness quiet loud files normalize playlist tracks local", "#lpLoudBtn"],
+      ["Video contact sheet", "contact sheet storyboard thumbnail grid scenes local export png", "#contactSheet276"],
       ["Seek history", "seek history jump back recent positions spots rewind where was i before skip lecture lost place chips", "#seekHistRow"],
       ["Choose the speaker", "choose speaker audio output bluetooth headset sound device another speaker tab set sink local file", "#lpSinkBtn"],
       ["Local playlist keys", "local playlist keys n p next previous file home end start keyboard shortcut several files", "#lpPickBtn"],
