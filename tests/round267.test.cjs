@@ -19,4 +19,14 @@ function grab(ctx, name) {
   ctx.prefs.volCeil = 'x'; ctx.prefs.volume = 90; assert.equal(ctx.effVol(), 90);
   ctx.prefs.volCeil = 85; ctx.prefs.nightVol = 30; ctx.nightOn = () => true; assert.equal(ctx.effVol(), 30);
 }
+// Start at: only from the very beginning of videos long enough.
+{
+  const ctx = vm.createContext({});
+  grab(ctx, 'startAtTarget267');
+  assert.equal(ctx.startAtTarget267(0, 600, 10), 10);
+  assert.equal(ctx.startAtTarget267(1.9, 600, 30), 30);
+  assert.equal(ctx.startAtTarget267(40, 600, 10), 0); // resumed
+  assert.equal(ctx.startAtTarget267(0, 30, 10), 0); // too short
+  assert.equal(ctx.startAtTarget267(0, 600, 7), 0); // invalid
+}
 console.log('round267 ok');
