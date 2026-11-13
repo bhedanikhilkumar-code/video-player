@@ -13398,7 +13398,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
           if (s.queueModes && typeof s.queueModes === "object") { ["shuffle", "repeat", "auto"].forEach(function (k) { if (typeof s.queueModes[k] === "boolean") queueModes[k] = s.queueModes[k]; }); try { localStorage.setItem("vp-queue-modes.v1", JSON.stringify(queueModes)); } catch (e) {} gotSettings = true; }
           if (s.vmem && typeof s.vmem === "object") { Object.keys(s.vmem).forEach(function (k) { vmem[k] = s.vmem[k]; }); vmemSave(); gotSettings = true; }
           ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1", "vp-today.v1", "vp-saved-searches.v1", "vp-plresume.v1", "vp-recall.v1", "vp-activity.v1", "vp-smart.v1", "vp-profiles.v1"].forEach(function (k) {
-            if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
+            if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); if(k==="vp-activity.v1"&&window.__vpActivityReload262)window.__vpActivityReload262(); gotSettings = true; } catch (e) {} }
           });
           if (s.rawKeys && typeof s.rawKeys === "object" && !Array.isArray(s.rawKeys)) {
             Object.keys(VP_RAW_KEYS).forEach(function (k) {
@@ -27476,10 +27476,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   (function () {
     var KEY = "vp-activity.v1", MAXN = 100, NAMES = { queue: "Queue", later: "Watch later", favs: "Favourites" };
     var log = [];
-    function loadLog() { try { var a = JSON.parse(localStorage.getItem(KEY) || "[]"); if (Array.isArray(a)) log = a.filter(function (e) { return e && typeof e.t === "number" && NAMES[e.l] && Array.isArray(e.x) && (e.k === "a" || e.k === "r"); }).slice(0, MAXN); } catch (e) {} }
+    function loadLog() {
+      log=[];try{var a=JSON.parse(localStorage.getItem(KEY)||"[]");if(!Array.isArray(a))return;
+        a.forEach(function(e){if(!e||!Number.isFinite(e.t)||e.t<=0||e.t>Date.now()+86400000||["queue","later","favs"].indexOf(e.l)<0||!Array.isArray(e.x)||(e.k!=="a"&&e.k!=="r"))return;
+          var titles=e.x.filter(function(x){return typeof x==="string"&&x.trim();}).slice(0,5).map(function(x){return x.slice(0,200);});if(!titles.length)return;
+          log.push({t:e.t,l:e.l,k:e.k,x:titles,n:Number.isInteger(e.n)&&e.n>0?Math.min(100000,Math.max(titles.length,e.n)):titles.length});
+        });log=log.slice(0,MAXN);
+      }catch(e){}
+    }
     loadLog();
     function snap() { var o = {}; Object.keys(NAMES).forEach(function (k) { o[k] = (lib[k] || []).map(function (x) { return { id: x.id, title: x.title || "" }; }); }); return o; }
     var prev = snap(), card = null;
+    window.__vpActivityReload262=function(){loadLog();prev=snap();if(card&&card.open)paint();};
     function persist() { try { localStorage.setItem(KEY, JSON.stringify(log)); } catch (e) {} }
     // Round 262 fix: with the app open in two tabs, the other tab's changes were never shown here
     // and this tab's next save diffed against a stale snapshot, so the same add or remove was
@@ -27532,7 +27540,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     $("alClear").addEventListener("click", function () {
       var old = log.slice(); log = []; persist(); paint();
-      toastUndo(T("Activity log cleared"), function () { log = old.concat(log); persist(); paint(); }, T("Activity log restored"));
+      toastUndo(T("Activity log cleared"), function () { log = old.concat(log).slice(0,MAXN); persist(); paint(); }, T("Activity log restored"));
     });
     card.addEventListener("toggle", function () { if (card.open) paint(); });
     (window.__relang = window.__relang || []).push(paint); paint();
