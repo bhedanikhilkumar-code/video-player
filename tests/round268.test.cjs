@@ -62,4 +62,16 @@ function grab(ctx, name) {
   assert.equal(ctx.oembedVerdict268(429), 'unknown'); // busy is never treated as removed
   assert.equal(ctx.oembedVerdict268(500), 'unknown');
 }
+
+// Queue length filter.
+{
+  const ctx = vm.createContext({});
+  const a = html.indexOf('function lenSkip268('); vm.runInContext(html.slice(a, html.indexOf('\n  }\n', a) + 4), ctx);
+  assert.equal(ctx.lenSkip268(3700, 60, 0), 'long');
+  assert.equal(ctx.lenSkip268(3600, 60, 0), '');
+  assert.equal(ctx.lenSkip268(100, 0, 2), 'short');
+  assert.equal(ctx.lenSkip268(120, 0, 2), '');
+  assert.equal(ctx.lenSkip268(0, 30, 5), ''); // unknown length is never skipped
+  assert.equal(ctx.lenSkip268(500, 0, 0), '');
+}
 console.log('round268 tests ok');
