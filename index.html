@@ -2425,7 +2425,7 @@ setTimeout(done,3000);})();
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsPlaysBtn" type="button" aria-pressed="false">Sort by plays: off</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsCsvBtn" type="button">Save as spreadsheet (.csv)</button><button class="chip" id="statsCopyBtn" type="button">Copy my stats</button><button class="chip" id="statsClear" type="button">Clear</button></div>
-      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsWeek" role="status"></p><p class="hint" id="statsMonth" role="status" hidden></p><p class="hint" id="statsBest" role="status" hidden></p><p class="hint" id="statsAvg" role="status" hidden></p><p class="hint" id="statsMonthCmp" role="status" hidden></p><p class="hint" id="statsTopChan" role="status" hidden></p><div class="stats-days" id="statsDays"></div><div class="stats-hours-wrap" id="statsHoursWrap" hidden><p class="hint stats-hours-lab" id="statsHoursLab"></p><div class="stats-hours" id="statsHours"></div><p class="hint" id="statsHoursSum" role="status"></p></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><div class="goal-row" id="wgoalRow"><span class="hint" id="wgoalLab">Weekly goal:</span><span class="row" id="wgoalChips"></span></div><p class="hint" id="wgoalStatus" role="status"></p><div class="badges-wrap" id="badgesWrap" hidden><p class="hint badges-lab" id="badgesLab"></p><div class="badges" id="badges"></div></div><ul class="lib-list" id="statsList"></ul>
+      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsWeek" role="status"></p><p class="hint" id="statsMonth" role="status" hidden></p><p class="hint" id="statsBest" role="status" hidden></p><p class="hint" id="statsAvg" role="status" hidden></p><p class="hint" id="statsWend" role="status" hidden></p><p class="hint" id="statsMonthCmp" role="status" hidden></p><p class="hint" id="statsTopChan" role="status" hidden></p><div class="stats-days" id="statsDays"></div><div class="stats-hours-wrap" id="statsHoursWrap" hidden><p class="hint stats-hours-lab" id="statsHoursLab"></p><div class="stats-hours" id="statsHours"></div><p class="hint" id="statsHoursSum" role="status"></p></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><div class="goal-row" id="wgoalRow"><span class="hint" id="wgoalLab">Weekly goal:</span><span class="row" id="wgoalChips"></span></div><p class="hint" id="wgoalStatus" role="status"></p><div class="badges-wrap" id="badgesWrap" hidden><p class="hint badges-lab" id="badgesLab"></p><div class="badges" id="badges"></div></div><ul class="lib-list" id="statsList"></ul>
       <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
       <div class="goal-row" id="storRow"><p class="hint" id="storInfo" role="status"></p><button class="chip" id="storBtn" type="button">Refresh</button><button class="chip" id="storKeepBtn" type="button">Protect my data</button></div>
       <p class="hint" id="storKeepInfo" role="status" hidden></p>
@@ -5100,6 +5100,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Surprise me in Recently watched": ["हिस्ट्री में सरप्राइज़ मी", "હિસ્ટ્રીમાં સરપ્રાઇઝ મી"]
   });
   Object.assign(TR_MSG, {
+    "Weekend vs weekday": ["वीकेंड बनाम वीकडे", "વીકેન્ડ સામે વીકડે"],
+    "weekends": ["वीकेंड", "વીકેન્ડ"],
+    "weekdays": ["वीकडे", "વીકડે"],
+    "Weekend vs weekday in Watch stats": ["वॉच स्टैट्स में वीकेंड बनाम वीकडे", "વૉચ સ્ટેટ્સમાં વીકેન્ડ સામે વીકડે"],
     "Daily average": ["दैनिक औसत", "દૈનિક સરેરાશ"],
     "Daily average in Watch stats": ["वॉच स्टैट्स में दैनिक औसत", "વૉચ સ્ટેટ્સમાં દૈનિક સરેરાશ"],
     "Total left": ["कुल बचा समय", "કુલ બચેલો સમય"],
@@ -13266,6 +13270,28 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       avgEl.hidden = aN < 2;
       avgEl.textContent = aN < 2 ? "" : T("Daily average") + ": " + fmtWatch(Math.round(aSum / aN)) + " \u00b7 " + aN + " " + T("days");
     }
+    // Weekend vs weekday in Watch stats (round 229 new 1): the card answers how much and
+    // which single day was biggest, but not the shape of the habit - does watching pile up
+    // on weekends or spread over ordinary weekdays? One line averages the on-device day
+    // totals over watched Saturdays/Sundays and watched weekdays separately, compares them
+    // as a plain percentage and names both averages with their day counts, so the figure is
+    // checkable. Hidden until at least one watched day of each kind exists. Hindi and
+    // Gujarati text, What's new and feature finder included.
+    var wendEl = $("statsWend");
+    if (wendEl) {
+      var wdSum = 0, wdN = 0, weSum = 0, weN = 0;
+      Object.keys(stats.days).forEach(function (k) {
+        var s4 = Math.floor(stats.days[k] || 0); if (s4 <= 0) return;
+        var dw = new Date(k + "T00:00:00").getDay();
+        if (dw === 0 || dw === 6) { weSum += s4; weN++; } else { wdSum += s4; wdN++; }
+      });
+      wendEl.hidden = !(wdN >= 1 && weN >= 1);
+      if (!wendEl.hidden) {
+        var wdA = Math.round(wdSum / wdN), weA = Math.round(weSum / weN);
+        var wpct = wdA > 0 ? Math.round((weA - wdA) / wdA * 100) : 0;
+        wendEl.textContent = T("Weekend vs weekday") + ": " + (wpct >= 0 ? "+" : "") + wpct + "% · " + T("weekends") + " " + fmtWatch(weA) + "/" + T("day") + " (" + weN + ") · " + T("weekdays") + " " + fmtWatch(wdA) + "/" + T("day") + " (" + wdN + ")";
+      } else wendEl.textContent = "";
+    }
     var calWrap = $("statsCalWrap"), calEl = $("statsCal");
     if (calWrap && calEl) {
       calWrap.hidden = !hasAny;
@@ -17178,6 +17204,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Weekend vs weekday in Watch stats", "#statsWend"],
     ["Surprise me in Recently watched", "#histSurpriseBtn"],
     ["Recent downloads as a text file", "#dlHistTxtBtn"],
     ["Copy all playlists", "#plAllCopyBtn"],
@@ -23818,6 +23845,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Shuffle play Recently watched", "shuffle play history recently watched random mix replay evening songs start play", "#histShufBtn"],
       ["Save continue watching as a text file", "save continue watching half watched rotation resume list text file txt download keep positions left at", "#contTxtBtn"],
       ["Best day in Watch stats", "best day most watched single biggest record peak watch stats date time watched", "#statsBest"],
+      ["Weekend vs weekday in Watch stats", "weekend vs weekday watch stats saturday sunday compare average habit shape days", "#statsWend"],
       ["Daily average in Watch stats", "daily average watch stats per day ordinary typical habit mean minutes", "#statsAvg"],
       ["Save picked files as a text file", "save picked selected local files list text file txt download keep note folder sizes names", "#lpTxtBtn"],
       ["Clear all of Continue watching", "clear all continue watching remove every half watched stale rotation reset positions undo wipe", "#contClearBtn"],
