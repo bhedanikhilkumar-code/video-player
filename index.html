@@ -2408,7 +2408,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterWakeBtn" type="button" hidden>⏰ Wake all</button><button class="chip" id="laterSnoozeAllBtn" type="button" hidden>😴 Snooze all</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
-      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favQueueUnwBtn" type="button">➕ Queue unwatched</button><button class="chip" id="favShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="favUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="favClrWBtn" type="button">Clear watched</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button></span></div>
+      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favQueueUnwBtn" type="button">➕ Queue unwatched</button><button class="chip" id="favShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="favUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="favClrWBtn" type="button">Clear watched</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button><button class="chip" id="favClearBtn" type="button">Clear</button></span></div>
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
       <p class="hint" id="favTime" role="status"></p>
@@ -4863,6 +4863,27 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     lib.favs = kept; saveLib(); renderLib();
     toastUndo(nW === 1 ? T("1 watched video removed") : nW + " " + T("watched videos removed"), function () { lib.favs = snapFW; saveLib(); renderLib(); }, T("Favourites restored"));
   });
+
+  // Clear favourites (round 222 new 3): Watch later, history, the queue and Continue
+  // watching all had a full Clear with Undo, but favourites - the list a fresh start
+  // matters most for - only had Clear watched, so starting over meant removing every star
+  // row by row. One tap drops every favourite, and one Undo toast restores the exact list,
+  // the same etiquette as the Watch later Clear. Hindi and Gujarati text, What's new
+  // (capped) and feature finder included.
+  Object.assign(TR_MSG, {
+    "Clear all favourites": ["\u0938\u092d\u0940 \u092a\u0938\u0902\u0926\u0940\u0926\u093e \u0939\u091f\u093e\u090f\u0902", "\u0aac\u0aa7\u0abe \u0aae\u0aa8\u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0abe\u0aa2\u0acb"],
+    "Favourites cleared": ["\u092a\u0938\u0902\u0926\u0940\u0926\u093e \u0938\u093e\u092b\u093c \u0939\u0941\u090f", "\u0aae\u0aa8\u0aaa\u0ab8\u0a82\u0aa6 \u0ab8\u0abe\u0aab \u0aa5\u0aaf\u0abe"],
+    "Clear favourites": ["\u092a\u0938\u0902\u0926\u0940\u0926\u093e \u0938\u093e\u092b\u093c \u0915\u0930\u0947\u0902", "\u0aae\u0aa8\u0aaa\u0ab8\u0a82\u0aa6 \u0ab8\u0abe\u0aab \u0a95\u0ab0\u0acb"]
+  });
+  var favClearBtn = $("favClearBtn");
+  if (favClearBtn) favClearBtn.addEventListener("click", function () {
+    if (!lib.favs.length) { toast(T("No favourites yet. Load a video and tap Add to favourites.")); return; }
+    var snapF = lib.favs.slice();
+    lib.favs = []; saveLib(); renderLib();
+    toastUndo(T("Favourites cleared"), function () { lib.favs = snapF; saveLib(); renderLib(); }, T("Favourites restored"));
+  });
+  (window.__relang = window.__relang || []).push(function () { if (favClearBtn) { favClearBtn.textContent = T("Clear"); favClearBtn.setAttribute("aria-label", T("Clear all favourites")); } });
+  if (favClearBtn) favClearBtn.setAttribute("aria-label", T("Clear all favourites"));
 
   // Only unwatched history (round 219 extra new): Watch later and favourites had the
   // filter, but Recently watched - the pile you resume from - did not, so finished videos
@@ -16008,6 +16029,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Clear favourites", "#favClearBtn"],
     ["Shuffle play Recently watched", "#histShufBtn"],
     ["Save continue watching as a text file", "#contTxtBtn"],
     ["Best day in Watch stats", "#statsBest"],
@@ -16024,7 +16046,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Only unwatched in history", "#histUnwBtn"],
     ["Only unwatched favourites", "#favUnwBtn"],
     ["Sort picked files A to Z", "#lpSortBtn"],
-    ["Copy the download queue", "#dlQCopyBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -22577,6 +22598,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Clear favourites", "clear all favourites remove every starred saved video fresh start undo wipe reset", "#favClearBtn"],
       ["Shuffle play Recently watched", "shuffle play history recently watched random mix replay evening songs start play", "#histShufBtn"],
       ["Save continue watching as a text file", "save continue watching half watched rotation resume list text file txt download keep positions left at", "#contTxtBtn"],
       ["Best day in Watch stats", "best day most watched single biggest record peak watch stats date time watched", "#statsBest"],
