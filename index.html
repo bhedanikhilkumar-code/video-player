@@ -18008,6 +18008,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Overlapping playlists", "#overlapCard"],
     ["Mix builder", "#mixCard"],
     ["Unavailable video check", "#deadCard"],
     ["Restore points", "#restoreCard"],
@@ -18017,7 +18018,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Customize shortcuts", "#keymapCard"],
     ["Playlist QR code", "#plList"],
     ["Hide shorts in favourites", "#favShortsBtn"],
-    ["Continue on another device", "#handoffBtn"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24158,6 +24158,39 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Round 244 fix 3: the Round 243 What's new row and feature finder entry 'Import preview' had no
   // Hindi/Gujarati name, so both stayed English there.
   Object.assign(TR_MSG, { "Import preview": ["इम्पोर्ट प्रीव्यू", "ઇમ્પોર્ટ પ્રિવ્યૂ"] });
+  // Overlapping playlists (round 244 new 4): after a year of saving, two playlists often hold mostly
+  // the same videos ("Study", "Study 2", "Exam songs"). This card compares every pair of playlists
+  // and lists the pairs where the smaller one shares at least half of its videos with the other,
+  // with the exact numbers. 'Merge into' folds the smaller playlist into the bigger one (videos the
+  // bigger one lacks are added, 50-video cap respected) and deletes the smaller one, after a
+  // confirm and with an Undo toast that restores both. Playlists on this device only.
+  Object.assign(TR_MSG, {
+    "Overlapping playlists": ["मिलती-जुलती प्लेलिस्ट", "મળતી આવતી પ્લેલિસ્ટ"],
+    "Finds playlists that share most of their videos and merges them.": ["ऐसी प्लेलिस्ट ढूँढता है जिनके ज़्यादातर वीडियो एक जैसे हैं, और उन्हें मिलाता है.", "એવી પ્લેલિસ્ટ શોધે છે જેના મોટા ભાગના વીડિયો સરખા છે, અને તેમને ભેળવે છે."],
+    "No playlists share half of their videos.": ["कोई प्लेलिस्ट अपने आधे वीडियो साझा नहीं करती.", "કોઈ પ્લેલિસ્ટ તેના અડધા વીડિયો વહેંચતી નથી."],
+    "share": ["साझा", "સહિયારા"],
+    "Merge into the bigger one": ["बड़ी वाली में मिलाएँ", "મોટીમાં ભેળવો"],
+    "Merged playlists:": ["प्लेलिस्ट मिलाईं:", "પ્લેલિસ્ટ ભેળવી:"],
+    "Playlists restored": ["प्लेलिस्ट वापस आईं", "પ્લેલિસ્ટ પાછી આવી"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='overlapCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div id="ovRows"></div><p class="hint" id="ovMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  function pairs(){var out=[];for(var i=0;i<playlists.length;i++){for(var j=i+1;j<playlists.length;j++){var a=playlists[i],b=playlists[j];var ia=(a.items||[]).filter(validItem),ib=(b.items||[]).filter(validItem);if(!ia.length||!ib.length)continue;var sb={};ib.forEach(function(x){sb[x.id]=1;});var shared=0,seen={};ia.forEach(function(x){if(sb[x.id]&&!seen[x.id]){seen[x.id]=1;shared++;}});var small=Math.min(ia.length,ib.length);if(shared>=Math.ceil(small/2))out.push({a:a,b:b,shared:shared,small:ia.length<=ib.length?a:b,big:ia.length<=ib.length?b:a,pct:Math.round(100*shared/small)});}}
+    return out.sort(function(x,y){return y.pct-x.pct;});}
+  function merge(p){var snap=playlists.map(function(x){return JSON.parse(JSON.stringify(x));});var big=p.big,sm=p.small,have={};big.items.forEach(function(x){have[x.id]=1;});
+    (sm.items||[]).forEach(function(x){if(validItem(x)&&!have[x.id]&&big.items.length<50){big.items.push({id:x.id,title:x.title||''});have[x.id]=1;}});
+    var ix=playlists.indexOf(sm);if(ix>=0)playlists.splice(ix,1);savePlaylists();renderPlaylists();paint();$('ovMsg').textContent=T('Merged playlists:')+' "'+sm.name+'" > "'+big.name+'"';
+    toastUndo(T('Merged playlists:')+' '+sm.name,function(){playlists.splice(0,playlists.length);snap.forEach(function(x){playlists.push(x);});savePlaylists();renderPlaylists();paint();},T('Playlists restored'));}
+  function paint(){card.querySelector('summary').textContent=T('Overlapping playlists');card.querySelector('.r239-desc').textContent=T('Finds playlists that share most of their videos and merges them.');var box=$('ovRows');box.textContent='';var ps=pairs();
+    if(!ps.length){var e=document.createElement('p');e.className='hint';e.textContent=T('No playlists share half of their videos.');box.appendChild(e);return;}
+    ps.forEach(function(p){var d=document.createElement('div');d.className='row';d.style.cssText='display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0';var s=document.createElement('span');s.className='hint';s.style.flex='1 1 180px';s.textContent='"'+p.small.name+'" + "'+p.big.name+'": '+p.shared+'/'+p.small.items.length+' '+T('share')+' ('+p.pct+'%)';d.appendChild(s);
+      var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Merge into the bigger one');b.setAttribute('aria-label',T('Merge into the bigger one')+': '+p.small.name);b.addEventListener('click',function(){window.vpConfirm('"'+p.small.name+'" > "'+p.big.name+'" ('+p.shared+' '+T('share')+')',T('Merge into the bigger one')).then(function(ok){if(ok)merge(p);});});d.appendChild(b);box.appendChild(d);});}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRP=renderPlaylists;renderPlaylists=function(){oldRP.apply(this,arguments);if(card.open)paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -26716,6 +26749,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Overlapping playlists", "overlapping playlists duplicate similar merge combine same videos tidy share half dedupe playlists", "#overlapCard"],
       ["Mix builder", "mix builder build queue minutes time budget favourites watch later playlists history fit evening plan shortest random save playlist", "#mixCard"],
       ["Unavailable video check", "unavailable video check dead deleted private blocked broken links removed saved lists thumbnail cleanup clean library", "#deadCard"],
       ["Restore points", "restore points snapshot backup undo recover lists queue favourites watch later playlists mistake automatic daily", "#restoreCard"],
