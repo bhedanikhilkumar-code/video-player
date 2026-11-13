@@ -2416,7 +2416,7 @@ setTimeout(done,3000);})();
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsPlaysBtn" type="button" aria-pressed="false">Sort by plays: off</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsCsvBtn" type="button">Save as spreadsheet (.csv)</button><button class="chip" id="statsCopyBtn" type="button">Copy my stats</button><button class="chip" id="statsClear" type="button">Clear</button></div>
-      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsWeek" role="status"></p><p class="hint" id="statsTopChan" role="status" hidden></p><div class="stats-days" id="statsDays"></div><div class="stats-hours-wrap" id="statsHoursWrap" hidden><p class="hint stats-hours-lab" id="statsHoursLab"></p><div class="stats-hours" id="statsHours"></div><p class="hint" id="statsHoursSum" role="status"></p></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><div class="goal-row" id="wgoalRow"><span class="hint" id="wgoalLab">Weekly goal:</span><span class="row" id="wgoalChips"></span></div><p class="hint" id="wgoalStatus" role="status"></p><div class="badges-wrap" id="badgesWrap" hidden><p class="hint badges-lab" id="badgesLab"></p><div class="badges" id="badges"></div></div><ul class="lib-list" id="statsList"></ul>
+      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsWeek" role="status"></p><p class="hint" id="statsBest" role="status" hidden></p><p class="hint" id="statsTopChan" role="status" hidden></p><div class="stats-days" id="statsDays"></div><div class="stats-hours-wrap" id="statsHoursWrap" hidden><p class="hint stats-hours-lab" id="statsHoursLab"></p><div class="stats-hours" id="statsHours"></div><p class="hint" id="statsHoursSum" role="status"></p></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><div class="goal-row" id="wgoalRow"><span class="hint" id="wgoalLab">Weekly goal:</span><span class="row" id="wgoalChips"></span></div><p class="hint" id="wgoalStatus" role="status"></p><div class="badges-wrap" id="badgesWrap" hidden><p class="hint badges-lab" id="badgesLab"></p><div class="badges" id="badges"></div></div><ul class="lib-list" id="statsList"></ul>
       <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
       <div class="goal-row" id="storRow"><p class="hint" id="storInfo" role="status"></p><button class="chip" id="storBtn" type="button">Refresh</button><button class="chip" id="storKeepBtn" type="button">Protect my data</button></div>
       <p class="hint" id="storKeepInfo" role="status" hidden></p>
@@ -12632,6 +12632,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         weekEl.textContent = T("This week") + ": " + fmtWatch(twSecs) + " \u00b7 " + cmp;
       }
     }
+    // Best day in Watch stats (round 221 new 5): the week comparison says how this week is
+    // going and the calendar shows the shape, but neither answers the simple question - what
+    // was my biggest watching day? One line names the date and the time watched, in the
+    // picked language, from the same on-device day totals the calendar uses. Hidden until
+    // there is something to count. Hindi and Gujarati text, What's new (capped) and feature
+    // finder included.
+    var bestEl = $("statsBest");
+    if (bestEl) {
+      bestEl.hidden = !hasAny; bestEl.textContent = "";
+      if (hasAny) {
+        var bKey = "", bVal = 0;
+        Object.keys(stats.days).forEach(function (k) { var s2 = Math.floor(stats.days[k] || 0); if (s2 > bVal) { bVal = s2; bKey = k; } });
+        if (bVal > 0) {
+          var bLoc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-US";
+          bestEl.textContent = T("Best day") + ": " + new Date(bKey + "T00:00:00").toLocaleDateString(bLoc, { weekday: "short", day: "numeric", month: "short" }) + " \u00b7 " + fmtWatch(bVal);
+        } else bestEl.hidden = true;
+      }
+    }
     var calWrap = $("statsCalWrap"), calEl = $("statsCal");
     if (calWrap && calEl) {
       calWrap.hidden = !hasAny;
@@ -15931,6 +15949,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Best day in Watch stats", "#statsBest"],
     ["Save picked files as a text file", "#lpTxtBtn"],
     ["Clear all of Continue watching", "#contClearBtn"],
     ["Shuffle play Continue watching", "#contShufBtn"],
@@ -15947,7 +15966,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Copy the download queue", "#dlQCopyBtn"],
     ["Save a history day as a playlist", ".hist-day-p"],
     ["Shuffle play favourites", "#favShufBtn"],
-    ["Mute from the mini player", "#miniMute"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -16004,6 +16022,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Choose files first, then save the list.": ["पहले फ़ाइलें चुनें, फिर लिस्ट सेव करें.", "પહેલા ફાઇલો પસંદ કરો, પછી યાદી સાચવો."],
     "File list saved as a text file": ["फ़ाइल लिस्ट टेक्स्ट फ़ाइल में सेव हुई", "ફાઇલ યાદી ટેક્સ્ટ ફાઇલમાં સાચવાઈ"],
     "Save picked files as a text file": ["चुनी फ़ाइलें टेक्स्ट फ़ाइल में सेव करें", "પસંદ કરેલી ફાઇલો ટેક્સ્ટ ફાઇલમાં સાચવો"]
+  });
+  Object.assign(TR_MSG, {
+    "Best day": ["सबसे अच्छा दिन", "શ્રેષ્ઠ દિવસ"],
+    "Best day in Watch stats": ["वॉच स्टैट्स में सबसे अच्छा दिन", "વૉચ સ્ટેટ્સમાં શ્રેષ્ઠ દિવસ"]
   });
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -22496,6 +22518,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Best day in Watch stats", "best day most watched single biggest record peak watch stats date time watched", "#statsBest"],
       ["Save picked files as a text file", "save picked selected local files list text file txt download keep note folder sizes names", "#lpTxtBtn"],
       ["Clear all of Continue watching", "clear all continue watching remove every half watched stale rotation reset positions undo wipe", "#contClearBtn"],
       ["Shuffle play Continue watching", "shuffle play continue watching resume unfinished random mix evening half watched start play", "#contShufBtn"],
