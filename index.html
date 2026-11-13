@@ -2435,6 +2435,7 @@ setTimeout(done,3000);})();
         <button class="chip" id="repeatQueueBtn" type="button" aria-pressed="false">Repeat queue: off</button>
         <button class="chip" id="autoNextBtn" type="button" aria-pressed="true">Auto-next: on</button>
         <button class="chip" id="stopAfterBtn" type="button" aria-pressed="false">Stop after this track: off</button>
+        <button class="chip" id="qMixRestBtn" type="button">🔀 Mix the rest</button>
       </div>
       <div class="row" style="margin-top:10px" id="upnextSecsRow"><span class="label" id="upnextSecsLab">Up-next countdown:</span><span class="chips" id="upnextSecsChips"></span></div>
       <p class="hint" id="queueModeMsg" role="status">Auto-next is on. Video repeat and A-B repeat take priority.</p>
@@ -17720,6 +17721,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Shuffle the rest of the queue", "#qMixRestBtn"],
     ["Select videos", "#selBtn"],
     ["Recently removed", "#binBtn"],
     ["Add to calendar", "#calBtn"],
@@ -22619,6 +22621,32 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
 
+  // Shuffle the rest of the queue (round 236 new 1): Shuffle mode picks randomly for the whole queue and
+  // forgets the order, but a half-played queue could not be mixed once without turning the mode on. One chip
+  // mixes only the rows after the playing one (the playing row and everything above it stay put) and
+  // offers Undo.
+  Object.assign(TR_MSG, {
+    "Shuffle the rest of the queue": ["कतार का बाकी हिस्सा मिलाएं", "કતારનો બાકીનો ભાગ મિક્સ કરો"],
+    "\uD83D\uDD00 Mix the rest": ["\uD83D\uDD00 बाकी मिलाएं", "\uD83D\uDD00 બાકીનું મિક્સ કરો"],
+    "Need at least 2 upcoming videos to mix.": ["मिलाने के लिए कम से कम 2 अगले वीडियो चाहिए.", "મિક્સ કરવા ઓછામાં ઓછા 2 આગલા વીડિયો જોઈએ."],
+    "Upcoming videos mixed": ["अगले वीडियो मिलाए गए", "આગલા વીડિયો મિક્સ કર્યા"],
+    "Queue order restored": ["कतार का क्रम वापस आया", "કતારનો ક્રમ પાછો આવ્યો"]
+  });
+  (function () {
+    var btn = $("qMixRestBtn"); if (!btn) return;
+    function paint() { btn.textContent = T("\uD83D\uDD00 Mix the rest"); btn.setAttribute("aria-label", T("Shuffle the rest of the queue")); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      var start = qPos + 1, up = lib.queue.slice(start);
+      if (up.length < 2) { toast(T("Need at least 2 upcoming videos to mix.")); return; }
+      var snap = lib.queue.slice(), sp = qPos, tries = 0, a;
+      do { a = up.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } tries++; }
+      while (tries < 5 && a.every(function (x, i) { return x === up[i]; }));
+      lib.queue = lib.queue.slice(0, start).concat(a); resetShuffle(); saveLib(); renderLib(); showLibErr("");
+      toastUndo(T("Upcoming videos mixed"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue order restored"));
+    });
+  })();
+
   // Round 234 fix: list rows read '... - Resume 1:00' in English on Hindi and Gujarati pages, and
   // the 'Saved on this device only.' note under Recently watched also stayed English (its
   // translation row pointed at the first paragraph after the list, which became the hidden
@@ -25290,6 +25318,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Shuffle the rest of the queue", "shuffle mix rest queue random upcoming order one time half played", "#qMixRestBtn"],
       ["Select videos", "select multiple checkbox bulk favourites watch later remove move queue several tick batch", "#selBtn"],
       ["Recently removed", "recently removed bin trash undo restore deleted favourites watch later accident bring back", "#binBtn"],
       ["Add to calendar", "calendar ics event schedule evening plan reminder queue watch later block time session", "#calBtn"],
