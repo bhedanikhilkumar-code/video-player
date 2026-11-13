@@ -11898,7 +11898,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   try {
     var savedPl = JSON.parse(localStorage.getItem(PL_KEY) || "null");
     if (Array.isArray(savedPl)) savedPl.forEach(function (p) {
-      if (p && typeof p.name === "string" && Array.isArray(p.items)) playlists.push({ name: p.name.slice(0, 40), items: p.items.filter(validItem).slice(0, 50).map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "" }; }) });
+      if (p && typeof p.name === "string" && Array.isArray(p.items)) playlists.push({ name: p.name.slice(0, 40), pinned: p.pinned === true ? true : undefined, items: p.items.filter(validItem).slice(0, 50).map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "" }; }) });
     });
   } catch (e) {}
   function savePlaylists() { try { localStorage.setItem(PL_KEY, JSON.stringify(playlists)); } catch (e) { plMsg.textContent = T("Could not save: browser storage is full or blocked. Your latest changes may be lost - export a backup."); storageWarn(); } }
@@ -12200,19 +12200,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     compareDlg202 = dlg; comparePaint202 = paint; document.body.appendChild(dlg); paint(); dlg.showModal(); select.focus();
   }
   (window.__relang = window.__relang || []).push(function(){if(comparePaint202)comparePaint202();});
+  function plDisplayOrder() {
+    var order = playlists.map(function (_, i) { return i; });
+    if (plSortAZ) order.sort(function (a, b) { return String(playlists[a].name).toLowerCase().localeCompare(String(playlists[b].name).toLowerCase()); });
+    order.sort(function (a, b) { return (playlists[b].pinned === true ? 1 : 0) - (playlists[a].pinned === true ? 1 : 0); });
+    return order;
+  }
   function renderPlaylists() {
     plList.textContent = "";
     plSortRefresh();
     var lh = $("lhPlaylists"); if (lh) lh.textContent = T("Saved playlists") + (playlists.length ? " (" + playlists.length + ")" : "");
     if (!playlists.length) { plList.appendChild(emptyLi(T("No saved playlists yet. Fill the queue, type a name above and tap Save."), "playlist")); return; }
-    var order = playlists.map(function (_, i) { return i; });
-    if (plSortAZ) order.sort(function (a, b) { return String(playlists[a].name).toLowerCase().localeCompare(String(playlists[b].name).toLowerCase()); });
+    var order = plDisplayOrder();
     order.forEach(function (idx) {
       var pl = playlists[idx];
       var li = document.createElement("li"); li.className = "pl-item";
       li.dataset.playlistIndex = String(idx);
       var top = document.createElement("div"); top.className = "pl-top";
-      var nm = document.createElement("span"); nm.className = "pl-name"; nm.textContent = pl.name;
+      var nm = document.createElement("span"); nm.className = "pl-name"; nm.textContent = (pl.pinned === true ? "📌 " : "") + pl.name;
       var ct = document.createElement("span"); ct.className = "pl-count"; ct.textContent = pl.items.length + " " + (pl.items.length === 1 ? T("video") : T("videos"));
       top.appendChild(nm); top.appendChild(ct);
       function playPl() {
@@ -12246,7 +12251,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         top.appendChild(ln);
       }
       var acts = document.createElement("div"); acts.className = "pl-acts";
-      function btn(label, cls, fn) { var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (cls ? " " + cls : ""); b.textContent = label; b.setAttribute("aria-label", label + ": " + pl.name); b.addEventListener("click", fn); acts.appendChild(b); }
+      function btn(label, cls, fn) { var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (cls ? " " + cls : ""); b.textContent = label; b.setAttribute("aria-label", label + ": " + pl.name); b.addEventListener("click", fn); acts.appendChild(b); return b; }
+      var pinBtn = btn(pl.pinned === true ? T("📌 Pinned") : T("📌 Pin"), "", function () {
+        pl.pinned = pl.pinned === true ? undefined : true;
+        savePlaylists(); renderPlaylists();
+        plSay(pl.pinned === true ? T("Pinned on top:") + " \"" + pl.name + "\" - " + T("it stays first in every sort.") : T("Unpinned:") + " \"" + pl.name + "\".");
+      });
+      pinBtn.setAttribute("aria-pressed", String(pl.pinned === true));
       btn(T("Play"), "", playPl);
       btn(T("Shuffle play"), "", function () {
         if (!pl.items.length) return;
@@ -12783,7 +12794,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       queuePos: (qPos >= 0 && qPos < lib.queue.length && lib.queue[qPos]) ? lib.queue[qPos].id : null,
       favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "", pin: x.pin === true }; }),
       later: lib.later.map(function (x) { var o = { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (laterSnoozed(x)) o.snoozeUntil = x.snoozeUntil; if (typeof x.why === "string" && x.why.trim()) o.why = x.why.slice(0, 200); return o; }),
-      playlists: playlists.map(function (p) { return { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; }),
+      playlists: playlists.map(function (p) { var o = { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; if (p.pinned === true) o.pinned = true; return o; }),
       moments: (function () { var o = {}; Object.keys(marks).forEach(function (id) { if (Array.isArray(marks[id]) && marks[id].length) o[id] = marks[id].map(function (m) { return { t: m.t, name: m.name || "" }; }); }); return o; })(),
       notes: (function () { var o = {}; if (typeof notes === "object" && notes) Object.keys(notes).forEach(function (id) { if (typeof notes[id] === "string" && notes[id].trim()) o[id] = notes[id]; }); return o; })(),
       lyrics: (function () { var o = {}; if (typeof lyrics === "object" && lyrics) Object.keys(lyrics).forEach(function (id) { if (typeof lyrics[id] === "string" && lyrics[id].trim()) o[id] = lyrics[id]; }); return o; })(),
@@ -12884,7 +12895,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           // A playlist with the same name and the same videos in the same order is already here - skip it.
           if (playlists.some(function (q) { return q.name === nm && q.items.length === items.length && q.items.every(function (it, ix) { return it.id === items[ix].id; }); })) return;
           var base = nm, k = 2; while (plFind(nm) >= 0) { nm = (base.slice(0, 34) + " (" + k + ")"); k++; }
-          playlists.push({ name: nm, items: items }); pn++;
+          playlists.push({ name: nm, pinned: p.pinned === true ? true : undefined, items: items }); pn++;
         });
         var ln = 0;
         (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length >= 50) capN++; if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { var li2 = { id: x.id, title: typeof x.title === "string" ? x.title : "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (typeof x.snoozeUntil === "number" && x.snoozeUntil > Date.now() && x.snoozeUntil < Date.now() + 30 * 864e5) li2.snoozeUntil = x.snoozeUntil; if (typeof x.why === "string" && x.why.trim()) li2.why = x.why.slice(0, 200); lib.later.push(li2); ln++; } });
@@ -17897,6 +17908,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Pin a playlist", "#plList"],
     ["Easier reading", "#a11yEasy"],
     ["Keyboard practice", "#keyboardPractice"],
     ["Session run sheet", "#sessionSheet"],
@@ -18889,8 +18901,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function plProgPaint() {
     if (typeof plList === "undefined" || !plList || !playlists.length) return;
     var lis = plList.querySelectorAll(":scope > li.pl-item");
-    var order = playlists.map(function (_, i) { return i; });
-    if (plSortAZ) order.sort(function (a, b) { return String(playlists[a].name).toLowerCase().localeCompare(String(playlists[b].name).toLowerCase()); });
+    var order = plDisplayOrder();
     order.forEach(function (idx, pos) {
       var li = lis[pos]; if (!li) return;
       var pl = playlists[idx];
@@ -23570,6 +23581,7 @@ function clock(secs){var mins=Math.floor(secs/60),days=Math.floor(mins/1440);ret
 function paint(){card.querySelector('summary').textContent=T('Session run sheet');card.querySelector('.r239-desc').textContent=T('Plan the whole queue or a saved playlist from a chosen start time. Nothing is queued or changed.');card.querySelector('.r239-foot').textContent=T('Times use known lengths at your current speed. After an unknown length, later start times are not estimated.');card.querySelector('label[for="sheetSource"]').textContent=T('Session list');card.querySelector('label[for="sheetStart"]').textContent=T('Start clock');$('sheetCopy').textContent=T('Copy run sheet');$('sheetSave').textContent=T('Save run sheet');var value=select.value;select.textContent='';var op=document.createElement('option');op.value='queue';op.textContent=T('Queue');select.appendChild(op);playlists.forEach(function(p,i){var o=document.createElement('option');o.value=String(i);o.textContent=p.name;select.appendChild(o);});select.value=value&&Array.from(select.options).some(function(o){return o.value===value;})?value:'queue';var items=select.value==='queue'?lib.queue:(playlists[Number(select.value)]||{items:[]}).items;var match=/^(\d{2}):(\d{2})$/.exec(start.value),secs=match?Number(match[1])*3600+Number(match[2])*60:null;var sp=prefs.speed>0?prefs.speed:1;var lines=[T('Session run sheet')+' - '+select.options[select.selectedIndex].textContent+' ('+sp+'x)',T('Times use known lengths at your current speed. After an unknown length, later start times are not estimated.'),''];$('sheetRows').textContent='';if(!items.length){var li=document.createElement('li');li.className='hint';li.textContent=T('Nothing in this session yet.');$('sheetRows').appendChild(li);}items.forEach(function(x,i){var d=queueRowDur(x.id),at=secs===null?T('Start time unknown'):clock(secs),length=d?fmt(Math.round(d/sp)):T('Unknown length');var li=document.createElement('li');var name=document.createElement('strong');name.textContent=x.title||titleFor(x.id)||x.id;var detail=document.createElement('p');detail.className='hint';detail.textContent=at+' · '+length;detail.style.margin='4px 0';li.append(name,detail);$('sheetRows').appendChild(li);lines.push((i+1)+'. '+at+' - '+name.textContent+' ('+length+')','https://youtu.be/'+x.id);if(secs!==null&&d)secs+=d/sp;else secs=null;});text=lines.join('\n');$('sheetCopy').disabled=$('sheetSave').disabled=!items.length;}
 select.onchange=paint;start.oninput=paint;card.addEventListener('toggle',function(){if(card.open)paint();});$('sheetCopy').onclick=function(){paint();vpCopySafe(text,function(ok){toast(T(ok?'Run sheet copied':'Could not copy - select the text and copy it by hand.'));});};$('sheetSave').onclick=function(){paint();var url=URL.createObjectURL(new Blob([text],{type:'text/plain;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='video-session-run-sheet.txt';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},4000);};var oldRender=renderLib;renderLib=function(){oldRender();if(card.open)paint();};(window.__relang=window.__relang||[]).push(paint);paint();})();
 
+Object.assign(TR_MSG, {"Pin a playlist": ["प्लेलिस्ट पिन करें", "પ્લેલિસ્ટ પિન કરો"], "📌 Pin": ["📌 पिन करें", "📌 પિન કરો"], "📌 Pinned": ["📌 पिन की हुई", "📌 પિન કરેલ"], "Pinned on top:": ["सबसे ऊपर पिन:", "સૌથી ઉપર પિન:"], "it stays first in every sort.": ["यह हर क्रम में पहले रहेगी.", "તે દરેક ક્રમમાં પહેલાં રહેશે."], "Unpinned:": ["पिन हटाई:", "પિન હટાવી:"]});
 Object.assign(TR_MSG, {"Easier reading": ["आसान पढ़ाई", "સરળ વાંચન"], "Easier reading (wider letter and line spacing)": ["आसान पढ़ाई (अक्षरों और पंक्तियों के बीच ज़्यादा जगह)", "સરળ વાંચન (અક્ષરો અને લીટીઓ વચ્ચે વધુ જગ્યા)"]});
 Object.assign(TR_MSG, {"Keyboard practice": ["कीबोर्ड अभ्यास", "કીબોર્ડ અભ્યાસ"], "Learn player shortcuts safely. Tap an answer or focus the practice pad and press a key. Playback does not change.": ["प्लेयर के शॉर्टकट सुरक्षित सीखें. जवाब दबाएं या अभ्यास पैड पर फ़ोकस करके कुंजी दबाएं. वीडियो नहीं बदलता.", "પ્લેયરના શૉર્ટકટ સુરક્ષિત શીખો. જવાબ ટૅપ કરો અથવા અભ્યાસ પૅડ પર ફોકસ કરીને કી દબાવો. વીડિયો બદલાતો નથી."], "Which shortcut does this?": ["इसके लिए कौन-सा शॉर्टकट है?", "આ માટે કયો શૉર્ટકટ છે?"], "Practice pad - press a shortcut here": ["अभ्यास पैड - यहाँ शॉर्टकट दबाएं", "અભ્યાસ પૅડ - અહીં શૉર્ટકટ દબાવો"], "Play or pause": ["चलाएं या रोकें", "ચલાવો કે અટકાવો"], "Back 10 seconds": ["10 सेकंड पीछे", "10 સેકન્ડ પાછળ"], "Forward 10 seconds": ["10 सेकंड आगे", "10 સેકન્ડ આગળ"], "Mute or unmute": ["म्यूट या अनम्यूट", "મ્યૂટ કે અનમ્યૂટ"], "Fullscreen toggle": ["फुलस्क्रीन बदलें", "ફુલસ્ક્રીન બદલો"], "Captions toggle": ["कैप्शन बदलें", "કૅપ્શન બદલો"], "Volume up": ["आवाज़ बढ़ाएं", "અવાજ વધારો"], "Volume down": ["आवाज़ घटाएं", "અવાજ ઘટાડો"], "Correct. The real player was not changed.": ["सही. असली प्लेयर नहीं बदला.", "સાચું. અસલી પ્લેયર બદલાયો નથી."], "Try again. This shortcut is for:": ["फिर कोशिश करें. यह शॉर्टकट है:", "ફરી પ્રયાસ કરો. આ શૉર્ટકટ આ માટે છે:"], "Next question": ["अगला सवाल", "આગળનો પ્રશ્ન"], "Restart practice": ["फिर अभ्यास करें", "ફરી અભ્યાસ કરો"], "Practice complete": ["अभ्यास पूरा", "અભ્યાસ પૂરો"], "questions completed": ["सवाल पूरे", "પ્રશ્નો પૂરા"]});
 
@@ -26079,6 +26091,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Pin a playlist", "pin playlist pinned top favourite list keep first sort order badge", "#plList"],
       ["Easier reading", "accessibility reading easier letters letter spacing word line height dyslexia legibility text comfortable", "#a11yEasy"],
       ["Keyboard practice", "keyboard shortcut trainer practice quiz learning safe pad key controls onboarding accessibility", "#keyboardPractice"],
       ["Session run sheet", "session run sheet timeline start times playlist schedule plan copy save text known length", "#sessionSheet"],
