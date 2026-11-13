@@ -81,4 +81,7 @@ function grab(ctx, name) {
   const body = html.slice(a, html.indexOf('linkInput.value = link;', a));
   assert.ok(/if \(from == null\) \{ var inLink = linkStartSeconds\(link\)/.test(body));
 }
+
+// Fix 2: ?t= / ?start= / ?time_continue= on the app address are read as a start time.
+assert.ok(/secs\("t"\)[^\n]*secs\("start"\)[^\n]*secs\("time_continue"\)/.test(html));
 console.log('round268 tests ok');
