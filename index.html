@@ -31228,6 +31228,14 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (!localFiles.length) return;
     playLocalAt(0, false);
   });
+  // Round 274: one door for "open these files" used by the drop zone (and Open with).
+  window.vpOpenFiles = function (list) {
+    var a = Array.prototype.slice.call(list || []);
+    if (!a.length) return false;
+    localFiles = a; lpPickCount = a.length; lpPickPaint();
+    playLocalAt(0, false);
+    return true;
+  };
   function mediaAction(name, fn) { if (session) try { session.setActionHandler(name, fn); } catch(e) {} }
   var lastPosState = 0;
   function updatePosState(force) {
@@ -34082,7 +34090,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
  window.addEventListener("dragover",function(e){if(files(e)){e.preventDefault();e.dataTransfer.dropEffect="copy";}});
  window.addEventListener("dragleave",function(e){if(files(e)){depth=Math.max(0,depth-1);if(!depth)hide();}});
  window.addEventListener("blur",hide);window.addEventListener("keydown",function(e){if(e.key==="Escape")hide();});
- window.addEventListener("drop",function(e){if(!files(e))return;e.preventDefault();hide();var f=e.dataTransfer.files[0];if(!f)return;var ext=(f.name.split(".").pop()||"").toLowerCase();if(!/^(video|audio)\//.test(f.type||"")&&["mp4","webm","mkv","mov","m4v","mp3","m4a","aac","ogg","wav","flac"].indexOf(ext)<0){window.toast(T("That file cannot be played here."));return;}if(window.vpPlayUrl)window.vpPlayUrl(URL.createObjectURL(f),f.name+"|"+f.size);});
+ window.addEventListener("drop",function(e){if(!files(e))return;e.preventDefault();hide();var all=[].slice.call(e.dataTransfer.files||[]);var ok=all.filter(function(f){var ext=(f.name.split(".").pop()||"").toLowerCase();return /^(video|audio)\//.test(f.type||"")||["mp4","webm","mkv","mov","m4v","mp3","m4a","aac","ogg","wav","flac"].indexOf(ext)>=0;});if(!ok.length){window.toast(T("That file cannot be played here."));return;}if(ok.length>1&&window.vpOpenFiles){window.vpOpenFiles(ok);return;}var f=ok[0];if(window.vpPlayUrl)window.vpPlayUrl(URL.createObjectURL(f),f.name+"|"+f.size);});
 })();
 </script>
 <script>
