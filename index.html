@@ -12990,6 +12990,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       chanSpeeds: (function () { var o = {}; Object.keys(chSpeed).forEach(function (k) { o[k] = chSpeed[k]; }); return o; })(),
       chanQuals: (function () { var o = {}; if (typeof chQual !== "undefined") Object.keys(chQual).forEach(function (k) { o[k] = chQual[k]; }); return o; })(),
       chanVols: (function () { var o = {}; Object.keys(chVol).forEach(function (k) { o[k] = chVol[k]; }); return o; })(),
+      chanCcs: (function () { var o = {}; if (typeof chCc !== "undefined") Object.keys(chCc).forEach(function (k) { o[k] = chCc[k]; }); return o; })(),
       // Round 215 fix: star ratings rode no backup - a device change silently lost every
       // rating while queue, notes and even channel volumes moved over. Export them like
       // the other maps (valid 11-character ids, whole 1-5 values only).
@@ -13041,6 +13042,8 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     if (nChQ) libBackupMsg.textContent += " " + T("Channel qualities included: ") + nChQ + ".";
     var nChVol = Object.keys(data.chanVols).length;
     if (nChVol) libBackupMsg.textContent += " " + T("Channel volumes included: ") + nChVol + ".";
+    var nChCc = Object.keys(data.chanCcs || {}).length;
+    if (nChCc) libBackupMsg.textContent += " " + T("Channel captions included: ") + nChCc + ".";
     var nRate = Object.keys(data.ratings || {}).length;
     if (nRate) libBackupMsg.textContent += " " + T("Ratings included: ") + nRate + ".";
     if (data.dlHistory.length) libBackupMsg.textContent += " " + T("Downloads included: ") + data.dlHistory.length + ".";
@@ -13128,6 +13131,17 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
             chVol[k.trim().slice(0, 60)] = Math.round(v); cvn++;
           });
           if (cvn) { chVolSave(); chVolRender(); }
+        }
+        var ccc = 0;
+        if (d.chanCcs && typeof d.chanCcs === "object" && !Array.isArray(d.chanCcs) && typeof chCc !== "undefined") {
+          Object.keys(d.chanCcs).forEach(function (k) {
+            var v = d.chanCcs[k];
+            if (typeof k !== "string" || !k.trim() || typeof v !== "boolean") return;
+            if (chCcFind(k)) return;
+            if (Object.keys(chCc).length >= 30) return;
+            chCc[k.trim().slice(0, 60)] = v; ccc++;
+          });
+          if (ccc) { chCcSave(); chCcRender(); }
         }
         // Round 215 fix: restore ratings the same way - a rating already made on this
         // device wins, missing ones are added, and the stars repaint right away.
@@ -13283,6 +13297,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         if (csn) libBackupMsg.textContent += " " + T("Channel speeds restored: ") + csn + ".";
         if (cqn) libBackupMsg.textContent += " " + T("Channel qualities restored: ") + cqn + ".";
         if (cvn) libBackupMsg.textContent += " " + T("Channel volumes restored: ") + cvn + ".";
+        if (ccc) libBackupMsg.textContent += " " + T("Channel captions restored: ") + ccc + ".";
         if (rtn) libBackupMsg.textContent += " " + T("Ratings restored: ") + rtn + ".";
         if (dn) libBackupMsg.textContent += " " + T("Downloads restored: ") + dn + ".";
         if (gotSettings) { libBackupMsg.textContent += " " + T("Settings restored. Reloading to apply\u2026"); setTimeout(function () { location.reload(); }, 1200); }
@@ -18115,6 +18130,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Channel captions", "#ccChanBtn"],
     ["Drop Shorts from the queue", "#qDropShortsBtn"],
     ["Play counts on list rows", "#lhHist"],
     ["Compact lists", "#a11yCompact"],
@@ -18123,8 +18139,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Battery guard", "#battGuardRow"],
     ["Hour chart as PNG", "#statsPngBtn"],
     ["Skip Shorts in the queue", "#qSkipShortsBtn"],
-    ["Hold to rush at 2x", "#hold2xBtn"],
-    ["Bigger tap targets", "#a11yTap"]
+    ["Hold to rush at 2x", "#hold2xBtn"]
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25988,6 +26003,98 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       toastUndo(T("Queue trimmed: Shorts removed") + " " + n, function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
     });
   })();
+  // Channel captions (round 252 new 5): Channel volume, speed and quality are each
+  // remembered per channel, but captions were global only - lectures want CC always on
+  // and music channels want it off, so every channel change meant a trip to the CC chip.
+  // A chip in the Subtitles card remembers the CC on/off you use for the channel of the
+  // video playing now; the next time one of its videos loads, that choice applies by
+  // itself. A choice saved for the video itself (per-video memory) wins. Up to 30
+  // channels, saved on this device and riding the backup export/import, retranslates on
+  // language switch, listed in the feature finder and the What's new card. Mirrors
+  // Channel volume (round 134) for captions.
+  Object.assign(TR_MSG, {
+    "📺 Channel captions": ["📺 चैनल कैप्शन", "📺 ચેનલ કૅપ્શન"],
+    "Channel captions": ["चैनल कैप्शन", "ચેનલ કૅપ્શન"],
+    "on": ["चालू", "ચાલુ"],
+    "Captions {s} remembered for {c}.": ["{c} के लिए कैप्शन {s} याद रखे गए.", "{c} માટે કૅપ્શન {s} યાદ રાખ્યા."],
+    "Channel captions forgotten for {c}.": ["{c} के चैनल कैप्शन भुला दिए गए.", "{c} ના ચેનલ કૅપ્શન ભૂલાઈ ગયા."],
+    "Captions {s} for {c}.": ["{c} के लिए कैप्शन {s}.", "{c} માટે કૅપ્શન {s}."],
+    "Load a video first, then set channel captions.": ["पहले वीडियो चलाएं, फिर चैनल कैप्शन सेट करें.", "પહેલાં વીડિયો ચલાવો, પછી ચેનલ કૅપ્શન સેટ કરો."],
+    "Remember the CC on/off for this channel and it applies by itself when one of its videos plays. A choice saved for the video itself wins.": ["इस चैनल के लिए CC चालू/बंद याद रखें - उसका वीडियो चलते ही वह अपने आप लग जाता है. वीडियो के लिए अलग से सेव की पसंद पहले लगती है.", "આ ચેનલ માટે CC ચાલુ/બંધ યાદ રાખો - તેનો વીડિયો ચાલતાં જ તે આપોઆપ લાગુ થાય. વીડિયો માટે અલગથી સાચવેલી પસંદગી પહેલાં લાગુ થાય."],
+    "Channel captions included: ": ["चैनल कैप्शन शामिल: ", "ચેનલ કૅપ્શન સામેલ: "],
+    "Channel captions restored: ": ["चैनल कैप्शन वापस मिले: ", "ચેનલ કૅપ્શન પાછા મળ્યા: "]
+  });
+  var CHCC_KEY = "vp-chancc.v1", chCc = {}, chCcAppliedId = null;
+  try {
+    var _cc = JSON.parse(localStorage.getItem(CHCC_KEY) || "null");
+    if (_cc && typeof _cc === "object" && !Array.isArray(_cc)) Object.keys(_cc).forEach(function (k) {
+      if (typeof k === "string" && k.trim() && typeof _cc[k] === "boolean") chCc[k] = _cc[k];
+    });
+  } catch (e) {}
+  function chCcSave() { try { var ks = Object.keys(chCc); while (ks.length > 30) delete chCc[ks.shift()]; localStorage.setItem(CHCC_KEY, JSON.stringify(chCc)); } catch (e) {} }
+  function chCcFind(n) { n = (n || "").toLowerCase(); var ks = Object.keys(chCc); for (var i = 0; i < ks.length; i++) if (ks[i].toLowerCase() === n) return ks[i]; return null; }
+  function chCcCurName() { var c = typeof chanCur === "function" ? chanCur() : null; return c ? c.n : ""; }
+  var chCcBtn = null;
+  (function () {
+    var anchorBtn = $("ccMuteBtn"); if (!anchorBtn || !anchorBtn.parentNode) return;
+    chCcBtn = document.createElement("button");
+    chCcBtn.type = "button"; chCcBtn.className = "chip"; chCcBtn.id = "ccChanBtn";
+    chCcBtn.setAttribute("aria-pressed", "false");
+    anchorBtn.parentNode.insertBefore(chCcBtn, anchorBtn.nextSibling);
+  })();
+  function chCcRender() {
+    if (!chCcBtn) return;
+    var n = chCcCurName(), k = n ? chCcFind(n) : null;
+    chCcBtn.textContent = T("📺 Channel captions") + ": " + (k ? (chCc[k] ? T("on") : T("Off")) : T("off"));
+    chCcBtn.setAttribute("aria-pressed", String(!!k));
+    chCcBtn.classList.toggle("active", !!k);
+    chCcBtn.setAttribute("aria-label", T("Channel captions") + " - " + T("Remember the CC on/off for this channel and it applies by itself when one of its videos plays. A choice saved for the video itself wins."));
+    chCcBtn.title = n ? n : "";
+  }
+  if (chCcBtn) chCcBtn.addEventListener("click", function () {
+    var n = chCcCurName();
+    if (!n) { toast(T("Load a video first, then set channel captions.")); return; }
+    var k = chCcFind(n);
+    if (k) {
+      delete chCc[k]; chCcSave(); chCcRender();
+      toast(T("Channel captions forgotten for {c}.").replace("{c}", n));
+    } else {
+      chCc[n] = prefs.cc; chCcSave(); chCcRender();
+      toast(T("Captions {s} remembered for {c}.").replace("{s}", prefs.cc ? T("on") : T("Off")).replace("{c}", n));
+    }
+  });
+  function chCcApply(id) {
+    if (!id || id !== curId || chCcAppliedId === id) return;
+    var n = chCcCurName(); if (!n) return; // wait for the channel name
+    chCcAppliedId = id;
+    var k = chCcFind(n); if (!k) return;
+    var vm = typeof vmem !== "undefined" ? vmem[id] : null;
+    if (vm && typeof vm.cc === "boolean") return; // the video's own choice wins
+    var v = chCc[k];
+    if (v !== prefs.cc) {
+      prefs.cc = v; savePrefs(); ccRender(); ccApply();
+      toast(T("Captions {s} for {c}.").replace("{s}", v ? T("on") : T("Off")).replace("{c}", n));
+    }
+  }
+  document.addEventListener("vp-video-loaded", function () { chCcAppliedId = null; chCcApply(curId); });
+  if (infoChannel) new MutationObserver(function () { chCcRender(); chCcApply(curId); }).observe(infoChannel, { childList: true, characterData: true, subtree: true });
+  // Hand-made CC changes while a remembered channel plays update its memory, the same way
+  // hand-made volume changes update a channel volume. The app's own apply sets prefs.cc
+  // directly without a click, so only real taps reach these listeners.
+  if (ccBtn) ccBtn.addEventListener("click", function () {
+    var n = chCcCurName(); if (!n) return;
+    var k = chCcFind(n);
+    if (k && chCc[k] !== prefs.cc) { chCc[k] = prefs.cc; chCcSave(); chCcRender(); }
+  });
+  if (ccLangChips) ccLangChips.addEventListener("click", function () {
+    setTimeout(function () {
+      var n = chCcCurName(); if (!n) return;
+      var k = chCcFind(n);
+      if (k && chCc[k] !== prefs.cc) { chCc[k] = prefs.cc; chCcSave(); chCcRender(); }
+    }, 0);
+  });
+  (window.__relang = window.__relang || []).push(chCcRender);
+  chCcRender();
 /*R244-END*/
 
 })();
@@ -28546,6 +28653,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Channel captions", "channel captions cc subtitles remember per channel lectures music auto on off subtitles memory", "#ccChanBtn"],
       ["Drop Shorts from the queue", "drop shorts queue remove short videos under a minute reels tidy upcoming clean list", "#qDropShortsBtn"],
       ["Play counts on list rows", "play count rows pill badge times played history favourites watch later queue most rewatched at a glance", "#lhHist"],
       ["Compact lists", "compact lists tighter rows density small phone more on screen tighter spacing accessibility option", "#a11yCompact"],
