@@ -17998,6 +17998,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Playlist QR code", "#plList"],
     ["Hide shorts in favourites", "#favShortsBtn"],
     ["Continue on another device", "#handoffBtn"],
     ["Playlist note", "#plList"],
@@ -25791,7 +25792,52 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         });
       });
       acts.appendChild(b);
+      // Playlist QR (round 242 new 5): the Share chip copies the playlist's link, but moving a
+      // playlist to the TV or a friend's phone is a scan, not a paste. A QR chip in the More menu
+      // draws the same link as a QR code made on this device (nothing is uploaded), with Copy link
+      // and Close. The menu is rebuilt on every repaint, so the chip rides the same observer.
+      var menu = li.querySelector(".pl-more-menu");
+      if (menu && !menu.querySelector(".pl-qr")) {
+        var qb = document.createElement("button"); qb.type = "button"; qb.className = "chip pl-qr"; qb.setAttribute("role", "menuitem");
+        qb.textContent = T("QR code");
+        var nm = li.querySelector(".pl-name");
+        qb.setAttribute("aria-label", T("QR code") + (nm ? ": " + nm.textContent : ""));
+        qb.addEventListener("click", function () {
+          var qpi = li.dataset && li.dataset.playlistIndex != null ? +li.dataset.playlistIndex : i;
+          var qpls = readPls(), qpl = qpls[qpi]; if (!qpl) return;
+          plQrShow(encodePl(qpl), qpl.name);
+        });
+        menu.appendChild(qb);
+      }
     });
+  }
+
+  var plQrDlg = null;
+  function plQrShow(link, name) {
+    if (plQrDlg) { plQrDlg.remove(); plQrDlg = null; }
+    var img = null;
+    try {
+      if (typeof qrcode !== "function") { var qs = document.getElementById("qrLibSrc"); if (qs) (0, eval)(qs.textContent); }
+      var q = qrcode(0, "M"); q.addData(link); q.make();
+      img = q.createDataURL(6, 8);
+    } catch (e) { img = null; }
+    var dlg = document.createElement("dialog");
+    dlg.style.cssText = "background:var(--card,#fff);color:var(--ink,#111);border:1px solid var(--line,#ccc);border-radius:18px;padding:18px;max-width:92vw;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.35)";
+    var h = document.createElement("div"); h.style.cssText = "font-weight:700;margin-bottom:8px";
+    h.textContent = T("Scan to open this playlist"); dlg.appendChild(h);
+    if (name) { var nn = document.createElement("div"); nn.style.cssText = "font-size:13px;color:var(--ink2,#666);margin-bottom:10px"; nn.textContent = name; dlg.appendChild(nn); }
+    if (img) { var im = document.createElement("img"); im.src = img; im.alt = T("QR code"); im.style.cssText = "width:240px;max-width:70vw;border-radius:12px;background:#fff;padding:6px"; dlg.appendChild(im); }
+    else { var warn = document.createElement("p"); warn.textContent = T("QR code could not be drawn - the link below still works."); dlg.appendChild(warn); }
+    var lt = document.createElement("p"); lt.style.cssText = "font-size:12px;overflow-wrap:anywhere;color:var(--ink2,#666)"; lt.textContent = link; dlg.appendChild(lt);
+    var rr = document.createElement("div"); rr.className = "row"; rr.style.justifyContent = "center";
+    var cb = document.createElement("button"); cb.type = "button"; cb.className = "chip"; cb.textContent = T("Copy link");
+    cb.addEventListener("click", function () { copyText(link, function (ok) { toast(ok ? T("Link copied") : T("Could not copy - copy it by hand.")); }); });
+    var xb = document.createElement("button"); xb.type = "button"; xb.className = "chip"; xb.textContent = T("Close");
+    xb.addEventListener("click", function () { dlg.close(); });
+    dlg.addEventListener("close", function () { if (plQrDlg === dlg) plQrDlg = null; dlg.remove(); });
+    dlg.addEventListener("click", function (ev) { if (ev.target === dlg) dlg.close(); });
+    rr.appendChild(cb); rr.appendChild(xb); dlg.appendChild(rr);
+    document.body.appendChild(dlg); plQrDlg = dlg; dlg.showModal();
   }
   if (plList) {
     new MutationObserver(addShareButtons).observe(plList, { childList: true });
@@ -26296,6 +26342,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Playlist QR code", "playlist qr code scan share link phone tv friend camera", "#plList"],
       ["Hide shorts in favourites", "favourites hide shorts short clips minute filter clean music list", "#favShortsBtn"],
       ["Continue on another device", "handoff continue another device tv laptop link current position queue transfer phone", "#handoffBtn"],
       ["Playlist note", "playlist note remark memo description purpose reason rename edit line", "#plList"],
