@@ -32585,18 +32585,46 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   show = function (url, local) { baseShowCh(url, local); chRender(); };
   chRender();
 
-  var loopA=null,loopB=null;
+  // Round 278 new 3: a repeat count for the local practice loop. The loop used to spin
+  // forever until cleared by hand; the YouTube A-B loop already had a 2/3/5/10 count.
+  // The same chips now sit under the local loop, it stops on its own when the count runs
+  // out, and the message shows the pass number while it runs.
+  var loopA=null,loopB=null,lpLoopLimit=0,lpLoopCount=0;
+  var lpLoopChips=[];
+  function lpLoopPaint(){lpLoopChips.forEach(function(c){c.classList.toggle("active",Number(c.dataset.n)===lpLoopLimit);c.setAttribute("aria-pressed",String(Number(c.dataset.n)===lpLoopLimit));});}
   function loopText(){
     $("lpLoopH").textContent=T("Local practice loop");$("lpSetA").textContent=T("Set A");$("lpSetB").textContent=T("Set B");$("lpLoopClear").textContent=T("Clear loop");
     $("lpSetB").disabled=loopA===null;$("lpLoopClear").disabled=loopA===null;
-    $("lpLoopMsg").textContent=(loopA!==null?"A "+lfmt(loopA)+" ":"")+(loopB!==null?" / B "+lfmt(loopB)+" · "+T("Loop active"):T("Set A, then set B at least 0.5 seconds later."));
+    var cnt=(lpLoopLimit>0&&loopB!==null)?" · "+T("Pass {a} of {b}").replace("{a}",Math.min(lpLoopCount+1,lpLoopLimit)).replace("{b}",lpLoopLimit):"";
+    $("lpLoopMsg").textContent=(loopA!==null?"A "+lfmt(loopA)+" ":"")+(loopB!==null?" / B "+lfmt(loopB)+" · "+T("Loop active")+cnt:T("Set A, then set B at least 0.5 seconds later."));
+    lpLoopPaint();
   }
-  function resetLocalLoop(){loopA=null;loopB=null;loopText();}
-  $("lpSetA").addEventListener("click",function(){if(!isFinite(vid.duration)||vid.duration<=0)return;loopA=vid.currentTime;loopB=null;loopText();});
-  $("lpSetB").addEventListener("click",function(){if(loopA===null)return;if(vid.currentTime<loopA+.5){$("lpLoopMsg").textContent=T("Choose B after A.");return;}loopB=vid.currentTime;loopText();});
+  (function(){
+    var box=$("lpLoopBox");if(!box)return;
+    var row=document.createElement("div");row.className="row";row.style.marginTop="6px";row.id="lpLoopCountRow278";
+    var lab=document.createElement("span");lab.className="hint";lab.id="lpLoopCountLab278";row.appendChild(lab);
+    [0,2,3,5,10].forEach(function(n){
+      var c=document.createElement("button");c.type="button";c.className="chip";c.dataset.n=n;c.textContent=n===0?"∞":n+"×";
+      c.addEventListener("click",function(){lpLoopLimit=n;lpLoopCount=0;loopText();});
+      row.appendChild(c);lpLoopChips.push(c);
+    });
+    box.insertBefore(row,$("lpLoopMsg"));
+    function labPaint(){lab.textContent=T("Repeat:");}
+    (window.__relang=window.__relang||[]).push(labPaint);labPaint();
+  })();
+  Object.assign(TR_MSG,{"Pass {a} of {b}":["पास {a} / {b}","પાસ {a} / {b}"],"Practice loop finished: {n} passes.":["अभ्यास लूप पूरा: {n} पास.","પ્રયાસ લૂપ પૂરો: {n} પાસ."]});
+  function resetLocalLoop(){loopA=null;loopB=null;lpLoopCount=0;loopText();}
+  $("lpSetA").addEventListener("click",function(){if(!isFinite(vid.duration)||vid.duration<=0)return;loopA=vid.currentTime;loopB=null;lpLoopCount=0;loopText();});
+  $("lpSetB").addEventListener("click",function(){if(loopA===null)return;if(vid.currentTime<loopA+.5){$("lpLoopMsg").textContent=T("Choose B after A.");return;}loopB=vid.currentTime;lpLoopCount=0;loopText();});
   $("lpLoopClear").addEventListener("click",resetLocalLoop);
-  vid.addEventListener("timeupdate",function(){if(loopA!==null&&loopB!==null&&!vid.paused&&vid.currentTime>=loopB)vid.currentTime=loopA;});
-  vid.addEventListener("ended",function(){if(loopA!==null&&loopB!==null){vid.currentTime=loopA;localPlay();}});
+  vid.addEventListener("timeupdate",function(){
+    if(loopA===null||loopB===null||vid.paused||vid.currentTime<loopB)return;
+    if(lpLoopLimit>0){lpLoopCount++;if(lpLoopCount>=lpLoopLimit){var n=lpLoopLimit;resetLocalLoop();toast(T("Practice loop finished: {n} passes.").replace("{n}",n));return;}}
+    vid.currentTime=loopA;loopText();
+  });
+  vid.addEventListener("ended",function(){if(loopA!==null&&loopB!==null){
+    if(lpLoopLimit>0){lpLoopCount++;if(lpLoopCount>=lpLoopLimit){var n2=lpLoopLimit;resetLocalLoop();toast(T("Practice loop finished: {n} passes.").replace("{n}",n2));return;}}
+    vid.currentTime=loopA;localPlay();}});
   // A practice range belongs to this open file, never the next file.
   var showBeforeLoop=show;show=function(url,local){resetLocalLoop();showBeforeLoop(url,local);};
   (window.__relang=window.__relang||[]).push(loopText);loopText();
