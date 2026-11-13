@@ -27628,6 +27628,67 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
+  // Spread channels (round 260 new 3): Variety check only reports how concentrated your
+  // watching is, and Mix the rest shuffles blindly, so one channel can still run five videos in
+  // a row. This card counts back-to-back videos from the same channel in the upcoming queue and
+  // one button reorders the upcoming videos (the playing one and the ones above it stay) so
+  // neighbours come from different channels where possible, taking from the busiest channel
+  // first. Only videos whose channel is known (learned when their info loads) are spread;
+  // others keep their place relative to each other. Undo restores the order. Hindi and
+  // Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Spread channels": ["चैनल बांटें", "ચેનલ વહેંચો"],
+    "Reorders the upcoming queue so the same channel does not play back to back.": ["अगली कतार को इस तरह बदलता है कि एक ही चैनल लगातार न चले.", "આગલી કતારને એવી રીતે ગોઠવે છે કે એક જ ચેનલ સતત ન ચાલે."],
+    "Spread the upcoming queue": ["अगली कतार बांटें", "આગલી કતાર વહેંચો"],
+    "Back-to-back same channel: {n}": ["लगातार एक ही चैनल: {n}", "સતત એક જ ચેનલ: {n}"],
+    "Channel known for {a} of {b} upcoming videos.": ["{b} अगले वीडियो में से {a} का चैनल पता है.", "{b} આગલા વીડિયોમાંથી {a} ની ચેનલ જાણીતી છે."],
+    "Need at least 3 upcoming videos with a known channel.": ["कम से कम 3 अगले वीडियो चाहिए जिनका चैनल पता हो.", "ઓછામાં ઓછા 3 આગલા વીડિયો જોઈએ જેની ચેનલ જાણીતી હોય."],
+    "Upcoming queue spread across channels": ["अगली कतार चैनलों में बांटी गई", "આગલી કતાર ચેનલોમાં વહેંચાઈ"],
+    "Already well spread - nothing to move.": ["पहले से ठीक बंटा है - कुछ हिलाना नहीं है.", "પહેલેથી સારી રીતે વહેંચાયેલ - કંઈ ખસેડવાનું નથી."],
+    "Back-to-back same channel now: {n}": ["अब लगातार एक ही चैनल: {n}", "હવે સતત એક જ ચેનલ: {n}"]
+  });
+  (function () {
+    var card = mkCard("spreadCard", "weeklyCard", '<p class="hint" id="spInfo" role="status"></p><p class="hint" id="spKnown"></p><p><button type="button" class="chip" id="spBtn"></button></p>'); if (!card) return;
+    function ch(x) { try { return (x && x.id && chanOf2(x.id)) || ""; } catch (e) { return ""; } }
+    function chanOf2(id) { try { chanMapLearn(id); } catch (e) {} return chanMap[id] || ""; }
+    function pairs(arr, prev) { var n = 0, last = prev; arr.forEach(function (x) { var c = ch(x); if (c && last && c === last) n++; last = c; }); return n; }
+    function spread(up, prev) {
+      var left = up.map(function (x, i) { return { x: x, i: i, c: ch(x) }; }), out = [], last = prev;
+      var cnt = {}; left.forEach(function (o) { if (o.c) cnt[o.c] = (cnt[o.c] || 0) + 1; });
+      while (left.length) {
+        var best = -1;
+        for (var k = 0; k < left.length; k++) {
+          var o = left[k]; if (o.c && o.c === last) continue;
+          if (best < 0 || (o.c && (cnt[o.c] || 0) > (left[best].c ? (cnt[left[best].c] || 0) : 0))) best = k;
+        }
+        if (best < 0) best = 0;
+        var pick = left.splice(best, 1)[0]; if (pick.c) cnt[pick.c]--; out.push(pick.x); last = pick.c;
+      }
+      return out;
+    }
+    function ctx() { var start = qPos + 1, cur = (qPos >= 0 && lib.queue[qPos]) ? ch(lib.queue[qPos]) : ""; return { start: start, up: lib.queue.slice(start), prev: cur }; }
+    function paint() {
+      card.querySelector("summary").textContent = T("Spread channels");
+      card.querySelector(".r239-desc").textContent = T("Reorders the upcoming queue so the same channel does not play back to back.");
+      var c = ctx(), known = c.up.filter(function (x) { return ch(x); }).length;
+      $("spInfo").textContent = T("Back-to-back same channel: {n}").replace("{n}", pairs(c.up, c.prev));
+      $("spKnown").textContent = T("Channel known for {a} of {b} upcoming videos.").replace("{a}", known).replace("{b}", c.up.length);
+      $("spBtn").textContent = T("Spread the upcoming queue");
+    }
+    $("spBtn").addEventListener("click", function () {
+      var c = ctx(), known = c.up.filter(function (x) { return ch(x); }).length;
+      if (c.up.length < 3 || known < 3) { toast(T("Need at least 3 upcoming videos with a known channel.")); return; }
+      var before = pairs(c.up, c.prev), out = spread(c.up, c.prev), after = pairs(out, c.prev);
+      if (after >= before && out.every(function (x, i) { return x === c.up[i]; })) { toast(T("Already well spread - nothing to move.")); return; }
+      if (after > before) { toast(T("Already well spread - nothing to move.")); return; }
+      var snap = lib.queue.slice(), sp = qPos;
+      lib.queue = lib.queue.slice(0, c.start).concat(out); resetShuffle(); saveLib(); renderLib(); showLibErr("");
+      paint(); toastUndo(T("Upcoming queue spread across channels") + " (" + T("Back-to-back same channel now: {n}").replace("{n}", after) + ")", function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); paint(); }, T("Queue order restored"));
+    });
+    card.addEventListener("toggle", function () { if (card.open) paint(); });
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+
   // Copied link prompt (round 259 new 5): a link copied in another app or tab had to be pasted
   // by hand. With this switched on (off by default), coming back to the app checks the
   // clipboard once per return, and if it holds a YouTube video link that has not been offered
@@ -30571,6 +30632,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Speed ramp", "speed ramp ease up faster gradually raise playback speed every minutes lecture podcast step 1.25 1.5 2x training", "#rampCard"],
       ["Saved searches", "saved searches save search keep pin favourite query operators is:later chips repeat run again library", "#ssRow"],
       ["Getting started", "getting started checklist first steps beginner new user tour learn app tick progress show me onboarding", "#startCard"],
+      ["Spread channels", "spread channels reorder queue same channel back to back variety interleave mix upcoming different creators", "#spreadCard"],
       ["Copied link prompt", "copied link prompt clipboard youtube link paste offer play queue later come back app focus switch tab automatic", "#clipCard"],
       ["Open from any page", "open from any page bookmarklet bookmark bar drag youtube tab current time send video here browser", "#bmkCard"],
       ["Channels as OPML", "channels opml rss feed export feedly inoreader netnewswire subscriptions saved channels reader", "#chanOpmlBtn"],
