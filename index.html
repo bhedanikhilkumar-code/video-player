@@ -1936,7 +1936,7 @@ setTimeout(done,3000);})();
           <div class="row" style="margin-top:8px">
             <label class="label" for="speedCustom" id="speedCustomLab">Custom speed</label>
             <input id="speedCustom" type="number" min="0.25" max="2" step="0.05" value="1" style="width:84px">
-            <button class="chip" id="speedCustomGo" type="button">Set</button>
+            <button class="chip" id="speedStepDown" type="button" aria-label="Speed one step down">−</button> <button class="chip" id="speedCustomGo" type="button">Set</button> <button class="chip" id="speedStepUp" type="button" aria-label="Speed one step up">+</button>
           </div>
           <span class="label" id="speedCustomMsg" role="status"></span>
           <form id="fitTimeForm" class="fit-time-form">
@@ -6072,6 +6072,39 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var inp = $("speedCustom"), go = $("speedCustomGo"), lab = $("speedCustomLab"), msg = $("speedCustomMsg");
     if (!inp || !go) return;
     function relangSpeed() { if (lab) lab.textContent = T("Custom speed"); go.textContent = T("Set"); }
+    // Speed step chips (round 225): the keyboard's < and > already walk one notch, but
+    // phones have no such keys. Two chips next to the Set button step to the next preset
+    // down or up from wherever the speed is now (a custom 1.3x steps to 1.25x or 1.5x),
+    // clamped at 0.25x and 2x, and say the new pace. The custom box follows, so what you
+    // see is what plays.
+    Object.assign(TR_MSG, {
+      "Speed one step down": ["स्पीड एक कदम कम", "સ્પીડ એક ડગલું ઓછી"],
+      "Speed one step up": ["स्पीड एक कदम ज़्यादा", "સ્પીડ એક ડગલું વધુ"],
+      "Already at the slowest speed.": ["यही सबसे धीमी स्पीड है.", "આ જ સૌથી ધીમી સ્પીડ છે."],
+      "Already at the fastest speed.": ["यही सबसे तेज़ स्पीड है.", "આ જ સૌથી ઝડપી સ્પીડ છે."]
+    });
+    var stepDn = $("speedStepDown"), stepUp = $("speedStepUp");
+    function relangSteps() {
+      if (stepDn) stepDn.setAttribute("aria-label", T("Speed one step down"));
+      if (stepUp) stepUp.setAttribute("aria-label", T("Speed one step up"));
+    }
+    (window.__relang = window.__relang || []).push(relangSteps); relangSteps();
+    function stepSpeed(dir) {
+      var cur = typeof prefs.speed === "number" ? prefs.speed : 1;
+      // Land on the nearest notch in the stepped direction, so a custom 1.3x steps
+      // to 1.25x (not 1x), and an exact 1.25x steps to 1x.
+      var i = -1, n;
+      if (dir < 0) { for (n = 0; n < SPEEDS.length; n++) if (SPEEDS[n] < cur - 0.000001) i = n; }
+      else { for (n = SPEEDS.length - 1; n >= 0; n--) if (SPEEDS[n] > cur + 0.000001) i = n; }
+      if (i < 0) { toast(T(dir < 0 ? "Already at the slowest speed." : "Already at the fastest speed.")); return; }
+      var v2 = SPEEDS[i];
+      inp.value = v2;
+      prefs.speed = v2; savePrefs(); send("setPlaybackRate", [v2]); markActive(speedChips, String(v2));
+      toast(T("Speed {n}x").replace("{n}", v2), 1200);
+      if (typeof paintEndsAt === "function") paintEndsAt(seeking ? Number(seek.value) : (curTime || 0));
+    }
+    if (stepDn) stepDn.addEventListener("click", function () { stepSpeed(-1); });
+    if (stepUp) stepUp.addEventListener("click", function () { stepSpeed(1); });
     (window.__relang = window.__relang || []).push(relangSpeed); relangSpeed();
     // Round 204 fix: a remembered custom speed (say 1.3x) left the box showing its default
     // 1 with no chip active, so the Speed card hid the pace actually in use. Prefill the box
@@ -16534,6 +16567,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Speed step chips", "#speedStepUp"],
     ["One-tap volume", "#volPreChips"],
     ["Revert note edits", "#noteRevertBtn"],
     ["Copy note with link", "#noteShareBtn"],
@@ -16543,7 +16577,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Moments mark on lists", "#favList .moment-badge"],
     ["Import moments from a file", "#markFileBtn"],
     ["Random moment", "#markRandBtn"],
-    ["Shift all moments by 5 seconds", "#markShiftBackBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23125,6 +23158,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Speed step chips", "speed step up down one notch slower faster buttons phone no keyboard plus minus", "#speedStepUp"],
       ["One-tap volume", "one tap volume quick set half full loud 25 50 75 100 percent phone chips", "#volPreChips"],
       ["Revert note edits", "revert note edits undo mistake restore old text overwrite typed", "#noteRevertBtn"],
       ["Copy note with link", "copy note link title share paste chat youtu.be clipboard send", "#noteShareBtn"],
