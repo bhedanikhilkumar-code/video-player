@@ -35153,6 +35153,43 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (ev && ev.detail && ev.detail.from === "chips" && vid.src && !vid.hidden) { st.rot = prefs.rot | 0; save(); apply(); }
   });
 
+  /* Round 284 new 4: portrait video suggestion - a phone video shot upright loads sideways
+     in the player and the fix (Rotate picture) sits in another card, so many people just
+     watch with their head tilted. When a local file is taller than wide and the picture is
+     not already turned, a small bar under the video offers the rotation once per file: the
+     Rotate 90 chip presses the existing 90-degree Rotate picture chip so every control stays
+     in sync, and Not now hides the bar until that file is loaded again. Hindi and Gujarati
+     text, What's new and feature finder included. */
+  Object.assign(TR_MSG, {
+    "Portrait video - rotate it upright?": ["पोर्ट्रेट वीडियो - इसे सीधा घुमाएं?", "પોર્ટ્રેટ વીડિયો - તેને સીધો ફેરવો?"]
+  });
+  var rotSugSeen = {};
+  var rotSug = document.createElement("div");
+  rotSug.id = "lpRotSuggest"; rotSug.hidden = true; rotSug.style.display = "none";
+  var rotSugTxt = document.createElement("span"); rotSugTxt.className = "label";
+  var rotSugYes = document.createElement("button"); rotSugYes.className = "chip"; rotSugYes.type = "button"; rotSugYes.id = "lpRotSugYes";
+  var rotSugNo = document.createElement("button"); rotSugNo.className = "chip"; rotSugNo.type = "button"; rotSugNo.id = "lpRotSugNo";
+  rotSug.appendChild(rotSugTxt); rotSug.appendChild(rotSugYes); rotSug.appendChild(rotSugNo);
+  wrap.parentNode.insertBefore(rotSug, wrap.nextSibling);
+  function rotSugShow(on) { rotSug.hidden = !on; rotSug.style.display = on ? "flex" : "none"; if (on) { rotSug.style.alignItems = "center"; rotSug.style.gap = "8px"; rotSug.style.flexWrap = "wrap"; rotSug.style.margin = "6px 0"; } }
+  function rotSugCheck() {
+    rotSugTxt.textContent = T("Portrait video - rotate it upright?");
+    rotSugYes.textContent = T("Rotate 90°");
+    rotSugNo.textContent = T("Not now");
+    var portrait = vid.videoWidth > 0 && vid.videoHeight > vid.videoWidth;
+    var key = vid.currentSrc || "";
+    rotSugShow(!!(portrait && (prefs.rot | 0) === 0 && !rotSugSeen[key]));
+  }
+  rotSugYes.addEventListener("click", function () {
+    rotSugSeen[vid.currentSrc || ""] = true; rotSugShow(false);
+    var chip = document.querySelector('.rot-chip[data-r="90"]'); if (chip) chip.click();
+  });
+  rotSugNo.addEventListener("click", function () { rotSugSeen[vid.currentSrc || ""] = true; rotSugShow(false); });
+  vid.addEventListener("loadedmetadata", rotSugCheck);
+  window.addEventListener("vp:rot", function () { if (!rotSug.hidden) rotSugCheck(); });
+  (window.__relang = window.__relang || []).push(function () { if (!rotSug.hidden) rotSugCheck(); });
+  if (window.__vpWnew283) window.__vpWnew283("Portrait video rotate suggestion", "#lpRotSuggest");
+
   function relang() {
     h3.textContent = T("View: zoom, fit, rotate");
     [].forEach.call(row.children, function (c) { if (c.dataset && c.dataset.en) c.textContent = T(c.dataset.en); });
@@ -36329,6 +36366,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Chapters from a typed list", "chapters paste typed list local file import bulk add 0:00 lines lecture", "#lpChPasteBox"],
       ["Copy the chapter list", "copy chapters text list local file clipboard export description", "#lpChCopy"],
       ["Import an .m3u playlist", "import m3u m3u8 playlist file vlc kodi youtube music links back other phone", "#plImportBtn"],
+      ["Portrait video rotate suggestion", "portrait video rotate suggestion upright tall phone video sideways auto detect turn 90 head tilt", "#lpRotSuggest"],
       ["Mix a second ambient sound", "mix second ambient sound two blend rain brown noise ocean volume layer sleep focus", "#ambMixRow283"],
       ["Soft pause", "soft pause local files sound eases out fade resume click mid note gentle", "#lpSoftBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
