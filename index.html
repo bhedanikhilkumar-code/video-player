@@ -1584,7 +1584,7 @@ html.calm-motion, html.calm-motion *, html.calm-motion *::before, html.calm-moti
 }
 html.calm-motion .btn:active, html.calm-motion .chip:active, html.calm-motion .feat:active { transform: none !important; }
 html.calm-motion .fx-ripple, html.calm-motion section::after { display: none !important; }
-html.calm-motion #miniTitle.long #miniTitleTxt { white-space: normal; }
+html.calm-motion #miniTitle.long #miniTitleTxt { white-space: nowrap; }
 </style>
 <style id="r93-whatsnew">
 /* What's new card (round 93): glass rows listing the latest additions, each jumps to its feature. */
@@ -31792,7 +31792,9 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     btn.setAttribute("aria-label", t ? t + " - " + (window.T ? window.T("Back to player") : "Back to player") : (window.T ? window.T("Back to player") : "Back to player"));
     if (!t) return;
     requestAnimationFrame(function () {
-      if (txt.scrollWidth > btn.clientWidth + 8) {
+      // A duplicated marquee must never wrap into a tall static title in Calm/Low-end.
+      var still = (window.vpReducedMotion && window.vpReducedMotion()) || document.documentElement.classList.contains("low-fx");
+      if (!still && txt.scrollWidth > btn.clientWidth + 8) {
         var unit = t + "   \u2022   ";
         txt.textContent = unit + unit;
         txt.style.animationDuration = Math.min(30, Math.max(8, t.length / 4)) + "s";
@@ -31806,6 +31808,9 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     new MutationObserver(function () { base = null; paint(); }).observe(dock, { attributes: true, attributeFilter: ["class"] });
   }
   window.addEventListener("resize", function () { base = null; paint(); });
+  new MutationObserver(function () { base = null; paint(); }).observe(document.documentElement, {attributes:true, attributeFilter:["class"]});
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
+  if(reduced && reduced.addEventListener) reduced.addEventListener("change",function(){base=null;paint();});
   // Round 255 fix 3: the mini title's label is only written when the title text changes, so a
   // language switch left 'Back to player' in the old language until the next video.
   (window.__relang = window.__relang || []).push(function () { base = null; paint(); });
