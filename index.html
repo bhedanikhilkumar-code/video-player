@@ -20829,11 +20829,17 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   rotChips.forEach(function (b) {
     b.addEventListener("click", function () {
       prefs.rot = Number(b.dataset.r) | 0; savePrefs(); rotApply(); rotRender();
+      try { window.dispatchEvent(new CustomEvent("vp:rot", { detail: { from: "chips" } })); } catch (e) {}
       toast(T("Rotate picture") + ": " + b.textContent);
     });
   });
   window.addEventListener("resize", rotApply);
   window.addEventListener("orientationchange", function () { setTimeout(rotApply, 300); });
+  /* Round 284 fix 2b: keep the chips in step when the local player's own Rotate 90 button
+     turns a file, so the two controls never disagree. */
+  window.addEventListener("vp:rot", function (ev) {
+    if (ev && ev.detail && ev.detail.from === "local") { rotApply(); rotRender(); }
+  });
   (window.__relang = window.__relang || []).push(rotRender);
   rotApply(); rotRender();
 
@@ -35136,9 +35142,16 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   zr.value = st.zoom;
   function zShow() { zlv.textContent = zr.value + "%"; }
   zr.addEventListener("input", function () { st.zoom = Number(zr.value); save(); zShow(); apply(); });
-  rotBtn.addEventListener("click", function () { st.rot = (st.rot + 90) % 360; save(); apply(); });
+  rotBtn.addEventListener("click", function () { st.rot = (st.rot + 90) % 360; save(); apply(); prefs.rot = st.rot; if (typeof savePrefs === "function") savePrefs(); try { window.dispatchEvent(new CustomEvent("vp:rot", { detail: { from: "local" } })); } catch (e) {} });
   vid.addEventListener("loadedmetadata", apply);
   window.addEventListener("resize", function () { if (st.rot === 90 || st.rot === 270) apply(); });
+  /* Round 284 fix 2b: the Rotate picture chips used to turn only the YouTube iframe while a
+     playing local file stayed upright (verified live: #lpVideo transform stayed identity at
+     90 deg). The local view now follows the chips whenever a file is on screen. A stylesheet
+     rule cannot do this because apply() sets an inline transform, which always wins. */
+  window.addEventListener("vp:rot", function (ev) {
+    if (ev && ev.detail && ev.detail.from === "chips" && vid.src && !vid.hidden) { st.rot = prefs.rot | 0; save(); apply(); }
+  });
 
   function relang() {
     h3.textContent = T("View: zoom, fit, rotate");
@@ -38294,7 +38307,7 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
   var h = document.getElementById("flipH"), v = document.getElementById("flipV"), lab = document.getElementById("flipLab"), row = document.getElementById("flipRow");
   if (!h || !v) return;
   var st = document.createElement("style");
-  st.textContent = ".flip-row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}.flip-chip{padding:5px 11px;font-size:13px}.flip-chip.active{outline:2px solid rgba(10,132,255,.75);outline-offset:1px;font-weight:700}#frameBox iframe{transform:scale(var(--vp-fx,1),var(--vp-fy,1))}/* Round 284 fix 2: the Rotate picture chips turned only the YouTube iframe - a local file stayed upright because no rule put --vp-rot on #lpVideo (verified on a portrait phone video: transform stayed identity at rot 90). The local element now shares the rotation (flip still composes after it), and its box clips the turned picture so a sideways video cannot spill over the controls. */#lpVideo{transform:rotate(var(--vp-rot,0deg)) scale(var(--vp-fx,1),var(--vp-fy,1))}#lpView{overflow:hidden}";
+  st.textContent = ".flip-row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}.flip-chip{padding:5px 11px;font-size:13px}.flip-chip.active{outline:2px solid rgba(10,132,255,.75);outline-offset:1px;font-weight:700}#frameBox iframe,#lpVideo{transform:scale(var(--vp-fx,1),var(--vp-fy,1))}";
   document.head.appendChild(st);
   var KEY = "vp-flip.v1", fh = false, fv = false;
   try { var o = JSON.parse(localStorage.getItem(KEY) || "{}"); fh = !!o.h; fv = !!o.v; } catch (e) {}
