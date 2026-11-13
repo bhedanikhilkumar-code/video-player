@@ -28575,6 +28575,47 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   WNEW.unshift(["Auto-start continue", "#resumeBox"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
 
+  // Pinch to zoom on the gesture pad (round 264 new 3): Picture zoom had chips only, so
+  // cropping in on a phone meant leaving the pad for the chip row. A two-finger pinch on
+  // the gesture pad now steps the same zoom - pinch out to crop in (115%, 130%), pinch in
+  // to come back to 100% - by tapping the existing zoom chips, so the choice, its memory
+  // and every theme behave exactly as before. The pad's spoken label names the gesture.
+  // One-finger gestures are untouched: the pinch only listens while two fingers rest on
+  // the pad. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Pinch with two fingers to zoom the picture.": ["\u0926\u094B \u0909\u0902\u0917\u0932\u093F\u092F\u094B\u0902 \u0938\u0947 \u092A\u093F\u0902\u091A \u0915\u0930\u0915\u0947 \u0924\u0938\u094D\u0935\u0940\u0930 \u095C\u0942\u092E \u0915\u0930\u0947\u0902.", "\u0AAC\u0AC7 \u0A86\u0A82\u0A97\u0AB3\u0AC0\u0AA5\u0AC0 \u0AAA\u0ABF\u0A82\u0A9A \u0A95\u0AB0\u0AC0 \u0A9A\u0ABF\u0AA4\u0ACD\u0AB0 \u0A9D\u0AC2\u0AAE \u0A95\u0AB0\u0ACB."],
+    "Pinch to zoom": ["\u092A\u093F\u0902\u091A \u0938\u0947 \u095C\u0942\u092E", "\u0AAA\u0ABF\u0A82\u0A9A\u0AA5\u0AC0 \u0A9D\u0AC2\u0AAE"]
+  });
+  (function () {
+    var pad = $("gesturePad"); if (!pad) return;
+    var startD = 0, pinching = false;
+    function dist(t) { var dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
+    function step(dir) {
+      var row = $("zoomRow"); if (!row) return;
+      var chips = Array.prototype.slice.call(row.querySelectorAll(".zoom-chip"));
+      if (!chips.length) return;
+      var idx = 0;
+      chips.forEach(function (c, i) { if (c.classList.contains("active")) idx = i; });
+      var next = Math.max(0, Math.min(chips.length - 1, idx + dir));
+      if (next !== idx) chips[next].click();
+    }
+    pad.addEventListener("touchstart", function (e) { if (e.touches.length === 2) { startD = dist(e.touches); pinching = true; } }, { passive: true });
+    pad.addEventListener("touchmove", function (e) {
+      if (!pinching || e.touches.length !== 2 || !startD) return;
+      var d = dist(e.touches), r = d / startD;
+      if (Math.abs(r - 1) < 0.22) return;
+      startD = d;
+      step(r > 1 ? 1 : -1);
+    }, { passive: true });
+    pad.addEventListener("touchend", function (e) { if (e.touches.length < 2) { pinching = false; startD = 0; } }, { passive: true });
+    pad.addEventListener("touchcancel", function () { pinching = false; startD = 0; }, { passive: true });
+    (window.__relang = window.__relang || []).push(function () {
+      var base = T("Gesture pad. Double-tap the left side to go back ") + "10 " + T("seconds, the right side to go forward ") + "10 " + T("seconds. Swipe up or down to change the volume. Swipe left or right to jump 30 seconds. Press and hold for 2x speed. Arrow keys work here too.");
+      pad.setAttribute("aria-label", base + " " + T("Pinch with two fingers to zoom the picture."));
+    });
+  })();
+  WNEW.unshift(["Pinch to zoom", "#gesturePad"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+
 /*R244-END*/
 
 })();
