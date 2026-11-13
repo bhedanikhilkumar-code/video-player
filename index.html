@@ -5255,8 +5255,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // filter on, or a view sort picked, the clipboard held videos the card was not showing (and
   // missed the on-screen order) - the same class of bug the Continue watching chips had.
   if (laterCopyBtn) laterCopyBtn.addEventListener("click", function () { copyLibList(laterView(), "Nothing saved for later yet. Load a video and tap Watch later.", "Watch later list copied", laterCopyBtn); });
-  if (favCopyBtn) favCopyBtn.addEventListener("click", function () { copyLibList(lib.favs, "No favourites yet. Load a video and tap Add to favourites.", "Favourites list copied", favCopyBtn); });
-  if (histCopyBtn) histCopyBtn.addEventListener("click", function () { copyLibList(lib.hist, "Videos you play will show up here.", "History list copied", histCopyBtn); });
+  // Round 228 fix: favourites and history Copy list scanned the raw lists, so with the
+  // Only-unwatched filter or a view sort on, the clipboard held rows the card was hiding and
+  // missed the on-screen order. Both now copy the same visible list the card shows.
+  if (favCopyBtn) favCopyBtn.addEventListener("click", function () { copyLibList(favView(), "No favourites yet. Load a video and tap Add to favourites.", "Favourites list copied", favCopyBtn); });
+  if (histCopyBtn) histCopyBtn.addEventListener("click", function () { copyLibList(histView(), "Videos you play will show up here.", "History list copied", histCopyBtn); });
   function copyListBtnsPaint() { [laterCopyBtn, favCopyBtn, histCopyBtn, contCopyBtn].forEach(function (bb) { if (bb) bb.textContent = T("Copy list"); }); }
   (window.__relang = window.__relang || []).push(copyListBtnsPaint);
   copyListBtnsPaint();
@@ -16289,7 +16292,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var fb = $("favTxtBtn");
     if (fb) fb.addEventListener("click", function () {
       if (!lib.favs.length) { toast(T("No favourites yet.")); return; }
-      dl(lib.favs.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n\n") + "\n", "video-player-favourites.txt", "Favourites saved as a text file");
+      dl(favView().map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n\n") + "\n", "video-player-favourites.txt", "Favourites saved as a text file");
     });
     // History as a text file (round 112): the same numbered titles-and-links list as
     // Favourites and Watch later, plus when each video was watched and a Finished mark
@@ -16303,7 +16306,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var hb = $("histTxtBtn");
     if (hb) hb.addEventListener("click", function () {
       if (!lib.hist.length) { toast(T("Nothing watched yet.")); return; }
-      dl(lib.hist.map(function (x, i) {
+      dl(histView().map(function (x, i) {
         var s = (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id;
         if (x.ts) { var d = new Date(x.ts); s += "\n" + T("Watched") + " " + d.toLocaleDateString() + ", " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); if (x.done) s += " - " + T("Finished"); }
         return s;
