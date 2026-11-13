@@ -1875,6 +1875,7 @@ setTimeout(done,3000);})();
           <input class="slider" id="seek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Seek through the video">
           <div class="wmap-strip" id="wmapStrip" hidden aria-hidden="true"></div>
           <div class="sskip-row" id="sskipRow" hidden><button class="chip" id="sskipBtn" type="button" aria-pressed="false">⏭ Skip seen: off</button></div>
+          <div class="row" id="seekHistRow" hidden><span class="label" id="seekHistLab">Jump back:</span><span class="chips" id="seekHistChips"></span></div>
           <div class="quick-seek-row" role="group" aria-label="Quick seek" id="quickSeekRow">
             <button class="chip quick-seek" id="quickSeekBack" type="button"><span aria-hidden="true">↶</span> <span id="quickSeekBackText">10s</span></button>
             <span class="quick-seek-hint" id="quickSeekHint">Tap to skip</span>
@@ -30934,6 +30935,49 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
   WNEW.unshift(["Loudness match","#lpLoudBtn"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  // Seek history (round 275 new 4): jumping around a long lecture and losing a
+  // good spot meant scrubbing and guessing; U undoes only the very last seek.
+  // Every time the play position jumps by more than 5 seconds, the spot left
+  // behind is remembered (up to 6), and a small "Jump back" chip row under the
+  // seek bar lists those spots with their times - one tap returns there and
+  // drops that chip. The list resets on a new video, lives only for the
+  // session (nothing is saved), and stays hidden until the first real jump.
+  // Hindi and Gujarati, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Seek history": ["सीक हिस्ट्री", "સીક હિસ્ટ્રી"],
+    "Jump back:": ["वापस जाएं:", "પાછા જાઓ:"],
+    "Jump back to ": ["वापस जाएं ", "પાછા જાઓ "]
+  });
+  (function () {
+    var row = $("seekHistRow"), lab = $("seekHistLab"), chips = $("seekHistChips");
+    if (!row || !chips) return;
+    var hist = [], prevT = 0, prevId = null;
+    function fmt(s) {
+      s = Math.floor(s); var h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, x = s % 60;
+      return h > 0 ? h + ":" + String(m).padStart(2, "0") + ":" + String(x).padStart(2, "0") : m + ":" + String(x).padStart(2, "0");
+    }
+    function paint() {
+      lab.textContent = T("Jump back:");
+      chips.textContent = "";
+      row.hidden = !hist.length || !curId;
+      hist.forEach(function (t, i) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip";
+        b.textContent = (i + 1) + ". " + fmt(t);
+        b.setAttribute("aria-label", T("Jump back to ") + fmt(t));
+        b.addEventListener("click", function () { send("seekTo", [t, true]); hist.splice(i, 1); paint(); });
+        chips.appendChild(b);
+      });
+    }
+    (window.__relang = window.__relang || []).push(paint);
+    setInterval(function () {
+      if (curId !== prevId) { hist = []; prevId = curId; prevT = curTime; paint(); return; }
+      if (!curId) { prevT = curTime; return; }
+      if (Math.abs(curTime - prevT) > 5 && prevT > 2) { hist.unshift(Math.floor(prevT)); if (hist.length > 6) hist.pop(); paint(); }
+      prevT = curTime;
+    }, 1000);
+    paint();
+  })();
+  WNEW.unshift(["Seek history","#seekHistRow"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 })();
 
 
@@ -33664,6 +33708,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Cast to TV", "cast to tv chromecast android television big screen remote playback living room local file wifi", "#lpCastBtn"],
       ["Skip silence", "skip silence quiet pauses auto jump ahead lectures voice notes silent parts fast forward local file", "#lpSilBtn"],
       ["Loudness match", "loudness match auto volume leveling steady same loudness quiet loud files normalize playlist tracks local", "#lpLoudBtn"],
+      ["Seek history", "seek history jump back recent positions spots rewind where was i before skip lecture lost place chips", "#seekHistRow"],
       ["Local playlist keys", "local playlist keys n p next previous file home end start keyboard shortcut several files", "#lpPickBtn"],
       ["Swipe to remove", "swipe remove queue row left phone touch delete drop gesture undo", "#queueList"],
       ["Copy frame", "copy frame screenshot clipboard image paste chat local video picture still capture", "#lpShotCopyBtn"],
