@@ -5594,6 +5594,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Queue as next (round 158): like Add to queue, but the new videos are inserted
   // right after the one playing now, so they play next without disturbing the rest
   // of the queue - handy when a link must come before everything already lined up.
+  Object.assign(TR_MSG, { "That video is already playing.": ["यह वीडियो अभी चल रहा है.", "આ વીડિયો અત્યારે ચાલી રહ્યો છે."] });
   var queueNextBtn = $("queueNextBtn");
   if (queueNextBtn) queueNextBtn.addEventListener("click", function () {
     var tokens = linkInput.value.split(/[\s,]+/).filter(Boolean), ids = [];
@@ -5603,17 +5604,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       linkError.hidden = false; return;
     }
     linkError.hidden = true; showLibErr("");
-    var room = 50 - lib.queue.length;
-    var add = ids.slice(0, Math.max(0, room));
-    if (!add.length) { showLibErr(T("The queue holds up to 50 videos. Extra links were skipped.")); return; }
+    // Round 241 fix: a video already in the queue was inserted a second time (Add to queue skips
+    // duplicates). Now it is moved to play next instead, and the video playing right now is left alone.
+    var curQ = (qPos >= 0 && lib.queue[qPos]) ? lib.queue[qPos].id : null, movedQ = [], newIds = [], room0 = 50 - lib.queue.length;
+    ids.forEach(function (id) {
+      if (id === curQ) return;
+      var ix = findIn(lib.queue, id);
+      if (ix >= 0) { movedQ.push(lib.queue[ix]); } else newIds.push(id);
+    });
+    if (!movedQ.length && !newIds.length) { toast(T("That video is already playing.")); return; }
+    var add = newIds.slice(0, Math.max(0, room0));
+    if (!add.length && !movedQ.length) { showLibErr(T("The queue holds up to 50 videos. Extra links were skipped.")); return; }
+    movedQ.forEach(function (m) { var ix = lib.queue.indexOf(m); if (ix >= 0) { lib.queue.splice(ix, 1); if (ix < qPos) qPos--; } });
     var at = (qPos >= 0 && qPos < lib.queue.length) ? qPos + 1 : 0;
-    var items = add.map(function (id) { return { id: id, title: titleFor(id) }; });
+    var items = movedQ.concat(add.map(function (id) { return { id: id, title: titleFor(id) }; }));
     lib.queue = lib.queue.slice(0, at).concat(items, lib.queue.slice(at));
     items.forEach(function (x) { if (!x.title) fetchTitle(x.id); });
     resetShuffle(); saveLib(); renderLib(); linkInput.value = "";
     toast(items.length === 1 ? T("Queued to play next") : items.length + " " + T("videos queued to play next"));
     if (!iframe) playQueueAt(at);
-    if (ids.length > add.length) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
+    if (newIds.length > add.length) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
   });
   (window.__relang = window.__relang || []).push(function () { if (queueNextBtn) queueNextBtn.textContent = T("+ Queue as next"); });
   if (queueNextBtn) queueNextBtn.textContent = T("+ Queue as next");
