@@ -6886,11 +6886,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var raw = null;
     try {
       var u = new URL(m[0].indexOf("://") >= 0 ? m[0] : "https://" + m[0]);
-      raw = u.searchParams.get("t") || u.searchParams.get("start") || (u.hash.match(/[#&]t=([^&]+)/) || [])[1] || null;
+      raw = u.searchParams.get("t") || u.searchParams.get("start") || u.searchParams.get("amp;t") || (u.hash.match(/[#&]t=([^&]+)/) || [])[1] || null;
     } catch (e) { return null; }
     if (!raw) { var loose = m[0].match(/[&?#]t=(\d+h(?:\d+m)?(?:\d+s?)?|\d+m(?:\d+s?)?|\d+s?)(?=$|[&#])/i); raw = loose ? loose[1] : null; } // youtu.be/ID&t=90 pasted with & instead of ?
     if (!raw) return null;
     var s = 0, x = String(raw).match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/i);
+    // Round 241 fix: clock-style starts ("t=1:02:03", "t=12:30") - the form the app itself shows and
+    // people type - read as 0:00 because only 1h2m3s / plain seconds were understood.
+    var cl = String(raw).match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/);
+    if (cl) { x = cl[3] != null ? [0, cl[1], cl[2], cl[3]] : [0, 0, cl[1], cl[2]]; }
     if (!x || !(x[1] || x[2] || x[3])) return null;
     s = (parseInt(x[1] || "0", 10) * 3600) + (parseInt(x[2] || "0", 10) * 60) + parseInt(x[3] || "0", 10);
     return isFinite(s) && s >= 5 && s < 86400 ? s : null;
