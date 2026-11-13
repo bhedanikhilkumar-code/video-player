@@ -1878,6 +1878,7 @@ setTimeout(done,3000);})();
         </div>
       </div>
 
+      <div class="upnext3" id="upnext3" hidden aria-label="Up next"></div>
       <div class="controls" id="controls" hidden>
         <div class="row" id="favCtlBar" role="group" aria-label="Often used controls" style="margin-bottom:8px" hidden><span class="label" id="favCtlLab">Often used</span><span class="chips" id="favCtlChips"></span></div>
         <div class="ctl-card wide transport" id="ctl-transport">
@@ -33347,6 +33348,75 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   WNEW.unshift(["Float on top", "#pipFloatBtn286"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   WNEW.unshift(["Search by channel", "#libSearch"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  // Up next strip (round 286 new 3): the queue sits far down the side panel, so while a
+  // video plays there is no glanceable answer to "what plays after this?" short of opening
+  // the mini player or scrolling. A slim strip under the now-playing card shows the next
+  // three queued videos as glass chips - thumbnail, title, learned length - and tapping one
+  // presses that row's own Open button, so skip-watched, resume and every other queue rule
+  // keep their meaning. It rebuilds from lib.queue whenever the queue list re-renders
+  // (a MutationObserver, so every add, remove, reorder and clear is caught without touching
+  // queue logic) and hides itself when the queue has nothing after the playing video.
+  // Checked first: the up-next bar only appears for the countdown before auto-next, and Up
+  // next in the mini player only shows while docked. Hindi and Gujarati text, What's new
+  // and feature finder included.
+  Object.assign(TR_MSG, {
+    "Up next strip": ["\u0906\u0917\u0947 \u0906\u0928\u0947 \u0935\u093e\u0932\u0947", "\u0a86\u0a97\u0ab3 \u0ab5\u0abe\u0ab2\u0abe"],
+    "Plays after this:": ["\u0907\u0938\u0915\u0947 \u092c\u093e\u0926 \u091a\u0932\u0947\u0917\u093e:", "\u0a86\u0aa8\u0abe \u0aaa\u0a9b\u0ac0 \u0a9a\u0ab2\u0ab6\u0ac7:"]
+  });
+  (function () {
+    var host = $("upnext3");
+    if (!host || typeof queueList === "undefined" || !queueList) return;
+    var st = document.createElement("style");
+    st.textContent = ".upnext3{display:flex;gap:8px;align-items:stretch;overflow-x:auto;padding:2px;margin:10px 0 2px;scrollbar-width:none}"
+      + ".upnext3::-webkit-scrollbar{display:none}"
+      + ".upnext3 .uq3-lab{flex:none;align-self:center;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;opacity:.65;padding:0 2px}"
+      + ".upnext3 .uq3-item{flex:none;display:flex;align-items:center;gap:8px;max-width:230px;min-height:48px;padding:5px 10px 5px 5px;border-radius:14px;border:1px solid var(--hairline);background:var(--soft);color:var(--ink);font:inherit;text-align:left;cursor:pointer;backdrop-filter:blur(10px) saturate(1.4);-webkit-backdrop-filter:blur(10px) saturate(1.4);transition:transform .18s cubic-bezier(.2,.9,.3,1.2),border-color .18s ease}"
+      + ".upnext3 .uq3-item:hover{transform:translateY(-1px);border-color:var(--teal)}"
+      + ".upnext3 .uq3-item:active{transform:scale(.97)}"
+      + ".upnext3 .uq3-item img{flex:none;width:52px;height:30px;object-fit:cover;border-radius:8px}"
+      + ".upnext3 .uq3-t{font-size:12px;font-weight:600;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}"
+      + ".upnext3 .uq3-d{font-size:10px;opacity:.65}"
+      + "html.calm-motion .upnext3 .uq3-item,html.low-fx .upnext3 .uq3-item{transition:none}"
+      + ":root.high-contrast .upnext3 .uq3-item{background:#000;border-color:#fff;color:#fff}:root.high-contrast[data-theme=\"light\"] .upnext3 .uq3-item{background:#fff;color:#000;border-color:#000}"
+      + "html.spoiler285 .upnext3 .uq3-item{filter:blur(7px) saturate(.7);-webkit-filter:blur(7px) saturate(.7)}"
+      + "html.spoiler285 .upnext3 .uq3-item:active{filter:none;-webkit-filter:none}";
+    document.head.appendChild(st);
+    function build() {
+      host.textContent = "";
+      if (typeof lib !== "object" || !lib || !Array.isArray(lib.queue) || !lib.queue.length) { host.hidden = true; return; }
+      var start = (typeof qPos === "number" && qPos >= 0) ? qPos + 1 : 0;
+      var next = lib.queue.slice(start, start + 3);
+      if (!next.length) { host.hidden = true; return; }
+      var lab = document.createElement("span"); lab.className = "uq3-lab"; lab.textContent = T("Plays after this:");
+      host.appendChild(lab);
+      next.forEach(function (item) {
+        if (!item || !item.id) return;
+        var b = document.createElement("button"); b.type = "button"; b.className = "uq3-item";
+        var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
+        try { thumbSet(img, item.id, "mqdefault.jpg"); } catch (e) {}
+        b.appendChild(img);
+        var tx = document.createElement("span");
+        var tt = document.createElement("span"); tt.className = "uq3-t"; tt.textContent = item.title || ("Video " + item.id);
+        tx.appendChild(tt);
+        var lenSec = (typeof infoCache === "object" && infoCache && infoCache[item.id] && infoCache[item.id].dur) || 0;
+        if (lenSec > 0) { var dd = document.createElement("span"); dd.className = "uq3-d"; dd.textContent = fmt(lenSec); tx.appendChild(dd); }
+        b.appendChild(tx);
+        b.setAttribute("aria-label", (item.title || item.id));
+        b.addEventListener("click", function () {
+          var row = queueList.querySelector('.lib-item[data-vid="' + item.id + '"] .lib-open');
+          if (row) row.click();
+        });
+        host.appendChild(b);
+      });
+      host.hidden = host.children.length <= 1;
+    }
+    var mo = null, pending = false;
+    function schedule() { if (pending) return; pending = true; setTimeout(function () { pending = false; build(); }, 120); }
+    if (typeof MutationObserver === "function") { mo = new MutationObserver(schedule); mo.observe(queueList, { childList: true }); }
+    (window.__relang = window.__relang || []).push(build);
+    build();
+  })();
+  WNEW.unshift(["Up next strip", "#upnext3"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   Object.assign(TR_MSG, {
     "Fade between songs": ["गानों के बीच फ़ेड", "ગીતો વચ્ચે ફેડ"],
     "🎚 Song fade: off": ["🎚 गाना फ़ेड: बंद", "🎚 ગીત ફેડ: બંધ"],
@@ -37565,6 +37635,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Spoiler-free titles", "spoiler free blur hide titles thumbnails scores endings privacy library lists peek reveal glance screen", "#spoilerBtn"],
       ["Auto-dim when idle", "auto dim screen idle dark display bedtime night no touch hands off fade light oled battery sleep timer pair", "#autoDimRow285"],
       ["Float on top", "float on top picture in picture window always on top floating controls other app window desktop mini player outside browser", "#pipFloatBtn286"],
+      ["Up next strip", "up next strip plays after this next three queue videos thumbnails glance what plays next upcoming", "#upnext3"],
+      ["Search by channel", "search by channel channel:name operator library search filter videos from one channel exclude channel", "#libSearch"],
       ["Fade between songs", "fade between songs tracks crossfade smooth transition melt music mode local files gapless soft ending beginning", "#lpFadeBtn285"],
       ["Hall sound", "hall sound reverb echo room concert space acoustics live feeling local files speaker depth", "#lpHallBtn285"],
       ["Frame gallery", "frame gallery saved frames pictures screenshots keep inside app thumbnails download delete collection local files", "#lpGal285"],
