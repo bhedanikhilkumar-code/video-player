@@ -2298,6 +2298,8 @@ setTimeout(done,3000);})();
         <p class="hint" id="lpMonoHint" hidden>Both ears hear the same sound - handy with one earphone or a weaker ear on one side. Works on files you open here; the YouTube player's sound cannot be changed (a browser security limit).</p>
         <div class="row"><button class="chip" id="lpHallBtn285" type="button" aria-pressed="false">🎛 Hall sound: off</button></div>
         <p class="hint" id="lpHallHint285" hidden></p>
+        <div class="row"><button class="chip" id="lpWideBtn287" type="button" aria-pressed="false">📡 Wide sound: off</button></div>
+        <p class="hint" id="lpWideHint287" hidden></p>
         <label class="dl-lab" for="lpBal"><span id="lpBalLab">Balance: </span><b id="lpBalVal">Center</b></label>
         <input id="lpBal" type="range" min="-100" max="100" step="5" value="0" style="width:100%">
         <p class="hint" id="lpBalHint">Move the sound towards the left or right ear - handy when one earphone sounds louder. Works on files you open here.</p>
@@ -33548,6 +33550,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // serves them when the network drops, so the queue, Watch later and history still show
   // their pictures fully offline. No switch - it just works once the app has loaded once.
   WNEW.unshift(["Offline thumbnails", "#lhQueue"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  Object.assign(TR_MSG, {
+    "📡 Wide sound: ": ["📡 वाइड साउंड: ", "📡 વાઇડ સાઉન્ડ: "],
+    "wide": ["चौड़ा", "પહોળું"],
+    "extra": ["बहुत चौड़ा", "ખૂબ પહોળું"],
+    "Wide sound": ["वाइड साउंड", "વાઇડ સાઉન્ડ"],
+    "Spreads the sound wider than your headphones, like the band stepped further apart. Works on files you open here; the YouTube player's sound cannot be changed (a browser security limit).": ["आवाज़ को हेडफ़ोन से भी चौड़ा फैलाता है, जैसे बैंड और दूर-दूर खड़ा हो गया. यहां खोली गई फ़ाइलों पर काम करता है; YouTube प्लेयर की आवाज़ बदली नहीं जा सकती (ब्राउज़र सुरक्षा सीमा).", "અવાજને હેડફોન કરતાં વધુ પહોળો ફેલાય છે, જાણે બેન્ડ વધુ દૂર ઊભું હોય. અહીં ખોલેલી ફાઇલો પર કામ કરે છે; YouTube પ્લેયરનો અવાજ બદલી શકાતો નથી (બ્રાઉઝર સુરક્ષા મર્યાદા)."]
+  });
   window.__vpPrefs = prefs;
   window.__vpSavePrefs = savePrefs;
 })();
@@ -33925,7 +33934,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var file = $("lpFile"), vid = $("lpVideo"), ctl = $("lpCtl"), gain = $("lpGain"), gv = $("lpGainVal"), warn = $("lpWarn"), sp = $("lpSpeeds");
-  var ctx = null, node = null, curUrl = null, eqNodes = null, nightNode = null, panNode = null, monoNode = null, hallConv285 = null, hallWet285 = null;
+  var ctx = null, node = null, curUrl = null, eqNodes = null, nightNode = null, panNode = null, monoNode = null, hallConv285 = null, hallWet285 = null, wideSplit287 = null, wideMerger287 = null, wideWet287 = null;
   function ensureAudio() {
     if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -33969,6 +33978,23 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     hallConv285 = ctx.createConvolver(); hallWet285 = ctx.createGain(); hallWet285.gain.value = 0;
     monoN.connect(hallConv285); hallConv285.connect(hallWet285); hallWet285.connect(output276);
     if (typeof hallApply285 === "function") hallApply285();
+    // Round 287 new 2 (Wide sound): a pure side-difference send tapped after the mono fold.
+    // Only the L-R difference is added back (wider left on the left, mirrored on the right),
+    // so the centre voice stays exactly as loud and mono fold upstream simply silences the
+    // effect - no clipping risk on centred sound. The wet gain carries the level, so the
+    // four matrix gains never change at runtime.
+    wideSplit287 = ctx.createChannelSplitter(2); wideMerger287 = ctx.createChannelMerger(2); wideWet287 = ctx.createGain(); wideWet287.gain.value = 0;
+    var wg1 = ctx.createGain(); wg1.gain.value = 0.5;
+    var wg2 = ctx.createGain(); wg2.gain.value = -0.5;
+    var wg3 = ctx.createGain(); wg3.gain.value = -0.5;
+    var wg4 = ctx.createGain(); wg4.gain.value = 0.5;
+    monoN.connect(wideSplit287);
+    wideSplit287.connect(wg1, 0); wg1.connect(wideMerger287, 0, 0);
+    wideSplit287.connect(wg2, 1); wg2.connect(wideMerger287, 0, 0);
+    wideSplit287.connect(wg3, 0); wg3.connect(wideMerger287, 0, 1);
+    wideSplit287.connect(wg4, 1); wg4.connect(wideMerger287, 0, 1);
+    wideMerger287.connect(wideWet287); wideWet287.connect(output276);
+    if (typeof wideApply287 === "function") wideApply287();
     eqNodes = { b: fb, m: fm, t: ft }; nightNode = comp; panNode = pan;
     if (typeof eqApply === "function") eqApply();
     if (typeof nightBalApply === "function") nightBalApply();
@@ -33982,8 +34008,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     try { ensureAudio(); if(!ctx || typeof ctx.setSinkId !== 'function') return Promise.reject(new Error('unsupported')); return ctx.setSinkId(id); }
     catch(e) { return Promise.reject(e); }
   };
-  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, night: false, bal: 0, fade: 0, hall: "off", eq: { b: 0, m: 0, t: 0 } };
-  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.ccBg === "none" || sv.ccBg === "solid") lp.ccBg = sv.ccBg; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; if (typeof sv.bal === "number" && sv.bal >= -100 && sv.bal <= 100) lp.bal = Math.round(sv.bal); if (sv.mono === true) lp.mono = true; if (sv.soft === true) lp.soft = true; if ([0, 2, 4, 8].indexOf(sv.fade) >= 0) lp.fade = sv.fade; if (["off", "room", "hall"].indexOf(sv.hall) >= 0) lp.hall = sv.hall; } } catch (e) {}
+  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, night: false, bal: 0, fade: 0, hall: "off", wide: "off", eq: { b: 0, m: 0, t: 0 } };
+  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.ccBg === "none" || sv.ccBg === "solid") lp.ccBg = sv.ccBg; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; if (typeof sv.bal === "number" && sv.bal >= -100 && sv.bal <= 100) lp.bal = Math.round(sv.bal); if (sv.mono === true) lp.mono = true; if (sv.soft === true) lp.soft = true; if ([0, 2, 4, 8].indexOf(sv.fade) >= 0) lp.fade = sv.fade; if (["off", "room", "hall"].indexOf(sv.hall) >= 0) lp.hall = sv.hall; if (["off", "wide", "extra"].indexOf(sv.wide) >= 0) lp.wide = sv.wide; } } catch (e) {}
   gain.value = lp.gain;
   function saveLp() { try { localStorage.setItem(LK, JSON.stringify(lp)); } catch (e) { if(window.vpStorageWarning276)window.vpStorageWarning276(); } }
   function setGain() { var v = Number(gain.value); lp.gain = v; saveLp(); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
@@ -34118,6 +34144,36 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   }
 
   if (window.__vpWnew283) window.__vpWnew283("Hall sound", "#lpHallBtn285");
+
+  // Wide sound (round 287 new 2): a downloaded song can sound narrow and boxed-in on
+  // headphones. A chip beside Hall sound cycles Off / Wide / Extra and adds the stereo
+  // side-difference back into the picture through its own send on the shared output, so
+  // boost, EQ, balance, delay, song fade and hall keep their meaning with it on. Kept in
+  // lp.wide (vp-lp.v1) so it rides the backup. Checked first: Mono folds to one channel,
+  // Hall adds echo, balance pans - nothing widened the stereo image. Hindi and Gujarati
+  // text lives in the main closure, What's new and feature finder included.
+  var wideBtn287 = $("lpWideBtn287"), wideHint287 = $("lpWideHint287");
+  function wideApply287() {
+    if (!wideWet287) return;
+    try { wideWet287.gain.value = lp.wide === "wide" ? 0.8 : lp.wide === "extra" ? 1.5 : 0; } catch (e) {}
+  }
+  if (wideBtn287) {
+    var wideDefs287 = ["off", "wide", "extra"];
+    function widePaint287() {
+      wideBtn287.textContent = T("📡 Wide sound: ") + T(lp.wide);
+      wideBtn287.setAttribute("aria-pressed", String(lp.wide !== "off"));
+      wideBtn287.classList.toggle("active", lp.wide !== "off");
+      if (wideHint287) { wideHint287.hidden = false; wideHint287.textContent = T("Spreads the sound wider than your headphones, like the band stepped further apart. Works on files you open here; the YouTube player's sound cannot be changed (a browser security limit)."); }
+    }
+    (window.__relang = window.__relang || []).push(widePaint287);
+    wideBtn287.addEventListener("click", function () {
+      var i = wideDefs287.indexOf(lp.wide);
+      lp.wide = wideDefs287[(i + 1) % wideDefs287.length];
+      ensureAudio(); saveLp(); wideApply287(); widePaint287();
+    });
+    widePaint287();
+  }
+  if (window.__vpWnew283) window.__vpWnew283("Wide sound", "#lpWideBtn287");
   [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3].forEach(function (r) {
     var b = document.createElement("button"); b.className = "chip" + (r === lp.rate ? " active" : ""); b.type = "button"; b.textContent = r + "x";
     b.addEventListener("click", function () { vid.playbackRate = r; lp.rate = r; saveLp(); [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c === b); }); if (window.__vpSpeedHud) window.__vpSpeedHud(r); });
@@ -37741,6 +37797,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Fade between songs", "fade between songs tracks crossfade smooth transition melt music mode local files gapless soft ending beginning", "#lpFadeBtn285"],
       ["Hall sound", "hall sound reverb echo room concert space acoustics live feeling local files speaker depth", "#lpHallBtn285"],
       ["Frame gallery", "frame gallery saved frames pictures screenshots keep inside app thumbnails download delete collection local files", "#lpGal285"],
+      ["Wide sound", "wide sound stereo widen spread headphones speakers spacious narrow boxed local files music", "#lpWideBtn287"],
       ["Offline thumbnails", "offline thumbnails pictures library rows images saved on device no internet network queue watch later history pwa cache", "#lhQueue"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
