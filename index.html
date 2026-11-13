@@ -30399,7 +30399,44 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   WNEW.unshift(["Skip by title words","#wordCard271"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
   WNEW.unshift(["Favourites feed","#qFavFeedBtn272"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
   WNEW.unshift(["Feed limit","#qFeedLimitBtn272"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  // Clear queue (round 273 new 1): the queue had Park the rest, Keep next 10 and
+  // per-video remove, but nothing emptied it in one tap - clearing meant removing
+  // videos one by one. The new Clear queue chip in the queue options row removes
+  // every waiting video at once. The video playing right now stays and keeps
+  // playing, and Undo brings the whole queue and its place back. The shuffle bag
+  // resets so the next shuffle is fair; the back-history between videos is kept.
+  // Nothing new is saved (the queue itself already is). Hindi and Gujarati,
+  // feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Clear queue": ["कतार खाली करें", "કતાર ખાલી કરો"],
+    "Queue cleared.": ["कतार खाली हुई.", "કતાર ખાલી થઈ."],
+    "The queue is already empty.": ["कतार पहले से खाली है.", "કતાર પહેલેથી ખાલી છે."],
+    "Every waiting video is removed at once. The video playing keeps playing; Undo brings the queue back.": ["इंतज़ार के सभी वीडियो एक साथ हटते हैं. चल रहा वीडियो चलता रहता है; Undo से कतार लौट आती है.", "રાહમાં રહેલા બધા વીડિયો એકસાથે કઢાય છે. ચાલતો વીડિયો ચાલતો રહે છે; Undoથી કતાર પાછી આવે છે."]
+  });
+  var qClearBtn273 = null, qOptsRow273 = $("queueOptsRow");
+  if (qOptsRow273) {
+    qClearBtn273 = document.createElement("button");
+    qClearBtn273.type = "button"; qClearBtn273.className = "chip"; qClearBtn273.id = "qClearBtn273";
+    qOptsRow273.appendChild(qClearBtn273);
+    var qClearPaint273 = function () {
+      qClearBtn273.textContent = "\U0001F9F9 " + T("Clear queue");
+      qClearBtn273.setAttribute("aria-label", T("Clear queue") + " - " + T("Every waiting video is removed at once. The video playing keeps playing; Undo brings the queue back."));
+    };
+    qClearBtn273.addEventListener("click", function () {
+      var keep = (qPos >= 0 && qPos < lib.queue.length && lib.queue[qPos] && curId && lib.queue[qPos].id === curId) ? lib.queue[qPos] : null;
+      if (!lib.queue.length || (keep && lib.queue.length === 1)) { toast(T("The queue is already empty.")); return; }
+      var snapQ = lib.queue.slice(), snapP = qPos, snapA = qAfter;
+      lib.queue = keep ? [keep] : [];
+      qPos = keep ? 0 : -1; qAfter = -1;
+      shuffleBag = []; shuffleFinished = false;
+      saveLib(); renderLib();
+      toastUndo(T("Queue cleared."), function () { lib.queue = snapQ; qPos = snapP; qAfter = snapA; shuffleBag = []; shuffleFinished = false; saveLib(); renderLib(); }, T("Queue restored"));
+    });
+    (window.__relang = window.__relang || []).push(qClearPaint273); qClearPaint273();
+  }
+  WNEW.unshift(["Clear queue","#qClearBtn273"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 })();
+
 </script>
 <script>
 (function () {
@@ -33096,6 +33133,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Finish by", "finish by clock time deadline speed needed how fast watch before time left catch up end at", "#finishCard269"],
       ["Ambient sounds", "ambient sound white pink brown noise rain ocean sleep focus study relax background masking tinnitus calm", "#ambCard270"],
       ["Blocked channels", "block channel skip hide mute creator never play queue next unwanted", "#blockCard271"],
+      ["Clear queue", "clear empty remove whole queue all videos at once start fresh wipe", "#qClearBtn273"],
       ["Feed limit", "feed limit stop feeds after videos autoplay endless watch later favourites cap count", "#qFeedLimitBtn272"],
       ["Favourites feed", "favourites feed queue ends keep playing endless autoplay radio next favourite never played longest unplayed", "#qFavFeedBtn272"],
       ["Skip by title words", "skip title words keyword filter live trailer reaction shorts unwanted queue next block", "#wordCard271"],
