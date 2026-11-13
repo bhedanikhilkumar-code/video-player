@@ -2436,6 +2436,7 @@ setTimeout(done,3000);})();
         <button class="chip" id="autoNextBtn" type="button" aria-pressed="true">Auto-next: on</button>
         <button class="chip" id="stopAfterBtn" type="button" aria-pressed="false">Stop after this track: off</button>
         <button class="chip" id="qMixRestBtn" type="button">🔀 Mix the rest</button>
+        <button class="chip" id="qParkBtn" type="button">🅿️ Park the rest</button>
       </div>
       <div class="row" style="margin-top:10px" id="upnextSecsRow"><span class="label" id="upnextSecsLab">Up-next countdown:</span><span class="chips" id="upnextSecsChips"></span></div>
       <p class="hint" id="queueModeMsg" role="status">Auto-next is on. Video repeat and A-B repeat take priority.</p>
@@ -17721,6 +17722,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Park the rest of the queue", "#qParkBtn"],
     ["Shuffle the rest of the queue", "#qMixRestBtn"],
     ["Select videos", "#selBtn"],
     ["Recently removed", "#binBtn"],
@@ -22647,6 +22649,37 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
 
+  // Park the rest of the queue (round 236 new 2): when the evening ends with ten videos still queued, the
+  // choices were Clear (loses them) or removing rows one by one. One chip moves every upcoming row to Watch
+  // later (newest parked on top, the 50 cap respected, a video already there is just taken out of the
+  // queue) and keeps the playing row and the ones above it. Undo puts both lists back.
+  Object.assign(TR_MSG, {
+    "Park the rest of the queue in Watch later": ["कतार का बाकी हिस्सा बाद में देखें में रखें", "કતારનો બાકીનો ભાગ પછી જુઓ માં મૂકો"],
+    "\uD83C\uDD7F\uFE0F Park the rest": ["\uD83C\uDD7F\uFE0F बाकी रख दें", "\uD83C\uDD7F\uFE0F બાકીનું મૂકી દો"],
+    "No upcoming videos to park.": ["रखने के लिए कोई अगला वीडियो नहीं है.", "મૂકવા માટે કોઈ આગલો વીડિયો નથી."],
+    "Parked in Watch later": ["बाद में देखें में रखे", "પછી જુઓ માં મૂક્યા"],
+    "Queue and Watch later restored": ["कतार और बाद में देखें वापस आए", "કતાર અને પછી જુઓ પાછા આવ્યા"],
+    "left in the queue (Watch later is full)": ["कतार में रहे (बाद में देखें भरी है)", "કતારમાં રહ્યા (પછી જુઓ ભરેલું છે)"]
+  });
+  (function () {
+    var btn = $("qParkBtn"); if (!btn) return;
+    function paint() { btn.textContent = T("\uD83C\uDD7F\uFE0F Park the rest"); btn.setAttribute("aria-label", T("Park the rest of the queue in Watch later")); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      var start = qPos + 1, up = lib.queue.slice(start);
+      if (!up.length) { toast(T("No upcoming videos to park.")); return; }
+      var snapQ = lib.queue.slice(), snapL = lib.later.slice(), sp = qPos, moved = 0, kept = [], now = Date.now();
+      up.slice().reverse().forEach(function (x) {
+        if (findIn(lib.later, x.id) >= 0) return;
+        if (lib.later.length >= 50) { kept.unshift(x); return; }
+        var it = { id: x.id, title: x.title || "", ts: now }; lib.later.unshift(it); moved++;
+      });
+      lib.queue = lib.queue.slice(0, start).concat(kept); resetShuffle(); saveLib(); renderLib(); showLibErr("");
+      var msg = T("Parked in Watch later") + " " + moved + (kept.length ? " - " + kept.length + " " + T("left in the queue (Watch later is full)") : "");
+      toastUndo(msg, function () { lib.queue = snapQ; lib.later = snapL; qPos = sp; saveLib(); renderLib(); }, T("Queue and Watch later restored"));
+    });
+  })();
+
   // Round 234 fix: list rows read '... - Resume 1:00' in English on Hindi and Gujarati pages, and
   // the 'Saved on this device only.' note under Recently watched also stayed English (its
   // translation row pointed at the first paragraph after the list, which became the hidden
@@ -25319,6 +25352,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     }
     var FEATS = [
       ["Shuffle the rest of the queue", "shuffle mix rest queue random upcoming order one time half played", "#qMixRestBtn"],
+      ["Park the rest of the queue", "park queue watch later save for later move upcoming clear evening over keep not lose", "#qParkBtn"],
       ["Select videos", "select multiple checkbox bulk favourites watch later remove move queue several tick batch", "#selBtn"],
       ["Recently removed", "recently removed bin trash undo restore deleted favourites watch later accident bring back", "#binBtn"],
       ["Add to calendar", "calendar ics event schedule evening plan reminder queue watch later block time session", "#calBtn"],
