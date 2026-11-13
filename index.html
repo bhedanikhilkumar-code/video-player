@@ -30082,13 +30082,17 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // screen or press ` / Esc to bring everything back; the video resumes only if this feature
   // paused it. Nothing keeps playing behind the cover (the player stays a normal, visible player).
   function cleanR269(o) {
-    var out = { escHide: 0, shake: 0, snaps: [], amb: { k: "rain", v: 50, m: 0, duck: 1 } };
+    var out = { escHide: 0, shake: 0, snaps: [], amb: { k: "rain", v: 50, m: 0, duck: 1 }, ambMix: { k: "off", v: 40 } };
     if (!o || typeof o !== "object" || Array.isArray(o)) return out;
     if (o.amb && typeof o.amb === "object" && !Array.isArray(o.amb)) {
       if (["white", "pink", "brown", "rain", "ocean"].indexOf(o.amb.k) >= 0) out.amb.k = o.amb.k;
       if (typeof o.amb.v === "number" && isFinite(o.amb.v)) out.amb.v = Math.min(100, Math.max(0, Math.round(o.amb.v)));
       if ([15, 30, 60].indexOf(o.amb.m) >= 0) out.amb.m = o.amb.m;
       if (o.amb.duck === 0) out.amb.duck = 0;
+    }
+    if (o.ambMix && typeof o.ambMix === "object" && !Array.isArray(o.ambMix)) {
+      if (["white", "pink", "brown", "rain", "ocean"].indexOf(o.ambMix.k) >= 0) out.ambMix.k = o.ambMix.k;
+      if (typeof o.ambMix.v === "number" && isFinite(o.ambMix.v)) out.ambMix.v = Math.min(100, Math.max(0, Math.round(o.ambMix.v)));
     }
     if (o.escHide === 1) out.escHide = 1; if (o.shake === 1 || o.shake === 2) out.shake = o.shake;
     if (Array.isArray(o.snaps)) o.snaps.forEach(function (s) {
@@ -32822,6 +32826,98 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Soft pause on - the sound eases out and back in.": ["\u0928\u0930\u092e \u0930\u0941\u0915\u093e\u0935\u091f \u091a\u093e\u0932\u0942 - \u0906\u0935\u093e\u091c\u093c \u0927\u0940\u0930\u0947 \u0938\u0947 \u0998\u091f\u0924\u0940 \u0914\u0930 \u0932\u094c\u091f\u0924\u0940 \u0939\u0948.".replace("\u0998","\u0918"), "\u0aa8\u0ab0\u0aae \u0a85\u0a9f\u0a95\u0abe\u0ab5 \u0a9a\u0abe\u0ab2\u0ac1 - \u0a85\u0ab5\u0abe\u0a9c \u0aa7\u0940\u0ab0\u0ac7\u0aa5\u0940 \u0a98\u0a9f\u0ac7 \u0a9b\u0ac7 \u0a85\u0aa8\u0ac7 \u0aaa\u0abe\u0a9b\u094b \u0a86\u0ab5\u0ac7 \u0a9b\u0ac7."],
     "Soft pause off.": ["\u0928\u0930\u092e \u0930\u0941\u0915\u093e\u0935\u091f \u092c\u0902\u0926.", "\u0aa8\u0ab0\u0aae \u0a85\u0a9f\u0a95\u0abe\u0ab5 \u0aac\u0a82\u0aa7."]
   });
+  // Mix a second ambient sound (round 283 new 4): the Ambient sounds card played one
+  // sound at a time, but rain over brown noise (or ocean under pink) is the classic
+  // sleep blend. A second row of chips picks a partner sound with its own small
+  // volume slider; the mix follows the main sound's Play/Stop and its timer on its
+  // own, through a second source on the same on-device noise generator - no internet,
+  // nothing new to download. Picking the same sound as the main one switches it to
+  // Off so the blend never doubles. Kept in prefs.r269 so it rides the backup. Hindi
+  // and Gujarati text, What's new and feature finder included. Checked first: the
+  // card had one sound, one volume and a duck option - no second layer.
+  Object.assign(TR_MSG, {
+    "Mix a second sound": ["\u0926\u0942\u0938\u0930\u0940 \u0906\u0935\u093e\u091c\u093c \u092e\u093f\u0932\u093e\u090f\u0902", "\u0aac\u0ac0\u0a9c\u0940 \u0a85\u0ab5\u0abe\u0a9c \u0aae\u0abf\u0ab2\u0abe\u0ab5\u094b"],
+    "Mix volume": ["\u092e\u093f\u0915\u094d\u0938 \u0906\u0935\u093e\u091c\u093c \u0a38\u0a4d\u0924\u0930".replace("\u0a38","\u0938"), "\u0aae\u0abf\u0a95\u0acd\u0ab8 \u0a85\u0ab5\u0abe\u0a9c\u0aa8\u0ac1\u0a82 \u0ab8\u0acd\u0aa4\u0ab0"],
+    "Off": ["\u092c\u0902\u0926", "\u0aac\u0a82\u0aa7"],
+    "Mix a second ambient sound": ["\u0926\u0942\u0938\u0930\u0940 \u0a0f\u092e\u094d\u092c\u093f\u090f\u0902\u091f \u0906\u0935\u093e\u091c\u093c \u092e\u093f\u0932\u093e\u090f\u0902".replace("\u0a0f","\u090f"), "\u0aac\u0ac0\u0a9c\u0940 \u0a8f\u0aae\u0acd\u0aac\u0abf\u0a85\u0a82\u0a9f \u0a85\u0ab5\u0abe\u0a9c \u0aae\u0abf\u0ab2\u0abe\u0ab5\u094b"]
+  });
+  (function () {
+    var card = $("ambCard270"); if (!card || typeof ambFill270 !== "function") return;
+    var KINDS = ["off", "white", "pink", "brown", "rain", "ocean"];
+    var NAMES = { off: "Off", white: "White noise", pink: "Pink noise", brown: "Brown noise", rain: "Rain", ocean: "Ocean" };
+    var row = document.createElement("div"); row.className = "row"; row.id = "ambMixRow283";
+    row.style.cssText = "margin-top:10px;align-items:center;gap:8px;flex-wrap:wrap";
+    var lab = document.createElement("span"); lab.className = "label"; row.appendChild(lab);
+    var chips = document.createElement("span"); chips.className = "chips"; row.appendChild(chips);
+    var kb = {};
+    KINDS.forEach(function (k) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; chips.appendChild(b); kb[k] = b;
+      b.addEventListener("click", function () { var m = mix(); m.k = k; putMix(m); sync(); paint(); });
+    });
+    card.appendChild(row);
+    var vrow = document.createElement("div"); vrow.className = "row";
+    vrow.style.cssText = "margin-top:6px;align-items:center;gap:8px";
+    var vlab = document.createElement("label"); vlab.className = "label"; vlab.htmlFor = "ambMixVol283"; vrow.appendChild(vlab);
+    var vr = document.createElement("input"); vr.type = "range"; vr.min = "0"; vr.max = "100"; vr.id = "ambMixVol283"; vr.style.maxWidth = "180px"; vrow.appendChild(vr);
+    card.appendChild(vrow);
+    function mix() { return cleanR269(prefs.r269).ambMix; }
+    function putMix(m) { prefs.r269 = cleanR269(prefs.r269); prefs.r269.ambMix = { k: m.k, v: m.v }; savePrefs(); }
+    var ctx2 = null, src2 = null, gain2 = null;
+    function level2() { var m = mix(); return ambGain270(m.v, false, 0); }
+    function stop2() {
+      if (!src2) return;
+      try { gain2.gain.cancelScheduledValues(ctx2.currentTime); gain2.gain.setTargetAtTime(0, ctx2.currentTime, 0.3); } catch (e) {}
+      var s = src2; src2 = null; setTimeout(function () { try { s.stop(); } catch (e) {} }, 1500);
+    }
+    function start2() {
+      var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+      try {
+        if (!ctx2) ctx2 = new AC(); if (ctx2.state === "suspended") ctx2.resume();
+        stop2();
+        var m = mix(), len = ctx2.sampleRate * 4, buf = ctx2.createBuffer(1, len, ctx2.sampleRate);
+        ambFill270(m.k, buf.getChannelData(0));
+        src2 = ctx2.createBufferSource(); src2.buffer = buf; src2.loop = true;
+        gain2 = ctx2.createGain(); gain2.gain.value = 0;
+        var node = src2;
+        if (m.k === "rain") { var hp = ctx2.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 700; var lp2 = ctx2.createBiquadFilter(); lp2.type = "lowpass"; lp2.frequency.value = 7000; node.connect(hp); hp.connect(lp2); node = lp2; }
+        if (m.k === "ocean") { var o = ctx2.createBiquadFilter(); o.type = "lowpass"; o.frequency.value = 500; node.connect(o); node = o; }
+        node.connect(gain2); gain2.connect(ctx2.destination); src2.start();
+        gain2.gain.setTargetAtTime(level2(), ctx2.currentTime, 0.4);
+      } catch (e) { src2 = null; }
+    }
+    function sync() {
+      var m = mix();
+      var want = m.k !== "off" && window.__vpAmb270 && window.__vpAmb270.playing();
+      if (want && !src2) start2();
+      if (!want && src2) stop2();
+      if (src2 && gain2) { try { gain2.gain.setTargetAtTime(level2(), ctx2.currentTime, 0.2); } catch (e) {} }
+    }
+    vr.addEventListener("input", function () { var m = mix(); m.v = +vr.value; putMix(m); sync(); paint(); });
+    setInterval(sync, 800);
+    function paint() {
+      var m = mix();
+      lab.textContent = T("Mix a second sound") + ":";
+      vlab.textContent = T("Mix volume"); vr.setAttribute("aria-label", T("Mix volume"));
+      if (document.activeElement !== vr) vr.value = String(m.v);
+      KINDS.forEach(function (k) {
+        kb[k].textContent = T(NAMES[k]);
+        var on = m.k === k;
+        kb[k].classList.toggle("active", on); kb[k].setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    // A mix equal to the main sound doubles the layer; switching the main sound to the
+    // mix's kind turns the mix Off instead. Watch the main pick once a second.
+    var lastMain = null;
+    setInterval(function () {
+      var a = cleanR269(prefs.r269).amb, m = mix();
+      if (a.k !== lastMain) {
+        lastMain = a.k;
+        if (m.k === a.k) { m.k = "off"; putMix(m); sync(); paint(); }
+      }
+    }, 1000);
+    WNEW.unshift(["Mix a second ambient sound", "#ambMixRow283"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
   window.__vpWnew283 = function (name, sel) {
     try { WNEW.unshift([name, sel]); WNEW.length = Math.min(10, WNEW.length); wnewRender(); } catch (e) {}
   };
@@ -36042,6 +36138,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Pop notes at their time", "note pop time reminder line shows itself watching remember marked part overlay", "#notePopBtn"],
       ["Moments tour", "moments tour play each saved moment automatically eight seconds revision recap hands free walk through", "#markTourBtn"],
       ["Chapter previous and next", "chapter previous next local file jump boundary section skip forward back buttons", "#lpChPrev"],
+      ["Mix a second ambient sound", "mix second ambient sound two blend rain brown noise ocean volume layer sleep focus", "#ambMixRow283"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
       ["Rate backlog", "rate backlog unrated videos stars rating give stars favourites history without rating", "#rateBacklogCard"],
       ["Weekday rhythm", "weekday rhythm busiest day of the week monday sunday pattern when do i watch bars stats", "#weekdayCard"],
