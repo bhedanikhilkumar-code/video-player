@@ -1897,6 +1897,7 @@ setTimeout(done,3000);})();
           <div class="zoom-row" id="zoomRow" role="group" aria-label="Zoom the picture"><span class="label" id="zoomLab">Picture zoom</span><button class="chip zoom-chip" type="button" data-z="1" aria-pressed="true">100%</button><button class="chip zoom-chip" type="button" data-z="1.15" aria-pressed="false">115%</button><button class="chip zoom-chip" type="button" data-z="1.3" aria-pressed="false">130%</button></div>
           <div class="grid-row" id="gridRow" role="group" aria-label="Grid lines on the picture"><span class="label" id="gridLab">Grid lines</span><button class="chip grid-chip" type="button" data-g="off" aria-pressed="true">Off</button><button class="chip grid-chip" type="button" data-g="thirds" aria-pressed="false">Thirds</button><button class="chip grid-chip" type="button" data-g="cross" aria-pressed="false">Centre cross</button><button class="chip grid-chip" type="button" data-g="fine" aria-pressed="false">Fine grid</button></div>
           <div class="row" id="rwPauseRow" role="group" aria-label="Rewind after a pause" style="margin-top:8px"><span class="label" id="rwPauseLab">Rewind after a pause</span><span class="chips" id="rwPauseChips"></span></div>
+          <div class="row" id="rewBackRow279" role="group" aria-label="Rewind on resume" style="margin-top:8px"><span class="label" id="rewBackLab279">Rewind on resume</span><span class="chips" id="rewBackChips279"></span></div>
           <p class="hint" id="rwPauseHint">After a pause of 30 seconds or more, Play goes back a few seconds so the story comes back to you.</p>
           <div class="ab-strip" id="abStrip" hidden aria-hidden="true"></div>
           <div class="seek-tip" id="seekTip" hidden></div>
@@ -6962,7 +6963,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // saved spot. Only true resume paths use this - shared links and retries stay exact.
   var rwExact = 0;
   function resumeStart(t) {
-    if (typeof t === "number" && isFinite(t) && t >= 20) { rwExact = Math.round(t); return Math.max(0, Math.round(t) - 10); }
+    if (typeof t === "number" && isFinite(t) && t >= 20) { rwExact = Math.round(t); var rb279 = (typeof window.__vpRewBack279 === "function") ? window.__vpRewBack279() : 10; return Math.max(0, Math.round(t) - rb279); }
     return t;
   }
   function loadVideo(startSec, endSec, queueIndex, autoplay) {
@@ -31592,6 +31593,43 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint); paint();
     WNEW.unshift(["Remember the picture look per video", "#picMemBtn279"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   })();
+
+  // Round 279 new 3: Rewind on resume choice. The resume rewind (round 68) always jumped
+  // back 10 seconds; now 5, 10 or 30 seconds can be picked - short for quick recaps,
+  // long for movies you return to days later. Saved on this device, works on YouTube
+  // videos, translated in Hindi and Gujarati, in the feature finder and What's new.
+  (function () {
+    var KEY = "vp-rewback.v1", CHOICES = [5, 10, 30];
+    var cur = 10;
+    try { var v = Number(localStorage.getItem(KEY)); if (CHOICES.indexOf(v) >= 0) cur = v; } catch (e) {}
+    window.__vpRewBack279 = function () { return cur; };
+    var chipsEl = $("rewBackChips279"), lab = $("rewBackLab279"); if (!chipsEl) return;
+    var btns = [];
+    function paint() {
+      if (lab) lab.textContent = T("Rewind on resume");
+      btns.forEach(function (b) {
+        var on = Number(b.dataset.v) === cur;
+        b.textContent = b.dataset.v + "s";
+        b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
+    CHOICES.forEach(function (n) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.v = String(n); b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", function () {
+        cur = n;
+        try { localStorage.setItem(KEY, String(n)); } catch (e) {}
+        toast(T("Rewind on resume: ") + n + "s"); paint();
+      });
+      chipsEl.appendChild(b); btns.push(b);
+    });
+    Object.assign(TR_MSG, {
+      "Rewind on resume": ["\u0930\u093F\u091C\u093C\u094D\u092F\u0942\u092E \u092A\u0930 \u0930\u093F\u0935\u093E\u0907\u0902\u0921", "\u0AB0\u0ABF\u0A9D\u0ACD\u0AAF\u0AC2\u0AAE \u0AAA\u0AB0 \u0AB0\u0ABF\u0AB5\u0ABE\u0A87\u0A82\u0AA1"],
+      "Rewind on resume: ": ["\u0930\u093F\u091C\u093C\u094D\u092F\u0942\u092E \u092A\u0930 \u0930\u093F\u0935\u093E\u0907\u0902\u0921: ", "\u0AB0\u0ABF\u0A9D\u0ACD\u0AAF\u0AC2\u0AAE \u0AAA\u0AB0 \u0AB0\u0ABF\u0AB5\u0ABE\u0A87\u0A82\u0AA1: "],
+      "Choose how far a half-watched video jumps back": ["\u091A\u0941\u0928\u0947\u0902 \u0915\u093F \u0906\u0927\u093E-\u0926\u0947\u0916\u093E \u0935\u0940\u0921\u093F\u092F\u094B \u0915\u093F\u0924\u0928\u093E \u092A\u0940\u091B\u0947 \u091C\u093E\u090F", "\u0AAA\u0AB8\u0A82\u0AA6 \u0A95\u0AB0\u0ACB \u0A95\u0AC7 \u0A85\u0AA7\u0AC2\u0AB0\u0AC1\u0A82 \u0A9C\u0ACB\u0AAF\u0AC7\u0AB2\u0AC1\u0A82 \u0AB5\u0AC0\u0AA1\u0ABF\u0AAF\u0ACB \u0A95\u0AC7\u0A9F\u0AB2\u0AC1\u0A82 \u0AAA\u0ABE\u0A9B\u0AB3 \u0A9C\u0ABE\u0AAF"]
+    });
+    (window.__relang = window.__relang || []).push(paint); paint();
+    WNEW.unshift(["Choose how far a half-watched video jumps back", "#rewBackRow279"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
   Object.assign(TR_MSG, {
     "Auto chapters:": ["ऑटो अध्याय:", "ઓટો પ્રકરણો:"],
     "Every {n} min": ["हर {n} मिनट", "દર {n} મિનિટ"],
@@ -34445,6 +34483,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Remember the speed per video", "remember speed per video pin playback rate lecture music", "#speedMemBtn278"],
       ["Remember the rotation per video", "remember rotation per video sideways phone clip turned picture rotate memory", "#rotMemBtn279"],
       ["Remember the picture look per video", "remember picture look per video brightness contrast colour tuning memory", "#picMemBtn279"],
+      ["Rewind on resume choice", "rewind on resume choice seconds back half watched continue recap", "#rewBackRow279"],
       ["Practice loop repeat count", "practice loop repeat count local ab passes 2 3 5 10 stop itself", "#lpLoopCountRow278"],
       ["File info for local files", "file info local name size type length picture bitrate codec details", "#lpInfoBtn278"],
       ["Auto chapters for local files", "auto chapters local file split every 5 10 minutes even parts markers", "#lpChAutoRow278"],
