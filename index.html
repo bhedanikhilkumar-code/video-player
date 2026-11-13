@@ -2336,7 +2336,7 @@ setTimeout(done,3000);})();
           <button class="chip vs-mic" id="vsMic" type="button" aria-label="Voice search" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button>
         </div>
         <span class="hint" id="libSearchMsg" role="status"></span>
-        <div class="row"><button class="chip" id="libNotesBtn" type="button" aria-pressed="false">Include notes: off</button><button class="chip" id="libQueueMatchBtn" type="button" hidden>➕ Queue matches</button></div>
+        <div class="row"><button class="chip" id="libNotesBtn" type="button" aria-pressed="false">Include notes: off</button><button class="chip" id="libQueueMatchBtn" type="button" hidden>➕ Queue matches</button><button class="chip" id="libCopyMatchBtn" type="button" hidden>📋 Copy matches</button></div>
         <div id="rsRow" hidden><span class="hint" id="rsLab">Recent:</span><span class="rs-chips" id="rsChips"></span><button class="chip" id="rsClear" type="button">Clear</button></div>
       </div>
       <div class="lib-scope" id="libScope" role="group" aria-label="Search in">
@@ -11294,6 +11294,43 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toastUndo((add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue")) + (full ? " \u00b7 " + full + " " + T("left out - queue is full") : ""), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
   });
 
+  // Copy search matches (round 232 new 2): Queue matches sends every hit to the queue,
+  // but sharing the find itself - "these are the lecture videos I meant" - meant copying
+  // row by row. A chip next to it puts the same matches on the clipboard as a numbered
+  // list (title and link, duplicates removed), following the search text, the scope
+  // picker and the Include-notes choice exactly like Queue matches does. Hidden while
+  // the box is empty. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "📋 Copy matches": ["📋 मिलान कॉपी करें", "📋 મેળ કૉપી કરો"],
+    "Copy search matches": ["खोज के मिलान कॉपी करें", "શોધ મેળ કૉપી કરો"],
+    "Copy every video matching the search as a numbered list": ["खोज से मेल खाते हर वीडियो को क्रमांकित सूची के रूप में कॉपी करें", "શોધ સાથે મેળ ખાતો દરેક વીડિયો ક્રમાંકિત યાદી તરીકે કૉપી કરો"],
+    "matches copied": ["मिलान कॉपी हुए", "મેળ કૉપી થયા"],
+    "Nothing matches to copy.": ["कॉपी करने के लिए कुछ नहीं मिला.", "કૉપી કરવા કંઈ મળ્યું નથી."]
+  });
+  var libCopyMatchBtn = $("libCopyMatchBtn");
+  function libCopyMatchPaint() { if (libCopyMatchBtn) { libCopyMatchBtn.textContent = T("📋 Copy matches"); libCopyMatchBtn.setAttribute("aria-label", T("Copy every video matching the search as a numbered list")); } }
+  (window.__relang = window.__relang || []).push(libCopyMatchPaint);
+  libCopyMatchPaint();
+  function libCopyMatchSync() { if (libCopyMatchBtn && libSearch) libCopyMatchBtn.hidden = !libSearch.value.trim(); }
+  if (libSearch) {
+    libSearch.addEventListener("input", libCopyMatchSync);
+    libSearch.addEventListener("keydown", function (e) { if (e.key === "Escape") setTimeout(libCopyMatchSync, 0); });
+  }
+  if (libCopyMatchBtn) libCopyMatchBtn.addEventListener("click", function () {
+    var q = libSearch ? libSearch.value.trim().toLowerCase() : "";
+    if (!q) { libCopyMatchSync(); return; }
+    function hit(it) { return it && it.id && libSearchHit202(it, q); }
+    var pool = [], seen = {};
+    if (libScope === "all" || libScope === "queue") lib.queue.forEach(function (it) { if (hit(it) && !seen[it.id]) { seen[it.id] = 1; pool.push(it); } });
+    if (libScope === "all" || libScope === "favs") lib.favs.forEach(function (it) { if (hit(it) && !seen[it.id]) { seen[it.id] = 1; pool.push(it); } });
+    if (libScope === "all" || libScope === "later") lib.later.forEach(function (it) { if (hit(it) && !seen[it.id]) { seen[it.id] = 1; pool.push(it); } });
+    if (libScope === "all" || libScope === "hist") lib.hist.forEach(function (it) { if (hit(it) && !seen[it.id]) { seen[it.id] = 1; pool.push(it); } });
+    if ((libScope === "all" || libScope === "playlists") && typeof playlists !== "undefined" && playlists) playlists.forEach(function (pl) { pl.items.forEach(function (it) { if (hit(it) && !seen[it.id]) { seen[it.id] = 1; pool.push(it); } }); });
+    if (!pool.length) { toast(T("Nothing matches to copy.")); return; }
+    var text = pool.map(function (it, i) { return (i + 1) + ". " + (it.title || titleFor(it.id) || ("Video " + it.id)) + " - https://youtu.be/" + it.id; }).join("\n");
+    (window.vpCopySafe || function (t, cb) { cb(false); })(text, function (ok) { toast(ok ? pool.length + " " + T("matches copied") : T("Could not copy. Try again.")); });
+  });
+
   // Recent searches (round 140): the library search box remembers the last few searches on
   // this device. While the box is empty they show as chips under it - one tap types the word
   // back and runs the search, so a search you run often (a course, a creator, a mood) is one
@@ -17509,6 +17546,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Copy search matches", "#libCopyMatchBtn"],
     ["Quick wins", "#laterQuickBtn"],
     ["Moments across videos", "#marksTotal"],
     ["Continue watching done-by clock", "#contTime"],
@@ -24445,6 +24483,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Copy search matches", "copy search matches results numbered list clipboard share find hits videos links", "#libCopyMatchBtn"],
       ["Quick wins", "quick wins short videos 5 minutes less clear backlog watch later queue all shorts fast evening", "#laterQuickBtn"],
       ["Average watch per play", "average watch per play typical sitting length each play minutes short clips long videos stats", "#statsPerPlay"],
       ["Playlists at a glance", "playlists at a glance total videos length whole collection organised how much all combined", "#plTotalLine"],
