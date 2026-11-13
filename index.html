@@ -26788,6 +26788,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // watching, and on how many of the last 30 days you watched. Read-only, on this device,
   // honest when there are fewer than 2 watched days. Hindi and Gujarati text, feature finder.
   Object.assign(TR_MSG, {
+    "{n} not added: Watch later is full at 50 videos.": ["{n} नहीं जुड़े: बाद में देखें 50 वीडियो पर भर गया है.", "{n} ઉમેરાયા નથી: પછી જુઓ 50 વીડિયો પર ભરાઈ ગયું છે."],
+    "Tap again to replace your {n} saved videos": ["अपने {n} सेव वीडियो बदलने के लिए फिर टैप करें", "તમારા {n} સાચવેલા વીડિયો બદલવા ફરી ટૅપ કરો"],
     "Break tracker": ["ब्रेक ट्रैकर", "બ્રેક ટ્રેકર"],
     "How long your breaks between watching days are, from the last 100 days on this device.": ["पिछले 100 दिनों में देखने के दिनों के बीच आपके ब्रेक कितने लंबे हैं, इसी डिवाइस से.", "છેલ્લા 100 દિવસમાં જોવાના દિવસો વચ્ચેના તમારા બ્રેક કેટલા લાંબા છે, આ ડિવાઇસ પરથી."],
     "Watched today": ["आज देखा", "આજે જોયું"],
@@ -29406,15 +29408,17 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function take(replace) {
       var l = readLib(); if (!Array.isArray(l.later)) l.later = [];
       var w = replace ? [] : l.later;
-      var n = 0;
+      var n = 0, full = 0;
       items2.forEach(function (x) {
         var dup = w.some(function (y) { return y && y.id === x.id; });
-        if (!dup) { w.push({ id: x.id, title: x.title, ts: Date.now() }); n++; }
+        if (dup) return;
+        if (w.length >= 50) { full++; return; }
+        w.push({ id: x.id, title: x.title, ts: Date.now() }); n++;
       });
       l.later = w;
       try {
         localStorage.setItem(LIB_KEY, JSON.stringify(l));
-        sessionStorage.setItem("vp-wlshare-added", n === 0 ? T("Nothing new to add: those videos are already in your Watch later.") : T("Added") + " " + n + " " + (n === 1 ? T("video") : T("videos")) + " " + T("from the shared link."));
+        sessionStorage.setItem("vp-wlshare-added", (n === 0 ? T("Nothing new to add: those videos are already in your Watch later.") : T("Added") + " " + n + " " + (n === 1 ? T("video") : T("videos")) + " " + T("from the shared link.")) + (full ? " " + T("{n} not added: Watch later is full at 50 videos.").replace("{n}", full) : ""));
         location.replace(location.pathname);
       } catch (e) { p.textContent = T("Could not save: browser storage is full or blocked."); }
     }
