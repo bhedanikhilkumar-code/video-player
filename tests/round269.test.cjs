@@ -35,11 +35,11 @@ function slice(from, to) { const a = html.indexOf(from); assert.ok(a >= 0, from 
 {
   const ctx = vm.createContext({});
   vm.runInContext(slice('function cleanR269(', '  Object.assign(TR_MSG'), ctx);
-  assert.equal(JSON.stringify(ctx.cleanR269(null)), '{"escHide":0,"shake":0}');
-  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 1, junk: 5 })), '{"escHide":1,"shake":0}');
-  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 'yes', shake: 2 })), '{"escHide":0,"shake":2}');
-  assert.equal(JSON.stringify(ctx.cleanR269({ shake: 7 })), '{"escHide":0,"shake":0}');
-  assert.equal(JSON.stringify(ctx.cleanR269([1])), '{"escHide":0,"shake":0}');
+  assert.equal(JSON.stringify(ctx.cleanR269(null)), '{"escHide":0,"shake":0,"snaps":[]}');
+  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 1, junk: 5 })), '{"escHide":1,"shake":0,"snaps":[]}');
+  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 'yes', shake: 2 })), '{"escHide":0,"shake":2,"snaps":[]}');
+  assert.equal(JSON.stringify(ctx.cleanR269({ shake: 7 })), '{"escHide":0,"shake":0,"snaps":[]}');
+  assert.equal(JSON.stringify(ctx.cleanR269([1])), '{"escHide":0,"shake":0,"snaps":[]}');
 }
 // Shake to control: four sharp jolts in a second count, walking and repeats within 2.5 s do not.
 {
@@ -52,5 +52,22 @@ function slice(from, to) { const a = html.indexOf(from); assert.ok(a >= 0, from 
   assert.equal(run(shake, 60), 1);
   assert.equal(run(shake.concat(shake), 60), 1); // second burst is inside the 2.5 s wait
   assert.equal(run([[1, 2, 3], ['x', 2, 3], [NaN, 1, 1]], 50), 0);
+}
+// Queue snapshots: adding, duplicate and empty cases, the cap of 5, and cleaning of stored snapshots.
+{
+  const ctx = vm.createContext({});
+  vm.runInContext(slice('function snapKey269(', '  Object.assign(TR_MSG'), ctx);
+  vm.runInContext(slice('function cleanR269(', '  Object.assign(TR_MSG'), ctx);
+  const q = [{ id: 'aaaaaaaaaaa', title: 'A' }, { id: 'bbbbbbbbbbb' }, { id: 'bad' }, null];
+  let r = ctx.snapAdd269([], q, 1000);
+  assert.equal(r.result, 'added'); assert.equal(r.snaps[0].q.length, 2); assert.equal(r.snaps[0].t, 1000);
+  assert.equal(ctx.snapAdd269(r.snaps, q, 2000).result, 'same');
+  assert.equal(ctx.snapAdd269([], [], 1).result, 'empty');
+  assert.equal(ctx.snapAdd269([], [{ id: 'bad' }], 1).result, 'empty');
+  let s = [];
+  for (let i = 0; i < 7; i++) s = ctx.snapAdd269(s, [{ id: 'ccccccccccc'.slice(0, 10) + i }], 100 + i).snaps;
+  assert.equal(s.length, 5); assert.equal(s[0].t, 106); assert.equal(s[4].t, 102);
+  const c = ctx.cleanR269({ snaps: [{ t: 5, q: [{ id: 'aaaaaaaaaaa', title: 'x'.repeat(500) }] }, { t: 0, q: [{ id: 'aaaaaaaaaaa' }] }, { t: 7, q: [] }, { t: 8 }, 'junk'] });
+  assert.equal(c.snaps.length, 1); assert.equal(c.snaps[0].q[0].title.length, 120);
 }
 console.log('round269 tests ok');
