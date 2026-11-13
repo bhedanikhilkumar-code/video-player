@@ -11951,7 +11951,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   try {
     var savedPl = JSON.parse(localStorage.getItem(PL_KEY) || "null");
     if (Array.isArray(savedPl)) savedPl.forEach(function (p) {
-      if (p && typeof p.name === "string" && Array.isArray(p.items)) playlists.push({ name: p.name.slice(0, 40), pinned: p.pinned === true ? true : undefined, note: typeof p.note === "string" ? p.note.slice(0, 80) : undefined, group: typeof p.group === "string" && p.group ? p.group.slice(0, 30) : undefined, speed: typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3 ? p.speed : undefined, items: p.items.filter(validItem).slice(0, 50).map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "" }; }) });
+      if (p && typeof p.name === "string" && Array.isArray(p.items)) playlists.push({ name: p.name.slice(0, 40), pinned: p.pinned === true ? true : undefined, note: typeof p.note === "string" ? p.note.slice(0, 80) : undefined, group: typeof p.group === "string" && p.group ? p.group.slice(0, 30) : undefined, lastPlay: typeof p.lastPlay === "number" && p.lastPlay > 0 ? p.lastPlay : undefined, speed: typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3 ? p.speed : undefined, items: p.items.filter(validItem).slice(0, 50).map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "" }; }) });
     });
   } catch (e) {}
   function savePlaylists() { try { localStorage.setItem(PL_KEY, JSON.stringify(playlists)); } catch (e) { plMsg.textContent = T("Could not save: browser storage is full or blocked. Your latest changes may be lost - export a backup."); storageWarn(); } }
@@ -11964,15 +11964,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function plFind(name) { var n = name.toLowerCase(); for (var i = 0; i < playlists.length; i++) if (playlists[i].name.toLowerCase() === n) return i; return -1; }
   function cleanName(v) { return String(v || "").replace(/\s+/g, " ").trim().slice(0, 40); }
   /* Playlists can be shown newest first (default) or sorted A to Z; the choice is remembered on this device. */
-  var plSortAZ = false;
-  try { plSortAZ = localStorage.getItem("vp-plsort.v1") === "az"; } catch (e) {}
+  var plSortMode = "new";
+  try { var _psm = localStorage.getItem("vp-plsort.v1"); if (_psm === "az" || _psm === "recent") plSortMode = _psm; } catch (e) {}
+  var plSortAZ = plSortMode === "az";
   var plSortBtn = document.createElement("button"); plSortBtn.type = "button"; plSortBtn.className = "chip"; plSortBtn.id = "plSortBtn";
   plSortBtn.addEventListener("click", function () {
-    plSortAZ = !plSortAZ; try { localStorage.setItem("vp-plsort.v1", plSortAZ ? "az" : "new"); } catch (e) {}
+    plSortMode = plSortMode === "new" ? "az" : plSortMode === "az" ? "recent" : "new";
+    plSortAZ = plSortMode === "az";
+    try { localStorage.setItem("vp-plsort.v1", plSortMode); } catch (e) {}
     plSortRefresh(); renderPlaylists();
   });
   function plSortRefresh() {
-    plSortBtn.textContent = T(plSortAZ ? "Sort: A to Z" : "Sort: Newest");
+    plSortBtn.textContent = T(plSortMode === "az" ? "Sort: A to Z" : plSortMode === "recent" ? "Sort: Recent" : "Sort: Newest");
     plSortBtn.setAttribute("aria-label", T("Change playlist order"));
     plSortBtn.hidden = playlists.length < 2;
   }
@@ -12256,6 +12259,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   (window.__relang = window.__relang || []).push(function(){if(comparePaint202)comparePaint202();});
   function plDisplayOrder() {
     var order = playlists.map(function (_, i) { return i; });
+    if (plSortMode === "recent") order.sort(function (a, b) { return (playlists[b].lastPlay || 0) - (playlists[a].lastPlay || 0); });
     if (plSortAZ) order.sort(function (a, b) { return String(playlists[a].name).toLowerCase().localeCompare(String(playlists[b].name).toLowerCase()); });
     order.sort(function (a, b) { return (playlists[b].pinned === true ? 1 : 0) - (playlists[a].pinned === true ? 1 : 0); });
     return order;
@@ -12274,6 +12278,12 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       var nm = document.createElement("span"); nm.className = "pl-name"; nm.textContent = (pl.pinned === true ? "📌 " : "") + pl.name;
       var ct = document.createElement("span"); ct.className = "pl-count"; ct.textContent = pl.items.length + " " + (pl.items.length === 1 ? T("video") : T("videos"));
       top.appendChild(nm); top.appendChild(ct);
+      if (typeof pl.lastPlay === "number" && pl.lastPlay > 0) {
+        var lp246 = document.createElement("span"); lp246.className = "pl-count";
+        lp246.textContent = "\u25B6 " + plAgo246(pl.lastPlay);
+        lp246.title = T("Last played:") + " " + new Date(pl.lastPlay).toLocaleString();
+        top.appendChild(lp246);
+      }
       function playPl() {
         if (!pl.items.length) return;
         lib.queue = pl.items.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1;
@@ -12852,7 +12862,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // like the rest) was in the Reset-all settings list but rode no backup either, so a
   // restore on a new phone silently turned the on-video clock back off. It now exports
   // and restores with the same 0/1 validation.
-  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-last.v1": /^\d{1,3}$/, "vp-sleep-playonly.v1": /^[01]$/, "vp-dl-mp3": /^[01]$/, "vp-clock-ov.v1": /^[01]$/ };
+  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new|recent)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-last.v1": /^\d{1,3}$/, "vp-sleep-playonly.v1": /^[01]$/, "vp-dl-mp3": /^[01]$/, "vp-clock-ov.v1": /^[01]$/ };
   // Round 232 fix 1: the Still watching? choice (vp-stillwatch.v1: off, or ask after 2, 3
   // or 5 auto-plays) rode no backup - Reset all settings counts it, but it was missing
   // here (the same class round 230 fix 1 closed for the on-video clock), so a restore on
@@ -12880,7 +12890,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       queuePos: (qPos >= 0 && qPos < lib.queue.length && lib.queue[qPos]) ? lib.queue[qPos].id : null,
       favourites: lib.favs.map(function (x) { return { id: x.id, title: x.title || "", pin: x.pin === true }; }),
       later: lib.later.map(function (x) { var o = { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (laterSnoozed(x)) o.snoozeUntil = x.snoozeUntil; if (typeof x.why === "string" && x.why.trim()) o.why = x.why.slice(0, 200); return o; }),
-      playlists: playlists.map(function (p) { var o = { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; if (p.pinned === true) o.pinned = true; if (typeof p.note === "string" && p.note) o.note = p.note.slice(0, 80); if (typeof p.group === "string" && p.group) o.group = p.group.slice(0, 30); if (typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3) o.speed = p.speed; return o; }),
+      playlists: playlists.map(function (p) { var o = { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; if (p.pinned === true) o.pinned = true; if (typeof p.note === "string" && p.note) o.note = p.note.slice(0, 80); if (typeof p.group === "string" && p.group) o.group = p.group.slice(0, 30); if (typeof p.lastPlay === "number" && p.lastPlay > 0) o.lastPlay = p.lastPlay; if (typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3) o.speed = p.speed; return o; }),
       moments: (function () { var o = {}; Object.keys(marks).forEach(function (id) { if (Array.isArray(marks[id]) && marks[id].length) o[id] = marks[id].map(function (m) { return { t: m.t, name: m.name || "" }; }); }); return o; })(),
       notes: (function () { var o = {}; if (typeof notes === "object" && notes) Object.keys(notes).forEach(function (id) { if (typeof notes[id] === "string" && notes[id].trim()) o[id] = notes[id]; }); return o; })(),
       lyrics: (function () { var o = {}; if (typeof lyrics === "object" && lyrics) Object.keys(lyrics).forEach(function (id) { if (typeof lyrics[id] === "string" && lyrics[id].trim()) o[id] = lyrics[id]; }); return o; })(),
@@ -12983,7 +12993,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
           // A playlist with the same name and the same videos in the same order is already here - skip it.
           if (playlists.some(function (q) { return q.name === nm && q.items.length === items.length && q.items.every(function (it, ix) { return it.id === items[ix].id; }); })) return;
           var base = nm, k = 2; while (plFind(nm) >= 0) { nm = (base.slice(0, 34) + " (" + k + ")"); k++; }
-          playlists.push({ name: nm, pinned: p.pinned === true ? true : undefined, note: typeof p.note === "string" && p.note ? p.note.slice(0, 80) : undefined, group: typeof p.group === "string" && p.group ? p.group.slice(0, 30) : undefined, speed: typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3 ? p.speed : undefined, items: items }); pn++;
+          playlists.push({ name: nm, pinned: p.pinned === true ? true : undefined, note: typeof p.note === "string" && p.note ? p.note.slice(0, 80) : undefined, group: typeof p.group === "string" && p.group ? p.group.slice(0, 30) : undefined, lastPlay: typeof p.lastPlay === "number" && p.lastPlay > 0 ? p.lastPlay : undefined, speed: typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3 ? p.speed : undefined, items: items }); pn++;
         });
         var ln = 0;
         (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length >= 50) capN++; if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { var li2 = { id: x.id, title: typeof x.title === "string" ? x.title : "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (typeof x.snoozeUntil === "number" && x.snoozeUntil > Date.now() && x.snoozeUntil < Date.now() + 30 * 864e5) li2.snoozeUntil = x.snoozeUntil; if (typeof x.why === "string" && x.why.trim()) li2.why = x.why.slice(0, 200); lib.later.push(li2); ln++; } });
@@ -18015,6 +18025,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Playlist last played and Recent sort", "#plSortBtn"],
     ["Play at a clock time", "#playAtRow"],
     ["Playlist groups", "#plList"],
     ["Playlist default speed", "#plList"],
@@ -18024,7 +18035,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Video tags", "#tagsCard"],
     ["Activity calendar", "#actCalCard"],
     ["Repeat titles", "#repeatCard"],
-    ["Overlapping playlists", "#overlapCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24522,6 +24532,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   });
   var PL_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
   function plHookPlay246(pl) {
+    // Round 246 new 4: remember when this playlist was last played (shown on its row,
+    // and the Sort chip can order by it).
+    pl.lastPlay = Date.now(); savePlaylists();
     if (typeof pl.speed !== "number" || pl.speed < 0.25 || pl.speed > 3) return;
     prefs.speed = pl.speed; savePrefs(); markActive(speedChips, String(pl.speed));
     toast(T("Speed {n}x for this playlist.").replace("{n}", pl.speed));
@@ -24703,6 +24716,26 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint);
     paint();
   })();
+  // Playlist last played and Recent sort (round 246 new 4): a playlist's row said how many videos
+  // it holds, never when you last ran it - "did I already do the Monday lecture list?" meant
+  // guessing. Playing a playlist (Play, Shuffle play, Play unwatched or from one of its videos)
+  // stamps it, the row shows a small "played 3 days ago" next to the count, and the Sort chip
+  // above the list is now a three-way cycle: Newest, A to Z, Recent. The stamp rides backups.
+  Object.assign(TR_MSG, {
+    "Playlist last played and Recent sort": ["प्लेलिस्ट आख़िरी बार और रीसेंट सॉर्ट", "પ્લેલિસ્ટ છેલ્લે અને રીસન્ટ સૉર્ટ"],
+    "Last played:": ["आख़िरी बार चली:", "છેલ્લે ચાલી:"],
+    "played today": ["आज चली", "આજે ચાલી"],
+    "played yesterday": ["कल चली", "ગઈકાલે ચાલી"],
+    "played {n} days ago": ["{n} दिन पहले चली", "{n} દિવસ પહેલા ચાલી"],
+    "Sort: Recent": ["सॉर्ट: रीसेंट", "સૉર્ટ: રીસન્ટ"]
+  });
+  function plAgo246(ts) {
+    var days = Math.floor((Date.now() - ts) / 864e5);
+    if (days <= 0) return T("played today");
+    if (days === 1) return T("played yesterday");
+    if (days < 60) return T("played {n} days ago").replace("{n}", days);
+    return new Date(ts).toLocaleDateString();
+  }
 /*R244-END*/
 
 })();
@@ -27261,6 +27294,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Playlist last played and Recent sort", "playlist last played recent sort order played days ago stamp row when did i run this playlist newest a to z", "#plSortBtn"],
       ["Play at a clock time", "play at clock time alarm start playback morning wake up schedule video queue begins later sleep timer card", "#playAtRow"],
       ["Playlist groups", "playlist groups group folder organise study music filter chip row above list file playlist under word tidy many playlists", "#plList"],
       ["Playlist default speed", "playlist default speed own rate per playlist study faster lectures music normal remember apply on play more menu", "#plList"],
