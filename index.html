@@ -2425,6 +2425,7 @@ setTimeout(done,3000);})();
       <ul class="lib-list" id="favList"></ul>
       <p class="hint" id="favTime" role="status"></p>
       <p class="hint" id="favRateLine" role="status" hidden></p>
+      <button class="chip" id="favStaleBtn" type="button" hidden></button>
       <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="histShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="histSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="histQueueBtn" type="button">Queue unfinished</button><button class="chip" id="histPlBtn" type="button">Save unfinished as playlist</button><button class="chip" id="histTrimBtn" type="button">Trim old history</button><button class="chip" id="histDoneBtn" type="button">Clear watched</button><button class="chip" id="histUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="histShortsBtn" type="button" aria-pressed="false">Hide shorts: off</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint" id="histFinLine" role="status" hidden></p>
@@ -17419,6 +17420,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Longest unwatched favourite", "#favStaleBtn"],
     ["More from this channel", "#infoChanMoreBtn"],
     ["Average watch per play", "#statsPerPlay"],
     ["Playlists at a glance", "#plTotalLine"],
@@ -21593,6 +21595,60 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     uPaint();
   })();
 
+  // Longest unwatched favourite (round 231 new 2): Surprise me picks a random favourite,
+  // but the one worth rediscovering is usually the one you have not seen for the longest
+  // time - and finding it meant reading every row. One chip under Favourites names that
+  // video and how long ago it was last watched (from the on-device history; a favourite
+  // with no history row says "not watched recently"), and one tap plays it. It hides
+  // while fewer than two favourites exist, where scanning is no work, and follows adds,
+  // removes, watches and Undo through the shared render. Hindi and Gujarati text,
+  // What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Longest unwatched": ["सबसे लंबे समय से न देखा", "સૌથી લાંબાથી ન જોયેલું"],
+    "not watched recently": ["हाल में नहीं देखा", "તાજેતરમાં ન જોયેલું"],
+    "Play the favourite you have not watched for the longest time": ["सबसे लंबे समय से न देखा पसंदीदा चलाएं", "સૌથી લાંબાથી ન જોયેલું મનપસંદ ચલાવો"],
+    "Longest unwatched favourite": ["सबसे लंबे समय से न देखा पसंदीदा", "સૌથી લાંબાથી ન જોયેલું મનપસંદ"]
+  });
+  (function () {
+    var btn = $("favStaleBtn"); if (!btn) return;
+    function lastWatched(id) {
+      var t = 0;
+      lib.hist.forEach(function (h) { if (h && h.id === id && typeof h.ts === "number" && h.ts > t) t = h.ts; });
+      return t;
+    }
+    function paint() {
+      if (lib.favs.length < 2) { btn.hidden = true; btn.textContent = ""; return; }
+      var pick = null, pickT = Infinity;
+      lib.favs.forEach(function (x) {
+        if (!x || !x.id || x.id === curId) return;
+        var t = lastWatched(x.id);
+        if (t < pickT) { pickT = t; pick = x; }
+      });
+      if (!pick) { btn.hidden = true; btn.textContent = ""; return; }
+      var age;
+      if (pickT <= 0) age = T("not watched recently");
+      else {
+        var d = Math.floor((Date.now() - pickT) / 86400000);
+        age = d <= 0 ? T("today") : d === 1 ? T("yesterday") : d + T(" days ago");
+      }
+      btn.hidden = false;
+      btn.textContent = "\u{1F570} " + T("Longest unwatched") + ": " + (pick.title || titleFor(pick.id) || ("Video " + pick.id)) + " · " + age;
+      btn.setAttribute("aria-label", T("Play the favourite you have not watched for the longest time") + ": " + (pick.title || pick.id));
+      btn._pick = pick.id;
+    }
+    btn.addEventListener("click", function () {
+      if (!btn._pick) return;
+      linkInput.value = "https://youtu.be/" + btn._pick; loadBtn.click();
+      window.scrollTo({ top: 0, behavior: window.vpReducedMotion() ? "auto" : "smooth" });
+      toast(T("Playing") + ": " + (btn.textContent.split(": ").slice(1).join(": ") || btn._pick));
+    });
+    var baseRenderLibFS = renderLib;
+    renderLib = function () { baseRenderLibFS(); try { paint(); } catch (e) {} };
+    document.addEventListener("vp-video-loaded", function () { setTimeout(paint, 400); });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+
   // More from this channel (round 231 new 1): the info card can queue or playlist the
   // playing video, but "keep this creator going" meant searching your own lists by eye.
   // When the app has learned the playing video's channel (it learns the author each time
@@ -24250,6 +24306,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Save a playlist as a text file", "save playlist text file download txt titles links readable export keep", "#lhPlaylists"],
       ["Add the playing video to a playlist", "add playing now current video to playlist save collect organise picker", "#infoPlBtn"],
       ["More from this channel", "more from this channel same channel queue unwatched suggestions creator author like this playing video", "#infoChanMoreBtn"],
+      ["Longest unwatched favourite", "longest unwatched favourite stale oldest not watched for a while rediscover star forgotten play", "#favStaleBtn"],
       ["Skip buttons in the mini player", "mini player skip back forward 10 seconds seek floating docked rewind hop", "#miniRew"],
       ["Find in lyrics", "find search lyrics words line song locate match jump next enter", "#lyrFindQ"],
       ["Snooze all in Watch later", "snooze all watch later park hide backlog every video one day wake undo", "#laterSnoozeAllBtn"],
