@@ -27156,16 +27156,19 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       rd.onload = function () {
         var res = readLinks(String(rd.result || ""));
         if (!res.anyLinks) { msg.textContent = T("That file could not be read as a bookmarks file."); return; }
-        var key = dest.value === "favs" ? "favs" : "later", list = lib[key], snap = list.slice(), added = 0, skipped = 0;
+        var key = dest.value === "favs" ? "favs" : "later", list = lib[key], addedIds = {}, added = 0, skipped = 0;
         res.found.forEach(function (x) {
           if (findIn(list, x.id) >= 0) return;
           if (key === "later" && list.length >= 50) { skipped++; return; }
-          list.push({ id: x.id, title: x.title || titleFor(x.id) || "", ts: Date.now() }); added++;
+          list.push({ id: x.id, title: x.title || titleFor(x.id) || "", ts: Date.now() }); addedIds[x.id] = 1; added++;
         });
         if (!added && !skipped) { msg.textContent = T("No new YouTube videos in that file."); return; }
         if (added) { saveLib(); renderLib(); }
         msg.textContent = T("Bookmarks added: {n}").replace("{n}", added) + (skipped ? " " + T("{n} did not fit - Watch later stops at 50.").replace("{n}", skipped) : "");
-        if (added) toastUndo(msg.textContent, function () { lib[key] = snap; saveLib(); renderLib(); msg.textContent = T("Bookmark import undone."); }, T("Bookmark import undone."));
+        // Round 262 fix: the Undo restored a snapshot of the whole list, so anything queued or saved
+        // after the import (here or in another tab) was silently wiped. It now removes only the
+        // videos this import added and leaves later additions alone.
+        if (added) toastUndo(msg.textContent, function () { lib[key] = lib[key].filter(function (x) { return !addedIds[x.id]; }); saveLib(); renderLib(); msg.textContent = T("Bookmark import undone."); }, T("Bookmark import undone."));
       };
       rd.readAsText(f);
     });
