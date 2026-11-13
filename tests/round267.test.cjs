@@ -42,4 +42,15 @@ function grab(ctx, name) {
   assert.equal(ctx.padBrightZone267(150, pad), false);
   ctx.prefs.padBright = false; assert.equal(ctx.padBrightZone267(50, pad), false);
 }
+// Preview mode: due only after the chosen seconds of real playing.
+{
+  const ctx = vm.createContext({});
+  grab(ctx, 'previewDue267');
+  assert.equal(ctx.previewDue267(30, 0, 29.9), false);
+  assert.equal(ctx.previewDue267(30, 0, 30), true);
+  assert.equal(ctx.previewDue267(60, 100, 150), false);
+  assert.equal(ctx.previewDue267(60, 100, 160), true);
+  assert.equal(ctx.previewDue267(45, 0, 500), false);
+  assert.equal(ctx.previewDue267(30, null, 500), false);
+}
 console.log('round267 ok');
