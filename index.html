@@ -26550,6 +26550,60 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint);
     paint();
   })();
+
+  // Rate backlog (round 255 new 2): every rating tool in the app (sort, queue top rated,
+  // let go of favourites) needs stars first, but rating meant opening each video. This card
+  // sits under Favourites and lists up to 5 favourites or recently watched videos that have
+  // no stars yet, each with five tap-to-rate buttons right on the row. Rating a video writes
+  // the same saved ratings as everywhere else and the row is replaced by the next unrated
+  // one; a line says how many of your favourites are rated. Hindi and Gujarati text, feature
+  // finder included.
+  Object.assign(TR_MSG, {
+    "Rate backlog": ["बिना रेटिंग वाले वीडियो", "રેટિંગ વગરના વીડિયો"],
+    "Give stars to videos that have none yet, right here. Ratings power the sort and queue tools.": ["जिन वीडियो पर अभी स्टार नहीं हैं उन्हें यहीं स्टार दें. रेटिंग से सॉर्ट और कतार टूल काम करते हैं.", "જે વીડિયો પર હજુ સ્ટાર નથી તેને અહીં જ સ્ટાર આપો. રેટિંગથી સૉર્ટ અને કતાર ટૂલ કામ કરે છે."],
+    "Everything in your favourites and history is rated.": ["आपके पसंदीदा और इतिहास में सब कुछ रेटेड है.", "તમારા પસંદીદા અને ઇતિહાસમાં બધું રેટેડ છે."],
+    "Rate {n} stars": ["{n} स्टार दें", "{n} સ્ટાર આપો"],
+    "of your favourites are rated": ["आपके पसंदीदा रेटेड हैं", "તમારા પસંદીદા રેટેડ છે"],
+    "Rated {n} stars": ["{n} स्टार दिए", "{n} સ્ટાર આપ્યા"]
+  });
+  (function () {
+    var host = $("listsCsv"); if (!host || !host.parentNode) return;
+    var card = document.createElement("details"); card.id = "rateBacklogCard"; card.className = "r239-card";
+    card.innerHTML = '<summary></summary><p class="hint r239-desc"></p><p class="hint" id="rbCount" role="status"></p><ul class="lib-list" id="rbList"></ul>';
+    host.parentNode.insertBefore(card, host.nextSibling);
+    function ratings() { try { return JSON.parse(localStorage.getItem("vp-rate.v1") || "{}") || {}; } catch (e) { return {}; } }
+    function rate(id, n) {
+      var m = ratings(); m[id] = n;
+      try { localStorage.setItem("vp-rate.v1", JSON.stringify(m)); } catch (e) { return; }
+      try { window.dispatchEvent(new Event("vp-rate-changed")); } catch (e) {}
+      toast(T("Rated {n} stars").replace("{n}", n)); paint();
+    }
+    function paint() {
+      card.querySelector("summary").textContent = T("Rate backlog");
+      card.querySelector(".r239-desc").textContent = T("Give stars to videos that have none yet, right here. Ratings power the sort and queue tools.");
+      var m = ratings(), seen = {}, todo = [], favN = 0, favR = 0;
+      lib.favs.forEach(function (x) { if (!x || !x.id) return; favN++; if (m[x.id] >= 1) favR++; });
+      lib.favs.concat(lib.hist).forEach(function (x) { if (!x || !x.id || seen[x.id]) return; seen[x.id] = 1; if (!(m[x.id] >= 1)) todo.push(x); });
+      $("rbCount").textContent = favN ? favR + "/" + favN + " " + T("of your favourites are rated") : "";
+      var ul = $("rbList"); ul.textContent = "";
+      if (!todo.length) { var li0 = document.createElement("li"); li0.className = "hint"; li0.textContent = T("Everything in your favourites and history is rated."); ul.appendChild(li0); return; }
+      todo.slice(0, 5).forEach(function (x) {
+        var li = document.createElement("li"); li.style.cssText = "display:flex;flex-direction:column;gap:4px;padding:8px 0";
+        var t = document.createElement("span"); t.textContent = x.title || x.id; t.style.cssText = "overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+        var row = document.createElement("span"); row.style.cssText = "display:flex;gap:6px";
+        for (var n = 1; n <= 5; n++) (function (n) {
+          var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = "★".repeat(1) + n;
+          b.setAttribute("aria-label", T("Rate {n} stars").replace("{n}", n) + ": " + (x.title || x.id));
+          b.addEventListener("click", function () { rate(x.id, n); }); row.appendChild(b);
+        })(n);
+        li.appendChild(t); li.appendChild(row); ul.appendChild(li);
+      });
+    }
+    card.addEventListener("toggle", function () { if (card.open) paint(); });
+    (window.__relang = window.__relang || []).push(paint);
+    window.addEventListener("vp-rate-changed", function () { if (card.open) paint(); });
+    paint();
+  })();
 /*R244-END*/
 
 })();
@@ -29113,6 +29167,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Sort queue by rating", "sort queue by rating stars best rated first liked order stars queue order", "#sortRateQueueBtn"],
       ["Sort favourites by most played", "sort favourites most played play count real score order popular replay", "#favSortPlaysBtn"],
       ["Sort a playlist by rating", "sort playlist by rating stars best rated first liked order stars playlist order undo", "#lhPlaylists"],
+      ["Rate backlog", "rate backlog unrated videos stars rating give stars favourites history without rating", "#rateBacklogCard"],
       ["Weekday rhythm", "weekday rhythm busiest day of the week monday sunday pattern when do i watch bars stats", "#weekdayCard"],
       ["Find a playlist", "find a playlist filter search saved playlists by name narrow list many playlists scroll", "#plFilterIn"],
       ["Make a copy of a playlist", "make a copy duplicate playlist clone variation season two gym version same videos new name", "#lhPlaylists"],
