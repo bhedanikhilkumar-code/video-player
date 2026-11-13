@@ -18131,6 +18131,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Data estimate", "#dataEstCard"],
     ["Reduce transparency", "#a11yTrans"],
     ["Channel captions", "#ccChanBtn"],
     ["Drop Shorts from the queue", "#qDropShortsBtn"],
@@ -18139,8 +18140,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Two-week trend", "#trendCard"],
     ["Mark a playlist as watched", "#lhPlaylists"],
     ["Battery guard", "#battGuardRow"],
-    ["Hour chart as PNG", "#statsPngBtn"],
-    ["Skip Shorts in the queue", "#qSkipShortsBtn"]
+    ["Hour chart as PNG", "#statsPngBtn"]
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -26134,6 +26134,48 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(transPaint);
     transPaint();
   })();
+
+  // Data estimate (round 253 new 2): Watch stats knows how long you watched, but the
+  // question on a mobile-data plan is "how much data did that burn?" This small card in
+  // Data and battery saver turns this month's watched time into a rough data figure:
+  // about 0.26 GB per hour while Data saver is on (480p), about 0.7 GB per hour on mixed
+  // quality otherwise. It says plainly that the real number depends on the quality each
+  // video picks - a guess, worked out on this device, nothing sent anywhere. Read-only,
+  // repaints on language switch and when opened, Hindi and Gujarati text, What's new and
+  // feature finder included.
+  Object.assign(TR_MSG, {
+    "Data estimate": ["डेटा अनुमान", "ડેટા અંદાજ"],
+    "A rough guess of the mobile data your watching uses, worked out on this device.": ["आपके देखने में लगने वाले मोबाइल डेटा का मोटा अनुमान, इसी डिवाइस पर गिना गया.", "તમારા જોવામાં વપરાતા મોબાઇલ ડેટાનો મોટ્ટો અંદાજ, આ જ ડિવાઇસ પર ગણેલો."],
+    "This month: about": ["इस महीने: लगभग", "આ મહિને: આશરે"],
+    "watched": ["देखा गया", "જોયું"],
+    "No watching this month yet.": ["इस महीने अभी कुछ नहीं देखा गया.", "આ મહિને હજુ કંઈ જોયું નથી."],
+    "Guessed at Data-saver 480p rates; the real number depends on the quality each video picks.": ["डेटा-सेवर 480p दर से अनुमान; असली संख्या हर वीडियो की क्वालिटी पर निर्भर करती है.", "ડેટા-સેવર 480p દરે અંદાજ; ખરી સંખ્યા દરેક વીડિયોની ક્વોલિટી પર આધાર રાખે છે."],
+    "Guessed at mixed-quality rates; turn Data saver on to use less.": ["मिश्रित क्वालिटी दर से अनुमान; कम डेटा के लिए डेटा सेवर चालू करें.", "મિશ્ર ક્વોલિટી દરે અંદાજ; ઓછો ડેટા માટે ડેટા સેવર ચાલુ કરો."]
+  });
+  (function () {
+    var saver = $("ctl-saver"); if (!saver) return;
+    var card = document.createElement("details"); card.id = "dataEstCard"; card.className = "r239-card";
+    card.innerHTML = '<summary></summary><p class="hint r239-desc"></p><p class="hint" id="dataEstMain" role="status"></p><p class="hint" id="dataEstSub"></p>';
+    saver.appendChild(card);
+    function fmtData(gb) { return gb < 1 ? Math.max(1, Math.round(gb * 1024 / 10) * 10) + " MB" : (Math.round(gb * 10) / 10) + " GB"; }
+    function paint() {
+      card.querySelector("summary").textContent = T("Data estimate");
+      card.querySelector(".r239-desc").textContent = T("A rough guess of the mobile data your watching uses, worked out on this device.");
+      var main = $("dataEstMain"), sub = $("dataEstSub");
+      var now = new Date(), secs = 0;
+      if (stats && stats.days) Object.keys(stats.days).forEach(function (k) {
+        var p = k.split("-");
+        if (Number(p[0]) === now.getFullYear() && Number(p[1]) === now.getMonth() + 1) secs += Number(stats.days[k]) || 0;
+      });
+      if (!(secs > 0)) { main.textContent = T("No watching this month yet."); sub.textContent = ""; return; }
+      var hours = secs / 3600, gb = hours * (prefs.dataSaver === true ? 0.26 : 0.7);
+      main.textContent = T("This month: about") + " " + fmtData(gb) + " (" + fmtWatch(secs) + " " + T("watched") + ")";
+      sub.textContent = prefs.dataSaver === true ? T("Guessed at Data-saver 480p rates; the real number depends on the quality each video picks.") : T("Guessed at mixed-quality rates; turn Data saver on to use less.");
+    }
+    card.addEventListener("toggle", function () { if (card.open) paint(); });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
 /*R244-END*/
 
 })();
@@ -28692,6 +28734,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Data estimate", "data estimate mobile data usage gb mb this month watching how much internet plan saver 480p rough guess", "#dataEstCard"],
       ["Reduce transparency", "reduce transparency solid cards no glass blur see through readability low vision iphone setting frosted off", "#a11yTrans"],
       ["Channel captions", "channel captions cc subtitles remember per channel lectures music auto on off subtitles memory", "#ccChanBtn"],
       ["Drop Shorts from the queue", "drop shorts queue remove short videos under a minute reels tidy upcoming clean list", "#qDropShortsBtn"],
