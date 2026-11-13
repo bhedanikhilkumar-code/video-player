@@ -11685,9 +11685,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           plSay(T("Playlist saved as a text file."));
         } catch (e) { plSay(T("Could not copy. Try again.")); }
       });
+      Object.assign(TR_MSG, { "Playlist deleted:": ["प्लेलिस्ट हटाई:", "પ્લેલિસ્ટ કાઢી:"] });
       btn(T("Delete"), "pl-del", async function () {
         if (!await vpConfirm(T("Delete the playlist") + " \"" + pl.name + "\"? " + T("Your queue stays as it is."), T("Delete"))) return;
-        playlists.splice(idx, 1); savePlaylists(); renderPlaylists(); plSay(T("Deleted."));
+        // Round 225 fix 1: deleting a whole playlist (up to 50 picked videos) asked once
+        // and was gone for good, while every item-level action on the same row (Remove
+        // watched, Sort, Split...) offers Undo. One Undo toast now puts it back at its
+        // old place (skipped when a playlist with that name exists meanwhile, or the
+        // list is full).
+        var gone = playlists.splice(idx, 1)[0];
+        savePlaylists(); renderPlaylists(); plSay(T("Deleted."));
+        toastUndo(T("Playlist deleted:") + " " + gone.name, function () {
+          if (plFind(gone.name) >= 0 || playlists.length >= PL_MAX) return;
+          playlists.splice(Math.min(idx, playlists.length), 0, gone); savePlaylists(); renderPlaylists();
+        }, T("Playlist restored"));
       });
       // Playlist actions More menu (round 199, wiring): the first four chips stay in the
       // row; every later chip moves into the glass More menu. Moving nodes keeps each
