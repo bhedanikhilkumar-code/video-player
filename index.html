@@ -9405,7 +9405,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (restore !== false) { send("setPlaybackRate", [holdPrev]); showFlash(holdPrev + "\u00d7"); say(T("Speed back to ") + holdPrev + "x."); }
       }
     }
+    var padPointers266 = new Set(), multiGesture266 = false;
     pad.addEventListener("pointerdown", function (e) {
+      padPointers266.add(e.pointerId);
+      if (padPointers266.size > 1 || multiGesture266) { multiGesture266 = true; tracking = false; holdEnd(); lastTap = 0; lastSide = ""; return; }
       tracking = true; sx = e.clientX; sy = e.clientY;
       // Round 206 fix 1: keep the gesture even when the pointer leaves the pad mid-swipe.
       // Without capture, a mouse drag (or an edge-case touch) that crosses the pad's edge
@@ -9427,7 +9430,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         say(T("{n}x speed while held.").replace("{n}", rr));
       }, 350);
     });
-    pad.addEventListener("pointercancel", function () { tracking = false; holdEnd(); });
+    pad.addEventListener("pointercancel", function (e) { padPointers266.delete(e.pointerId); if (!padPointers266.size) multiGesture266 = false; tracking = false; holdEnd(); });
     // Live preview while the finger is still moving: show the volume it would land on,
     // or the 30 second jump direction, so the gesture feels direct instead of delayed.
     pad.addEventListener("pointermove", function (e) {
@@ -9443,6 +9446,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       }
     });
     pad.addEventListener("pointerup", function (e) {
+      padPointers266.delete(e.pointerId);
+      if (multiGesture266) { if (!padPointers266.size) multiGesture266 = false; tracking = false; holdEnd(); return; }
       if (!tracking) return; tracking = false;
       if (holdTimer) { clearTimeout(holdTimer); holdTimer = 0; }
       if (holdBoost) { holdEnd(); return; }
