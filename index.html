@@ -12423,6 +12423,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // rating while queue, notes and even channel volumes moved over. Export them like
       // the other maps (valid 11-character ids, whole 1-5 values only).
       ratings: (function () { var o = {}; try { var m = JSON.parse(localStorage.getItem("vp-rate.v1") || "{}"); if (m && typeof m === "object") Object.keys(m).forEach(function (k) { var v = Math.round(Number(m[k])); if (/^[a-zA-Z0-9_-]{11}$/.test(k) && v >= 1 && v <= 5) o[k] = v; }); } catch (e) {} return o; })(),
+      // Round 231 fix 3: the recent-downloads list rode no backup - every other list the
+      // app keeps could move to a new phone, but the downloads record went nowhere (round
+      // 228 even added a text-file save because there was no other way to keep it). The
+      // export now carries it (validated like the other sections) and the import merges
+      // it, an entry already on this device winning on the same url+kind.
+      dlHistory: (function () { var h = []; try { h = JSON.parse(localStorage.getItem("vp-dl-hist") || "[]"); } catch (e) {} if (!Array.isArray(h)) return []; return h.filter(function (x) { return x && typeof x.url === "string" && x.url && x.url.length <= 2000; }).slice(0, 10).map(function (x) { return { url: String(x.url), title: typeof x.title === "string" ? x.title.slice(0, 200) : "", kind: x.kind === "mp3" ? "mp3" : "video", t: typeof x.t === "number" ? x.t : 0 }; }); })(),
       settings: { prefs: prefs, queueModes: queueModes, vmem: vmem } };
     // Round 231 fix 1: the focus session choices (auto-pick) rode no backup - vp-focus.v1
     // is counted by Reset all settings since round 229, but it was missing here, so a
@@ -12462,11 +12468,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (nChVol) libBackupMsg.textContent += " " + T("Channel volumes included: ") + nChVol + ".";
     var nRate = Object.keys(data.ratings || {}).length;
     if (nRate) libBackupMsg.textContent += " " + T("Ratings included: ") + nRate + ".";
+    if (data.dlHistory.length) libBackupMsg.textContent += " " + T("Downloads included: ") + data.dlHistory.length + ".";
     bkMark();
   });
   Object.assign(TR_MSG, {
     "Ratings included: ": ["\u0930\u0947\u091f\u093f\u0902\u0917 \u0936\u093e\u092e\u093f\u0932: ", "\u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97 \u0ab8\u0abe\u0aae\u0ac7\u0ab2: "],
     "Ratings restored: ": ["\u0930\u0947\u091f\u093f\u0902\u0917 \u0935\u093e\u092a\u0938 \u092e\u093f\u0932\u0940\u0902: ", "\u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97 \u0aaa\u0abe\u0a9b\u0ac0 \u0aae\u0ab3\u0ac0: "]
+  });
+  Object.assign(TR_MSG, {
+    "Downloads included: ": ["डाउनलोड शामिल: ", "ડાઉનલોડ સામેલ: "],
+    "Downloads restored: ": ["डाउनलोड वापस मिले: ", "ડાઉનલોડ પાછા મળ્યા: "],
+    "Downloads": ["डाउनलोड", "ડાઉનલોડ"]
   });
   Object.assign(TR_MSG, { "Not added because the list holds 50 at most: ": ["जोड़े नहीं गए क्योंकि सूची में अधिकतम 50 आते हैं: ", "ઉમેર્યા નથી કારણ કે યાદીમાં વધુમાં વધુ 50 આવે છે: "] });
   $("libImport").addEventListener("click", function () { $("libImportFile").click(); });
@@ -12555,6 +12567,27 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             rmap[k] = v; rtn++;
           });
           if (rtn) { try { localStorage.setItem("vp-rate.v1", JSON.stringify(rmap)); } catch (e) {} try { window.dispatchEvent(new Event("vp-rate-changed")); } catch (e) {} }
+        }
+        // Round 231 fix 3: restore the recent-downloads list too - an entry already on
+        // this device wins on the same url+kind, newest first, capped at 10 like the
+        // downloader keeps it.
+        var dn = 0;
+        if (Array.isArray(d.dlHistory)) {
+          var curD = []; try { curD = JSON.parse(localStorage.getItem("vp-dl-hist") || "[]"); } catch (e) {} if (!Array.isArray(curD)) curD = [];
+          var seenD = {}; curD.forEach(function (x) { if (x && typeof x.url === "string") seenD[x.url + "|" + (x.kind === "mp3" ? "mp3" : "video")] = 1; });
+          d.dlHistory.forEach(function (x) {
+            if (!x || typeof x.url !== "string" || !x.url || x.url.length > 2000) return;
+            var k = x.url + "|" + (x.kind === "mp3" ? "mp3" : "video");
+            if (seenD[k]) return;
+            seenD[k] = 1;
+            curD.push({ url: x.url, title: typeof x.title === "string" ? x.title.slice(0, 200) : "", kind: x.kind === "mp3" ? "mp3" : "video", t: typeof x.t === "number" ? x.t : 0 });
+            dn++;
+          });
+          if (dn) {
+            curD.sort(function (a, b) { return (b.t || 0) - (a.t || 0); });
+            try { localStorage.setItem("vp-dl-hist", JSON.stringify(curD.slice(0, 10))); } catch (e) {}
+            if (typeof window.__dlHistRender === "function") window.__dlHistRender();
+          }
         }
         var mn = 0;
         if (d.moments && typeof d.moments === "object" && !Array.isArray(d.moments)) {
@@ -12658,7 +12691,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             });
           }
         }
-        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !cn && !csn && !cqn && !cvn && !rtn && !hn && !sn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app.") + (capN ? " " + T("Not added because the list holds 50 at most: ") + capN + "." : ""); return; }
+        if (!qn && !fn && !pn && !ln && !mn && !nn && !nl && !nSyn && !cn && !csn && !cqn && !cvn && !rtn && !dn && !hn && !sn && !gotSettings) { libBackupMsg.textContent = T("Nothing new to import - use a backup file made by this app.") + (capN ? " " + T("Not added because the list holds 50 at most: ") + capN + "." : ""); return; }
         saveLib(); renderLib(); if (pn) { savePlaylists(); renderPlaylists(); }
         bkMark();
         if (typeof window.__vpImportSnap === "function") window.__vpImportSnap(impSnap);
@@ -12675,6 +12708,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (cqn) libBackupMsg.textContent += " " + T("Channel qualities restored: ") + cqn + ".";
         if (cvn) libBackupMsg.textContent += " " + T("Channel volumes restored: ") + cvn + ".";
         if (rtn) libBackupMsg.textContent += " " + T("Ratings restored: ") + rtn + ".";
+        if (dn) libBackupMsg.textContent += " " + T("Downloads restored: ") + dn + ".";
         if (gotSettings) { libBackupMsg.textContent += " " + T("Settings restored. Reloading to apply\u2026"); setTimeout(function () { location.reload(); }, 1200); }
       } catch (e) { libBackupMsg.textContent = T("That file could not be read. Use a backup file made by this app."); }
     };
@@ -19816,6 +19850,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (objLen(d.ratings)) parts.push(T("Ratings") + " " + objLen(d.ratings));
     if (objLen(d.lyrics)) parts.push(T("Lyrics") + " " + objLen(d.lyrics));
     if (objLen(d.practiceLoops)) parts.push(T("Practice loops") + " " + objLen(d.practiceLoops));
+    if (cnt(d.dlHistory)) parts.push(T("Downloads") + " " + cnt(d.dlHistory));
     parts.push(T("Settings") + " " + (d.settings ? "✓" : "✗"));
     return "✅ " + T("Backup from") + " " + (when || T("date unknown")) + " - " + parts.join(" · ") + ". " + T("Looks good - Import backup above merges it into this device.");
   }
@@ -21919,6 +21954,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   };
   (window.__relang = window.__relang || []).push(dlRelang);
   dlRelang();
+  window.__dlHistRender = histRender;
   function setBusy(b, msg) { busy = b; infoBtn.disabled = vBtn.disabled = mBtn.disabled = b; if (msg) statusEl.textContent = T(msg); }
   /* Leaving the page kills a running download - warn first (browser shows its own text). */
   window.addEventListener("beforeunload", function (e) {
