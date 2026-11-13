@@ -24155,7 +24155,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function ab(t,fn){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T(t);b.addEventListener('click',fn);act.appendChild(b);}
     ab('Play this mix',function(){var r=last;if(!r.items.length)return;var snap=lib.queue.slice();lib.queue=r.items.map(function(c){return {id:c.id,title:c.title};});qPos=-1;saveLib();renderLib();toastUndo(T('Mix replaced the queue:')+' '+r.items.length,function(){lib.queue=snap;qPos=-1;saveLib();renderLib();},T('Queue restored'));playQueueAt(0);});
     ab('Add to queue',function(){var n=0;last.items.forEach(function(c){if(findIn(lib.queue,c.id)<0&&lib.queue.length<50){lib.queue.push({id:c.id,title:c.title});n++;}});saveLib();renderLib();$('mxMsg').textContent=T('Mix added to the queue:')+' '+n;});
-    ab('Save as playlist',function(){if(!last.items.length)return;if(playlists.length>=PL_MAX){$('mxMsg').textContent=T('Playlist list is full (30). Delete one first.');return;}var nm=T('Mix builder')+' '+new Date().toLocaleDateString(undefined,{day:'numeric',month:'short'});playlists.push({name:nm,items:last.items.map(function(c){return {id:c.id,title:c.title};})});savePlaylists();renderPlaylists();$('mxMsg').textContent=T('Mix saved as a playlist:')+' '+nm;});
+    ab('Save as playlist',function(){if(!last.items.length)return;if(playlists.length>=PL_MAX){$('mxMsg').textContent=T('Playlist list is full (30). Delete one first.');return;}
+    // Round 246 fix 4: two mixes saved on the same day both got "Mix builder 13 Nov" - two
+    // playlists with one name, and features that find a playlist by name (Weekly plan) then
+    // always picked the first. Number the name like the Library words saver does.
+    var base=T('Mix builder')+' '+new Date().toLocaleDateString(undefined,{day:'numeric',month:'short'}),nm=base,k=2;
+    while(playlists.some(function(p){return p.name.toLowerCase()===nm.toLowerCase();}))nm=base+' '+(k++);
+    playlists.push({name:nm,items:last.items.map(function(c){return {id:c.id,title:c.title};})});savePlaylists();renderPlaylists();$('mxMsg').textContent=T('Mix saved as a playlist:')+' '+nm;});
     paintList();}
   $('mxMin').addEventListener('input',paintList);$('mxSkip').addEventListener('change',paintList);$('mxOrd').addEventListener('change',function(){order=$('mxOrd').value;paintList();});
   card.addEventListener('toggle',function(){if(card.open)paintList();});
