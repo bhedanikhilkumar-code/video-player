@@ -13303,7 +13303,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (chanStarBtn) chanStarBtn.addEventListener("click", function () {
     var c = chanCur(); if (!c) { toast(T("Load a video to save its channel")); return; }
     var i = chanFind(c.n);
-    if (i >= 0) { vpChans.splice(i, 1); vpChansSave(); chanStarRender(); chanRowRender(); toast(T("Channel removed")); }
+    if (i >= 0) {
+      // Round 223 fix 3: un-starring the loaded video's channel from the info card dropped it
+      // with a plain toast, while removing the same channel from the chip row offered Undo.
+      var goneC = vpChans.splice(i, 1)[0]; vpChansSave(); chanStarRender(); chanRowRender();
+      toastUndo(T("Channel removed"), function () { if (chanFind(goneC.n) < 0 && vpChans.length < 30) { vpChans.splice(Math.min(i, vpChans.length), 0, goneC); vpChansSave(); chanRowRender(); chanStarRender(); } }, T("Channel restored"));
+    }
     else {
       if (vpChans.length >= 30) { toast(T("You can keep up to 30 channels. Remove one first.")); return; }
       vpChans.push(c); vpChansSave(); chanStarRender(); chanRowRender(); toast(T("Channel saved"));
