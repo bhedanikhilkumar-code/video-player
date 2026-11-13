@@ -18026,6 +18026,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Weave playlists", "#weaveCard"],
     ["Import YouTube subscriptions", "#chanImportRow"],
     ["Playlist last played and Recent sort", "#plSortBtn"],
     ["Play at a clock time", "#playAtRow"],
@@ -18035,7 +18036,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Rediscover", "#rediscoverCard"],
     ["Weekly plan", "#weekPlanCard"],
     ["Video tags", "#tagsCard"],
-    ["Activity calendar", "#actCalCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24791,6 +24791,57 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint);
     paint();
   })();
+  // Weave playlists (round 247 new 1): "Merge into" glues one playlist after another, and a long
+  // evening of "all of A, then all of B" gets dull. This card takes two or three saved playlists and
+  // weaves them: one (or two, or three) videos from each in turn, until all are used. A video that
+  // sits in more than one playlist is used once, the queue cap of 50 is respected and named, and
+  // the preview shows the first videos before anything changes. Replace queue / Add to queue both
+  // carry Undo. Nothing is stored, so there is nothing for the backup to carry.
+  Object.assign(TR_MSG, {
+    "Weave playlists": ["प्लेलिस्ट मिलाएँ", "પ્લેલિસ્ટ ભેળવો"],
+    "Take turns between two or three playlists: a few videos from each, again and again, instead of all of one first.": ["दो या तीन प्लेलिस्ट से बारी-बारी: सबसे पहले एक की सारी वीडियो के बजाय हर एक से कुछ वीडियो.", "બે કે ત્રણ પ્લેલિસ્ટમાંથી વારાફરતી: પહેલા એકની બધી વીડિયોને બદલે દરેકમાંથી થોડી વીડિયો."],
+    "First playlist": ["पहली प्लेलिस्ट", "પહેલી પ્લેલિસ્ટ"],
+    "Second playlist": ["दूसरी प्लेलिस्ट", "બીજી પ્લેલિસ્ટ"],
+    "Third playlist (optional)": ["तीसरी प्लेलिस्ट (वैकल्पिक)", "ત્રીજી પ્લેલિસ્ટ (વૈકલ્પિક)"],
+    "Choose a playlist": ["प्लेलिस्ट चुनें", "પ્લેલિસ્ટ પસંદ કરો"],
+    "Videos per turn": ["हर बारी में वीडियो", "દરેક વારામાં વીડિયો"],
+    "Replace queue": ["कतार बदलें", "કતાર બદલો"],
+    "Pick at least two different playlists to weave.": ["बुनने के लिए कम से कम दो अलग प्लेलिस्ट चुनें.", "ભેળવવા માટે ઓછામાં ઓછી બે અલગ પ્લેલિસ્ટ પસંદ કરો."],
+    "Woven order:": ["बुना हुआ क्रम:", "ભેળવેલો ક્રમ:"],
+    "Only the first 50 fit in the queue.": ["कतार में सिर्फ़ पहले 50 आएँगे.", "કતારમાં ફક્ત પહેલા 50 સમાશે."],
+    "Duplicates were used once.": ["दोहराई गई वीडियो एक बार ली गईं.", "ફરી આવેલી વીડિયો એક જ વાર લીધી."],
+    "Woven playlists replaced the queue:": ["बुनी प्लेलिस्ट ने कतार बदली:", "ભેળવેલી પ્લેલિસ્ટે કતાર બદલી:"],
+    "Woven playlists added to the queue:": ["बुनी प्लेलिस्ट कतार में जुड़ीं:", "ભેળવેલી પ્લેલિસ્ટ કતારમાં ઉમેરી:"],
+    "Queue restored": ["कतार वापस आई", "કતાર પાછી આવી"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='weaveCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div id="wvSel" style="display:flex;flex-direction:column;gap:6px;margin:8px 0"></div><div class="row" id="wvAct" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div><ol id="wvPrev" class="wv-prev"></ol><p class="hint" id="wvMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var st=document.createElement('style');st.textContent='#weaveCard .wv-r{display:flex;align-items:center;gap:8px}#weaveCard .wv-r label{flex:0 0 118px;font-size:14px}#weaveCard .wv-r select{flex:1;min-width:0}#weaveCard .wv-prev{margin:6px 0 0;padding-left:22px;font-size:14px}#weaveCard .wv-prev li{margin:2px 0;overflow-wrap:anywhere}';document.head.appendChild(st);
+  var pick=['','',''],per=1;
+  function weave(){var src=[];pick.forEach(function(n){if(!n)return;var p=null;for(var i=0;i<playlists.length;i++)if(playlists[i].name===n){p=playlists[i];break;}if(p&&src.indexOf(p)<0)src.push(p);});
+    if(src.length<2)return null;var pos=src.map(function(){return 0;}),seen={},out=[],dup=false,more=true;
+    while(more){more=false;for(var a=0;a<src.length;a++){var it=src[a].items||[],taken=0;while(taken<per&&pos[a]<it.length){var x=it[pos[a]++];if(seen[x.id]){dup=true;continue;}seen[x.id]=1;out.push({id:x.id,title:x.title||''});taken++;}if(pos[a]<it.length)more=true;}}
+    return {list:out,dup:dup,srcs:src.length};}
+  function paint(){card.querySelector('summary').textContent=T('Weave playlists');card.querySelector('.r239-desc').textContent=T('Take turns between two or three playlists: a few videos from each, again and again, instead of all of one first.');
+    var box=$('wvSel');box.textContent='';var labels=['First playlist','Second playlist','Third playlist (optional)'];
+    for(var i=0;i<3;i++)(function(i){var r=document.createElement('div');r.className='wv-r';var l=document.createElement('label');l.textContent=T(labels[i]);l.htmlFor='wvSel'+i;var s=document.createElement('select');s.id='wvSel'+i;
+      var o0=document.createElement('option');o0.value='';o0.textContent=T('Choose a playlist');s.appendChild(o0);
+      playlists.forEach(function(p){var o=document.createElement('option');o.value=p.name;o.textContent=p.name;s.appendChild(o);});
+      s.value=pick[i];if(s.value!==pick[i])pick[i]='';s.addEventListener('change',function(){pick[i]=s.value;paint();});r.appendChild(l);r.appendChild(s);box.appendChild(r);})(i);
+    var r2=document.createElement('div');r2.className='wv-r';var l2=document.createElement('label');l2.textContent=T('Videos per turn');l2.htmlFor='wvPer';var s2=document.createElement('select');s2.id='wvPer';[1,2,3].forEach(function(n){var o=document.createElement('option');o.value=String(n);o.textContent=String(n);s2.appendChild(o);});s2.value=String(per);s2.addEventListener('change',function(){per=+s2.value||1;paint();});r2.appendChild(l2);r2.appendChild(s2);box.appendChild(r2);
+    var A=$('wvAct'),P=$('wvPrev'),M=$('wvMsg');A.textContent='';P.textContent='';var w=weave();
+    if(!w){M.textContent=T('Pick at least two different playlists to weave.');return;}
+    M.textContent=T('Woven order:')+' '+w.list.length+' '+T(w.list.length===1?'video':'videos')+(w.list.length>50?' · '+T('Only the first 50 fit in the queue.'):'')+(w.dup?' · '+T('Duplicates were used once.'):'');
+    w.list.slice(0,6).forEach(function(x){var li=document.createElement('li');li.textContent=x.title||x.id;P.appendChild(li);});
+    function ab(tx,fn){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T(tx);A.appendChild(b);b.addEventListener('click',fn);}
+    ab('Replace queue',function(){var cur=weave();if(!cur||!cur.list.length)return;var snap=lib.queue.slice(),n=Math.min(50,cur.list.length);lib.queue=cur.list.slice(0,50);qPos=-1;saveLib();renderLib();$('wvMsg').textContent=T('Woven playlists replaced the queue:')+' '+n;toastUndo(T('Woven playlists replaced the queue:')+' '+n,function(){lib.queue=snap;saveLib();renderLib();},T('Queue restored'));});
+    ab('Add to queue',function(){var cur=weave();if(!cur)return;var n=0;cur.list.forEach(function(x){if(findIn(lib.queue,x.id)<0&&lib.queue.length<50){lib.queue.push(x);n++;}});saveLib();renderLib();$('wvMsg').textContent=T('Woven playlists added to the queue:')+' '+n;});}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRP3=renderPlaylists;renderPlaylists=function(){oldRP3.apply(this,arguments);if(card.open&&!(document.activeElement&&document.activeElement.closest('#weaveCard')))paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27349,6 +27400,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Weave playlists", "weave playlists interleave mix two playlists take turns alternate combine queue shuffle between", "#weaveCard"],
       ["Import YouTube subscriptions", "import youtube subscriptions csv google takeout channels saved favourite star move from youtube app", "#chanImportRow"],
       ["Playlist last played and Recent sort", "playlist last played recent sort order played days ago stamp row when did i run this playlist newest a to z", "#plSortBtn"],
       ["Play at a clock time", "play at clock time alarm start playback morning wake up schedule video queue begins later sleep timer card", "#playAtRow"],
