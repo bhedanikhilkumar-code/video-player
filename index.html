@@ -2057,7 +2057,7 @@ setTimeout(done,3000);})();
           <textarea class="note-box" id="noteBox" maxlength="600" rows="4" disabled aria-labelledby="notesH"></textarea>
           <div class="note-meta"><span id="noteStatus" role="status"></span><span id="noteCount">0 / 600</span></div>
           <div class="marks-list" id="noteTimes"></div>
-          <div class="row"><button class="chip" id="noteTimeBtn" type="button" disabled>⏱ Add current time</button> <button class="chip vs-mic" id="noteMicBtn" type="button" aria-label="Speak your note" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button> <button class="chip" id="noteCopyBtn" type="button" disabled>📋 Copy note</button> <button class="chip" id="noteClearBtn" type="button" disabled>🗑 Clear note</button> <button class="chip" id="noteToMarksBtn" type="button" disabled>🔖 Times to moments</button></div>
+          <div class="row"><button class="chip" id="noteTimeBtn" type="button" disabled>⏱ Add current time</button> <button class="chip vs-mic" id="noteMicBtn" type="button" aria-label="Speak your note" hidden disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button> <button class="chip" id="noteCopyBtn" type="button" disabled>📋 Copy note</button> <button class="chip" id="noteClearBtn" type="button" disabled>🗑 Clear note</button> <button class="chip" id="noteToMarksBtn" type="button" disabled>🔖 Times to moments</button> <button class="chip" id="noteShareBtn" type="button" disabled>🔗 Copy note with link</button></div>
           <p class="hint" id="notesHint">Write what you want to remember. Times like 1:23 in your note become buttons that jump there. Saved on this device, for each video.</p>
           <details class="note-find" id="noteFindBox">
             <summary id="noteFindSum">Find in all notes</summary>
@@ -15546,6 +15546,30 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     paint();
   })();
 
+  // Copy note with link (round 224 new 4): Copy note gives bare text, so pasting it into a chat
+  // lost which video it was about. This copies the video title, its youtu.be link and the note
+  // with the same hang-safe copy the other Copy chips use.
+  Object.assign(TR_MSG, {
+    "🔗 Copy note with link": ["🔗 लिंक के साथ नोट कॉपी करें", "🔗 લિંક સાથે નોંધ કોપી કરો"],
+    "Note and link copied": ["नोट और लिंक कॉपी हुए", "નોંધ અને લિંક કોપી થયાં"],
+    "Copy note with link": ["लिंक के साथ नोट कॉपी करें", "લિંક સાથે નોંધ કોપી કરો"]
+  });
+  (function () {
+    var b = $("noteShareBtn"), nb = $("noteBox"); if (!b || !nb) return;
+    function paint() { b.textContent = T("🔗 Copy note with link"); b.disabled = !curId || !nb.value.trim(); }
+    b.addEventListener("click", function () {
+      if (!curId || !nb.value.trim()) return;
+      noteFlush();
+      var text = (titleFor(curId) || curId) + "\nhttps://youtu.be/" + curId + "\n" + nb.value.trim() + "\n";
+      if (window.vpCopySafe) window.vpCopySafe(text, function (ok) { toast(ok ? T("Note and link copied") : T("Could not copy. Try again.")); });
+      else toast(T("Could not copy. Try again."));
+    });
+    nb.addEventListener("input", paint);
+    (window.__relang = window.__relang || []).push(paint);
+    var rn1 = renderNotes; renderNotes = function () { var r = rn1.apply(this, arguments); paint(); return r; };
+    paint();
+  })();
+
   // Find in all notes: search every saved note and jump to the matching video.
   (function () {
     var inp = $("noteFindIn"), out = $("noteFindOut"); if (!inp || !out) return;
@@ -16423,6 +16447,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Copy note with link", "#noteShareBtn"],
     ["Note times to moments", "#noteToMarksBtn"],
     ["Import notes from a file", "#notesImportBtn"],
     ["Clear all notes with Undo", "#notesClearAllBtn"],
@@ -16432,7 +16457,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Shift all moments by 5 seconds", "#markShiftBackBtn"],
     ["Clear all moments with Undo", "#markClearBtn"],
     ["This month in Watch stats", "#statsMonth"],
-    ["Save the download queue as text", "#dlQTxtBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23014,6 +23038,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Copy note with link", "copy note link title share paste chat youtu.be clipboard send", "#noteShareBtn"],
       ["Note times to moments", "note times moments save convert timestamps 1:23 bookmarks jump chorus study", "#noteToMarksBtn"],
       ["Import notes from a file", "import notes text file txt restore another phone load saved notes backup", "#notesImportBtn"],
       ["Clear all notes with Undo", "clear all notes delete wipe every note undo study session reset", "#notesClearAllBtn"],
