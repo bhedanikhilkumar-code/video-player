@@ -32838,6 +32838,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     " chapters.": [" चैप्टर.", " ચેપ્ટર."],
     "skipped: a file keeps up to 20 chapters.": ["छोड़े गए: एक फ़ाइल में अधिकतम 20 चैप्टर रहते हैं.", "છોડ્યા: એક ફાઇલમાં વધુમાં વધુ 20 ચેપ્ટર રહે છે."],
     "Chapters from a typed list": ["टाइप सूची से चैप्टर", "ટાઇપ યાદીથી ચેપ્ટર"],
+    "Copy chapter list": ["चैप्टर सूची कॉपी करें", "ચેપ્ટર યાદી કૉપિ કરો"],
+    "Chapter list copied": ["चैप्टर सूची कॉपी हुई", "ચેપ્ટર યાદી કૉપિ થઈ"],
+    "Copy the chapter list": ["चैप्टर सूची कॉपी करें", "ચેપ્ટર યાદી કૉપિ કરો"],
     "Soft pause": ["\u0928\u0930\u092e \u0930\u0941\u0915\u093e\u0935\u091f", "\u0aa8\u0ab0\u0aae \u0a85\u0a9f\u0a95\u0abe\u0ab5"],
     "Soft pause on - the sound eases out and back in.": ["\u0928\u0930\u092e \u0930\u0941\u0915\u093e\u0935\u091f \u091a\u093e\u0932\u0942 - \u0906\u0935\u093e\u091c\u093c \u0927\u0940\u0930\u0947 \u0938\u0947 \u0998\u091f\u0924\u0940 \u0914\u0930 \u0932\u094c\u091f\u0924\u0940 \u0939\u0948.".replace("\u0998","\u0918"), "\u0aa8\u0ab0\u0aae \u0a85\u0a9f\u0a95\u0abe\u0ab5 \u0a9a\u0abe\u0ab2\u0ac1 - \u0a85\u0ab5\u0abe\u0a9c \u0aa7\u0ac0\u0ab0\u0ac7\u0aa5\u0ac0 \u0a98\u0a9f\u0ac7 \u0a9b\u0ac7 \u0a85\u0aa8\u0ac7 \u0aaa\u0abe\u0a9b\u0acb \u0a86\u0ab5\u0ac7 \u0a9b\u0ac7."],
     "Soft pause off.": ["\u0928\u0930\u092e \u0930\u0941\u0915\u093e\u0935\u091f \u092c\u0902\u0926.", "\u0aa8\u0ab0\u0aae \u0a85\u0a9f\u0a95\u0abe\u0ab5 \u0aac\u0a82\u0aa7."]
@@ -34216,6 +34219,31 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (full) msg.textContent += " " + full + " " + T("skipped: a file keeps up to 20 chapters.");
     });
     if (window.__vpWnew283) window.__vpWnew283("Chapters from a typed list", "#lpChPasteBox");
+  })();
+
+  // Copy the chapter list (round 284 new 2): chapters could go in (by hand, auto-split or
+  // the typed list) but not out - moving a file's chapters to a note, a message or the
+  // video description meant retyping every time. A Copy list chip beside Prev/Next puts
+  // the saved chapters on the clipboard as "0:00 Name" lines, ready to paste anywhere
+  // (and straight back into the typed-list box on another device). Hindi/Gujarati in the
+  // main closure, What's new and feature finder included.
+  (function () {
+    var nx = $("lpChNext"); if (!nx) return;
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = "lpChCopy";
+    nx.parentNode.appendChild(b);
+    function paint() { b.textContent = "\uD83D\uDCCB " + T("Copy chapter list"); var l = chCur(); b.disabled = !(l && l.length); }
+    (window.__relang = window.__relang || []).push(paint);
+    var baseRender284 = chRender;
+    chRender = function () { baseRender284(); paint(); };
+    paint();
+    b.addEventListener("click", function () {
+      var l = chCur();
+      if (!l || !l.length) { sessionMsg.textContent = T("No chapters yet - add one first."); return; }
+      var text = l.slice().sort(function (a, b2) { return a.t - b2.t; }).map(function (ch, i) { return chFmt(ch.t) + " " + (ch.n || (T("Chapter") + " " + (i + 1))); }).join("\n");
+      function done(ok) { toast(ok ? T("Chapter list copied") : T("Could not copy - select the text and copy it by hand.")); }
+      if (window.vpCopySafe) window.vpCopySafe(text, done); else done(false);
+    });
+    if (window.__vpWnew283) window.__vpWnew283("Copy the chapter list", "#lpChCopy");
   })();
 
   // Round 278 new 3: a repeat count for the local practice loop. The loop used to spin
@@ -36248,6 +36276,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Moments tour", "moments tour play each saved moment automatically eight seconds revision recap hands free walk through", "#markTourBtn"],
       ["Chapter previous and next", "chapter previous next local file jump boundary section skip forward back buttons", "#lpChPrev"],
       ["Chapters from a typed list", "chapters paste typed list local file import bulk add 0:00 lines lecture", "#lpChPasteBox"],
+      ["Copy the chapter list", "copy chapters text list local file clipboard export description", "#lpChCopy"],
       ["Mix a second ambient sound", "mix second ambient sound two blend rain brown noise ocean volume layer sleep focus", "#ambMixRow283"],
       ["Soft pause", "soft pause local files sound eases out fade resume click mid note gentle", "#lpSoftBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
