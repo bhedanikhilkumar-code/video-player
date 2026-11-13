@@ -30993,29 +30993,48 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   Object.assign(TR_MSG, {
     "Choose the speaker": ["स्पीकर चुनें", "સ્પીकर પસંદ કરો"],
     "🔊 Speaker": ["🔊 स्पीकर", "🔊 સ્પીકર"],
-    "This tab's sound could not be moved there.": ["इस टैब की आवाज़ वहां नहीं भेजी जा सकी.", "આ ટૅબનો અવાજ ત્યાં મોકલી શકાયો નહીં."]
+    "This tab's sound could not be moved there.": ["इस टैब की आवाज़ वहां नहीं भेजी जा सकी.", "આ ટૅબનો અવાજ ત્યાં મોકલી શકાયો નહીં."],
+    "Speaker": ["स्पीकर", "સ્પીકર"],
+    "Send this tab's local-file sound to another speaker or headset - tap to step through this device's sound outputs. The YouTube player's sound cannot be moved (a browser security limit).": ["इस टैब की लोकल-फ़ाइल आवाज़ किसी और स्पीकर या हेडसेट पर भेजें - इस डिवाइस के आउटपुट के बीच बदलने के लिए टैप करें. YouTube प्लेयर की आवाज़ नहीं भेजी जा सकती (ब्राउज़र सुरक्षा सीमा).", "આ ટૅબનો લોકલ-ફાઇલ અવાજ બીજા સ્પીકર કે હેડસેટ પર મોકલો - આ ડિવાઇસના આઉટપુટ વચ્ચે બદલવા ટૅપ કરો. YouTube પ્લેયરનો અવાજ મોકલી શકાતો નથી (બ્રાઉઝર સુરક્ષા મર્યાદા)."]
   });
   (function () {
     var vid = $("lpVideo"), btn = $("lpSinkBtn"), hint = $("lpSinkHint");
     if (!vid || !btn) return;
-    if (typeof vid.setSinkId !== "function" || !navigator.mediaDevices || typeof navigator.mediaDevices.selectAudioOutput !== "function") return;
+    if (typeof vid.setSinkId !== "function" || !navigator.mediaDevices) return;
+    var picker = typeof navigator.mediaDevices.selectAudioOutput === "function" ? navigator.mediaDevices.selectAudioOutput.bind(navigator.mediaDevices) : null;
+    var outs = [], outIdx = -1;
+    function label(d, i) { return (d && d.label) || (T("Speaker") + " " + (i + 1)); }
     function paint() {
       btn.hidden = false;
       if (!btn.dataset.picked) btn.textContent = T("🔊 Speaker");
-      if (hint) { hint.hidden = false; hint.textContent = T("Send this tab's local-file sound to another speaker or headset - the browser asks which one. Works where your browser lets a page pick its sound output (Chrome and Edge); the YouTube player's sound cannot be moved (a browser security limit)."); }
+      if (hint) { hint.hidden = false; hint.textContent = picker ? T("Send this tab's local-file sound to another speaker or headset - the browser asks which one. Works where your browser lets a page pick its sound output (Chrome and Edge); the YouTube player's sound cannot be moved (a browser security limit).") : T("Send this tab's local-file sound to another speaker or headset - tap to step through this device's sound outputs. The YouTube player's sound cannot be moved (a browser security limit)."); }
     }
     (window.__relang = window.__relang || []).push(paint);
+    function showPicked(name) {
+      btn.dataset.picked = "1";
+      btn.textContent = "🔊 " + name;
+      btn.classList.add("active");
+    }
     btn.addEventListener("click", function () {
-      navigator.mediaDevices.selectAudioOutput().then(function (d) {
-        return vid.setSinkId(d.deviceId).then(function () {
-          btn.dataset.picked = "1";
-          btn.textContent = "🔊 " + (d.label || T("🔊 Speaker"));
-          btn.classList.add("active");
+      if (picker) {
+        picker().then(function (d) {
+          return vid.setSinkId(d.deviceId).then(function () { showPicked(d.label || T("🔊 Speaker")); });
+        }).catch(function (err) {
+          if (err && (err.name === "NotAllowedError" || err.name === "NotFoundError")) return;
+          toast(T("This tab's sound could not be moved there."));
         });
-      }).catch(function (err) {
-        if (err && (err.name === "NotAllowedError" || err.name === "NotFoundError")) return;
-        toast(T("This tab's sound could not be moved there."));
-      });
+        return;
+      }
+      // Fallback (round 275 fix 1): Chrome on Android supports setSinkId but has no
+      // selectAudioOutput picker, so the Speaker chip never appeared there. Step
+      // through the device's sound outputs one tap at a time instead.
+      navigator.mediaDevices.enumerateDevices().then(function (ds) {
+        outs = ds.filter(function (d) { return d.kind === "audiooutput"; });
+        if (!outs.length) { toast(T("This tab's sound could not be moved there.")); return; }
+        outIdx = (outIdx + 1) % outs.length;
+        var d = outs[outIdx];
+        vid.setSinkId(d.deviceId).then(function () { showPicked(label(d, outIdx)); }).catch(function () { toast(T("This tab's sound could not be moved there.")); });
+      }).catch(function () { toast(T("This tab's sound could not be moved there.")); });
     });
     paint();
   })();

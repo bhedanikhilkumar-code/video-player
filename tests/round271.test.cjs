@@ -11,7 +11,7 @@ function slice(from, to) { const a = html.indexOf(from); assert.ok(a >= 0, from 
   vm.runInContext(slice('function cleanWords271(', 'Object.assign(TR_MSG, {\n    "Skip by title words"'), ctx);
   vm.runInContext(slice('function cleanR271(', 'Object.assign(TR_MSG, {\n    "Blocked channels"'), ctx);
   const c = ctx.cleanR271;
-  assert.equal(JSON.stringify(c(null)), JSON.stringify({ block: [], words: [] }));
+  assert.equal(JSON.stringify(c(null)), JSON.stringify({ block: [], words: [], favFeed: false, feedMax: 0 }));
   assert.equal(JSON.stringify(c({ block: ['Blender', 'blender', ' Rick  Astley ', 5, {}, ''] }).block), '["Blender","Rick Astley"]');
   assert.equal(c({ block: Array.from({ length: 40 }, (_, i) => 'c' + i) }).block.length, 30);
   assert.equal(ctx.isBlocked271('BLENDER', ['Blender']), true);

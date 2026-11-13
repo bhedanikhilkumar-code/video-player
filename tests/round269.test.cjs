@@ -35,11 +35,11 @@ function slice(from, to) { const a = html.indexOf(from); assert.ok(a >= 0, from 
 {
   const ctx = vm.createContext({});
   vm.runInContext(slice('function cleanR269(', '  Object.assign(TR_MSG'), ctx);
-  assert.equal(JSON.stringify(ctx.cleanR269(null)), '{"escHide":0,"shake":0,"snaps":[]}');
-  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 1, junk: 5 })), '{"escHide":1,"shake":0,"snaps":[]}');
-  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 'yes', shake: 2 })), '{"escHide":0,"shake":2,"snaps":[]}');
-  assert.equal(JSON.stringify(ctx.cleanR269({ shake: 7 })), '{"escHide":0,"shake":0,"snaps":[]}');
-  assert.equal(JSON.stringify(ctx.cleanR269([1])), '{"escHide":0,"shake":0,"snaps":[]}');
+  assert.equal(JSON.stringify(ctx.cleanR269(null)), '{"escHide":0,"shake":0,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1}}');
+  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 1, junk: 5 })), '{"escHide":1,"shake":0,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1}}');
+  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 'yes', shake: 2 })), '{"escHide":0,"shake":2,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1}}');
+  assert.equal(JSON.stringify(ctx.cleanR269({ shake: 7 })), '{"escHide":0,"shake":0,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1}}');
+  assert.equal(JSON.stringify(ctx.cleanR269([1])), '{"escHide":0,"shake":0,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1}}');
 }
 // Shake to control: four sharp jolts in a second count, walking and repeats within 2.5 s do not.
 {
