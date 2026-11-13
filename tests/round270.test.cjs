@@ -16,3 +16,13 @@ function slice(from, to) { const a = html.indexOf(from); assert.ok(a >= 0, from 
   assert.equal(p('https://www.youtube.com/watch?v=' + I + 'x'), null);
 }
 console.log('round270 tests ok');
+// Fix 2: the link box reads time_continue like the page address does.
+{
+  const src = slice('function linkStartSeconds(', 'Object.assign(TR_MSG');
+  assert.ok(src.includes('searchParams.get("time_continue")'));
+  const ctx = vm.createContext({ URL, URLSearchParams });
+  vm.runInContext(src, ctx);
+  assert.equal(ctx.linkStartSeconds('https://www.youtube.com/watch?v=dQw4w9WgXcQ&time_continue=90'), 90);
+  assert.equal(ctx.linkStartSeconds('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30&time_continue=90'), 30);
+}
+console.log('round270 fix2 ok');
