@@ -29423,7 +29423,17 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       } catch (e) { p.textContent = T("Could not save: browser storage is full or blocked."); }
     }
     add.addEventListener("click", function () { take(false); });
-    rep.addEventListener("click", function () { take(true); });
+    // Round 257 fix: Replace wiped the saved Watch later at once with no way back. When there is a list to lose, the first tap now asks for a second tap (5 seconds).
+    var repArmed = false, repTimer = 0;
+    rep.addEventListener("click", function () {
+      var cur = readLib(), have = Array.isArray(cur.later) ? cur.later.length : 0;
+      if (have > 0 && !repArmed) {
+        repArmed = true; rep.textContent = T("Tap again to replace your {n} saved videos").replace("{n}", have);
+        clearTimeout(repTimer); repTimer = setTimeout(function () { repArmed = false; rep.textContent = T("Replace my Watch later"); }, 5000);
+        return;
+      }
+      take(true);
+    });
   }
   no.addEventListener("click", function () { try { history.replaceState(null, "", location.pathname); } catch (e) {} banner.remove(); });
 })();
