@@ -26604,6 +26604,41 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     window.addEventListener("vp-rate-changed", function () { if (card.open) paint(); });
     paint();
   })();
+
+  // Save top rated as a playlist (round 255 new 3): the Rate backlog card now ends with one
+  // button that gathers every video you rated 4 or 5 stars - from favourites, history, queue,
+  // Watch later and playlists - best first, up to 50, into a new playlist called 'Top rated'
+  // (or 'Top rated (2)' and so on if that name is taken), so your best videos become a
+  // keepable list instead of a filter you redo. Needs at least 2 such videos and a free
+  // playlist slot. Hindi and Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Save top rated as a playlist": ["टॉप रेटेड को प्लेलिस्ट में सेव करें", "ટોપ રેટેડને પ્લેલિસ્ટમાં સાચવો"],
+    "Top rated": ["टॉप रेटेड", "ટોપ રેટેડ"],
+    "Rate at least 2 videos 4 or 5 stars first.": ["पहले कम से कम 2 वीडियो को 4 या 5 स्टार दें.", "પહેલા ઓછામાં ઓછા 2 વીડિયોને 4 કે 5 સ્ટાર આપો."],
+    "Saved the playlist": ["प्लेलिस्ट सेव हुई", "પ્લેલિસ્ટ સાચવાઈ"]
+  });
+  (function () {
+    var card = $("rateBacklogCard"); if (!card) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "rbSavePlBtn"; btn.style.marginTop = "8px";
+    card.appendChild(btn);
+    function paint() { btn.textContent = T("Save top rated as a playlist"); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      var m; try { m = JSON.parse(localStorage.getItem("vp-rate.v1") || "{}") || {}; } catch (e) { m = {}; }
+      var pool = [], seen = {};
+      function take(x) { if (!x || !x.id || seen[x.id]) return; seen[x.id] = 1; if (m[x.id] >= 4) pool.push({ id: x.id, title: x.title || titleFor(x.id) || "", r: m[x.id] | 0 }); }
+      lib.favs.forEach(take); lib.hist.forEach(take); lib.queue.forEach(take); lib.later.forEach(take);
+      playlists.forEach(function (pl) { pl.items.forEach(take); });
+      if (pool.length < 2) { toast(T("Rate at least 2 videos 4 or 5 stars first.")); return; }
+      if (playlists.length >= PL_MAX) { toast(T("You can keep up to ") + PL_MAX + T(" playlists. Delete one first.")); return; }
+      pool.sort(function (a, b) { return b.r - a.r; });
+      var base = T("Top rated"), nm = base, n = 2;
+      while (plFind(nm) >= 0) nm = base + " (" + (n++) + ")";
+      var items = pool.slice(0, 50).map(function (x) { return { id: x.id, title: x.title }; });
+      playlists.push({ name: nm.slice(0, 40), items: items }); savePlaylists(); renderPlaylists();
+      toast(T("Saved the playlist") + ": " + nm);
+    });
+  })();
 /*R244-END*/
 
 })();
@@ -29167,6 +29202,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Sort queue by rating", "sort queue by rating stars best rated first liked order stars queue order", "#sortRateQueueBtn"],
       ["Sort favourites by most played", "sort favourites most played play count real score order popular replay", "#favSortPlaysBtn"],
       ["Sort a playlist by rating", "sort playlist by rating stars best rated first liked order stars playlist order undo", "#lhPlaylists"],
+      ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
       ["Rate backlog", "rate backlog unrated videos stars rating give stars favourites history without rating", "#rateBacklogCard"],
       ["Weekday rhythm", "weekday rhythm busiest day of the week monday sunday pattern when do i watch bars stats", "#weekdayCard"],
       ["Find a playlist", "find a playlist filter search saved playlists by name narrow list many playlists scroll", "#plFilterIn"],
