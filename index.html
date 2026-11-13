@@ -16505,15 +16505,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       (text.match(/(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com|youtu\.be|youtube-nocookie\.com)\/[^\s<>"']+/gi) || []).forEach(function (u) { cands.push(u); });
       text.split(/\r?\n/).forEach(function (ln) { var w = ln.trim(); if (/^[A-Za-z0-9_-]{11}$/.test(w) && /[0-9_-]/.test(w)) cands.push(w); });
       if (!cands.length) { msg.textContent = T("Paste at least one YouTube link."); return; }
-      var seen = {}, added = 0, skipped = 0;
+      var seen = {}, added = 0, skipped = 0, left = [];
       lib.queue.forEach(function (x) { seen[x.id] = 1; });
       cands.forEach(function (c) {
         var id = parseVideoId(c);
+        // Round 236 fix 5: links that only missed because the queue was full used to be wiped with the box.
+        if (id && !seen[id] && lib.queue.length >= 50) { seen[id] = 1; left.push(c); skipped++; return; }
         if (!id || seen[id] || lib.queue.length >= 50) { skipped++; return; }
         seen[id] = 1; lib.queue.push({ id: id, title: titleFor(id) }); added++; fetchTitle(id);
       });
-      if (added) { saveLib(); renderLib(); box.value = ""; toast(T("Added ") + added + T(" to the queue.")); }
-      msg.textContent = T("Added ") + added + T(" to the queue.") + (skipped ? " " + skipped + T(" skipped (not a YouTube link, already queued, or queue full).") : "");
+      if (added) { saveLib(); renderLib(); box.value = left.join("\n"); toast(T("Added ") + added + T(" to the queue.")); }
+      msg.textContent = T("Added ") + added + T(" to the queue.") + (skipped ? " " + skipped + T(" skipped (not a YouTube link, already queued, or queue full).") : "") + (left.length && added ? " " + left.length + " " + T("links kept in the box - make room in the queue and add again.") : "");
     });
     // Same list, but read from a .txt file picked on this device (nothing is uploaded).
     var fb = $("queueTxtImportBtn"), fi = $("queueTxtFile");
@@ -22874,6 +22876,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     btn.addEventListener("click", function () { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); paint(); if (!panel.hidden && window.vpExpandSection) window.vpExpandSection("library"); });
   })();
 
+  Object.assign(TR_MSG, {
+    "links kept in the box - make room in the queue and add again.": ["लिंक बॉक्स में रखे हैं - कतार में जगह बनाकर फिर जोड़ें.", "લિંક બૉક્સમાં રાખ્યા છે - કતારમાં જગ્યા કરી ફરી ઉમેરો."]
+  });
   // Round 234 fix: list rows read '... - Resume 1:00' in English on Hindi and Gujarati pages, and
   // the 'Saved on this device only.' note under Recently watched also stayed English (its
   // translation row pointed at the first paragraph after the list, which became the hidden
