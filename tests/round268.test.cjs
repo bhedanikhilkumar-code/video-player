@@ -29,4 +29,25 @@ function grab(ctx, name) {
   assert.equal(ctx.eyeDue268(5000, 7), false);
   assert.equal(ctx.eyeDue268(2700, 45), true);
 }
+
+// Play range: cleaning, and what the range asks for at a given moment.
+{
+  const ctx = vm.createContext({});
+  const multi = (n) => { const a = html.indexOf('function ' + n + '('); vm.runInContext(html.slice(a, html.indexOf('\n  }\n', a) + 4), ctx); };
+  multi('rangeAction268'); multi('rangeText268');
+  const start = html.indexOf('function cleanRanges268('); vm.runInContext(html.slice(start, html.indexOf('\n  // What the range wants', start)), ctx);
+  const ok = 'dQw4w9WgXcQ';
+  const c = ctx.cleanRanges268({ [ok]: [10, 60], bad: [1, 2], aaaaaaaaaaa: [50, 20], bbbbbbbbbbb: [0, 0], ccccccccccc: ['x', 'y'], ddddddddddd: [5.4, 0] });
+  assert.deepEqual(Object.keys(c).sort(), ['ddddddddddd', ok].sort());
+  assert.equal(JSON.stringify(c.ddddddddddd), '[5,0]');
+  assert.equal(JSON.stringify(ctx.cleanRanges268(null)), '{}');
+  assert.equal(JSON.stringify(ctx.cleanRanges268([1, 2])), '{}');
+  assert.equal(ctx.rangeAction268([10, 60], 0, false), 'start');
+  assert.equal(ctx.rangeAction268([10, 60], 9.5, false), '');
+  assert.equal(ctx.rangeAction268([10, 60], 30, true), '');
+  assert.equal(ctx.rangeAction268([10, 60], 60, true), 'end');
+  assert.equal(ctx.rangeAction268([0, 60], 61, true), 'end');
+  assert.equal(ctx.rangeAction268(undefined, 5, false), '');
+  assert.equal(ctx.rangeText268([75, 0]), '1:15 - end');
+}
 console.log('round268 tests ok');
