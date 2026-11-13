@@ -2417,7 +2417,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="queueTime" role="status"></p>
       </div>
       <p class="hint" id="libListMsg" role="status"></p>
-      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterQuickBtn" type="button">⚡ Quick wins</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterWakeBtn" type="button" hidden>⏰ Wake all</button><button class="chip" id="laterSnoozeAllBtn" type="button" hidden>😴 Snooze all</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterSortAzBtn" type="button">Sort A to Z</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterQuickBtn" type="button">⚡ Quick wins</button><button class="chip" id="laterOldBtn" type="button">📦 Oldest 5</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterWakeBtn" type="button" hidden>⏰ Wake all</button><button class="chip" id="laterSnoozeAllBtn" type="button" hidden>😴 Snooze all</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterSortAzBtn" type="button">Sort A to Z</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
       <p class="hint" id="laterOldLine" role="status" hidden></p>
@@ -17660,6 +17660,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Queue the oldest parked", "#laterOldBtn"],
     ["Keep next 10 in the queue", "#qKeepBtn"],
     ["Save search matches as playlist", "#libPlMatchBtn"],
     ["Favourites done-by clock", "#favTime"],
@@ -22085,6 +22086,33 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
 
+  // Queue the oldest parked (round 234 new 2): Watch later shows how long a video has waited, but a backlog rots from the bottom - nothing helped to clear the videos parked longest. One chip queues the 5 oldest by the date each was saved (un-snoozed, unwatched, not already queued, not playing, within the 50-video cap), with the usual Undo toast. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Queue the oldest parked": ["सबसे पुराने पार्क किए कतार में", "સૌથી જૂના પાર્ક કરેલા કતારમાં"],
+    "📦 Oldest 5": ["📦 सबसे पुराने 5", "📦 સૌથી જૂના 5"],
+    "Queue the 5 Watch later videos that have waited longest": ["वॉच लेटर के 5 सबसे लंबे इंतज़ार वाले वीडियो कतार में डालें", "વૉચ લેટરના સૌથી લાંબા રાહ જોતા 5 વીડિયો કતારમાં નાખો"],
+    "Nothing old to queue: every Watch later video is snoozed, watched or already queued.": ["कतार में डालने लायक कुछ नहीं: हर वीडियो स्नूज़, देखा हुआ या पहले से कतार में है.", "કતારમાં નાખવા જેવું કંઈ નથી: દરેક વીડિયો સ્નૂઝ, જોયેલો કે પહેલેથી કતારમાં છે."]
+  });
+  (function () {
+    var btn = $("laterOldBtn"); if (!btn) return;
+    function paint() { btn.textContent = T("\uD83D\uDCE6 Oldest 5"); btn.setAttribute("aria-label", T("Queue the 5 Watch later videos that have waited longest")); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      var snap = lib.queue.slice(), sp = qPos, add = [];
+      lib.later.slice().sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); }).forEach(function (x) {
+        if (add.length >= 5 || !x || !x.id || x.id === curId || laterSnoozed(x)) return;
+        var hi = findIn(lib.hist, x.id);
+        if (hi >= 0 && lib.hist[hi].done) return;
+        if (findIn(lib.queue, x.id) >= 0 || lib.queue.length + add.length >= 50) return;
+        add.push({ id: x.id, title: x.title || titleFor(x.id) || "" });
+      });
+      if (!add.length) { toast(T("Nothing old to queue: every Watch later video is snoozed, watched or already queued.")); return; }
+      add.forEach(function (x) { lib.queue.push(x); });
+      saveLib(); renderLib();
+      toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    });
+  })();
+
   // Surprise me in the queue (round 233 new 5): Watch later, favourites, Recently watched
   // and the playlists each grew a one-tap Surprise me, but the queue itself - the list you
   // are actually watching tonight - still made you pick by eye. One tap jumps to a random
@@ -24748,6 +24776,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Queue the oldest parked", "oldest five parked watch later queue backlog rot forgotten stale first old", "#laterOldBtn"],
       ["Keep next 10 in the queue", "keep next ten trim queue shorten cut upcoming limit long queue tidy scissors", "#qKeepBtn"],
       ["Save search matches as playlist", "save search matches as playlist keep find results named collection library search", "#libPlMatchBtn"],
       ["Favourites done-by clock", "favourites done by clock time finish wall clock when done total length rewatch end", "#favTime"],
