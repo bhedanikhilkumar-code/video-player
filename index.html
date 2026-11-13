@@ -27564,6 +27564,70 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
+  // Getting started (round 260 new 2): the app has dozens of features and the welcome tour
+  // shows only the first few. This card lists 8 first steps (play a video, queue one, favourite
+  // one, Watch later, save a playlist, write a note, save a search, make a backup), ticks each
+  // one from what is really saved on this device (nothing extra is stored) and has a Show me
+  // button that opens and scrolls to the right control. Progress shows as "n of 8". Hindi and
+  // Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Getting started": ["शुरुआत", "શરૂઆત"],
+    "Eight first steps. Each one is ticked by itself when you do it.": ["आठ पहले कदम. करते ही अपने आप टिक हो जाता है.", "આઠ પહેલાં પગલાં. કરતાં જ આપોઆપ ટિક થાય છે."],
+    "Play a video": ["वीडियो चलाएं", "વીડિયો ચલાવો"],
+    "Add a video to the queue": ["कतार में वीडियो जोड़ें", "કતારમાં વીડિયો ઉમેરો"],
+    "Make a favourite": ["पसंदीदा बनाएं", "મનપસંદ બનાવો"],
+    "Save a video for later": ["वीडियो बाद के लिए सेव करें", "વીડિયો પછી માટે સાચવો"],
+    "Save a playlist": ["प्लेलिस्ट सेव करें", "પ્લેલિસ્ટ સાચવો"],
+    "Write a note": ["नोट लिखें", "નોંધ લખો"],
+    "Save a search": ["खोज सेव करें", "શોધ સાચવો"],
+    "Make a backup": ["बैकअप बनाएं", "બેકઅપ બનાવો"],
+    "Show me": ["दिखाओ", "બતાવો"],
+    "Done": ["हो गया", "થઈ ગયું"],
+    "{a} of {b} done": ["{b} में से {a} पूरे", "{b} માંથી {a} પૂરા"],
+    "All 8 steps done. You know your way around.": ["सभी 8 कदम पूरे. आप ऐप जान गए हैं.", "બધાં 8 પગલાં પૂરાં. તમે એપ જાણી ગયા."]
+  });
+  (function () {
+    var card = mkCard("startCard", "weeklyCard", '<div class="pbar" id="gsBar" role="progressbar" aria-valuemin="0" aria-valuemax="8" style="height:8px;border-radius:6px;background:rgba(128,128,128,.22);overflow:hidden;margin:6px 0"><div id="gsFill" style="height:100%;width:0;background:var(--accent,#3a8a77);transition:width .3s"></div></div><p class="hint" id="gsMsg" role="status"></p><ul id="gsList" style="list-style:none;padding:0;margin:6px 0"></ul>'); if (!card) return;
+    function lsLen(k) { try { var v = JSON.parse(localStorage.getItem(k) || "[]"); return Array.isArray(v) ? v.length : 0; } catch (e) { return 0; } }
+    function played() { try { return !!(stats && stats.plays > 0); } catch (e) { return false; } }
+    function noted() { try { return !!notes && Object.keys(notes).some(function (k) { return typeof notes[k] === "string" && notes[k].trim(); }); } catch (e) { return false; } }
+    var STEPS = [
+      ["Play a video", function () { return played() || lib.hist.length > 0; }, "#loadBtn"],
+      ["Add a video to the queue", function () { return lib.queue.length > 0; }, "#queueBtn"],
+      ["Make a favourite", function () { return lib.favs.length > 0; }, "#favBtn"],
+      ["Save a video for later", function () { return lib.later.length > 0; }, "#laterBtn"],
+      ["Save a playlist", function () { return lsLen("vp-playlists.v1") > 0; }, "#plSaveBtn"],
+      ["Write a note", noted, "#noteBox"],
+      ["Save a search", function () { return lsLen("vp-saved-searches.v1") > 0; }, "#ssSave"],
+      ["Make a backup", function () { try { return Number(localStorage.getItem("vp-backup-last.v1")) > 0; } catch (e) { return false; } }, "#backupNowBtn"]
+    ];
+    function show(sel) {
+      var el = document.querySelector(sel); if (!el) return;
+      var sec = el.closest("section.sec-collapsed"); if (sec && window.vpExpandSection) window.vpExpandSection(sec.id);
+      var det = el.closest("details:not([open])"); if (det) det.open = true;
+      setTimeout(function () { try { el.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) { el.scrollIntoView(); } el.classList.remove("vp-find-flash"); void el.offsetWidth; el.classList.add("vp-find-flash"); setTimeout(function () { el.classList.remove("vp-find-flash"); }, 2400); }, 80);
+    }
+    function paint() {
+      card.querySelector("summary").textContent = T("Getting started");
+      card.querySelector(".r239-desc").textContent = T("Eight first steps. Each one is ticked by itself when you do it.");
+      var ul = $("gsList"); ul.textContent = ""; var n = 0;
+      STEPS.forEach(function (s) {
+        var ok = false; try { ok = !!s[1](); } catch (e) {} if (ok) n++;
+        var li = document.createElement("li"); li.style.cssText = "display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(128,128,128,.18)";
+        var mark = document.createElement("span"); mark.setAttribute("aria-hidden", "true"); mark.textContent = ok ? "\u2705" : "\u2B1C"; li.appendChild(mark);
+        var txt = document.createElement("span"); txt.style.flex = "1"; txt.textContent = T(s[0]); if (ok) txt.style.opacity = ".6"; li.appendChild(txt);
+        if (ok) { var d = document.createElement("span"); d.className = "hint"; d.textContent = T("Done"); li.appendChild(d); }
+        else { var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = T("Show me"); b.setAttribute("aria-label", T("Show me") + ": " + T(s[0])); b.addEventListener("click", function () { show(s[2]); }); li.appendChild(b); }
+        ul.appendChild(li);
+      });
+      $("gsFill").style.width = (n / STEPS.length * 100) + "%"; $("gsBar").setAttribute("aria-valuenow", String(n));
+      $("gsMsg").textContent = n === STEPS.length ? T("All 8 steps done. You know your way around.") : T("{a} of {b} done").replace("{a}", n).replace("{b}", STEPS.length);
+    }
+    var tm = null;
+    card.addEventListener("toggle", function () { clearInterval(tm); if (card.open) { paint(); tm = setInterval(function () { if (card.open) paint(); else clearInterval(tm); }, 2500); } });
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+
   // Copied link prompt (round 259 new 5): a link copied in another app or tab had to be pasted
   // by hand. With this switched on (off by default), coming back to the app checks the
   // clipboard once per return, and if it holds a YouTube video link that has not been offered
@@ -30506,6 +30570,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Activity log", "activity log history of changes what was added removed queue watch later favourites where did it go timeline recent changes", "#activityCard"],
       ["Speed ramp", "speed ramp ease up faster gradually raise playback speed every minutes lecture podcast step 1.25 1.5 2x training", "#rampCard"],
       ["Saved searches", "saved searches save search keep pin favourite query operators is:later chips repeat run again library", "#ssRow"],
+      ["Getting started", "getting started checklist first steps beginner new user tour learn app tick progress show me onboarding", "#startCard"],
       ["Copied link prompt", "copied link prompt clipboard youtube link paste offer play queue later come back app focus switch tab automatic", "#clipCard"],
       ["Open from any page", "open from any page bookmarklet bookmark bar drag youtube tab current time send video here browser", "#bmkCard"],
       ["Channels as OPML", "channels opml rss feed export feedly inoreader netnewswire subscriptions saved channels reader", "#chanOpmlBtn"],
