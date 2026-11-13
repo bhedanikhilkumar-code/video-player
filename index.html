@@ -8472,6 +8472,60 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   frameBox.parentNode.insertBefore(playerSlot, frameBox); playerSlot.appendChild(playerDock); playerDock.appendChild(frameBox);
   var miniTools = document.createElement("div"); miniTools.id = "miniTools";
   miniTools.innerHTML = '<button id="miniPrev" class="chip" type="button" aria-label="' + T("Previous video in queue") + '" title="' + T("Previous video in queue") + '">\u23ee</button><button id="miniRew" class="chip" type="button" aria-label="' + T("Back {n} seconds").replace("{n}", 10) + '">−10</button><button id="miniPlay" class="chip" type="button" aria-label="' + T("Play or pause") + '"></button><button id="miniFwd" class="chip" type="button" aria-label="' + T("Forward {n} seconds").replace("{n}", 10) + '">+10</button><button id="miniNext" class="chip" type="button" aria-label="' + T("Next video in queue") + '" title="' + T("Next video in queue") + '">\u23ed</button><button id="miniMute" class="chip" type="button" aria-label="' + T("\ud83d\udd0a Mute") + '">\ud83d\udd0a</button><button id="miniLater" class="chip" type="button" aria-label="' + T("Save the playing video to Watch later") + '" title="' + T("Save the playing video to Watch later") + '">\ud83d\udd52</button><button id="miniFav" class="chip" type="button" aria-label="' + T("Save the playing video to favourites") + '" title="' + T("Save the playing video to favourites") + '">\u2606</button><button id="miniCopy" class="chip" type="button" aria-label="' + T("Copy the playing video link") + '" title="' + T("Copy the playing video link") + '">\ud83d\udd17</button><button id="miniSide" class="chip" type="button" aria-label="' + T("Move mini player to the other side") + '">\u21c4</button><button id="miniBack" class="chip" type="button">' + T("Back to player") + '</button><button id="miniClose" class="chip" type="button" aria-label="' + T("Close mini player and pause") + '">' + T("✕ Pause") + '</button>';
+  // Round 280 new 2: Mini player progress bar. The docked mini player had transport
+  // chips but no sense of place - how far the song or lecture has run, and no way to
+  // jump without going back to the full player. A slim glass bar now sits under the
+  // docked frame: it fills as the video plays and a tap anywhere on it seeks there,
+  // like the full seek bar. Hidden while the player is full-size (display follows the
+  // is-mini class), it pauses nothing and saves nothing. Keyboard users get a real
+  // slider with arrow keys, translated label included.
+  var miniProg280 = document.createElement("div"); miniProg280.id = "miniProg280";
+  miniProg280.setAttribute("role", "slider"); miniProg280.tabIndex = 0;
+  miniProg280.setAttribute("aria-valuemin", "0"); miniProg280.setAttribute("aria-valuemax", "100"); miniProg280.setAttribute("aria-valuenow", "0");
+  var miniProgFill280 = document.createElement("i"); miniProg280.appendChild(miniProgFill280);
+  playerDock.insertBefore(miniProg280, miniTools);
+  var mpSt280 = document.createElement("style");
+  mpSt280.textContent = "#miniProg280{display:none;height:12px;margin:2px 8px 0;cursor:pointer;position:relative}"
+    + "#playerDock.is-mini #miniProg280{display:block}"
+    + "#miniProg280::before{content:\"\";position:absolute;left:0;right:0;top:4px;height:4px;border-radius:999px;background:var(--hairline,#e6e2e3);opacity:.6}"
+    + "#miniProg280 i{position:absolute;left:0;top:4px;height:4px;width:0%;border-radius:999px;background:linear-gradient(90deg,var(--teal,#3a8a77),#6a2fd6);box-shadow:0 0 8px rgba(58,138,119,.45);transition:width .3s linear;pointer-events:none}"
+    + "html.high-contrast #miniProg280 i{background:#fff;outline:1px solid #000;box-shadow:none}"
+    + "html.high-contrast[data-theme=\"light\"] #miniProg280 i{background:#000}"
+    + "#miniProg280:focus-visible{outline:2px solid var(--teal,#3a8a77);outline-offset:2px;border-radius:6px}"
+    + "html.calm-motion #miniProg280 i,html.low-fx #miniProg280 i{transition:none}";
+  document.head.appendChild(mpSt280);
+  function miniProgPaint280() {
+    var pct = duration > 0 && curTime >= 0 ? Math.min(100, curTime / duration * 100) : 0;
+    miniProgFill280.style.width = pct.toFixed(1) + "%";
+    miniProg280.setAttribute("aria-valuenow", String(Math.round(pct)));
+    miniProg280.setAttribute("aria-valuetext", fmt(curTime) + " / " + fmt(duration));
+  }
+  function miniProgSeek280(frac) {
+    if (!(duration > 0) || !iframe) return;
+    manualSeek(Math.max(0, Math.min(duration, frac * duration)), curTime);
+    miniProgPaint280();
+  }
+  miniProg280.addEventListener("pointerdown", function (e) {
+    var r = miniProg280.getBoundingClientRect();
+    if (r.width > 0) miniProgSeek280((e.clientX - r.left) / r.width);
+  });
+  miniProg280.addEventListener("keydown", function (e) {
+    if (!(duration > 0)) return;
+    var step = (typeof dtStep === "function" ? dtStep() : 5);
+    if (e.key === "ArrowLeft") { e.preventDefault(); miniProgSeek280((curTime - step) / duration); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); miniProgSeek280((curTime + step) / duration); }
+  });
+  setInterval(function () { if (playerDock.classList.contains("is-mini")) miniProgPaint280(); }, 500);
+  Object.assign(TR_MSG, {
+    "Seek from the mini player": ["\u092e\u093f\u0928\u0940 \u092a\u094d\u0932\u0947\u092f\u0930 \u0938\u0947 \u0938\u0940\u0915 \u0915\u0930\u0947\u0902", "\u0aae\u0abf\u0aa8\u0ac0 \u0aaa\u0acd\u0ab2\u0ac7\u0aaf\u0ab0\u0aa5\u0ac0 \u0ab8\u0ac0\u0a95 \u0a95\u0ab0\u0acb"],
+    "Mini player progress bar": ["\u092e\u093f\u0928\u0940 \u092a\u094d\u0932\u0947\u092f\u0930 \u092a\u094d\u0930\u094b\u0917\u094d\u0930\u0947\u0938 \u092c\u093e\u0930", "\u0aae\u0abf\u0aa8\u0ac0 \u0aaa\u0acd\u0ab2\u0ac7\u0aaf\u0ab0 \u0aaa\u0acd\u0ab0\u0acb\u0a97\u0acd\u0ab0\u0ac7\u0ab8 \u0aac\u0abe\u0ab0"]
+  });
+  (window.__relang = window.__relang || []).push(function () { miniProg280.setAttribute("aria-label", T("Seek from the mini player")); });
+  miniProg280.setAttribute("aria-label", T("Seek from the mini player"));
+  // The What's new list is declared further down this same script, so registering
+  // right here would throw and stop the setup below (the round 279 fix 1 class of
+  // bug). The zero-timeout runs right after this script finishes, when it exists.
+  setTimeout(function () { WNEW.unshift(["Mini player progress bar", "#miniProg280"]); WNEW.length = Math.min(10, WNEW.length); wnewRender(); }, 0);
   playerDock.appendChild(miniTools);
   (function () {
     var root = document.documentElement, side = $("miniSide");
