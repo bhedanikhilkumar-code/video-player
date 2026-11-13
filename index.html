@@ -18031,6 +18031,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Watch sessions", "#sessCard"],
     ["Today's list", "#todayCard"],
     ["Where is this video?", "#whereCard"],
     ["Around this time", "#aroundCard"],
@@ -18040,7 +18041,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Review reminders", "#reviewCard"],
     ["Title tidy", "#titleTidyCard"],
     ["Take it to YouTube", "#ytTakeCard"],
-    ["Weave playlists", "#weaveCard"]
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25238,6 +25238,55 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var oldRL8=renderLib;renderLib=function(){oldRL8();if(card.open&&!(document.activeElement&&document.activeElement.closest('#todayCard')))paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Watch sessions (round 249 new 1): the history is one long list, but watching happens in
+  // sittings - an evening of songs, a Sunday of lectures. This card groups the history into
+  // sessions (a gap of 3 hours starts a new one), shows the five latest with their span, video
+  // count, watched minutes and how many were finished, and can queue a whole session again -
+  // "put that evening back on". Worked out from the history on this device; nothing is stored.
+  Object.assign(TR_MSG, {
+    "Watch sessions": ["देखने के सेशन", "જોવાના સેશન"],
+    "Your watching grouped into sittings (a 3-hour gap starts a new one), with Queue to run one again.": ["आपकी देखने की गतिविधि सेशन में बँटी हुई (3 घंटे का अंतर नया सेशन शुरू करता है), फिर से चलाने के लिए कतार के साथ.", "તમારું જોવું સેશનમાં વહેંચાયેલું (3 કલાકનું અંતર નવો સેશન શરૂ કરે છે), ફરી ચલાવવા કતાર સાથે."],
+    "Nothing watched yet - your sessions will show here.": ["अभी कुछ नहीं देखा - आपके सेशन यहाँ दिखेंगे.", "હજી કંઈ જોયું નથી - તમારા સેશન અહીં દેખાશે."],
+    "{n} videos": ["{n} वीडियो", "{n} વીડિયો"],
+    "about {m} min": ["करीब {m} मिनट", "લગભગ {m} મિનિટ"],
+    "{n} finished": ["{n} पूरे देखे", "{n} પૂરા જોયા"],
+    "Queue this session": ["यह सेशन कतार में डालें", "આ સેશન કતારમાં નાખો"],
+    "Session queued:": ["सेशन कतार में जुड़ा:", "સેશન કતારમાં ઉમેર્યો:"],
+    "Already in the queue, or the queue is full at 50.": ["पहले से कतार में है, या कतार 50 पर भरी है.", "પહેલેથી કતારમાં છે, અથવા કતાર 50 પર ભરેલી છે."],
+    "and {n} more": ["और {n} और", "અને {n} વધુ"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='sessCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div id="ssList"></div><p class="hint" id="ssMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var stS=document.createElement('style');stS.textContent='#sessCard .ss-s{margin:10px 0;padding:10px 12px;border-radius:14px;border:1px solid rgba(127,160,152,.3)}#sessCard .ss-h{font-weight:650;font-size:14px;margin-bottom:2px;overflow-wrap:anywhere}#sessCard .ss-sub{font-size:12px;opacity:.75;margin-bottom:6px}#sessCard .ss-r{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:5px 0}#sessCard .ss-t{flex:1 1 100%;font-size:14px;overflow-wrap:anywhere}html.high-contrast #sessCard .ss-s{border-color:currentColor}';document.head.appendChild(stS);
+  var GAP=3*3600*1000;
+  function loc(){var l=document.documentElement.lang;return l==='hi'?'hi-IN':l==='gu'?'gu-IN':undefined;}
+  function sessions(){var h=(lib.hist||[]).filter(function(x){return x&&validItem(x)&&typeof x.ts==='number';}).slice().sort(function(a,b){return a.ts-b.ts;});
+    var out=[],cur=null;h.forEach(function(x){if(!cur||x.ts-cur.end>GAP){cur={start:x.ts,end:x.ts,items:[]};out.push(cur);}cur.items.push(x);if(x.ts>cur.end)cur.end=x.ts;});
+    return out.reverse();}
+  function playId(id,t){if(findIn(lib.queue,id)<0){if(lib.queue.length>=50){$('ssMsg').textContent=T('The queue is full at 50 videos. Remove some first.');return;}lib.queue.unshift({id:id,title:t||titleFor(id)||''});}var i=findIn(lib.queue,id);saveLib();renderLib();playQueueAt(i);if(frameBox&&frameBox.scrollIntoView)frameBox.scrollIntoView({behavior:window.vpReducedMotion()?'auto':'smooth',block:'center'});}
+  function paint(){card.querySelector('summary').textContent=T('Watch sessions');card.querySelector('.r239-desc').textContent=T('Your watching grouped into sittings (a 3-hour gap starts a new one), with Queue to run one again.');
+    var L=$('ssList');L.textContent='';$('ssMsg').textContent='';
+    var ss=sessions().slice(0,5);
+    if(!ss.length){var p=document.createElement('p');p.className='hint';p.textContent=T('Nothing watched yet - your sessions will show here.');L.appendChild(p);return;}
+    ss.forEach(function(sn){var box=document.createElement('div');box.className='ss-s';
+      var h=document.createElement('div');h.className='ss-h';var d0=new Date(sn.start),d1=new Date(sn.end);
+      h.textContent=d0.toLocaleDateString(loc(),{weekday:'long',day:'numeric',month:'short'})+' · '+d0.toLocaleTimeString(loc(),{hour:'numeric',minute:'2-digit'})+' - '+d1.toLocaleTimeString(loc(),{hour:'numeric',minute:'2-digit'});box.appendChild(h);
+      var secs=0,fin=0;sn.items.forEach(function(x){if(typeof x.dur==='number'&&x.dur>0)secs+=x.dur;if(x.done)fin++;});
+      var sub=document.createElement('div');sub.className='ss-sub';
+      sub.textContent=T('{n} videos').replace('{n}',sn.items.length)+(secs?' · '+T('about {m} min').replace('{m}',Math.max(1,Math.round(secs/60))):'')+(fin?' · '+T('{n} finished').replace('{n}',fin):'');box.appendChild(sub);
+      sn.items.slice(-4).reverse().forEach(function(x){var r=document.createElement('div');r.className='ss-r';var t=x.title||titleFor(x.id)||x.id;
+        var n=document.createElement('div');n.className='ss-t';n.textContent=t;r.appendChild(n);
+        var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Play');b.setAttribute('aria-label',T('Play')+': '+t);b.addEventListener('click',function(){playId(x.id,t);});r.appendChild(b);box.appendChild(r);});
+      if(sn.items.length>4){var m=document.createElement('p');m.className='hint';m.style.margin='4px 0';m.textContent=T('and {n} more').replace('{n}',sn.items.length-4);box.appendChild(m);}
+      var q=document.createElement('button');q.type='button';q.className='chip';q.textContent=T('Queue this session');q.setAttribute('aria-label',T('Queue this session')+': '+h.textContent);
+      q.addEventListener('click',function(){var n=0;sn.items.forEach(function(x){if(findIn(lib.queue,x.id)<0&&lib.queue.length<50){lib.queue.push({id:x.id,title:x.title||titleFor(x.id)||''});n++;}});saveLib();renderLib();$('ssMsg').textContent=n?T('Session queued:')+' '+n:T('Already in the queue, or the queue is full at 50.');});box.appendChild(q);
+      L.appendChild(box);});}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRL9=renderLib;renderLib=function(){oldRL9();if(card.open&&!(document.activeElement&&document.activeElement.closest('#sessCard')))paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27800,6 +27849,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later triage", "watch later triage one at a time oldest first decide keep remove favourite play clean backlog", "#triageCard"],
       ["Around this time", "around this time of day morning afternoon evening night usually watch history suggestions hour", "#aroundCard"],
       ["Where is this video?", "where is this video find locate which list saved queue favourites watch later history playlist search by title link", "#whereCard"],
+      ["Watch sessions", "watch sessions sittings evening grouped history 3 hour gap queue again put back on span finished minutes", "#sessCard"],
       ["Today's list", "today's list daily plan up to 5 videos tick off done today checklist", "#todayCard"],
       ["Video of the day", "video of the day daily pick one video a day favourites watch later habit same all day unwatched first", "#dailyPickCard"],
       ["Review reminders", "review reminders spaced repetition learn remember study lesson revisit 1 3 7 14 30 days due again", "#reviewCard"],
