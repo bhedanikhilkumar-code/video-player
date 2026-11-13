@@ -18281,6 +18281,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Playlist resume": ["प्लेलिस्ट जारी रखें", "પ્લેલિસ્ટ ચાલુ રાખો"]
   });
   var WNEW = [
+    ["Transcript reader", "#transcriptCard261"],
     ["Deck exchange", "#deckExchange261"],
     ["Review desk", "#reviewDesk261"],
     ["Recall cards", "#recallCard261"],
@@ -18290,7 +18291,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Playlist resume", "#plList"],
     ["Copied link prompt", "#clipCard"],
     ["Speed ramp", "#rampCard"],
-    ["Activity log", "#activityCard"],
   ];
   // Round 256: the two new sort names need Hindi/Gujarati for the What's new card
   // (their chips were translated in their own commits; the card renders through T()).
@@ -27639,6 +27639,40 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     $('dxExport261').addEventListener('click',function(){var a=recall261.read();if(!a.length){toast(T('No cards to export.'));return;}function quote(s){return '"'+String(s).replace(/"/g,'""')+'"';}var rows=[['Question','Answer','Video','Time']].concat(a.map(function(x){return [x.q,x.a,x.video?'https://youtu.be/'+x.video:'',x.t];}));var text='\uFEFF'+rows.map(function(r){return r.map(quote).join('\t');}).join('\r\n');var u=URL.createObjectURL(new Blob([text],{type:'text/tab-separated-values;charset=utf-8'})),el=document.createElement('a');el.href=u;el.download='recall-cards.tsv';document.body.appendChild(el);el.click();el.remove();setTimeout(function(){URL.revokeObjectURL(u);},10000);toast(T('TSV file saved'));});(window.__relang=window.__relang||[]).push(paint);paint();
   })();
 
+  // Round 261: user-supplied captions as a searchable, timestamped reader. No caption fetching.
+  Object.assign(TR_MSG, {
+    "Transcript reader": ["ट्रांसक्रिप्ट रीडर", "લખાણ વાચક"],
+    "Open your own SRT or VTT file and tap a line to replay it. Choose the matching video below. The file stays in this tab and is not uploaded.": ["अपनी SRT या VTT फ़ाइल खोलें और पंक्ति दबाकर फिर चलाएं. नीचे मेल खाता वीडियो चुनें. फ़ाइल इसी टैब में रहती है, अपलोड नहीं होती.", "તમારી SRT કે VTT ફાઇલ ખોલો અને પંક્તિ દબાવી ફરી ચલાવો. નીચે મેળ ખાતો વીડિયો પસંદ કરો. ફાઇલ આ ટૅબમાં રહે છે, અપલોડ થતી નથી."],
+    "Choose subtitle file": ["सबटाइटल फ़ाइल चुनें", "સબટાઇટલ ફાઇલ પસંદ કરો"], "Playback target": ["किस वीडियो में चलाएं", "કયા વીડિયોમાં ચલાવવું"],
+    "YouTube player": ["YouTube प्लेयर", "YouTube પ્લેયર"], "Local file player": ["लोकल फ़ाइल प्लेयर", "સ્થાનિક ફાઇલ પ્લેયર"],
+    "Search transcript": ["ट्रांसक्रिप्ट खोजें", "લખાણ શોધો"], "Current line": ["अभी की पंक्ति", "હાલની પંક્તિ"],
+    "Previous page": ["पिछला पन्ना", "પાછલું પાનું"], "Next page": ["अगला पन्ना", "આગલું પાનું"],
+    "No subtitle file loaded.": ["कोई सबटाइटल फ़ाइल नहीं खुली.", "કોઈ સબટાઇટલ ફાઇલ ખોલી નથી."],
+    "Use a subtitle file under 2 MB.": ["2 MB से छोटी सबटाइटल फ़ाइल लें.", "2 MB થી નાની સબટાઇટલ ફાઇલ લો."],
+    "No readable subtitle lines found.": ["पढ़ने योग्य सबटाइटल पंक्तियां नहीं मिलीं.", "વાંચી શકાય તેવી સબટાઇટલ પંક્તિ મળી નથી."],
+    "Could not read subtitle file.": ["सबटाइटल फ़ाइल पढ़ नहीं सके.", "સબટાઇટલ ફાઇલ વાંચી શકાઈ નથી."],
+    "{n} lines · page {a} of {b}": ["{n} पंक्तियां · पन्ना {a}/{b}", "{n} પંક્તિ · પાનું {a}/{b}"],
+    "No matching lines.": ["कोई मेल खाती पंक्ति नहीं.", "કોઈ મેળ ખાતી પંક્તિ નથી."],
+    "Load the matching video first.": ["पहले मेल खाता वीडियो लोड करें.", "પહેલાં મેળ ખાતો વીડિયો લોડ કરો."],
+    "Only the first 2000 subtitle lines were loaded.": ["केवल पहली 2000 सबटाइटल पंक्तियां लोड हुईं.", "ફક્ત પહેલી 2000 સબટાઇટલ પંક્તિ લોડ થઈ."],
+    "No subtitle at the current time.": ["अभी के समय पर सबटाइटल नहीं है.", "હાલના સમયે સબટાઇટલ નથી."]
+  });
+  var transcript261=(function(){
+    var cues=[],page=0,fileName='',listeners=[],notice='',PAGE=40;
+    var card=mkCard('transcriptCard261','deckExchange261','<div class="row"><button type="button" class="chip" id="trChoose261"></button><label for="trTarget261" id="trTargetL261"></label><select id="trTarget261"><option value="youtube"></option><option value="local"></option></select></div><input id="trFile261" type="file" accept=".srt,.vtt,text/vtt,text/plain" hidden><p id="trName261" class="hint"></p><label id="trSL261" for="trSearch261"></label><input type="search" id="trSearch261"><div class="row"><button type="button" class="chip" id="trCurrent261"></button><button type="button" class="chip" id="trPrev261"></button><button type="button" class="chip" id="trNext261"></button></div><p id="trStatus261" class="hint" role="status"></p><p id="trNotice261" class="hint" role="status"></p><div id="trLines261" class="desk-list261"></div>');if(!card)return null;
+    function time(s){var a=s.replace(',','.').split(':').map(Number);return a.length===3?a[0]*3600+a[1]*60+a[2]:a[0]*60+a[1];}
+    function parse(text){var out=[];text.replace(/^\uFEFF/,'').replace(/\r\n?/g,'\n').split(/\n\s*\n/).forEach(function(block){var lines=block.trim().split('\n');if(/^(NOTE|STYLE|REGION)(\s|$)/.test(lines[0]||''))return;var at=lines.findIndex(function(l){return /-->/.test(l);});if(at<0)return;var m=lines[at].match(/^\s*((?:\d{1,3}:)?\d{1,3}:[0-5]\d[.,]\d{1,3})\s*-->\s*((?:\d{1,3}:)?\d{1,3}:[0-5]\d[.,]\d{1,3})(?:\s|$)/);if(!m)return;var a=time(m[1]),b=time(m[2]),s=lines.slice(at+1).join('\n').replace(/<[^>]*>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').trim();if(Number.isFinite(a)&&Number.isFinite(b)&&a>=0&&b>a&&b<=172800&&s)out.push({start:a,end:b,text:s.slice(0,2000)});});return out.sort(function(a,b){return a.start-b.start||a.end-b.end;});}
+    function clock(){var v=$('lpVideo');return $('trTarget261').value==='local'?(v&&v.currentTime||0):curTime||0;}
+    function seek(t){if($('trTarget261').value==='local'){var v=$('lpVideo');if(!v||!Number.isFinite(v.duration)||v.duration<=0){toast(T('Load the matching video first.'));return false;}v.currentTime=Math.min(t,v.duration);var p=v.play();if(p&&p.catch)p.catch(function(){});return true;}if(!curId||!ready||!duration){toast(T('Load the matching video first.'));return false;}manualSeek(t);send('playVideo');return true;}
+    function pause(){if($('trTarget261').value==='local'){var v=$('lpVideo');if(v)v.pause();}else send('pauseVideo');}
+    function filtered(){var q=$('trSearch261').value.trim().toLowerCase();return cues.map(function(c,i){return {cue:c,index:i};}).filter(function(x){return !q||x.cue.text.toLowerCase().indexOf(q)>=0;});}
+    function highlight(){var t=clock();card.querySelectorAll('[data-cue261]').forEach(function(b){var c=cues[Number(b.dataset.cue261)];b.setAttribute('aria-current',c&&t>=c.start&&t<c.end?'true':'false');});}
+    function paint(){card.querySelector('summary').textContent=T('Transcript reader');card.querySelector('.r239-desc').textContent=T('Open your own SRT or VTT file and tap a line to replay it. Choose the matching video below. The file stays in this tab and is not uploaded.');[['trChoose261','Choose subtitle file'],['trTargetL261','Playback target'],['trSL261','Search transcript'],['trCurrent261','Current line'],['trPrev261','Previous page'],['trNext261','Next page']].forEach(function(x){$(x[0]).textContent=T(x[1]);});$('trTarget261').options[0].textContent=T('YouTube player');$('trTarget261').options[1].textContent=T('Local file player');$('trName261').textContent=fileName||T('No subtitle file loaded.');$('trNotice261').textContent=notice?T(notice):'';
+      var matches=filtered(),pages=Math.max(1,Math.ceil(matches.length/PAGE));page=Math.min(page,pages-1);$('trPrev261').disabled=page===0;$('trNext261').disabled=page>=pages-1;$('trCurrent261').disabled=!cues.length;$('trStatus261').textContent=T('{n} lines · page {a} of {b}').replace('{n}',matches.length).replace('{a}',page+1).replace('{b}',pages);var list=$('trLines261');list.textContent='';if(cues.length&&!matches.length){var p=document.createElement('p');p.textContent=T('No matching lines.');list.appendChild(p);}matches.slice(page*PAGE,(page+1)*PAGE).forEach(function(x){var b=document.createElement('button');b.type='button';b.className='chip desk-cue261';b.dataset.cue261=x.index;b.textContent=fmt(x.cue.start)+'  '+x.cue.text;b.addEventListener('click',function(){seek(x.cue.start);});list.appendChild(b);});highlight();}
+    $('trChoose261').addEventListener('click',function(){$('trFile261').click();});$('trFile261').addEventListener('change',async function(){var f=this.files&&this.files[0];this.value='';if(!f)return;if(f.size>2*1024*1024){notice='Use a subtitle file under 2 MB.';paint();return;}try{var bytes=new Uint8Array(await f.arrayBuffer()),encoding=bytes[0]===255&&bytes[1]===254?'utf-16le':bytes[0]===254&&bytes[1]===255?'utf-16be':'utf-8',a=parse(new TextDecoder(encoding).decode(bytes));if(!a.length){notice='No readable subtitle lines found.';paint();return;}notice=a.length>2000?'Only the first 2000 subtitle lines were loaded.':'';cues=a.slice(0,2000);fileName=f.name;page=0;$('trSearch261').value='';paint();listeners.forEach(function(fn){fn();});}catch(e){notice='Could not read subtitle file.';paint();}});
+    $('trSearch261').addEventListener('input',function(){page=0;paint();});$('trPrev261').addEventListener('click',function(){if(page>0)page--;paint();});$('trNext261').addEventListener('click',function(){page++;paint();});$('trCurrent261').addEventListener('click',function(){var t=clock(),i=cues.findIndex(function(c){return t>=c.start&&t<c.end;});if(i<0){toast(T('No subtitle at the current time.'));return;}$('trSearch261').value='';page=Math.floor(i/PAGE);paint();var b=card.querySelector('[data-cue261="'+i+'"]');if(b)b.scrollIntoView({block:'nearest'});});$('trTarget261').addEventListener('change',function(){listeners.forEach(function(fn){fn();});highlight();});var timer=null;card.addEventListener('toggle',function(){clearInterval(timer);if(card.open){highlight();timer=setInterval(function(){if(card.open&&!document.hidden)highlight();},500);}});(window.__relang=window.__relang||[]).push(paint);paint();return {read:function(){return cues.slice();},seek:seek,pause:pause,clock:clock,listen:function(fn){listeners.push(fn);}};
+  })();
+
   // Saved searches (round 260 new 1): the library search box remembers the last few searches,
   // but they scroll away and cannot be kept. A search such as "is:later -shorts" that is
   // worth repeating can now be saved with one tap (up to 10), and shows as a chip under the
@@ -30791,6 +30825,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Transcript reader", "transcript reader srt vtt captions search subtitle lines replay time text file", "#transcriptCard261"],
       ["Deck exchange", "deck import export tsv anki question answer flashcards portable transfer", "#deckExchange261"],
       ["Review desk", "review due cards study flashcard spaced repetition reveal practice recall", "#reviewDesk261"],
       ["Recall cards", "question answer flashcards study learn personal memory recall cards", "#recallCard261"],
