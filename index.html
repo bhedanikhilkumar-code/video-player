@@ -2388,6 +2388,7 @@ setTimeout(done,3000);})();
       <p class="error" id="libError" role="alert" hidden></p>
       <div class="row lib-tools">
         <button class="chip" id="libExport" type="button">Export backup</button>
+        <button class="chip" id="libCopyBackup" type="button">Copy backup</button>
         <button class="chip" id="libImport" type="button">Import backup</button><button class="chip" id="libUndoImport" type="button" hidden>Undo last import</button>
         <button class="chip" id="libCheck" type="button">Check backup</button>
         <input id="libImportFile" type="file" accept="application/json,.json" hidden>
@@ -8670,6 +8671,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     (window.__relang = window.__relang || []).push(mvLang); mvLang();
   })();
   WNEW.unshift(["Volume slider in the mini player", "#miniVol"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  WNEW.unshift(["Copy backup to the clipboard", "#libCopyBackup"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   // Mini player skip buttons (round 217 new 3): the floating mini player had play,
   // previous and next, but no way to hop back ten seconds to catch a missed line -
   // the single most-used player control - without returning to the full player. A
@@ -13376,7 +13378,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   VP_RAW_KEYS["vp-awake.v1"] = /^[01]$/;
   VP_RAW_KEYS["vp-fs-rotate.v1"] = /^[01]$/;
   VP_RAW_KEYS["vp-stats-ov.v1"] = /^[01]$/;
-  $("libExport").addEventListener("click", function () {
+  function vpBuildBackup282() {
     if (typeof noteFlush === "function") noteFlush();
     if (typeof lyricsFlush === "function") lyricsFlush();
     var data = { app: "hd-video-player", version: 2, exportedAt: new Date().toISOString(),
@@ -13437,6 +13439,14 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     // now ride along as validated plain strings.
     data.settings.rawKeys = {};
     Object.keys(VP_RAW_KEYS).forEach(function (k) { try { var v = localStorage.getItem(k); if (v !== null && VP_RAW_KEYS[k].test(v)) data.settings.rawKeys[k] = v; } catch (e) {} });
+    return data;
+  }
+  // Copy backup (round 282 new 4): a backup always left the app as a downloaded file,
+  // which on a phone means finding the file manager before it can ride WhatsApp or a
+  // notes app to the new phone. This chip puts the very same backup on the clipboard
+  // instead, ready to paste anywhere. It counts as a backup made, like the download.
+  function vpSaveBackup282() {
+    var data = vpBuildBackup282();
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     var a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -13469,8 +13479,22 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     if (nRate) libBackupMsg.textContent += " " + T("Ratings included: ") + nRate + ".";
     if (data.dlHistory.length) libBackupMsg.textContent += " " + T("Downloads included: ") + data.dlHistory.length + ".";
     bkMark();
+  }
+  $("libExport").addEventListener("click", vpSaveBackup282);
+  if ($("libCopyBackup")) $("libCopyBackup").addEventListener("click", function () {
+    var data = vpBuildBackup282();
+    var text = JSON.stringify(data);
+    function done(ok) {
+      if (ok) { libBackupMsg.textContent = T("Backup copied - paste it anywhere to keep it safe."); bkMark(); }
+      else if (window.vpAsk) window.vpAsk(T("Copy this backup"), text, { readonly: true, okLabel: T("Done") });
+    }
+    if (window.vpCopySafe) window.vpCopySafe(text, done);
+    else if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(false); });
+    else done(false);
   });
   Object.assign(TR_MSG, {
+    "Copy this backup": ["यह बैकअप कॉपी करें", "આ બેકઅપ કોપી કરો"],
+    "Backup copied - paste it anywhere to keep it safe.": ["\u092c\u0948\u0915\u0905\u092a \u0915\u0949\u092a\u0940 \u0939\u0941\u0906 - \u0938\u0941\u0930\u0915\u094d\u0937\u093f\u0924 \u0930\u0916\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u0915\u0939\u0940\u0902 \u092d\u0940 \u092a\u0947\u0938\u094d\u091f \u0915\u0930\u0947\u0902.", "\u0aac\u0ac7\u0a95\u0a85\u0aaa \u0a95\u0ac9\u0aaa\u0ac0 \u0aa5\u0aaf\u0acb - \u0ab8\u0ac1\u0ab0\u0a95\u0acd\u0ab7\u0abf\u0aa4 \u0ab0\u0abe\u0a96\u0ab5\u0abe \u0a97\u0aae\u0ac7 \u0aaa\u0ac7\u0ab8\u0acd\u0a9f \u0a95\u0ab0\u0acb."],
     "Ratings included: ": ["\u0930\u0947\u091f\u093f\u0902\u0917 \u0936\u093e\u092e\u093f\u0932: ", "\u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97 \u0ab8\u0abe\u0aae\u0ac7\u0ab2: "],
     "Ratings restored: ": ["\u0930\u0947\u091f\u093f\u0902\u0917 \u0935\u093e\u092a\u0938 \u092e\u093f\u0932\u0940\u0902: ", "\u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97 \u0aaa\u0abe\u0a9b\u0ac0 \u0aae\u0ab3\u0ac0: "]
   });
@@ -15829,6 +15853,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["#statsTxtBtn", "Save as text file", "टेक्स्ट फ़ाइल में सेव करें"],
     ["#statsClear", "Clear", "साफ़ करें"],
     ["#libExport", "Export backup", "बैकअप निकालें"],
+    ["#libCopyBackup", "Copy backup", "बैकअप कॉपी करें"],
     ["#backupNowBtn", "Export backup now", "अभी बैकअप निकालें"],
     ["#backupLaterBtn", "Remind me later", "बाद में याद दिलाएं"],
     ["#plAddCurBtn", "Add current video", "अभी का वीडियो जोड़ें"],
@@ -16137,6 +16162,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
  "#gpWheelHint": "કંપ્યુટર પર પેડ પર માઉસ વ્હીલ ફેરવીને અવાજ બદલો.",
  "#statsClear": "સાફ કરો", "#statsTxtBtn": "ટેક્સ્ટ ફાઇલમાં સેવ કરો",
  "#libExport": "બેકઅપ કાઢો",
+ "#libCopyBackup": "બેકઅપ કોપી કરો",
  "#libImport": "બેકઅપ લાવો", "#libCheck": "બેકઅપ તપાસો",
  "#plSaveBtn": "કતારને પ્લેલિસ્ટ બનાવો",
  "#backupNowBtn": "હમણાં બેકઅપ કાઢો",
@@ -35778,6 +35804,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Share favourites", "share favourites link send loved starred list another device phone add replace", "#favShareBtn282"],
       ["Share as QR code", "share qr code queue watch later favourites link another phone camera scan move list", "#favShareBtn282"],
       ["Volume slider in the mini player", "mini player volume slider sound level docked floating pip turn down up loud quiet", "#miniVol"],
+      ["Copy backup to the clipboard", "copy backup clipboard paste whatsapp notes move new phone no file download export", "#libCopyBackup"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
       ["Rate backlog", "rate backlog unrated videos stars rating give stars favourites history without rating", "#rateBacklogCard"],
       ["Weekday rhythm", "weekday rhythm busiest day of the week monday sunday pattern when do i watch bars stats", "#weekdayCard"],
