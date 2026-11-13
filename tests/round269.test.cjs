@@ -91,4 +91,14 @@ function slice(from, to) { const a = html.indexOf(from); assert.ok(a >= 0, from 
   assert.equal(ctx.nextClock269('25:00', now), 0);
   assert.equal(ctx.nextClock269('', now), 0);
 }
+// Fix 1: a library item whose title is not text no longer survives validation as-is.
+{
+  const ctx = vm.createContext({});
+  vm.runInContext(slice('function validItem(', '  // Queue remembers its place'), ctx);
+  const a = { id: 'dQw4w9WgXcQ', title: { a: 1 } }, b = { id: 'dQw4w9WgXcQ', title: 'ok' }, c = { id: 'dQw4w9WgXcQ' };
+  assert.equal(ctx.validItem(a), true); assert.equal(a.title, '');
+  assert.equal(ctx.validItem(b), true); assert.equal(b.title, 'ok');
+  assert.equal(ctx.validItem(c), true); assert.equal(c.title, undefined);
+  assert.ok(!ctx.validItem({ id: 5 }) && !ctx.validItem(null) && !ctx.validItem({ id: 'short' }));
+}
 console.log('round269 tests ok');
