@@ -17724,6 +17724,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Watch time by weekday", "#statsWdayWrap"],
     ["On this day", "#histOtdWrap"],
     ["This week's recap", "#wrecapBtn"],
     ["Today's recap", "#recapBtn"],
@@ -23001,6 +23002,62 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     otdRender();
   })();
 
+
+  // Weekday chart (round 237 new 3): the 7-day bars show this week and the weekend/weekday line
+  // compares two buckets, but neither answers 'which day of the week do I actually watch?'. A second
+  // bar row under it averages every tracked day (up to 100) by weekday - seven bars, Monday to
+  // Sunday, today's weekday highlighted, each bar titled with its average and day count, and the
+  // whole row carrying an aria-label for screen readers. Read-only, from the on-device day totals;
+  // it stays hidden until at least 7 days are tracked, where fewer days say nothing. Hindi and
+  // Gujarati labels, repaints with every stats tick through the shared render.
+  Object.assign(TR_MSG, {
+    "Watch time by weekday": ["हफ़्ते के दिन अनुसार देखने का समय", "અઠવાડિયાના દિવસ પ્રમાણે જોવાનો સમય"],
+    "average each day name": ["हर दिन का औसत", "દરેક દિવસની સરેરાશ"]
+  });
+  (function () {
+    var anchor = $("statsDays"); if (!anchor || !anchor.parentNode) return;
+    var wrap = document.createElement("div"); wrap.className = "stats-hours-wrap"; wrap.id = "statsWdayWrap"; wrap.hidden = true;
+    var lab = document.createElement("p"); lab.className = "hint stats-hours-lab"; lab.id = "statsWdayLab";
+    var box = document.createElement("div"); box.className = "stats-days"; box.id = "statsWday";
+    wrap.appendChild(lab); wrap.appendChild(box);
+    anchor.parentNode.insertBefore(wrap, anchor.nextSibling);
+    function wdayRender() {
+      var keys = Object.keys(stats.days || {}).filter(function (k) { return Math.floor(stats.days[k] || 0) > 0; });
+      wrap.hidden = keys.length < 7;
+      if (keys.length < 7) return;
+      var loc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-US";
+      var sum = [0, 0, 0, 0, 0, 0, 0], cnt = [0, 0, 0, 0, 0, 0, 0];
+      keys.forEach(function (k) {
+        var p = k.split("-"); var d = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+        var wd = (d.getDay() + 6) % 7; // Monday = 0
+        sum[wd] += Math.floor(stats.days[k] || 0); cnt[wd]++;
+      });
+      var avg = sum.map(function (s, i) { return cnt[i] ? s / cnt[i] : 0; });
+      var maxA = Math.max.apply(null, avg.concat([1]));
+      var todayWd = (new Date().getDay() + 6) % 7;
+      lab.textContent = T("Watch time by weekday") + " (" + T("average each day name") + ")";
+      box.innerHTML = "";
+      var aria = [];
+      for (var i = 0; i < 7; i++) {
+        var ref = new Date(); ref.setDate(ref.getDate() - ((todayWd - i + 7) % 7));
+        var name = ref.toLocaleDateString(loc, { weekday: "long" });
+        var col = document.createElement("div"); col.className = "stats-day" + (i === todayWd ? " today" : "");
+        var bar = document.createElement("i"); bar.className = "stats-bar";
+        bar.style.height = Math.max(3, Math.round(avg[i] / maxA * 40)) + "px";
+        bar.title = name + ": ~ " + fmtWatch(avg[i]) + " (" + cnt[i] + ")";
+        var sl = document.createElement("span"); sl.textContent = ref.toLocaleDateString(loc, { weekday: "narrow" });
+        col.appendChild(bar); col.appendChild(sl); box.appendChild(col);
+        aria.push(name + " ~ " + fmtWatch(avg[i]));
+      }
+      box.setAttribute("role", "img");
+      box.setAttribute("aria-label", T("Watch time by weekday") + ": " + aria.join(", "));
+    }
+    var baseRenderStatsWd = renderStats;
+    renderStats = function () { baseRenderStatsWd(); wdayRender(); };
+    (window.__relang = window.__relang || []).push(wdayRender);
+    wdayRender();
+  })();
+
   // Round 234 fix: list rows read '... - Resume 1:00' in English on Hindi and Gujarati pages, and
   // the 'Saved on this device only.' note under Recently watched also stayed English (its
   // translation row pointed at the first paragraph after the list, which became the hidden
@@ -25679,6 +25736,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Today's recap", "recap today summary journal share what i watched copy text day log", "#recapBtn"],
       ["This week's recap", "week recap summary 7 days weekly journal share what i watched copy text log", "#wrecapBtn"],
       ["On this day", "on this day history anniversary same date week ago month ago watched before memory rewind", "#histOtdWrap"],
+      ["Watch time by weekday", "weekday chart monday tuesday which day watch most average bars week pattern", "#statsWdayWrap"],
       ["Select videos", "select multiple checkbox bulk favourites watch later remove move queue several tick batch", "#selBtn"],
       ["Recently removed", "recently removed bin trash undo restore deleted favourites watch later accident bring back", "#binBtn"],
       ["Add to calendar", "calendar ics event schedule evening plan reminder queue watch later block time session", "#calBtn"],
