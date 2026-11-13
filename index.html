@@ -11236,6 +11236,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // Round 120: Copy list per playlist - one tap puts its numbered titles and
       // links on the clipboard, the same helper the other lists already use.
       btn(T("Copy list"), "", function () { copyLibList(pl.items, "No videos in this playlist yet.", "Playlist list copied"); });
+      // Round 217 new 5: every other list can leave the app as a plain readable text
+      // file (Watch later, favourites, history, moments); a playlist could only be
+      // exported as a re-importable .json. This saves the same numbered titles-and-
+      // links .txt the other lists produce, named after the playlist.
+      btn(T("Save as text file"), "", function () {
+        if (!pl.items.length) { plSay(T("No videos in this playlist yet.")); return; }
+        var text = pl.name + "\n\n" + pl.items.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n\n") + "\n";
+        try {
+          var safe = pl.name.replace(/[^\w -]+/g, "").trim().replace(/\s+/g, "-").slice(0, 40);
+          var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" })); a.download = "video-player-playlist-" + (safe || "list") + ".txt";
+          document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+          plSay(T("Playlist saved as a text file."));
+        } catch (e) { plSay(T("Could not copy. Try again.")); }
+      });
       btn(T("Delete"), "pl-del", async function () {
         if (!await vpConfirm(T("Delete the playlist") + " \"" + pl.name + "\"? " + T("Your queue stays as it is."), T("Delete"))) return;
         playlists.splice(idx, 1); savePlaylists(); renderPlaylists(); plSay(T("Deleted."));
@@ -15502,12 +15516,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Save a playlist as a text file", "#lhPlaylists"],
     ["Add the playing video to a playlist", "#infoPlBtn"],
     ["Skip buttons in the mini player", "#miniRew"],
     ["Find in lyrics", "#lyrFindQ"],
     ["Snooze all in Watch later", "#laterSnoozeAllBtn"],
     ["Watch later count on the app icon", "#badgeLater"],
-    ["Data Saver suggestion", "#saverData"],
     ["Halve or double the loop", "#abNudgeRow"],
     ["Copy all notes", "#notesCopyAllBtn"],
     ["Wake all snoozed videos", "#laterWakeBtn"],
@@ -21885,6 +21899,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Save a playlist as a text file", "save playlist text file download txt titles links readable export keep", "#lhPlaylists"],
       ["Add the playing video to a playlist", "add playing now current video to playlist save collect organise picker", "#infoPlBtn"],
       ["Skip buttons in the mini player", "mini player skip back forward 10 seconds seek floating docked rewind hop", "#miniRew"],
       ["Find in lyrics", "find search lyrics words line song locate match jump next enter", "#lyrFindQ"],
