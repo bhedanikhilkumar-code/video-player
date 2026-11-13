@@ -27057,6 +27057,50 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint);
     paint();
   })();
+  // Export as browser bookmarks (round 258 new 2): lists could leave the app as a text file or a
+  // backup, but not in a form a browser understands. This card writes the queue, Favourites,
+  // Watch later and every saved playlist as one bookmarks.html file (one folder per list) that
+  // Chrome, Safari, Firefox and Edge can import, so the videos sit in the bookmarks bar of any
+  // device. Empty lists are left out and a count says what went in. Nothing is stored.
+  // Hindi and Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Export as browser bookmarks": ["ब्राउज़र बुकमार्क के रूप में एक्सपोर्ट", "બ્રાઉઝર બુકમાર્ક તરીકે એક્સપોર્ટ"],
+    "Save your queue, favourites, Watch later and playlists as a bookmarks.html file, one folder per list, that any browser can import.": ["अपनी कतार, पसंदीदा, बाद में देखें और प्लेलिस्ट को bookmarks.html फ़ाइल में सेव करें, हर सूची का एक फ़ोल्डर, जिसे कोई भी ब्राउज़र इम्पोर्ट कर सकता है.", "તમારી કતાર, મનપસંદ, પછી જુઓ અને પ્લેલિસ્ટને bookmarks.html ફાઇલમાં સેવ કરો, દરેક યાદીનું એક ફોલ્ડર, જે કોઈપણ બ્રાઉઝર ઇમ્પોર્ટ કરી શકે."],
+    "Save bookmarks file": ["बुकमार्क फ़ाइल सेव करें", "બુકમાર્ક ફાઇલ સેવ કરો"],
+    "Nothing saved yet to export.": ["एक्सपोर्ट करने के लिए अभी कुछ सेव नहीं है.", "એક્સપોર્ટ કરવા માટે હજી કંઈ સેવ નથી."],
+    "Bookmarks file saved: {n} videos in {m} folders": ["बुकमार्क फ़ाइल सेव हुई: {m} फ़ोल्डर में {n} वीडियो", "બુકમાર્ક ફાઇલ સેવ થઈ: {m} ફોલ્ડરમાં {n} વીડિયો"],
+    "Queue": ["कतार", "કતાર"]
+  });
+  (function () {
+    var card = mkCard("bmExpCard", "bmCard", '<p><button type="button" class="chip" id="bmExpBtn"></button></p><p class="hint" id="bmExpMsg" role="status"></p>'); if (!card) return;
+    function paint() {
+      card.querySelector("summary").textContent = T("Export as browser bookmarks");
+      card.querySelector(".r239-desc").textContent = T("Save your queue, favourites, Watch later and playlists as a bookmarks.html file, one folder per list, that any browser can import.");
+      $("bmExpBtn").textContent = "\uD83D\uDD16 " + T("Save bookmarks file");
+    }
+    function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+    function folder(name, items) {
+      var out = "    <DT><H3>" + esc(name) + "</H3>\n    <DL><p>\n";
+      items.forEach(function (x) { out += '        <DT><A HREF="https://www.youtube.com/watch?v=' + esc(x.id) + '">' + esc(x.title || titleFor(x.id) || x.id) + "</A>\n"; });
+      return out + "    </DL><p>\n";
+    }
+    $("bmExpBtn").addEventListener("click", function () {
+      var groups = [[T("Queue"), lib.queue], [T("Favourites"), lib.favs], [T("Watch later"), lib.later]];
+      playlists.forEach(function (p) { groups.push([p.name, p.items]); });
+      groups = groups.filter(function (g) { return g[1] && g[1].length; });
+      var n = 0; groups.forEach(function (g) { n += g[1].length; });
+      if (!n) { $("bmExpMsg").textContent = T("Nothing saved yet to export."); return; }
+      var html = '<!DOCTYPE NETSCAPE-Bookmark-file-1>\n<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">\n<TITLE>Bookmarks</TITLE>\n<H1>Bookmarks</H1>\n<DL><p>\n    <DT><H3>HD Video Player</H3>\n    <DL><p>\n' + groups.map(function (g) { return folder(g[0], g[1]); }).join("") + "    </DL><p>\n</DL><p>\n";
+      try {
+        var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([html], { type: "text/html" })); a.download = "video-player-bookmarks.html";
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        $("bmExpMsg").textContent = T("Bookmarks file saved: {n} videos in {m} folders").replace("{n}", n).replace("{m}", groups.length);
+      } catch (e) { $("bmExpMsg").textContent = T("Could not copy. Try again."); }
+    });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+  // r258-end
 
   // Sort Watch later by most played (round 256 new 1): Watch later could be sorted A to Z
   // and by rating, but not by what you actually replay - so a parked favourite you have
@@ -29882,6 +29926,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Dust off favourites", "dust off favourites not played lately forgotten queue bring back old favourites history", "#dustCard"],
       ["List overlap", "list overlap duplicates watch later already queued favourite remove tidy clean up", "#laterOverlapCard"],
       ["Import browser bookmarks", "import browser bookmarks bookmarks.html chrome safari firefox edge export youtube links watch later favourites move switch", "#bmCard"],
+      ["Export as browser bookmarks", "export browser bookmarks bookmarks.html chrome safari firefox edge save queue favourites watch later playlists folders backup", "#bmExpCard"],
       ["Weekly totals", "weekly totals weeks compare best week bars watch stats last 8 weeks trend heavier lighter", "#weeklyCard"],
       ["Share Watch later", "share watch later link send backlog list another device phone add replace", "#laterShareBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
