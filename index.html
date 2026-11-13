@@ -18008,6 +18008,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Library check", "#libCheckCard"],
     ["Print your lists", "#printCard"],
     ["Customize shortcuts", "#keymapCard"],
     ["Playlist QR code", "#plList"],
@@ -18017,7 +18018,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["All-time recap", "#arecapBtn"],
     ["Lists as CSV", "#listsCsvBtn"],
     ["Watch later overlap", "#laterOverlapBtn"],
-    ["History as CSV", "#histCsvBtn"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23907,6 +23907,45 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   (window.__relang=window.__relang||[]).push(paint);paint();
   window.__vpPrintBuild=build;
   })();
+  // Library check (round 243 new 3): the app caps the queue and Watch later at 50 and playlists at
+  // 30, and the only sign you hit a cap was an 'Add' that quietly refused. This card shows how full
+  // each list is (with a warning near the cap), finds empty playlists (one tap removes them, with
+  // Undo) and finds saved videos that lost their title in one list while another list still knows
+  // it (one tap copies the title across; entries no list can name are only counted). Reads and
+  // fixes on this device only.
+  Object.assign(TR_MSG, {
+    "Library check": ["लाइब्रेरी जाँच", "લાઇબ્રેરી તપાસ"],
+    "How full your lists are, empty playlists, and videos missing a title.": ["आपकी लिस्ट कितनी भरी हैं, खाली प्लेलिस्ट, और बिना शीर्षक वाले वीडियो.", "તમારી યાદી કેટલી ભરેલી છે, ખાલી પ્લેલિસ્ટ અને શીર્ષક વિનાના વીડિયો."],
+    "Almost full - remove some before adding more.": ["लगभग भरी हुई - और जोड़ने से पहले कुछ हटाएँ.", "લગભગ ભરેલી - વધુ ઉમેરતાં પહેલાં થોડા દૂર કરો."],
+    "Empty playlists:": ["खाली प्लेलिस्ट:", "ખાલી પ્લેલિસ્ટ:"],
+    "Delete empty playlists": ["खाली प्लेलिस्ट हटाएँ", "ખાલી પ્લેલિસ્ટ કાઢી નાખો"],
+    "Empty playlists deleted:": ["खाली प्लेलिस्ट हटाईं:", "ખાલી પ્લેલિસ્ટ કાઢી નાખી:"],
+    "Empty playlists restored": ["खाली प्लेलिस्ट वापस आईं", "ખાલી પ્લેલિસ્ટ પાછી આવી"],
+    "Missing a title (another list knows it):": ["शीर्षक नहीं (किसी और लिस्ट में है):", "શીર્ષક નથી (બીજી યાદીમાં છે):"],
+    "Fill titles": ["शीर्षक भरें", "શીર્ષક ભરો"],
+    "Titles filled:": ["शीर्षक भरे:", "શીર્ષક ભર્યા:"],
+    "No title anywhere:": ["कहीं भी शीर्षक नहीं:", "ક્યાંય શીર્ષક નથી:"],
+    "Everything looks tidy.": ["सब कुछ ठीक-ठाक है.", "બધું વ્યવસ્થિત છે."]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='libCheckCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div id="lcRows"></div><p class="hint" id="lcMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  function titleMap(){var m={};function add(x){if(x&&x.id&&x.title&&!m[x.id])m[x.id]=x.title;}[lib.hist,lib.favs,lib.queue,lib.later].forEach(function(l){l.forEach(add);});playlists.forEach(function(p){(p.items||[]).forEach(add);});return m;}
+  function scan(){var m=titleMap(),fix=[],none={};function chk(x){if(!x||!x.id||x.title)return;if(m[x.id])fix.push(x);else none[x.id]=1;}[lib.hist,lib.favs,lib.queue,lib.later].forEach(function(l){l.forEach(chk);});playlists.forEach(function(p){(p.items||[]).forEach(chk);});return {map:m,fix:fix,none:Object.keys(none).length,empty:playlists.filter(function(p){return !(p.items&&p.items.length);})};}
+  function row(label,text,btnText,fn,warn){var d=document.createElement('div');d.className='row';var s=document.createElement('span');s.className='hint';s.textContent=label+' '+text;if(warn)s.style.fontWeight='700';d.appendChild(s);if(btnText){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=btnText;b.addEventListener('click',fn);d.appendChild(b);}return d;}
+  function meter(label,n,max){var d=document.createElement('div');var t=document.createElement('div');t.className='hint';t.textContent=label+': '+n+'/'+max+(n>=max*0.9?' - '+T('Almost full - remove some before adding more.'):'');if(n>=max*0.9)t.style.fontWeight='700';var bar=document.createElement('div');bar.style.cssText='height:8px;border-radius:6px;background:rgba(0,0,0,.08);overflow:hidden;margin:2px 0 8px';var f=document.createElement('div');f.style.cssText='height:100%;border-radius:6px;background:'+(n>=max*0.9?'#d9822b':'var(--teal)')+';width:'+Math.min(100,Math.round(n/max*100))+'%';bar.appendChild(f);d.appendChild(t);d.appendChild(bar);return d;}
+  function paint(){card.querySelector('summary').textContent=T('Library check');card.querySelector('.r239-desc').textContent=T('How full your lists are, empty playlists, and videos missing a title.');var box=$('lcRows');box.textContent='';
+    box.appendChild(meter(T('Queue'),lib.queue.length,50));box.appendChild(meter(T('Watch later'),lib.later.length,50));box.appendChild(meter(T('Playlists'),playlists.length,PL_MAX));
+    var r=scan(),any=false;
+    if(r.empty.length){any=true;box.appendChild(row(T('Empty playlists:'),String(r.empty.length),T('Delete empty playlists'),function(){var gone=[];playlists.forEach(function(p,i){if(!(p.items&&p.items.length))gone.push([i,p]);});if(!gone.length)return;for(var j=gone.length-1;j>=0;j--)playlists.splice(gone[j][0],1);savePlaylists();renderPlaylists();$('lcMsg').textContent=T('Empty playlists deleted:')+' '+gone.length;paint();toastUndo(T('Empty playlists deleted:')+' '+gone.length,function(){gone.forEach(function(g){if(playlists.length<PL_MAX)playlists.splice(Math.min(g[0],playlists.length),0,g[1]);});savePlaylists();renderPlaylists();paint();},T('Empty playlists restored'));}));}
+    if(r.fix.length){any=true;box.appendChild(row(T('Missing a title (another list knows it):'),String(r.fix.length),T('Fill titles'),function(){var s=scan(),n=0;s.fix.forEach(function(x){if(!x.title&&s.map[x.id]){x.title=s.map[x.id];n++;}});saveLib();savePlaylists();renderLib();renderPlaylists();$('lcMsg').textContent=T('Titles filled:')+' '+n;paint();}));}
+    if(r.none){any=true;box.appendChild(row(T('No title anywhere:'),String(r.none)));}
+    if(!any)box.appendChild(row('',T('Everything looks tidy.')));}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRL=renderLib;renderLib=function(){oldRL();if(card.open)paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R243-END*/
 
 })();
@@ -26465,6 +26504,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Library check", "library check health capacity full limit 50 empty playlists missing titles tidy fix untitled cap", "#libCheckCard"],
       ["Print your lists", "print lists pdf paper save pdf favourites watch later queue playlists share offline sheet", "#printCard"],
       ["Customize shortcuts", "customize shortcuts rebind remap keyboard keys change letter swap hotkey accessibility screen reader layout", "#keymapCard"],
       ["Playlist QR code", "playlist qr code scan share link phone tv friend camera", "#plList"],
