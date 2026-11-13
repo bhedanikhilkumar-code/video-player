@@ -31469,6 +31469,20 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     WNEW.unshift(["Remember the speed per video", "#speedMemBtn278"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   })();
 
+  // Round 278: translations and the What's new entry for the local-player features
+  // (practice loop repeat count, File info) - the local block cannot see TR_MSG/WNEW.
+  Object.assign(TR_MSG, {
+    "Pass {a} of {b}": ["पास {a} / {b}", "પાસ {a} / {b}"],
+    "Practice loop finished: {n} passes.": ["अभ्यास लूप पूरा: {n} पास.", "પ્રયાસ લૂપ પૂરો: {n} પાસ."],
+    "Practice loop repeat count": ["अभ्यास लूप दोहराव गिनती", "પ્રયાસ લૂપ પુનરાવર્તન ગણતરી"],
+    "File info": ["फ़ाइल की जानकारी", "ફાઇલની માહિતી"],
+    "Choose a local file first.": ["पहले एक लोकल फ़ाइल चुनें.", "પહેલાં લોકલ ફાઇલ પસંદ કરો."],
+    "Name": ["नाम", "નામ"], "Size": ["आकार", "કદ"], "Type": ["प्रकार", "પ્રકાર"],
+    "Bitrate": ["बिटरेट", "બિટરેટ"], "Picture": ["तस्वीर", "તસવીર"],
+    "File info for local files": ["लोकल फ़ाइलों की जानकारी", "લોકલ ફાઇલોની માહિતી"]
+  });
+  WNEW.unshift(["File info for local files", "#lpInfoBtn278"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+
 
 
 
@@ -32612,7 +32626,6 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function labPaint(){lab.textContent=T("Repeat:");}
     (window.__relang=window.__relang||[]).push(labPaint);labPaint();
   })();
-  Object.assign(TR_MSG,{"Pass {a} of {b}":["पास {a} / {b}","પાસ {a} / {b}"],"Practice loop finished: {n} passes.":["अभ्यास लूप पूरा: {n} पास.","પ્રયાસ લૂપ પૂરો: {n} પાસ."]});
   function resetLocalLoop(){loopA=null;loopB=null;lpLoopCount=0;loopText();}
   $("lpSetA").addEventListener("click",function(){if(!isFinite(vid.duration)||vid.duration<=0)return;loopA=vid.currentTime;loopB=null;lpLoopCount=0;loopText();});
   $("lpSetB").addEventListener("click",function(){if(loopA===null)return;if(vid.currentTime<loopA+.5){$("lpLoopMsg").textContent=T("Choose B after A.");return;}loopB=vid.currentTime;lpLoopCount=0;loopText();});
@@ -32625,6 +32638,40 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   vid.addEventListener("ended",function(){if(loopA!==null&&loopB!==null){
     if(lpLoopLimit>0){lpLoopCount++;if(lpLoopCount>=lpLoopLimit){var n2=lpLoopLimit;resetLocalLoop();toast(T("Practice loop finished: {n} passes.").replace("{n}",n2));return;}}
     vid.currentTime=loopA;localPlay();}});
+
+  // Round 278 new 4: File info for local files. Until now the app never said what a chosen
+  // file actually is; one tap on 'File info' shows its name, size, type, length, picture
+  // size and rough bitrate, so a clip that looks wrong can be checked without leaving the
+  // app. Nothing is uploaded or saved. Checked first: only the YouTube info card existed.
+  (function () {
+    var anchorBox = $("lpLoopBox"); if (!anchorBox || !anchorBox.parentNode) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "lpInfoBtn278";
+    var panel = document.createElement("p"); panel.className = "hint"; panel.id = "lpInfo278"; panel.hidden = true; panel.setAttribute("role", "status");
+    panel.style.cssText = "white-space:pre-line;margin:6px 0 0";
+    anchorBox.parentNode.insertBefore(panel, anchorBox.nextSibling);
+    anchorBox.parentNode.insertBefore(btn, panel);
+    function fill() {
+      var f = (localIndex >= 0 && localIndex < localFiles.length) ? localFiles[localIndex] : null;
+      if (!f) { panel.textContent = T("Choose a local file first."); return; }
+      var lines = [T("Name") + ": " + (f.name || "-")];
+      if (f.size) lines.push(T("Size") + ": " + (f.size / 1048576).toFixed(1) + " MB");
+      if (f.type) lines.push(T("Type") + ": " + f.type);
+      if (isFinite(vid.duration) && vid.duration > 0) {
+        lines.push(T("Length") + ": " + lfmt(vid.duration));
+        if (f.size) lines.push(T("Bitrate") + ": ~" + Math.round(f.size * 8 / vid.duration / 1000) + " kbps");
+      }
+      if (vid.videoWidth) lines.push(T("Picture") + ": " + vid.videoWidth + " × " + vid.videoHeight + " px");
+      panel.textContent = lines.join("\n");
+    }
+    btn.addEventListener("click", function () {
+      panel.hidden = !panel.hidden;
+      if (!panel.hidden) fill();
+      btn.setAttribute("aria-pressed", String(!panel.hidden));
+    });
+    vid.addEventListener("loadedmetadata", function () { if (!panel.hidden) fill(); });
+    function paintBtn() { btn.textContent = "\u2139\uFE0F " + T("File info"); }
+    (window.__relang = window.__relang || []).push(paintBtn); paintBtn();
+  })();
   // A practice range belongs to this open file, never the next file.
   var showBeforeLoop=show;show=function(url,local){resetLocalLoop();showBeforeLoop(url,local);};
   (window.__relang=window.__relang||[]).push(loopText);loopText();
