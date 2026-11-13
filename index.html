@@ -28337,6 +28337,28 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   WNEW.unshift(['Parallel transcripts','#parallel262']);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 
+  Object.assign(TR_MSG,{
+    'Cloze card builder':['खाली स्थान कार्ड बनाएं','ખાલી જગ્યા કાર્ડ બનાવો'],
+    'Choose a transcript line and the exact word or phrase to hide. The first match becomes a blank. Preview before saving to Recall cards. Source text must fit 300 characters.':['ट्रांसक्रिप्ट पंक्ति और छिपाने वाला सही शब्द चुनें. पहला मेल खाली स्थान बनता है. Recall cards में सेव करने से पहले देखें. मूल पंक्ति 300 अक्षर तक हो.','લખાણની પંક્તિ અને છુપાવવાનો ચોક્કસ શબ્દ પસંદ કરો. પહેલો મેળ ખાલી જગ્યા બને છે. Recall cards માં સાચવતા પહેલાં જુઓ. મૂળ પંક્તિ 300 અક્ષર સુધી હોય.'],
+    'Word or phrase to hide':['छिपाने वाला शब्द या वाक्यांश','છુપાવવાનો શબ્દ કે શબ્દસમૂહ'],
+    'Preview card':['कार्ड देखें','કાર્ડ જુઓ'],'Add cloze card':['खाली स्थान कार्ड जोड़ें','ખાલી જગ્યા કાર્ડ ઉમેરો'],
+    'Attach the current YouTube video at this line time (only if it matches)':['इस समय का अभी का YouTube वीडियो जोड़ें (केवल सही मेल हो तो)','આ સમયનો હાલનો YouTube વીડિયો જોડો (ફક્ત સાચો મેળ હોય તો)'],
+    'Pick a line under 301 characters and enter a phrase that occurs in it.':['301 अक्षर से छोटी पंक्ति चुनें और उसमें मौजूद वाक्यांश लिखें.','301 અક્ષરથી નાની પંક્તિ પસંદ કરો અને તેમાં આવતો શબ્દસમૂહ લખો.'],
+    'This question and answer are already saved.':['यह सवाल और जवाब पहले से सेव हैं.','આ પ્રશ્ન અને જવાબ પહેલેથી સાચવેલા છે.'],
+    'Preview the card first.':['पहले कार्ड देखें.','પહેલાં કાર્ડ જુઓ.']
+  });
+  (function(){if(!transcript261||!recall261)return;var card=mkCard('cloze262','parallel262','<label for="czCue262" id="czCueL262"></label><select id="czCue262" style="max-width:100%"></select><p id="czSource262" style="white-space:pre-wrap;overflow-wrap:anywhere"></p><label for="czPhrase262" id="czPhraseL262"></label><input id="czPhrase262" maxlength="300"><label style="display:flex;gap:8px;align-items:center;margin:12px 0"><input type="checkbox" id="czAttach262"><span id="czAttachL262"></span></label><div class="row"><button class="chip" type="button" id="czPreview262"></button><button class="chip" type="button" id="czAdd262" disabled></button></div><div id="czPreviewBox262" style="white-space:pre-wrap;overflow-wrap:anywhere"></div>');if(!card)return;var pending=null;
+    function clear(){pending=null;$('czAdd262').disabled=true;$('czPreviewBox262').textContent='';}
+    function source(){var x=transcript261.read()[Number($('czCue262').value)];$('czSource262').textContent=x?x.text:T('No subtitle file loaded.');return x;}
+    function paint(){card.querySelector('summary').textContent=T('Cloze card builder');card.querySelector('.r239-desc').textContent=T('Choose a transcript line and the exact word or phrase to hide. The first match becomes a blank. Preview before saving to Recall cards. Source text must fit 300 characters.');[['czCueL262','Subtitle line'],['czPhraseL262','Word or phrase to hide'],['czAttachL262','Attach the current YouTube video at this line time (only if it matches)'],['czPreview262','Preview card'],['czAdd262','Add cloze card']].forEach(function(p){$(p[0]).textContent=T(p[1]);});if(pending)show();}
+    function refresh(){var a=transcript261.read(),box=$('czCue262');box.textContent='';a.forEach(function(x,i){var o=document.createElement('option');o.value=i;o.textContent=(i+1)+'. '+fmt(x.start)+' '+x.text.slice(0,65);box.appendChild(o);});clear();source();paint();}
+    function show(){var box=$('czPreviewBox262');box.textContent='';var q=document.createElement('p'),a=document.createElement('p');q.textContent=T('Question')+': '+pending.q;a.textContent=T('Answer')+': '+pending.a;box.append(q,a);}
+    $('czCue262').onchange=function(){clear();source();};$('czPhrase262').oninput=clear;$('czAttach262').onchange=clear;
+    $('czPreview262').onclick=function(){clear();var x=source(),phrase=$('czPhrase262').value.trim(),i=x?x.text.indexOf(phrase):-1;if(!x||x.text.length>300||!phrase||i<0){toast(T('Pick a line under 301 characters and enter a phrase that occurs in it.'));return;}pending={q:x.text.slice(0,i)+'____'+x.text.slice(i+phrase.length),a:phrase,t:x.start,video:$('czAttach262').checked&&$('trTarget261').value==='youtube'&&curId?curId:'',title:curId?String(titleFor(curId)||''):''};if(pending.q.length>300){pending=null;toast(T('Pick a line under 301 characters and enter a phrase that occurs in it.'));return;}show();$('czAdd262').disabled=false;};
+    $('czAdd262').onclick=function(){if(!pending){toast(T('Preview the card first.'));return;}var a=recall261.read();if(a.length>=200){toast(T('Cards are full (200). Delete one first.'));return;}if(a.some(function(x){return x.q===pending.q&&x.a===pending.a;})){toast(T('This question and answer are already saved.'));return;}var x=Object.assign({key:'cz'+Date.now().toString(36)+Math.random().toString(36).slice(2),due:0,step:0},pending);if(recall261.change(function(list){list.push(x);})){toast(T('Card saved'));clear();}};
+    transcript261.listen(refresh);(window.__relang=window.__relang||[]).push(paint);refresh();
+  })();
+  WNEW.unshift(['Cloze card builder','#cloze262']);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 
 /*R244-END*/
 
@@ -31027,6 +31049,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Cloze card builder", "cloze blank fill recall cards transcript phrase hidden vocabulary learning", "#cloze262"],
       ["Parallel transcripts", "parallel bilingual subtitles compare two files translation time overlap offset", "#parallel262"],
       ["Subtitle workbench", "subtitle editor text timing repair edit cue VTT save", "#subtitleEdit262"],
       ["Playback profiles", "playback profiles named saved settings speed volume captions presets", "#profiles262"],
