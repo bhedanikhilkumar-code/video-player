@@ -2065,7 +2065,7 @@ setTimeout(done,3000);})();
             <div class="marks-list" id="noteFindOut"></div>
           </details>
           <div class="row" style="margin-top:10px"><button class="chip" id="noteTxtBtn" type="button">Save all notes as text file</button><button class="chip" id="notesCopyAllBtn" type="button">📋 Copy all notes</button><button class="chip" id="studySheetBtn" type="button">Save study sheet (.md)</button></div>
-          <div class="row" id="notesMoreRow" style="margin-top:6px"><button class="chip" id="notesClearAllBtn" type="button">🗑 Clear all notes</button></div>
+          <div class="row" id="notesMoreRow" style="margin-top:6px"><button class="chip" id="notesImportBtn" type="button">📂 Import notes from file</button><input id="notesFileIn" type="file" accept=".txt,text/plain" hidden aria-label="Import notes from a text file"> <button class="chip" id="notesClearAllBtn" type="button">🗑 Clear all notes</button></div>
         </div>
 
         <div class="ctl-card wide" id="ctl-lyrics">
@@ -15451,6 +15451,57 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
+  // Import notes from a text file (round 224 new 2): 'Save all notes as text file' made a file
+  // that could not come back in, so moving notes to another phone meant retyping them. This
+  // reads that same file (title, youtu.be link, note; blocks split by ----), adds the notes of
+  // videos that have none, never overwrites a note you already wrote, cuts each to 600 characters
+  // and offers one Undo.
+  Object.assign(TR_MSG, {
+    "📂 Import notes from file": ["📂 फ़ाइल से नोट्स लाएं", "📂 ફાઇલમાંથી નોંધો લાવો"],
+    "That file is too big (100 KB at most).": ["वह फ़ाइल बहुत बड़ी है (अधिकतम 100 KB).", "તે ફાઇલ ઘણી મોટી છે (વધુમાં વધુ 100 KB)."],
+    "That file has no notes to import.": ["उस फ़ाइल में लाने लायक नोट्स नहीं हैं.", "તે ફાઇલમાં લાવવા જેવી નોંધો નથી."],
+    "Notes imported: ": ["नोट्स लाए गए: ", "નોંધો લાવ્યા: "],
+    " (skipped, already have a note: ": [" (छोड़े, पहले से नोट है: ", " (છોડ્યા, પહેલેથી નોંધ છે: "],
+    "Import notes from a file": ["फ़ाइल से नोट्स लाएं", "ફાઇલમાંથી નોંધો લાવો"]
+  });
+  (function () {
+    var b = $("notesImportBtn"), inp = $("notesFileIn"); if (!b || !inp) return;
+    function paint() { b.textContent = T("📂 Import notes from file"); }
+    window.__vpParseNotesFile = function (text) {
+      var out = [];
+      String(text || "").replace(/\r\n?/g, "\n").split(/\n\s*-{4,}\s*\n/).forEach(function (bl) {
+        var m = bl.match(/(?:^|\n)\s*https?:\/\/youtu\.be\/([A-Za-z0-9_-]{11})[ \t]*\n([\s\S]*)$/);
+        if (m && m[2].trim()) out.push({ id: m[1], note: m[2].trim().slice(0, 600) });
+      });
+      return out;
+    };
+    b.addEventListener("click", function () { inp.value = ""; inp.click(); });
+    inp.addEventListener("change", function () {
+      var f = inp.files && inp.files[0]; if (!f) return;
+      if (f.size > 102400) { toast(T("That file is too big (100 KB at most).")); return; }
+      var rd = new FileReader();
+      rd.onload = function () {
+        var items = window.__vpParseNotesFile(String(rd.result || ""));
+        if (!items.length) { toast(T("That file has no notes to import.")); return; }
+        noteFlush();
+        var added = [], skipped = 0;
+        items.forEach(function (it) {
+          if (typeof notes[it.id] === "string" && notes[it.id].trim()) { skipped++; return; }
+          notes[it.id] = it.note; added.push(it.id);
+        });
+        if (!added.length) { toast(T("Notes imported: ") + "0" + T(" (skipped, already have a note: ") + skipped + ")"); return; }
+        notesSave(); renderNotes(); if (typeof renderLib === "function") renderLib();
+        toastUndo(T("Notes imported: ") + added.length + (skipped ? T(" (skipped, already have a note: ") + skipped + ")" : ""), function () {
+          added.forEach(function (id) { delete notes[id]; });
+          notesSave(); renderNotes(); if (typeof renderLib === "function") renderLib();
+        });
+      };
+      rd.onerror = function () { toast(T("That file could not be read.")); };
+      rd.readAsText(f);
+    });
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+
   // Find in all notes: search every saved note and jump to the matching video.
   (function () {
     var inp = $("noteFindIn"), out = $("noteFindOut"); if (!inp || !out) return;
@@ -16328,6 +16379,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Import notes from a file", "#notesImportBtn"],
     ["Clear all notes with Undo", "#notesClearAllBtn"],
     ["Moments mark on lists", "#favList .moment-badge"],
     ["Import moments from a file", "#markFileBtn"],
@@ -16337,7 +16389,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["This month in Watch stats", "#statsMonth"],
     ["Save the download queue as text", "#dlQTxtBtn"],
     ["Copy link from the mini player", "#miniCopy"],
-    ["Clear favourites", "#favClearBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -22919,6 +22970,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Import notes from a file", "import notes text file txt restore another phone load saved notes backup", "#notesImportBtn"],
       ["Clear all notes with Undo", "clear all notes delete wipe every note undo study session reset", "#notesClearAllBtn"],
       ["Moments mark on lists", "moments mark pill count lists rows library favourites watch later history queue bookmark saved moments at a glance", "#favList .moment-badge"],
       ["Import moments from a file", "import moments text file txt load chapters timestamps bookmarks restore another device notes app youtu.be", "#markFileBtn"],
