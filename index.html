@@ -27760,8 +27760,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   (function () {
     var rs = $("rsRow"); if (!rs || !rs.parentNode) return;
     var KEY = "vp-saved-searches.v1", MAXN = 10, list = [];
-    try { var a = JSON.parse(localStorage.getItem(KEY) || "[]"); if (Array.isArray(a)) list = a.filter(function (x) { return typeof x === "string" && x.trim(); }).map(function (x) { return x.trim().slice(0, 80); }).slice(0, MAXN); } catch (e) {}
-    function persist() { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {} }
+    function readList() { try { var a = JSON.parse(localStorage.getItem(KEY) || "[]"); if (Array.isArray(a)) return a.filter(function (x) { return typeof x === "string" && x.trim(); }).map(function (x) { return x.trim().slice(0, 80); }).slice(0, MAXN); } catch (e) {} return []; }
+    list = readList();
+    function persist(next) { try { localStorage.setItem(KEY, JSON.stringify(next)); list = next; return true; } catch (e) { storageWarn(); toast(T("Not saved. Your text is still here.")); return false; } }
+    window.addEventListener("storage",function(e){if(e.key===KEY||e.key===null){list=readList();paint();}});
     var row = document.createElement("div"); row.id = "ssRow"; row.className = "row"; row.style.cssText = "align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px";
     rs.parentNode.insertBefore(row, rs.nextSibling);
     function run(q) { libSearch.value = q; libSearch.dispatchEvent(new Event("input", { bubbles: true })); try { libSearch.focus({ preventScroll: true }); } catch (e) {} }
@@ -27769,11 +27771,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       row.textContent = "";
       var save = document.createElement("button"); save.type = "button"; save.className = "chip"; save.id = "ssSave"; save.textContent = "\uD83D\uDD16 " + T("Save this search");
       save.addEventListener("click", function () {
-        var q = libSearch.value.trim().slice(0, 80);
+        var q = libSearch.value.trim().slice(0, 80); list = readList();
         if (!q) { toast(T("Type a search first, then save it.")); return; }
         if (list.some(function (x) { return x.toLowerCase() === q.toLowerCase(); })) { toast(T("That search is already saved.")); return; }
         if (list.length >= MAXN) { toast(T("Saved searches are full (10). Remove one first.")); return; }
-        list.unshift(q); persist(); paint(); toast(T("Search saved"));
+        var next = list.slice(); next.unshift(q); if (persist(next)) { paint(); toast(T("Search saved")); }
       });
       row.appendChild(save);
       if (list.length) { var lab = document.createElement("span"); lab.className = "hint"; lab.textContent = T("Saved:"); row.appendChild(lab); }
@@ -27783,8 +27785,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         b.addEventListener("click", function () { run(q); });
         var x = document.createElement("button"); x.type = "button"; x.className = "chip ss-del"; x.textContent = "\u00D7"; x.setAttribute("aria-label", T("Remove saved search") + ": " + q); x.title = T("Remove saved search");
         x.addEventListener("click", function () {
-          var at = list.indexOf(q); if (at < 0) return; list.splice(at, 1); persist(); paint();
-          toastUndo(T("Saved search removed"), function () { if (list.indexOf(q) < 0) list.splice(Math.min(at, list.length), 0, q); persist(); paint(); }, T("Saved search restored"));
+          list = readList(); var at = list.indexOf(q); if (at < 0) { paint(); return; }
+          var next = list.slice(); next.splice(at, 1); if (!persist(next)) return; paint();
+          toastUndo(T("Saved search removed"), function () { var latest = readList(); if (latest.indexOf(q) < 0 && latest.length < MAXN) latest.splice(Math.min(at, latest.length), 0, q); if(persist(latest))paint(); }, T("Saved search restored"));
         });
         w.appendChild(b); w.appendChild(x); row.appendChild(w);
       });
