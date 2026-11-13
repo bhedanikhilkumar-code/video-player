@@ -27741,6 +27741,14 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
     paint();
   }
   function sync() { var n = curId(); if (n && n !== id) { id = n; paint(); } }
+  // Round 238 fix 3: this widget kept its own copy of the ratings and wrote the WHOLE copy back on every
+  // tap, so after Import backup (or a change from another tab) the next star tap overwrote every imported
+  // rating with the stale copy. It now re-reads the saved ratings whenever the rate-changed event fires.
+  window.addEventListener("vp-rate-changed", function () {
+    try { var fresh = JSON.parse(localStorage.getItem(KEY) || "{}"); map = (fresh && typeof fresh === "object" && !Array.isArray(fresh)) ? fresh : {}; } catch (e) { map = {}; }
+    paint();
+  });
+  window.addEventListener("storage", function (e) { if (e.key === KEY) window.dispatchEvent(new Event("vp-rate-changed")); });
   new MutationObserver(sync).observe(thumb, { attributes: true, attributeFilter: ["src"] });
   setInterval(sync, 1500);
   (window.__relang = window.__relang || []).push(paint);
