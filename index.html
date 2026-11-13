@@ -11385,13 +11385,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   if ($("qPickLaterBtn")) $("qPickLaterBtn").addEventListener("click", function () {
     if (!qPickNeed()) return;
-    var added = 0;
+    var added = 0, noRoom = 0;
     qPicked.forEach(function (it) {
-      if (lib.later.length >= 50 || findIn(lib.later, it.id) >= 0) return;
+      if (findIn(lib.later, it.id) >= 0) return;
+      if (lib.later.length >= 50) { noRoom++; return; }
       lib.later.unshift({ id: it.id, title: it.title || titleFor(it.id), ts: Date.now() }); added++;
     });
     qPicked = []; saveLib(); renderLib();
-    toast(added ? T("Saved to Watch later.") : T("Already in Watch later."));
+    // Round 258 fix: a full Watch later said "Already in Watch later." for videos that were not in it.
+    toast((added ? T("Saved to Watch later.") : noRoom ? "" : T("Already in Watch later.")) + (noRoom ? (added ? " " : "") + T("Watch later is full (50 videos). Remove one first.") : ""));
   });
   // Favourite picked (round 174): Pick many could already send picked videos to Watch
   // later, but a starred Favourites list needed one tap per row. This chip stars every
