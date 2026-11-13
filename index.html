@@ -31410,6 +31410,65 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     WNEW.unshift(["Remember the A-B loop", "#abMemBtn278"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   })();
 
+  // Round 278 new 2: Remember the playback speed per video. Lectures feel right at 1.5x
+  // and music at 1x, but the app kept one speed for everything, so every return meant
+  // setting it again. A 'Remember this speed' chip in the Speed card pins the current
+  // speed to the playing video and sets it again whenever that video loads. Up to 25
+  // videos, oldest forgotten. Checked first: Channel speed memory and Playlist default
+  // speed exist, but nothing remembered a speed for one single video.
+  (function () {
+    var KEY = "vp-speedmem.v1";
+    var mem = {}, order = [];
+    try { var raw = JSON.parse(localStorage.getItem(KEY) || "null"); if (raw && typeof raw === "object") mem = raw; } catch (e) {}
+    try { var rawO = JSON.parse(localStorage.getItem(KEY + ".o") || "[]"); if (Array.isArray(rawO)) order = rawO; } catch (e) {}
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(mem)); localStorage.setItem(KEY + ".o", JSON.stringify(order)); return true; } catch (e) { return false; } }
+    function touch(id) { order = order.filter(function (x) { return x !== id; }); order.push(id); while (order.length > 25) { delete mem[order.shift()]; } }
+    var host = speedChips && speedChips.parentNode; if (!host) return;
+    var row = document.createElement("div"); row.className = "row"; row.style.marginTop = "6px";
+    var chip = document.createElement("button"); chip.type = "button"; chip.className = "chip"; chip.id = "speedMemBtn278"; chip.setAttribute("aria-pressed", "false");
+    row.appendChild(chip); host.appendChild(row);
+    function on() { return !!(curId && mem[curId]); }
+    function paint() {
+      chip.textContent = "\u23F1 " + T("Remember this speed") + ": " + (on() ? T("on") : T("off"));
+      chip.setAttribute("aria-pressed", String(on()));
+    }
+    chip.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first.")); return; }
+      if (on()) { delete mem[curId]; order = order.filter(function (x) { return x !== curId; }); persist(); toast(T("Speed memory removed for this video.")); paint(); return; }
+      mem[curId] = prefs.speed; touch(curId);
+      if (!persist()) toast(T("Could not save: browser storage is full or blocked. Your latest changes may be lost - export a backup."));
+      else toast(T("Speed remembered for this video: ") + prefs.speed + "x");
+      paint();
+    });
+    var lastId = null, appliedFor = null, lastSet = null;
+    setInterval(function () {
+      if (curId !== lastId) { lastId = curId; appliedFor = null; lastSet = prefs.speed; paint(); }
+      if (!curId) return;
+      var m = mem[curId];
+      if (!m) return;
+      if (appliedFor !== curId) {
+        if (typeof playerReady !== "undefined" && !playerReady) return;
+        if (Math.abs(prefs.speed - m) > 0.001) {
+          prefs.speed = m; savePrefs(); send("setPlaybackRate", [m]); markActive(speedChips, String(m));
+          var sc = $("speedCustom"); if (sc) sc.value = m;
+          toast(T("Remembered speed back: ") + m + "x");
+        }
+        appliedFor = curId; lastSet = m;
+        return;
+      }
+      if (Math.abs(prefs.speed - lastSet) > 0.001) { mem[curId] = prefs.speed; touch(curId); persist(); lastSet = prefs.speed; }
+    }, 1000);
+    Object.assign(TR_MSG, {
+      "Remember this speed": ["यह स्पीड याद रखें", "આ સ્પીડ યાદ રાખો"],
+      "Speed memory removed for this video.": ["इस वीडियो की स्पीड याद हटा दी.", "આ વીડિયોની સ્પીડ યાદ કાઢી નાખી."],
+      "Speed remembered for this video: ": ["इस वीडियो के लिए स्पीड याद रखी: ", "આ વીડિયો માટે સ્પીડ યાદ રાખી: "],
+      "Remembered speed back: ": ["याद स्पीड वापस: ", "યાદદાર સ્પીડ પાછી: "],
+      "Remember the speed per video": ["हर वीडियो की स्पीड याद रखें", "દરેક વીડિયોની સ્પીડ યાદ રાખો"]
+    });
+    (window.__relang = window.__relang || []).push(paint); paint();
+    WNEW.unshift(["Remember the speed per video", "#speedMemBtn278"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
+
 
 
 
