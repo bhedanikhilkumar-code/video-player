@@ -22464,7 +22464,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (binPrev) {
       var added = [];
       ["favs", "later"].forEach(function (k) {
-        binPrev[k].forEach(function (x) { if (findIn(now[k], x.id) < 0) { added.push({ list: k, item: x, at: Date.now() }); } });
+        var other = k === "favs" ? "later" : "favs";
+        binPrev[k].forEach(function (x) {
+          if (findIn(now[k], x.id) >= 0) return;
+          // Round 236 fix 4: a video that just moved to the other list (Move to the other list, Select videos) is not a removal.
+          if (findIn(now[other], x.id) >= 0 && findIn(binPrev[other], x.id) < 0) return;
+          added.push({ list: k, item: x, at: Date.now() });
+        });
       });
       if (added.length) {
         added.forEach(function (a) { binItems = binItems.filter(function (b) { return !(b.list === a.list && b.item.id === a.item.id); }); binItems.unshift(a); });
