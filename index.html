@@ -30718,6 +30718,19 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     window.__vpPadTick274 = tick;
   })();
   WNEW.unshift(["Game controller","#padCard274"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  // Copy frame (round 274 new 3): the local player could save the current frame
+  // as a PNG file, but pasting it into a chat or document meant saving the file
+  // first and attaching it. A second button next to Save this frame now puts the
+  // frame on the clipboard as an image (where the browser allows image copying).
+  // Same capture as the save button: full video size, zoom and rotate ignored,
+  // YouTube frames not available. Nothing is stored. Hindi and Gujarati,
+  // feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Copy frame": ["फ़्रेम कॉपी करें", "ફ્રેમ કૉપિ કરો"],
+    "Frame copied.": ["फ़्रेम कॉपी हो गया.", "ફ્રેમ કૉપિ થઈ."],
+    "This browser cannot copy images. Use Save this frame as image.": ["यह ब्राउज़र इमेज कॉपी नहीं कर सकता. \u201cयह फ़्रेम इमेज के रूप में सेव करें\u201d उपयोग करें.", "આ બ્રાઉઝર ઇમેજ કૉપિ કરી શકતું નથી. \u201cઆ ફ્રેમ ઇમેજ તરીકે સેવ કરો\u201d વાપરો."]
+  });
+  WNEW.unshift(["Copy frame","#lpShotCopyBtn"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 })();
 
 
@@ -32615,6 +32628,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var btn = document.createElement("button"); btn.className = "chip"; btn.type = "button"; btn.id = "lpShotBtn";
   var row = document.createElement("div"); row.className = "row"; row.id = "lpShotRow"; row.style.margin = "6px 0";
   row.appendChild(btn);
+  var cbtn = document.createElement("button"); cbtn.className = "chip"; cbtn.type = "button"; cbtn.id = "lpShotCopyBtn";
+  row.appendChild(cbtn);
   var msg = document.createElement("p"); msg.className = "hint"; msg.id = "lpShotMsg"; msg.setAttribute("role", "status");
   var hint = document.createElement("p"); hint.className = "hint"; hint.id = "lpShotHint";
   var anchor = $("lpZoom");
@@ -32625,11 +32640,25 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
 
   function relang() {
     btn.textContent = T("Save this frame as image");
+    cbtn.textContent = T("Copy frame");
     hint.textContent = T("Saves the current frame as a PNG image. Zoom and rotate do not change the saved image. YouTube frames cannot be saved (a YouTube limit).");
   }
   (window.__relang = window.__relang || []).push(relang);
   relang();
 
+  cbtn.addEventListener("click", function () {
+    if (vid.hidden || !vid.src || !vid.videoWidth) { msg.textContent = T("Open and play a local file first."); return; }
+    if (!(navigator.clipboard && navigator.clipboard.write && window.ClipboardItem)) { msg.textContent = T("This browser cannot copy images. Use Save this frame as image."); return; }
+    try {
+      var c = document.createElement("canvas");
+      c.width = vid.videoWidth; c.height = vid.videoHeight;
+      c.getContext("2d").drawImage(vid, 0, 0);
+      var pr = new Promise(function (res, rej) { c.toBlob(function (b) { if (b) res(b); else rej(new Error("blob")); }, "image/png"); });
+      navigator.clipboard.write([new ClipboardItem({ "image/png": pr })]).then(function () {
+        msg.textContent = T("Frame copied."); toast(T("Frame copied."));
+      }).catch(function () { msg.textContent = T("This frame could not be saved (the browser blocked it)."); });
+    } catch (e) { msg.textContent = T("This frame could not be saved (the browser blocked it)."); }
+  });
   function stamp() { var s = Math.floor(vid.currentTime || 0), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = s % 60; return (h > 0 ? h + "-" : "") + m + "-" + String(ss).padStart(2, "0"); }
   btn.addEventListener("click", function () {
     if (vid.hidden || !vid.src || !vid.videoWidth) { msg.textContent = T("Open and play a local file first."); return; }
@@ -33429,6 +33458,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Ambient sounds", "ambient sound white pink brown noise rain ocean sleep focus study relax background masking tinnitus calm", "#ambCard270"],
       ["Blocked channels", "block channel skip hide mute creator never play queue next unwanted", "#blockCard271"],
       ["Mouse wheel seek", "mouse wheel scroll seek bar scrub laptop desktop shift fine step", "#seek"],
+      ["Copy frame", "copy frame screenshot clipboard image paste chat local video picture still capture", "#lpShotCopyBtn"],
       ["Game controller", "game controller gamepad joystick xbox playstation bluetooth usb tv remote couch play pause seek volume buttons", "#padCard274"],
       ["Open with", "open with default app file handler installed pwa double click video file mp4 mkv mp3 choose program desktop", "#lpPickBtn"],
       ["Night hours", "night hours day night theme dark from light from custom schedule evening morning", "#nightRow273"],
