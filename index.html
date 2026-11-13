@@ -26780,6 +26780,39 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       nextMost = !nextMost; paint();
     });
   })();
+
+  // Queue this week (round 256 new 3): the Today and Yesterday chips replay one day each,
+  // but the common case is "put back what I had on all week" - a series spread over
+  // several evenings. A This week chip next to them queues everything watched in the
+  // last 7 days (oldest first, current video and already-queued ones skipped, 50-cap
+  // respected), with the usual Undo. Hindi and Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "This week's videos to the queue": ["\u0907\u0938 \u0939\u092b\u093c\u094d\u0924\u0947 \u0915\u0947 \u0935\u0940\u0921\u093f\u092f\u094b \u0915\u0924\u093e\u0930 \u092e\u0947\u0902", "\u0a86 \u0a85\u0aa0\u0ab5\u0abe\u0aa1\u0abf\u0aaf\u0abe\u0aa8\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82"],
+    "\ud83d\udcc5 This week": ["\ud83d\udcc5 \u0907\u0938 \u0939\u092b\u093c\u094d\u0924\u0947", "\ud83d\udcc5 \u0a86 \u0a85\u0aa0\u0ab5\u0abe\u0aa1\u0abf\u0aaf\u0ac7"],
+    "Nothing in history was watched this week (or it is all queued already).": ["\u0939\u093f\u0938\u094d\u091f\u094d\u0930\u0940 \u092e\u0947\u0902 \u0907\u0938 \u0939\u092b\u093c\u094d\u0924\u0947 \u0915\u093e \u0915\u0941\u091b \u0928\u0939\u0940\u0902 \u0939\u0948 (\u092f\u093e \u0938\u092c \u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0939\u0948).", "\u0ab9\u0abf\u0ab8\u0acd\u0a9f\u0acd\u0ab0\u0ac0\u0aae\u0abe\u0a82 \u0a86 \u0a85\u0aa0\u0ab5\u0abe\u0aa1\u0abf\u0aaf\u0abe\u0aa8\u0ac1\u0a82 \u0a95\u0a82\u0a88 \u0aa8\u0aa5\u0ac0 (\u0a85\u0aa5\u0ab5\u0abe \u0aac\u0aa7\u0ac1\u0a82 \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0a9b\u0ac7)."],
+    "Queue this week": ["\u0907\u0938 \u0939\u092b\u093c\u094d\u0924\u0947 \u0915\u0947 \u0915\u0924\u093e\u0930 \u092e\u0947\u0902", "\u0a86 \u0a85\u0aa0\u0ab5\u0abe\u0aa1\u0abf\u0aaf\u0abe\u0aa8\u0abe \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82"]
+  });
+  (function () {
+    var yest = $("histYestBtn"); if (!yest || !yest.parentNode) return;
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "chip"; btn.id = "histWeekBtn";
+    yest.parentNode.insertBefore(btn, yest);
+    function paint() { btn.textContent = T("\ud83d\udcc5 This week"); btn.setAttribute("aria-label", T("This week's videos to the queue")); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      var start = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      var snap = lib.queue.slice(), sp = qPos, add = [], seen = {};
+      lib.hist.filter(function (h) { return h && h.id && typeof h.ts === "number" && h.ts >= start; }).sort(function (a, b) { return a.ts - b.ts; }).forEach(function (h) {
+        if (seen[h.id] || h.id === curId || findIn(lib.queue, h.id) >= 0 || lib.queue.length + add.length >= 50) return;
+        seen[h.id] = 1;
+        add.push({ id: h.id, title: h.title || titleFor(h.id) || "" });
+      });
+      if (!add.length) { toast(T("Nothing in history was watched this week (or it is all queued already).")); return; }
+      add.forEach(function (x) { lib.queue.push(x); });
+      saveLib(); renderLib();
+      toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    });
+  })();
 /*R244-END*/
 
 })();
