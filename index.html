@@ -18031,6 +18031,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Video of the day", "#dailyPickCard"],
     ["Review reminders", "#reviewCard"],
     ["Title tidy", "#titleTidyCard"],
     ["Take it to YouTube", "#ytTakeCard"],
@@ -18040,7 +18041,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Play at a clock time", "#playAtRow"],
     ["Playlist groups", "#plList"],
     ["Playlist default speed", "#plList"],
-    ["Library words", "#wordsCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24989,6 +24989,36 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   card.addEventListener('toggle',function(){if(card.open)paint();});
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Video of the day (round 247 new 5): "Surprise me" and "Random 5" pick by dice, so the answer
+  // changes on every tap and nothing is a habit. This card gives one video a day from Favourites
+  // and Watch later: the same pick all day (it is worked out from the local date, so nothing is
+  // stored), unwatched videos first, with Play, Queue and "Another" to step to the next candidate.
+  Object.assign(TR_MSG, {
+    "Video of the day": ["आज का वीडियो", "આજનો વીડિયો"],
+    "One pick a day from your Favourites and Watch later, the same all day. Unwatched videos come first.": ["आपके पसंदीदा और Watch later से रोज़ एक चुनाव, पूरे दिन वही. बिना देखे वीडियो पहले आते हैं.", "તમારા મનપસંદ અને Watch later માંથી રોજ એક પસંદગી, આખો દિવસ તે જ. ન જોયેલી વીડિયો પહેલા આવે છે."],
+    "Another": ["दूसरा", "બીજો"],
+    "Save some Favourites or Watch later videos to get a daily pick.": ["रोज़ का चुनाव पाने के लिए कुछ पसंदीदा या Watch later वीडियो सेव करें.", "રોજની પસંદગી માટે થોડી મનપસંદ કે Watch later વીડિયો સેવ કરો."],
+    "{n} of {t} candidates": ["{t} में से {n} उम्मीदवार", "{t} માંથી {n} ઉમેદવાર"]
+  });
+  (function(){var host=$('plList');if(!host)return;var off=0;
+  var card=document.createElement('details');card.id='dailyPickCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><p id="dpTitle" class="dp-title" style="font-weight:650;margin:8px 0;overflow-wrap:anywhere"></p><div class="row" id="dpAct" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div><p class="hint" id="dpInfo" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  function cands(){var seen={},un=[],w=[];[lib.favs,lib.later].forEach(function(l){(l||[]).forEach(function(x){if(!x||!/^[\w-]{11}$/.test(x.id)||seen[x.id])return;seen[x.id]=1;var h=findIn(lib.hist,x.id);((h>=0&&lib.hist[h].done)?w:un).push({id:x.id,title:x.title||titleFor(x.id)||x.id});});});return un.concat(w);}
+  function dayNum(){var d=new Date();return d.getFullYear()*372+d.getMonth()*31+d.getDate();}
+  function paint(){card.querySelector('summary').textContent=T('Video of the day');card.querySelector('.r239-desc').textContent=T('One pick a day from your Favourites and Watch later, the same all day. Unwatched videos come first.');
+    var c=cands(),A=$('dpAct'),t=$('dpTitle'),I=$('dpInfo');A.textContent='';
+    if(!c.length){t.textContent='';I.textContent=T('Save some Favourites or Watch later videos to get a daily pick.');return;}
+    var pool=c.filter(function(x,i){return i<(c.length-(c.length-cands().filter(function(y){var h=findIn(lib.hist,y.id);return !(h>=0&&lib.hist[h].done);}).length));});if(!pool.length)pool=c;
+    var k=(dayNum()+off)%pool.length,p=pool[k];t.textContent=p.title;I.textContent=T('{n} of {t} candidates').replace('{n}',k+1).replace('{t}',pool.length);
+    function ab(tx,fn){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T(tx);b.setAttribute('aria-label',T(tx)+': '+p.title);A.appendChild(b);b.addEventListener('click',fn);}
+    ab('Play',function(){if(findIn(lib.queue,p.id)<0){if(lib.queue.length>=50){I.textContent=T('The queue is full at 50 videos. Remove some first.');return;}lib.queue.unshift({id:p.id,title:p.title});}var i=findIn(lib.queue,p.id);saveLib();renderLib();playQueueAt(i);if(frameBox&&frameBox.scrollIntoView)frameBox.scrollIntoView({behavior:window.vpReducedMotion()?'auto':'smooth',block:'center'});});
+    ab('Queue',function(){if(findIn(lib.queue,p.id)<0&&lib.queue.length<50){lib.queue.push({id:p.id,title:p.title});saveLib();renderLib();}I.textContent=T('Added to the queue:')+' 1';});
+    if(pool.length>1)ab('Another',function(){off+=1;paint();});}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRL7=renderLib;renderLib=function(){oldRL7();if(card.open&&!(document.activeElement&&document.activeElement.closest('#dailyPickCard')))paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27547,6 +27577,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Video of the day", "video of the day daily pick one video a day favourites watch later habit same all day unwatched first", "#dailyPickCard"],
       ["Review reminders", "review reminders spaced repetition learn remember study lesson revisit 1 3 7 14 30 days due again", "#reviewCard"],
       ["Title tidy", "title tidy clean titles official video hd lyrics tags brackets rename remove junk saved titles library", "#titleTidyCard"],
       ["Take it to YouTube", "take it to youtube open list temporary playlist watch_videos tv app friend send queue favourites watch later share", "#ytTakeCard"],
