@@ -18008,6 +18008,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Print your lists", "#printCard"],
     ["Customize shortcuts", "#keymapCard"],
     ["Playlist QR code", "#plList"],
     ["Hide shorts in favourites", "#favShortsBtn"],
@@ -18017,7 +18018,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Lists as CSV", "#listsCsvBtn"],
     ["Watch later overlap", "#laterOverlapBtn"],
     ["History as CSV", "#histCsvBtn"],
-    ["Quick opens cleanup", "#histQuickBtn"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23870,6 +23870,43 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   (window.__relang=window.__relang||[]).push(paint);paint();
   window.__vpKeymapReload=function(){load();rebuild();paint();};
   })();
+  // Print your lists (round 243 new 2): lists could be copied, saved as text or CSV, but not put
+  // on paper or saved as a tidy PDF - handy for a lesson plan, a watch party or a parent who
+  // wants to see what is in the queue. A card under the playlists picks which lists to include
+  // (Favourites, Watch later, Queue, Recently watched, every playlist) and Print opens the
+  // browser print dialog (choose 'Save as PDF' there). A print-only sheet carries a title,
+  // the date, a count per list and numbered rows with the video link; the rest of the page is
+  // hidden by @media print, so nothing of the app's UI lands on paper. Built on this device.
+  Object.assign(TR_MSG, {
+    "Print your lists": ["अपनी लिस्ट प्रिंट करें", "તમારી યાદી પ્રિન્ટ કરો"],
+    "Pick the lists to put on paper. In the print dialog choose Save as PDF to keep a file.": ["काग़ज़ पर रखने वाली लिस्ट चुनें. प्रिंट डायलॉग में फ़ाइल रखने के लिए PDF के रूप में सेव करें चुनें.", "કાગળ પર મૂકવાની યાદી પસંદ કરો. પ્રિન્ટ ડાયલૉગમાં ફાઇલ રાખવા PDF તરીકે સાચવો પસંદ કરો."],
+    "Print": ["प्रिंट करें", "પ્રિન્ટ કરો"],
+    "Nothing to print - tick a list that has videos.": ["प्रिंट करने को कुछ नहीं - वीडियो वाली कोई लिस्ट चुनें.", "પ્રિન્ટ કરવા કંઈ નથી - વીડિયો હોય તેવી યાદી પસંદ કરો."],
+    "My video lists": ["मेरी वीडियो लिस्ट", "મારી વીડિયો યાદી"],
+    "videos": ["वीडियो", "વીડિયો"],
+    "Playlist:": ["प्लेलिस्ट:", "પ્લેલિસ્ટ:"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='printCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div id="prtChecks"></div><p class="hint" id="prtMsg" role="status"></p><div class="row"><button class="chip" type="button" id="prtGo"></button></div>';
+  host.parentNode.insertBefore(card,host);
+  var sheet=document.createElement('div');sheet.id='printSheet';document.body.appendChild(sheet);
+  var st=document.createElement('style');st.textContent='#printSheet{display:none}@media print{body>*:not(#printSheet){display:none!important}#printSheet{display:block!important;color:#000;background:#fff;font:12pt/1.4 Georgia,serif;padding:0}#printSheet h1{font-size:20pt;margin:0 0 2pt}#printSheet h2{font-size:14pt;margin:14pt 0 4pt;border-bottom:1px solid #999;page-break-after:avoid}#printSheet p{margin:0 0 6pt;color:#444;font-size:10pt}#printSheet ol{margin:0;padding-left:22pt}#printSheet li{margin:0 0 3pt;page-break-inside:avoid}#printSheet li small{color:#555;word-break:break-all}}';document.head.appendChild(st);
+  var chosen=null;
+  function groups(){var g=[['favs','Favourites',lib.favs],['later','Watch later',lib.later],['queue','Queue',lib.queue],['hist','Recently watched',lib.hist]];playlists.forEach(function(p,i){g.push(['pl'+i,T('Playlist:')+' '+p.name,p.items||[],true]);});return g;}
+  function paint(){card.querySelector('summary').textContent=T('Print your lists');card.querySelector('.r239-desc').textContent=T('Pick the lists to put on paper. In the print dialog choose Save as PDF to keep a file.');$('prtGo').textContent=T('Print');
+    var box=$('prtChecks');var gs=groups();if(chosen===null){chosen={};gs.forEach(function(g){chosen[g[0]]=g[0]==='favs'||g[0]==='later'||g[0]==='queue';});}
+    box.textContent='';gs.forEach(function(g){var l=document.createElement('label');l.className='hint';l.style.display='block';var c=document.createElement('input');c.type='checkbox';c.checked=!!chosen[g[0]];c.addEventListener('change',function(){chosen[g[0]]=c.checked;});l.appendChild(c);l.appendChild(document.createTextNode(' '+(g[3]?g[1]:T(g[1]))+' ('+g[2].length+')'));box.appendChild(l);});}
+  function build(){sheet.textContent='';var h=document.createElement('h1');h.textContent=T('My video lists');sheet.appendChild(h);var p=document.createElement('p');p.textContent=new Date().toLocaleDateString();sheet.appendChild(p);var n=0;
+    groups().forEach(function(g){if(!chosen||!chosen[g[0]]||!g[2].length)return;n++;var h2=document.createElement('h2');h2.textContent=(g[3]?g[1]:T(g[1]))+' - '+g[2].length+' '+T('videos');sheet.appendChild(h2);var ol=document.createElement('ol');g[2].forEach(function(x){var li=document.createElement('li');li.appendChild(document.createTextNode(String(x.title||x.id)));li.appendChild(document.createElement('br'));var s=document.createElement('small');s.textContent='https://youtu.be/'+x.id;li.appendChild(s);ol.appendChild(li);});sheet.appendChild(ol);});return n;}
+  $('prtGo').addEventListener('click',function(){if(!build()){$('prtMsg').textContent=T('Nothing to print - tick a list that has videos.');return;}$('prtMsg').textContent='';window.print();});
+  window.addEventListener('afterprint',function(){sheet.textContent='';});
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRL=renderLib;renderLib=function(){oldRL();if(card.open)paint();};
+  var oldRP=renderPlaylists;renderPlaylists=function(){oldRP();if(card.open)paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  window.__vpPrintBuild=build;
+  })();
 /*R243-END*/
 
 })();
@@ -26428,6 +26465,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Print your lists", "print lists pdf paper save pdf favourites watch later queue playlists share offline sheet", "#printCard"],
       ["Customize shortcuts", "customize shortcuts rebind remap keyboard keys change letter swap hotkey accessibility screen reader layout", "#keymapCard"],
       ["Playlist QR code", "playlist qr code scan share link phone tv friend camera", "#plList"],
       ["Hide shorts in favourites", "favourites hide shorts short clips minute filter clean music list", "#favShortsBtn"],
