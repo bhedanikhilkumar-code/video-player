@@ -5399,12 +5399,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // plain 11-letter word (for example "programming") was taken for a video id. Now the first
   // YouTube link found inside the text is used, and a bare 11-character word counts as an id only
   // if it has a digit, a capital, a dash or an underscore (real ids always do in practice).
-  function parseVideoId(input) {
-    var whole = parseVideoIdOne(String(input == null ? "" : input));
+  function parseVideoId(input, depth) {
+    // Round 216 fix: smart quotes (iPhone keyboards), zero-width characters (copied from chats
+    // and docs), comma-joined lists and links wrapped in a redirect (%2F encoded) were refused.
+    var raw = String(input == null ? "" : input).replace(/[\u200b-\u200d\u2060\ufeff]/g, "").replace(/[\u201c\u201d\u2018\u2019\u00ab\u00bb]/g, '"');
+    var whole = parseVideoIdOne(raw);
     if (whole) return whole;
-    var txt = String(input == null ? "" : input).replace(/%20|%0A|%0D/gi, " ");
+    var txt = raw.replace(/%20|%0A|%0D/gi, " ").replace(/,/g, " ");
     var found = txt.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*(?:youtube(?:-nocookie)?\.com|youtu\.be)\/[^\s<>"'`]+/gi) || [];
     for (var fi = 0; fi < found.length; fi++) { var got = parseVideoIdOne(found[fi]); if (got) return got; }
+    if (!depth && /%2F|%3A/i.test(raw)) { try { return parseVideoId(decodeURIComponent(raw), 1); } catch (e) {} }
     return null;
   }
   function parseVideoIdOne(input) {
