@@ -1982,7 +1982,7 @@ setTimeout(done,3000);})();
           <div class="row">
             <button class="chip" id="aBtn">Set A</button>
             <button class="chip" id="bBtn">Set B</button>
-            <button class="chip" id="abClearBtn">Clear</button><button class="chip" id="abLast10Btn" type="button">⏪ Last 10s</button>
+            <button class="chip" id="abClearBtn">Clear</button><button class="chip" id="abLast10Btn" type="button">⏪ Last 10s</button><button class="chip" id="abBEndBtn" type="button">B = end</button>
           </div>
           <div class="row" id="abNudgeRow" style="margin-top:8px"><span class="label" id="abNudgeLab">Fine-tune:</span><button class="chip" id="abAmBtn" type="button">A -1s</button><button class="chip" id="abApBtn" type="button">A +1s</button><button class="chip" id="abBmBtn" type="button">B -1s</button><button class="chip" id="abBpBtn" type="button">B +1s</button><span class="label" id="abShiftLab" style="margin-left:6px">Shift loop:</span><button class="chip" id="abShiftMBtn" type="button">-1s</button><button class="chip" id="abShiftPBtn" type="button">+1s</button><span class="label" id="abScaleLab" style="margin-left:6px">Loop length:</span><button class="chip" id="abHalfBtn" type="button">&frac12;</button><button class="chip" id="abDoubleBtn" type="button">2&times;</button></div>
           <span class="label" id="abLabel" role="status">Off</span>
@@ -7288,6 +7288,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // The Set A / Set B buttons were static HTML and stayed English in Hindi/Gujarati;
     // updateAB already runs on every language switch, so paint them here.
     aBtn.textContent = T("Set A"); bBtn.textContent = T("Set B");
+    var abBEndEl = $("abBEndBtn"); if (abBEndEl) { abBEndEl.textContent = T("B = end"); abBEndEl.setAttribute("aria-label", T("Set B to the end of the video")); }
     if (abA != null && $("abFrom")) $("abFrom").value = abA;
     if (abB != null && $("abTo")) $("abTo").value = abB;
     aBtn.classList.toggle("active", abA != null);
@@ -7308,6 +7309,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var b = Math.floor(curTime);
     if (abA != null && b <= abA) { abLabel.textContent = T("B must be after A"); return; }
     abB = b; abLoopCount = 0; updateAB();
+    if (abA != null) send("seekTo", [abA, true]);
+  });
+  // B = end chip (round 227 new 1): practising an outro or replaying from a point to the
+  // very end meant reading the length, typing it into the B box or dragging the seek bar
+  // to the last second first. One tap sets B to the video's own length, and with A set
+  // the loop starts right away like any Set B. It asks for a loaded video whose length is
+  // known, keeps the B-after-A rule, and re-translates through updateAB like Set A/Set B.
+  Object.assign(TR_MSG, {
+    "B = end": ["B = अंत", "B = અંત"],
+    "Set B to the end of the video": ["B को वीडियो के अंत पर सेट करें", "B ને વીડિયોના અંતે સેટ કરો"],
+    "Load a video and wait for its length first.": ["पहले एक वीडियो लोड करें और उसकी लंबाई का इंतज़ार करें.", "પહેલા વીડિયો લોડ કરો અને તેની લંબાઈની રાહ જુઓ."],
+    "Loop B to the video end": ["B को वीडियो के अंत तक लूप करें", "B ને વીડિયોના અંત સુધી લૂપ કરો"]
+  });
+  var abBEndBtn = $("abBEndBtn");
+  if (abBEndBtn) abBEndBtn.addEventListener("click", function () {
+    if (!curId || !(duration > 0)) { abLabel.textContent = T("Load a video and wait for its length first."); return; }
+    var end = Math.floor(duration);
+    if (abA != null && end <= abA) { abLabel.textContent = T("B must be after A"); return; }
+    abB = end; abLoopCount = 0; updateAB();
     if (abA != null) send("seekTo", [abA, true]);
   });
   // A-B fine-tune nudges (round 211 new 3): setting A or B lands on the whole second under
@@ -16820,6 +16840,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Loop B to the video end", "#abBEndBtn"],
     ["Sleep timer from the page link", "#ctl-sleep"],
     ["Count down only while playing", "#sleepPlayOnly"],
     ["Keep watching 10 more minutes", "#sleepMore"],
@@ -23512,6 +23533,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Rewind after a pause", "rewind pause back seconds break podcast", "#rwPauseRow"],
       ["Often used controls", "often used frequent quick bar controls top shortcuts", "#favCtlBar"],
       ["Playback speed", "speed tez slow fast 2x", "#ctl-speed"],
+      ["Loop B to the video end", "loop b to the video end ab repeat outro tail last part finish end", "#abBEndBtn"],
       ["Speed change pill", "speed pill popup confirm rate change 2x", "#ctl-speed"],
       ["Up next countdown with thumbnail", "up next countdown thumbnail preview auto next picture", "#lhQueue"],
       ["Finish within (minutes)", "finish fit budget minutes time speed lecture", "#fitTimeForm"],
