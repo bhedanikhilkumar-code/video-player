@@ -31482,6 +31482,14 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "File info for local files": ["लोकल फ़ाइलों की जानकारी", "લોકલ ફાઇલોની માહિતી"]
   });
   WNEW.unshift(["File info for local files", "#lpInfoBtn278"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  Object.assign(TR_MSG, {
+    "Auto chapters:": ["ऑटो अध्याय:", "ઓટો પ્રકરણો:"],
+    "Every {n} min": ["हर {n} मिनट", "દર {n} મિનિટ"],
+    "The file is shorter than one chapter.": ["फ़ाइल एक अध्याय से भी छोटी है.", "ફાઇલ એક પ્રકરણ કરતાં પણ ટૂંકી છે."],
+    "Chapters split every {n} min.": ["हर {n} मिनट पर अध्याय बनाए गए.", "દર {n} મિનિટે પ્રકરણો બનાવ્યાં."],
+    "Auto chapters for local files": ["लोकल फ़ाइलों के ऑटो अध्याय", "લોકલ ફાઇલોના ઓટો પ્રકરણો"]
+  });
+  WNEW.unshift(["Auto chapters for local files", "#lpChAutoRow278"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
 
 
 
@@ -32598,6 +32606,37 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var baseShowCh = show;
   show = function (url, local) { baseShowCh(url, local); chRender(); };
   chRender();
+
+  // Round 278 new 5: split a local file into even chapters in one tap. Long recordings
+  // (classes, matches) had to be marked by hand one chapter at a time; 'Every 5 min' and
+  // 'Every 10 min' build an even set named Part 1, Part 2... using the same saved chapter
+  // list, so the ticks on the seek bar and renames work as usual. Checked first: only
+  // manual chapter adding existed.
+  (function () {
+    var chRow = chAdd && chAdd.parentNode; if (!chRow) return;
+    var row = document.createElement("div"); row.className = "row"; row.id = "lpChAutoRow278"; row.style.marginTop = "6px";
+    var lab = document.createElement("span"); lab.className = "hint"; row.appendChild(lab);
+    function labPaint() { lab.textContent = T("Auto chapters:"); }
+    [5, 10].forEach(function (m) {
+      var c = document.createElement("button"); c.type = "button"; c.className = "chip";
+      row.appendChild(c);
+      function cp() { c.textContent = T("Every {n} min").replace("{n}", m); }
+      (window.__relang = window.__relang || []).push(cp); cp();
+      c.addEventListener("click", function () {
+        var list = chCur();
+        if (!list) { sessionMsg.textContent = T("Choose a local file first."); return; }
+        if (!isFinite(vid.duration) || vid.duration < m * 60) { sessionMsg.textContent = T("The file is shorter than one chapter."); return; }
+        var step = m * 60, n = 0, t = 0;
+        var fresh = [];
+        while (t <= vid.duration - 1 && fresh.length < 20) { fresh.push({ t: Math.floor(t), n: T("Part") + " " + (fresh.length + 1) }); t += step; }
+        list.length = 0; fresh.forEach(function (x) { list.push(x); });
+        chSave(); chRender();
+        sessionMsg.textContent = T("Chapters split every {n} min.").replace("{n}", m);
+      });
+    });
+    chRow.parentNode.insertBefore(row, chRow.nextSibling);
+    (window.__relang = window.__relang || []).push(labPaint); labPaint();
+  })();
 
   // Round 278 new 3: a repeat count for the local practice loop. The loop used to spin
   // forever until cleared by hand; the YouTube A-B loop already had a 2/3/5/10 count.
