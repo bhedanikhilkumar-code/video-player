@@ -12011,6 +12011,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         var n = 0; pl.items.forEach(function (x) { if (findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: x.title }); n++; } });
         saveLib(); renderLib(); plSay(n ? T("Added ") + n + " " + (n === 1 ? T("video") : T("videos")) + T(" to the queue.") : T("Those videos are already in the queue (or the queue is full at 50)."));
       });
+      // Round 233 new 2: Save a playlist to Watch later - the queue could be parked whole
+      // ("Save all to Watch later"), but a saved playlist could not; parking tonight's list
+      // meant queuing it first or filing every row by hand. One tap in the playlist's More
+      // menu parks every video the backlog does not already hold (duplicates skipped, the
+      // 50-video cap respected, both named honestly), each parked row stamped with the time
+      // like the other add paths, and the usual Undo toast takes the whole batch back.
+      btn(T("To Watch later"), "", function () {
+        if (!pl.items.length) { plSay(T("This playlist has no videos yet.")); return; }
+        var snapWL = lib.later.slice(), nWL = 0, dupWL = 0;
+        pl.items.forEach(function (x) {
+          if (findIn(lib.later, x.id) >= 0) { dupWL++; return; }
+          if (lib.later.length >= 50) return;
+          lib.later.push({ id: x.id, title: x.title || titleFor(x.id) || "", ts: Date.now() }); nWL++;
+        });
+        if (!nWL) { plSay(dupWL ? T("Those videos are already in Watch later (or the list is full at 50).") : T("Watch later is full at 50 videos.")); return; }
+        saveLib(); renderLib();
+        plSay(T("Parked in Watch later:") + " " + nWL + " (" + pl.name + ").");
+        toastUndo(T("Parked in Watch later:") + " " + nWL, function () { lib.later = snapWL; saveLib(); renderLib(); }, T("Watch later list restored"));
+      });
       btn(T("Queue playlist next"), "", function () { plQueueNext202(pl); });
       btn(T("Compare"), "", function () { plCompareOpen202(pl); });
       btn(T("Update"), "", async function () {
@@ -17570,6 +17589,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Playlist to Watch later", "#plList"],
     ["Loop to moment", "#abMarkBtn"],
     ["Surprise playlist", "#plSurpriseBtn"],
     ["Playlists done-by clock", "#plTotalLine"],
@@ -21956,6 +21976,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
 
+  Object.assign(TR_MSG, {
+    "Playlist to Watch later": ["प्लेलिस्ट Watch later में", "પ્લેલિસ્ટ Watch later માં"],
+    "To Watch later": ["Watch later में", "Watch later માં"],
+    "This playlist has no videos yet.": ["इस प्लेलिस्ट में अभी वीडियो नहीं.", "આ પ્લેલિસ્ટમાં હજી વીડિયો નથી."],
+    "Those videos are already in Watch later (or the list is full at 50).": ["वे वीडियो पहले से Watch later में हैं (या लिस्ट 50 पर भरी है).", "તે વીડિયો પહેલેથી Watch later માં છે (કે યાદી 50 પર ભરાઈ છે)."],
+    "Watch later is full at 50 videos.": ["Watch later 50 वीडियो पर भरा है.", "Watch later 50 વીડિયોએ ભરાયું છે."],
+    "Parked in Watch later:": ["Watch later में पार्क किए:", "Watch later માં પાર્ક કર્યા:"]
+  });
   // Loop to moment (round 233 new 1): a saved practice loop lives in its own list, but it
   // never reaches the seek-bar dots, the Copy-as-chapters list or Pause at moments - those
   // all read Saved moments. One tap files the current loop's A point as a named moment
@@ -24576,6 +24604,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Playlist to Watch later", "save playlist to watch later park whole playlist backlog batch", "#plList"],
       ["Loop to moment", "save loop as moment a-b repeat bookmark chapters seek bar dot section drill", "#abMarkBtn"],
       ["Surprise playlist", "surprise playlist random pick play any collection queue dice luck evening", "#plSurpriseBtn"],
       ["Playlists done-by clock", "playlists done by clock time finish wall clock when done whole collection total length end", "#plTotalLine"],
