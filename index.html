@@ -26819,6 +26819,41 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
 
+  // Variety check (round 257 new 2): Watch stats ranks videos, but not whether your time
+  // goes to one video on repeat or is spread over many. This card works out how many
+  // different videos you have watched, what share of all watch time the top video takes,
+  // and says Focused, Balanced or Varied. Read-only, from the on-device stats. Hindi and
+  // Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Variety check": ["विविधता जांच", "વિવિધતા તપાસ"],
+    "How your watch time is spread across videos - one favourite or many, from this device.": ["आपका देखने का समय वीडियो में कैसे बँटा है - एक पसंदीदा या कई, इसी डिवाइस से.", "તમારો જોવાનો સમય વીડિયોમાં કેવી રીતે વહેંચાયો છે - એક મનપસંદ કે ઘણા, આ ડિવાઇસ પરથી."],
+    "{n} different videos watched": ["{n} अलग-अलग वीडियो देखे", "{n} અલગ અલગ વીડિયો જોયા"],
+    "Your top video takes {p}% of your watch time": ["आपका टॉप वीडियो आपके देखने के समय का {p}% लेता है", "તમારો ટોપ વીડિયો તમારા જોવાના સમયનો {p}% લે છે"],
+    "Focused - you mostly replay one video.": ["केंद्रित - आप ज़्यादातर एक ही वीडियो दोहराते हैं.", "કેન્દ્રિત - તમે મોટે ભાગે એક જ વીડિયો ફરી જુઓ છો."],
+    "Balanced - a few videos share your time.": ["संतुलित - कुछ वीडियो आपका समय बाँटते हैं.", "સંતુલિત - થોડા વીડિયો તમારો સમય વહેંચે છે."],
+    "Varied - your time is spread widely.": ["विविध - आपका समय दूर-दूर तक फैला है.", "વૈવિધ્યપૂર્ણ - તમારો સમય વ્યાપક રીતે ફેલાયેલો છે."],
+    "Watch at least 2 different videos to see this.": ["यह देखने के लिए कम से कम 2 अलग वीडियो देखें.", "આ જોવા માટે ઓછામાં ઓછા 2 અલગ વીડિયો જુઓ."]
+  });
+  (function () {
+    var card = mkCard("varietyCard", "weeklyCard", '<div id="varMain" role="status"></div>'); if (!card) return;
+    function paint() {
+      card.querySelector("summary").textContent = T("Variety check");
+      card.querySelector(".r239-desc").textContent = T("How your watch time is spread across videos - one favourite or many, from this device.");
+      var main = $("varMain"); main.textContent = "";
+      function line(t, strong) { var p = document.createElement("p"); p.className = "hint"; p.style.margin = "4px 0"; if (strong) p.style.fontWeight = "700"; p.textContent = t; main.appendChild(p); }
+      var secs = [], tot = 0;
+      Object.keys((stats && stats.videos) || {}).forEach(function (k) { var s = Number(stats.videos[k] && stats.videos[k].secs) || 0; if (s > 0) { secs.push(s); tot += s; } });
+      if (secs.length < 2 || !(tot > 0)) { line(T("Watch at least 2 different videos to see this.")); return; }
+      var top = Math.max.apply(null, secs), p = Math.round(top / tot * 100);
+      line(T("{n} different videos watched").replace("{n}", secs.length));
+      line(T("Your top video takes {p}% of your watch time").replace("{p}", p));
+      line(p >= 50 ? T("Focused - you mostly replay one video.") : p >= 25 ? T("Balanced - a few videos share your time.") : T("Varied - your time is spread widely."), true);
+    }
+    card.addEventListener("toggle", function () { if (card.open) paint(); });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+
   // Sort Watch later by most played (round 256 new 1): Watch later could be sorted A to Z
   // and by rating, but not by what you actually replay - so a parked favourite you have
   // watched ten times sat mixed in with videos you opened once and dropped. A chip by
@@ -29616,6 +29651,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Sort Recently watched by most played", "sort history recently watched by most played play count replays order find favourites", "#histSortPlaysBtn"],
       ["Queue this week", "queue this week last 7 days watched history back into queue replay series evenings", "#histWeekBtn"],
       ["Break tracker", "break tracker gap days since last watched longest break away streak habit pause watch stats", "#breakCard"],
+      ["Variety check", "variety check videos spread top video share focused balanced varied repeat one video watch stats", "#varietyCard"],
       ["Weekly totals", "weekly totals weeks compare best week bars watch stats last 8 weeks trend heavier lighter", "#weeklyCard"],
       ["Share Watch later", "share watch later link send backlog list another device phone add replace", "#laterShareBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
