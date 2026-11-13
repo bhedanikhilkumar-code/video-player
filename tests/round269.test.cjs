@@ -70,4 +70,25 @@ function slice(from, to) { const a = html.indexOf(from); assert.ok(a >= 0, from 
   const c = ctx.cleanR269({ snaps: [{ t: 5, q: [{ id: 'aaaaaaaaaaa', title: 'x'.repeat(500) }] }, { t: 0, q: [{ id: 'aaaaaaaaaaa' }] }, { t: 7, q: [] }, { t: 8 }, 'junk'] });
   assert.equal(c.snaps.length, 1); assert.equal(c.snaps[0].q[0].title.length, 120);
 }
+// Finish by: speed needed and clock parsing.
+{
+  const ctx = vm.createContext({ Date });
+  vm.runInContext(slice('function finishPlan269(', '  Object.assign(TR_MSG'), ctx);
+  const f = ctx.finishPlan269;
+  assert.equal(f(0, 100).kind, 'none');
+  assert.equal(f(100, 0).kind, 'late');
+  assert.equal(f(100, -5).kind, 'late');
+  assert.equal(f(100, 100).kind, 'normal');
+  assert.equal(f(100, 200).kind, 'normal');
+  assert.deepEqual({ ...f(140, 100) }, { kind: 'speed', speed: 1.4 });
+  assert.equal(f(101, 100).speed, 1.05); // always rounded up so it really finishes in time
+  assert.equal(f(200, 100).speed, 2);
+  assert.equal(f(201, 100).kind, 'toofast');
+  const now = new Date(2026, 10, 13, 22, 0, 0).getTime();
+  assert.equal(new Date(ctx.nextClock269('23:30', now)).getHours(), 23);
+  assert.equal(ctx.nextClock269('23:30', now) - now, 90 * 60000);
+  assert.equal(ctx.nextClock269('21:00', now) - now, 23 * 3600000); // already past today: tomorrow
+  assert.equal(ctx.nextClock269('25:00', now), 0);
+  assert.equal(ctx.nextClock269('', now), 0);
+}
 console.log('round269 tests ok');

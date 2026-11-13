@@ -29924,6 +29924,75 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
   WNEW.unshift(["Queue snapshots","#snapCard269"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  // Round 269 new 5: Finish by - pick a clock time and the card tells you the speed this video
+  // needs to be over by then ("1.4x"), updating as you watch; one tap sets it. It never changes
+  // the speed by itself, and it does not guess for videos whose length is not known yet.
+  function finishPlan269(remainSec, untilSec) {
+    remainSec = +remainSec; untilSec = +untilSec;
+    if (!(remainSec > 0)) return { kind: "none" };
+    if (!(untilSec > 0)) return { kind: "late" };
+    var need = remainSec / untilSec;
+    if (need <= 1.0) return { kind: "normal" };
+    var s = Math.ceil(need * 20 - 1e-9) / 20;
+    if (s > 2) return { kind: "toofast" };
+    return { kind: "speed", speed: Math.round(s * 100) / 100 };
+  }
+  function nextClock269(hhmm, nowMs) {
+    var m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || "")); if (!m) return 0;
+    var h = +m[1], mi = +m[2]; if (h > 23 || mi > 59) return 0;
+    var d = new Date(nowMs); d.setHours(h, mi, 0, 0);
+    if (d.getTime() <= nowMs) d.setDate(d.getDate() + 1);
+    return d.getTime();
+  }
+  Object.assign(TR_MSG, {
+    "Finish by": ["इतने बजे तक खत्म", "આટલા વાગ્યા સુધી પૂરું"],
+    "Pick a clock time and see the speed this video needs to be over by then. One tap sets it. It never changes the speed by itself.": ["घड़ी का समय चुनें और देखें कि इस वीडियो को तब तक खत्म करने के लिए कितनी स्पीड चाहिए. एक टैप से सेट होती है. यह अपने आप स्पीड नहीं बदलता.", "ઘડિયાળનો સમય પસંદ કરો અને જુઓ કે આ વીડિયો ત્યાં સુધી પૂરો કરવા કેટલી સ્પીડ જોઈએ. એક ટેપથી સેટ થાય છે. તે જાતે સ્પીડ બદલતું નથી."],
+    "Finish by time": ["खत्म करने का समय", "પૂરું કરવાનો સમય"],
+    "Load a video and press play first.": ["पहले वीडियो लोड करें और प्ले दबाएँ.", "પહેલાં વીડિયો લોડ કરો અને પ્લે દબાવો."],
+    "Pick a time.": ["समय चुनें.", "સમય પસંદ કરો."],
+    "At normal speed this video ends at {t} - no need to speed up.": ["सामान्य स्पीड पर यह वीडियो {t} पर खत्म होगा - तेज़ करने की ज़रूरत नहीं.", "સામાન્ય સ્પીડે આ વીડિયો {t} વાગ્યે પૂરો થશે - ઝડપ વધારવાની જરૂર નથી."],
+    "To finish by {t} you need {n}x.": ["{t} तक खत्म करने के लिए {n}x चाहिए.", "{t} સુધી પૂરું કરવા {n}x જોઈએ."],
+    "Even at 2x this video ends after {t}. Try a later time.": ["2x पर भी यह वीडियो {t} के बाद खत्म होगा. बाद का समय चुनें.", "2x પર પણ આ વીડિયો {t} પછી પૂરો થશે. મોડો સમય પસંદ કરો."],
+    "Set speed {n}x": ["स्पीड {n}x करें", "સ્પીડ {n}x કરો"],
+    "Your speed of {n}x already finishes by {t}.": ["आपकी {n}x स्पीड {t} तक खत्म कर देती है.", "તમારી {n}x સ્પીડ {t} સુધીમાં પૂરું કરી દે છે."],
+    "Speed set to {n}x.": ["स्पीड {n}x की गई.", "સ્પીડ {n}x કરી."]
+  });
+  (function () {
+    var card = card268("finishCard269", "Finish by", "#snapCard269"); if (!card) return;
+    var hint = document.createElement("p"); hint.className = "hint"; card.appendChild(hint);
+    var row = document.createElement("div"); row.className = "row"; row.style.cssText = "margin-top:8px;align-items:center;gap:8px"; card.appendChild(row);
+    var inp = document.createElement("input"); inp.type = "time"; inp.id = "finishTime269"; row.appendChild(inp);
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "finishSet269"; row.appendChild(btn);
+    var st = document.createElement("span"); st.className = "label"; st.id = "finishStatus269"; st.setAttribute("role", "status"); card.appendChild(st);
+    var plan = null;
+    function clock(ms) { return new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
+    function paint() {
+      hint.textContent = T("Pick a clock time and see the speed this video needs to be over by then. One tap sets it. It never changes the speed by itself.");
+      inp.setAttribute("aria-label", T("Finish by time"));
+      var now = Date.now(), msg = "", showBtn = false; plan = null;
+      if (!curId || !(duration > 0)) msg = T("Load a video and press play first.");
+      else if (!inp.value) msg = T("Pick a time.");
+      else {
+        var target = nextClock269(inp.value, now), remain = Math.max(0, duration - curTime);
+        plan = finishPlan269(remain, (target - now) / 1000);
+        if (plan.kind === "normal") msg = T("At normal speed this video ends at {t} - no need to speed up.").replace("{t}", clock(now + remain * 1000));
+        else if (plan.kind === "speed" && +prefs.speed >= plan.speed) msg = T("Your speed of {n}x already finishes by {t}.").replace("{n}", prefs.speed).replace("{t}", clock(target));
+        else if (plan.kind === "speed") { msg = T("To finish by {t} you need {n}x.").replace("{t}", clock(target)).replace("{n}", plan.speed); showBtn = true; }
+        else if (plan.kind === "toofast") msg = T("Even at 2x this video ends after {t}. Try a later time.").replace("{t}", clock(target));
+        else msg = T("Pick a time.");
+      }
+      st.textContent = msg; btn.hidden = !showBtn; if (showBtn) btn.textContent = T("Set speed {n}x").replace("{n}", plan.speed);
+    }
+    inp.addEventListener("input", paint); inp.addEventListener("change", paint);
+    btn.addEventListener("click", function () {
+      if (!plan || plan.kind !== "speed") return;
+      var c = $("speedCustom"), g = $("speedCustomGo"); if (!c || !g) return;
+      c.value = String(plan.speed); g.click(); toast(T("Speed set to {n}x.").replace("{n}", plan.speed)); setTimeout(paint, 300);
+    });
+    (window.__relang = window.__relang || []).push(paint); paint();
+    setInterval(paint, 2000);
+  })();
+  WNEW.unshift(["Finish by","#finishCard269"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 })();
 </script>
 <script>
@@ -32618,6 +32687,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Privacy screen", "privacy hide screen boss key panic cover black blank shoulder surfing screen share public hide video quick", "#privCard269"],
       ["Shake to control", "shake phone next video play pause motion sensor accelerometer wet hands gesture skip", "#shakeCard269"],
       ["Queue snapshots", "save queue snapshot restore previous queue backup undo clear shuffle mood bring back list version", "#snapCard269"],
+      ["Finish by", "finish by clock time deadline speed needed how fast watch before time left catch up end at", "#finishCard269"],
       ["Play range", "start end trim play only part of video skip intro outro cut limit section", "#rangeCard268"],
       ["Eye rest", "eye break rest 20-20-20 pause look away tired eyes health reminder", "#eyeCard268"],
       ["Voice announcements", "read title aloud speak announce now playing voice speech driving low vision", "#announceCard268"],
