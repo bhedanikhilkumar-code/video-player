@@ -2374,6 +2374,7 @@ setTimeout(done,3000);})();
         <button class="chip" id="hxBtn" type="button" aria-expanded="false">Import a history file</button>
         <button class="chip" id="calBtn" type="button" aria-expanded="false">Add to calendar</button>
         <button class="chip" id="binBtn" type="button" aria-expanded="false">Recently removed</button>
+        <button class="chip" id="selBtn" type="button" aria-expanded="false">Select videos</button>
         <input id="queueTxtFile" type="file" accept="text/plain,.txt,.text,.md,.csv" hidden>
       </div>
       <div class="pl-paste" id="plPastePanel" hidden>
@@ -2398,6 +2399,10 @@ setTimeout(done,3000);})();
       <div class="pl-paste" id="binPanel" hidden>
         <div id="binList"></div>
         <div class="row"><button class="chip" id="binEmpty" type="button" hidden>Empty bin</button> <button class="chip" id="binClose" type="button">Close</button></div>
+      </div>
+      <div class="pl-paste" id="selPanel" hidden>
+        <div class="row"><select class="chip" id="selSrc"><option value="fav">Favourites</option><option value="later">Watch later</option></select> <span class="hint" id="selInfo" role="status"></span></div>
+        <div class="row"><button class="chip" id="selAll" type="button">Select all</button> <button class="chip" id="selNone" type="button">Select none</button> <button class="chip" id="selQueue" type="button">Add to queue</button> <button class="chip" id="selMove" type="button">Move to the other list</button> <button class="chip" id="selRemove" type="button">Remove</button> <button class="chip" id="selDone" type="button">Close</button></div>
       </div>
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
@@ -17709,6 +17714,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Select videos", "#selBtn"],
     ["Recently removed", "#binBtn"],
     ["Add to calendar", "#calBtn"],
     ["Import a history file", "#hxBtn"],
@@ -22490,6 +22496,85 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   })();
   (function () { var st = document.createElement("style"); st.textContent = ".bin-row{align-items:center;justify-content:space-between;gap:8px}.bin-t{flex:1;min-width:0;overflow-wrap:anywhere}"; document.head.appendChild(st); })();
 
+  // Select videos (round 235 new 5): Favourites and Watch later could only be changed one row at a time
+  // (or all at once). A select panel puts a checkbox on every row of the chosen list, with Select all /
+  // none (what the current filter shows), and acts on the ticked rows together: Add to queue, Move to the
+  // other list, or Remove - Remove and Move have the usual Undo toast, Watch later keeps its 50 cap.
+  Object.assign(TR_MSG, {
+    "Select videos": ["वीडियो चुनें", "વીડિયો પસંદ કરો"],
+    "Select all": ["सब चुनें", "બધા પસંદ કરો"],
+    "Select none": ["कोई नहीं", "કોઈ નહીં"],
+    "Add to queue": ["कतार में जोड़ें", "કતારમાં ઉમેરો"],
+    "Move to the other list": ["दूसरी सूची में ले जाएं", "બીજી યાદીમાં ખસેડો"],
+    "Remove": ["हटाएं", "કાઢો"],
+    "selected": ["चुने गए", "પસંદ કર્યા"],
+    "Tick some videos first.": ["पहले कुछ वीडियो टिक करें.", "પહેલા થોડા વીડિયો ટિક કરો."],
+    "Removed": ["हटाए", "કાઢ્યા"],
+    "Moved": ["ले गए", "ખસેડ્યા"],
+    "Added to the queue": ["कतार में जोड़े", "કતારમાં ઉમેર્યા"],
+    "Restored the selection": ["चयन वापस आया", "પસંદગી પાછી આવી"]
+  });
+  (function () {
+    var btn = $("selBtn"), panel = $("selPanel"); if (!btn || !panel) return;
+    var src = $("selSrc"), info = $("selInfo"), allB = $("selAll"), noneB = $("selNone"), qB = $("selQueue"), mvB = $("selMove"), rmB = $("selRemove"), doneB = $("selDone");
+    var chosen = {};
+    function ul() { return src.value === "later" ? $("laterList") : $("favList"); }
+    function ids() { return Object.keys(chosen).filter(function (k) { return chosen[k]; }); }
+    function count() { var n = ids().length; info.textContent = n + " " + T("selected"); [qB, mvB, rmB].forEach(function (b) { b.disabled = !n; }); }
+    function paint() {
+      btn.textContent = T("Select videos"); allB.textContent = T("Select all"); noneB.textContent = T("Select none"); qB.textContent = T("Add to queue");
+      mvB.textContent = T("Move to the other list"); rmB.textContent = T("Remove"); doneB.textContent = T("Close");
+      src.options[0].textContent = T("Favourites"); src.options[1].textContent = T("Watch later"); src.setAttribute("aria-label", T("Favourites") + " / " + T("Watch later"));
+      count();
+    }
+    function decorate() {
+      document.querySelectorAll(".sel-cb").forEach(function (c) { c.remove(); });
+      if (panel.hidden) return;
+      ul().querySelectorAll("li[data-vid]").forEach(function (li) {
+        var id = li.getAttribute("data-vid"), c = document.createElement("input"); c.type = "checkbox"; c.className = "sel-cb"; c.checked = !!chosen[id];
+        c.setAttribute("aria-label", (li.textContent || id).trim().slice(0, 60));
+        c.addEventListener("change", function () { chosen[id] = c.checked; count(); });
+        li.style.position = "relative"; li.insertBefore(c, li.firstChild);
+      });
+    }
+    var rl0 = renderLib; renderLib = function () { var r = rl0.apply(this, arguments); try { decorate(); } catch (e) {} return r; };
+    (window.__relang = window.__relang || []).push(paint);
+    function listObj(k) { return k === "later" ? lib.later : lib.favs; }
+    function pickRows() { var out = []; var l = listObj(src.value); ids().forEach(function (id) { var i = findIn(l, id); if (i >= 0) out.push(l[i]); }); return out; }
+    function open(on) { panel.hidden = !on; btn.setAttribute("aria-expanded", String(on)); chosen = {}; paint(); decorate(); if (on) { var u = ul(); if (window.vpExpandSection) window.vpExpandSection("library"); try { u.scrollIntoView({ block: "start", behavior: "auto" }); } catch (e) {} } }
+    btn.addEventListener("click", function () { open(panel.hidden); });
+    doneB.addEventListener("click", function () { open(false); });
+    src.addEventListener("change", function () { chosen = {}; paint(); decorate(); try { ul().scrollIntoView({ block: "start" }); } catch (e) {} });
+    allB.addEventListener("click", function () { ul().querySelectorAll("li[data-vid]").forEach(function (li) { chosen[li.getAttribute("data-vid")] = true; }); decorate(); count(); });
+    noneB.addEventListener("click", function () { chosen = {}; decorate(); count(); });
+    function need() { if (!ids().length) { toast(T("Tick some videos first.")); return true; } return false; }
+    qB.addEventListener("click", function () {
+      if (need()) return; var n = 0, snap = lib.queue.slice(), sp = qPos;
+      pickRows().forEach(function (x) { if (findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: x.title }); n++; } });
+      if (n) { saveLib(); renderLib(); toastUndo(T("Added to the queue") + " " + n, function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored")); } else toast(T("Already in that list."));
+      chosen = {}; decorate(); count();
+    });
+    function snapLists() { return JSON.stringify({ f: lib.favs, l: lib.later }); }
+    function restore(s) { var o = JSON.parse(s); lib.favs = o.f; lib.later = o.l; saveLib(); renderLib(); }
+    rmB.addEventListener("click", function () {
+      if (need()) return; var s = snapLists(), n = ids().length, k = src.value;
+      listObj(k).splice(0, listObj(k).length, ...listObj(k).filter(function (x) { return !chosen[x.id]; }));
+      chosen = {}; saveLib(); renderLib(); count();
+      toastUndo(T("Removed") + " " + n, function () { restore(s); }, T("Restored the selection"));
+    });
+    mvB.addEventListener("click", function () {
+      if (need()) return; var s = snapLists(), from = src.value, to = from === "later" ? "fav" : "later", rows = pickRows(), moved = 0, dest = to === "later" ? lib.later : lib.favs, srcL = listObj(from);
+      rows.forEach(function (x) {
+        if (findIn(dest, x.id) >= 0) { srcL.splice(findIn(srcL, x.id), 1); return; }
+        if (to === "later" && dest.length >= 50) return;
+        srcL.splice(findIn(srcL, x.id), 1); var it = { id: x.id, title: x.title }; if (to === "later") it.ts = Date.now(); dest.push(it); moved++;
+      });
+      chosen = {}; saveLib(); renderLib(); count();
+      toastUndo(T("Moved") + " " + moved, function () { restore(s); }, T("Restored the selection"));
+    });
+  })();
+  (function () { var st = document.createElement("style"); st.textContent = ".sel-cb{position:absolute;top:10px;left:10px;z-index:3;width:24px;height:24px;margin:0;border-radius:6px;box-shadow:0 0 0 2px rgba(255,255,255,.9);accent-color:var(--teal,#3f8f7d)}"; document.head.appendChild(st); })();
+
   // Drop long videos from the queue (round 234 new 5): Sort by length orders a queue and Fit-time picks videos for a window, but a short evening still meant removing the hour-long ones row by row. One chip removes every upcoming video whose learned length (from this session or Recently watched) is over 30 minutes (the playing video and videos with an unknown length stay), with the usual Undo toast. Hindi and Gujarati text, What's new and feature finder included.
   Object.assign(TR_MSG, {
     "Drop long videos from the queue": ["कतार से लंबे वीडियो हटाएं", "કતારમાંથી લાંબા વીડિયો કાઢો"],
@@ -25186,6 +25271,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Select videos", "select multiple checkbox bulk favourites watch later remove move queue several tick batch", "#selBtn"],
       ["Recently removed", "recently removed bin trash undo restore deleted favourites watch later accident bring back", "#binBtn"],
       ["Add to calendar", "calendar ics event schedule evening plan reminder queue watch later block time session", "#calBtn"],
       ["Import a history file", "import google takeout watch history json youtube file bring old history favourites watch later migrate", "#hxBtn"],
