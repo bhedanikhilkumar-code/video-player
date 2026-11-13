@@ -5980,7 +5980,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var whole = parseVideoIdOne(raw);
     if (whole) return whole;
     var txt = raw.replace(/%20|%0A|%0D/gi, " ").replace(/,/g, " ");
-    var found = txt.match(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)*(?:youtube(?:-nocookie)?\.com|youtu\.be)\/[^\s<>"'`]+/gi) || [];
+    var found = txt.match(/(?:^|[^a-z0-9.@-])((?:https?:\/\/)?(?:[a-z0-9-]+\.)*(?:youtube(?:-nocookie)?\.com|youtu\.be)\/[^\s<>"'`]+)/gi) || [];
+    found = found.map(function (m) { return m.replace(/^[^a-z0-9]+(?=https?:|[a-z0-9-]+\.)/i, ""); });
     for (var fi = 0; fi < found.length; fi++) { var got = parseVideoIdOne(found[fi]); if (got) return got; }
     if (!depth && /%2F|%3A/i.test(raw)) { try { return parseVideoId(decodeURIComponent(raw), 1); } catch (e) {} }
     return null;
@@ -5993,6 +5994,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var host = url.hostname.replace(/^(www|m)\./, "");
       if (host === "youtu.be") {
         var id = url.pathname.slice(1).split("/")[0];
+        if (!/^[a-zA-Z0-9_-]{11}$/.test(id)) id = id.split("&")[0]; // share links pasted as youtu.be/ID&t=5
         return /^[a-zA-Z0-9_-]{11}$/.test(id) ? id : null;
       }
       if (host === "youtube.com" || host.slice(-12) === ".youtube.com" || host === "youtube-nocookie.com") {
