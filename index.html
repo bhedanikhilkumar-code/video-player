@@ -16464,7 +16464,33 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     return out;
   }
   try { marks = cleanMarks261(JSON.parse(localStorage.getItem(MARKS_KEY) || "null")); } catch (e) {}
-  function marksSave() { try { localStorage.setItem(MARKS_KEY, JSON.stringify(marks)); return true; } catch (e) { storageWarn(); return false; } }
+  // Merge only this tab's timestamp-level edits into the latest stored collection.
+  var marksBaseline261 = JSON.parse(JSON.stringify(marks));
+  function marksSave() {
+    try {
+      var latest = cleanMarks261(JSON.parse(localStorage.getItem(MARKS_KEY) || "{}"));
+      var ids = new Set(Object.keys(marks).concat(Object.keys(marksBaseline261)));
+      ids.forEach(function(id) {
+        var before = marksBaseline261[id] || [], local = marks[id] || [], next = latest[id] || [];
+        before.forEach(function(m) { if (!local.some(function(n){return n.t===m.t;})) next = next.filter(function(n){return n.t!==m.t;}); });
+        local.forEach(function(m) {
+          var old = before.find(function(n){return n.t===m.t;});
+          if (old && old.name === m.name) return;
+          var i = next.findIndex(function(n){return n.t===m.t;});
+          if (i >= 0) next[i] = {t:m.t,name:m.name}; else if (next.length < 30) next.push({t:m.t,name:m.name});
+        });
+        if(next.length)latest[id]=next.sort(function(a,b){return a.t-b.t;});else delete latest[id];
+      });
+      localStorage.setItem(MARKS_KEY, JSON.stringify(latest)); marks = latest;
+      marksBaseline261 = JSON.parse(JSON.stringify(marks)); return true;
+    } catch (e) { storageWarn(); return false; }
+  }
+  window.addEventListener("storage", function(e) {
+    if(e.key !== MARKS_KEY && e.key !== null) return;
+    // Keep an in-flight local edit for marksSave to merge, rather than erasing it.
+    if(JSON.stringify(marks)!==JSON.stringify(marksBaseline261))return;
+    try { marks = cleanMarks261(JSON.parse(localStorage.getItem(MARKS_KEY)||"{}")); marksBaseline261=JSON.parse(JSON.stringify(marks)); renderMarks(); renderLib(); } catch(err) {}
+  });
   // Loop a moment (round 146): every saved moment grows a repeat chip - one tap
   // loops the video from that moment to the next saved moment (or to the outro
   // mark or the end of the video when it is the last), so a chorus or a tricky
