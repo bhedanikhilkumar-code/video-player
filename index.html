@@ -18048,6 +18048,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Most played", "#mostPlayedCard"],
     ["Let go of favourites", "#favLetGoCard"],
     ["Sort: Longest first", "#lhLaterSortBtn"],
     ["Find a moment", "#momFindCard"],
@@ -18057,7 +18058,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Around this time", "#aroundCard"],
     ["Watch later triage", "#triageCard"],
     ["Favourites duel", "#duelCard"],
-    ["Video of the day", "#dailyPickCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25382,6 +25382,39 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var oldRL10=renderLib;renderLib=function(){oldRL10();if(card.open&&!(document.activeElement&&document.activeElement.closest('#favLetGoCard')))paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Most played (round 249 new 5): the stats know how often every video was played, but the
+  // answer to "what do I keep coming back to?" was nowhere. This card lists your ten most played
+  // videos with their play counts and watched minutes, so the real favourites (not the ones you
+  // starred once and forgot) are one tap from a replay. Read-only: nothing is changed or stored.
+  Object.assign(TR_MSG, {
+    "Most played": ["सबसे ज़्यादा चलाए गए", "સૌથી વધુ ચલાવેલા"],
+    "Your ten most played videos, from the stats on this device, with play counts and minutes.": ["आपके दस सबसे ज़्यादा चलाए गए वीडियो, इस डिवाइस के स्टैट्स से, प्ले गिनती और मिनटों के साथ.", "તમારા દસ સૌથી વધુ ચલાવેલા વીડિયો, આ ડિવાઇસના સ્ટેટ્સથી, પ્લે ગણતરી અને મિનિટ સાથે."],
+    "Nothing played yet - your most played videos will show here.": ["अभी कुछ नहीं चला - सबसे ज़्यादा चलाए गए वीडियो यहाँ दिखेंगे.", "હજી કંઈ ચાલ્યું નથી - સૌથી વધુ ચલાવેલા વીડિયો અહીં દેખાશે."],
+    "{n} plays · {m}": ["{n} प्ले · {m}", "{n} પ્લે · {m}"],
+    "1 play · {m}": ["1 प्ले · {m}", "1 પ્લે · {m}"],
+    "Queue top five": ["टॉप पाँच कतार में", "ટોપ પાંચ કતારમાં"],
+    "Top five queued:": ["टॉप पाँच कतार में:", "ટોપ પાંચ કતારમાં:"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='mostPlayedCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div id="mpList"></div><div class="row" id="mpAct" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div><p class="hint" id="mpMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var stP=document.createElement('style');stP.textContent='#mostPlayedCard .mp-r{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}#mostPlayedCard .mp-t{flex:1 1 100%;font-size:14px;overflow-wrap:anywhere}#mostPlayedCard .mp-s{font-size:12px;opacity:.75}';document.head.appendChild(stP);
+  function top(){var o=[];if(typeof stats==='undefined'||!stats||!stats.videos)return o;Object.keys(stats.videos).forEach(function(id){var v=stats.videos[id];if(/^[\w-]{11}$/.test(id)&&v&&v.plays>0)o.push({id:id,plays:v.plays,secs:typeof v.secs==='number'?v.secs:0,title:v.title||titleFor(id)||id});});
+    o.sort(function(a,b){return b.plays-a.plays||b.secs-a.secs;});return o.slice(0,10);}
+  function paint(){card.querySelector('summary').textContent=T('Most played');card.querySelector('.r239-desc').textContent=T('Your ten most played videos, from the stats on this device, with play counts and minutes.');
+    var L=$('mpList'),A=$('mpAct');L.textContent='';A.textContent='';$('mpMsg').textContent='';
+    var t=top();
+    if(!t.length){var p=document.createElement('p');p.className='hint';p.textContent=T('Nothing played yet - your most played videos will show here.');L.appendChild(p);return;}
+    t.forEach(function(x,i){var r=document.createElement('div');r.className='mp-r';
+      var n=document.createElement('div');n.className='mp-t';n.textContent=(i+1)+'. '+x.title;r.appendChild(n);
+      var sEl=document.createElement('div');sEl.className='mp-s';sEl.textContent=(x.plays>1?T('{n} plays · {m}'):T('1 play · {m}')).replace('{n}',x.plays).replace('{m}',fmtWatch(x.secs));r.appendChild(sEl);
+      var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Play');b.setAttribute('aria-label',T('Play')+': '+x.title);b.addEventListener('click',function(){if(findIn(lib.queue,x.id)<0){if(lib.queue.length>=50){$('mpMsg').textContent=T('The queue is full at 50 videos. Remove some first.');return;}lib.queue.unshift({id:x.id,title:x.title});}var qi=findIn(lib.queue,x.id);saveLib();renderLib();playQueueAt(qi);if(frameBox&&frameBox.scrollIntoView)frameBox.scrollIntoView({behavior:window.vpReducedMotion()?'auto':'smooth',block:'center'});});r.appendChild(b);L.appendChild(r);});
+    var q=document.createElement('button');q.type='button';q.className='chip';q.textContent=T('Queue top five');A.appendChild(q);
+    q.addEventListener('click',function(){var n=0;t.slice(0,5).forEach(function(x){if(findIn(lib.queue,x.id)<0&&lib.queue.length<50){lib.queue.push({id:x.id,title:x.title});n++;}});saveLib();renderLib();$('mpMsg').textContent=n?T('Top five queued:')+' '+n:T('Already in the queue, or the queue is full at 50.');});}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27944,6 +27977,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later triage", "watch later triage one at a time oldest first decide keep remove favourite play clean backlog", "#triageCard"],
       ["Around this time", "around this time of day morning afternoon evening night usually watch history suggestions hour", "#aroundCard"],
       ["Where is this video?", "where is this video find locate which list saved queue favourites watch later history playlist search by title link", "#whereCard"],
+      ["Most played", "most played videos top ten play count minutes watched keep coming back replay stats ranking", "#mostPlayedCard"],
       ["Let go of favourites", "let go of favourites prune clean remove rated low 1 2 star never played unpinned tidy list undo", "#favLetGoCard"],
       ["Sort: Longest first", "sort longest first length long big video documentary movie watch later favourites history order organise evening", "#lhLaterSortBtn"],
       ["Find a moment", "find a moment search saved moments name second jump play from here bookmark marked solo", "#momFindCard"],
