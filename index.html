@@ -8107,11 +8107,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     paintVolLabel();
   }
   var sleepClockTxt = "";
+  // Round 252 fix 2: the stop clock used the browser locale ([]), so on a Hindi or Gujarati
+  // phone the sleep chip read "Pauses in 45:00 (11:45 PM)" in a language the app was not set
+  // to. One helper keeps every sleep stop clock in the picked app language.
+  function sleepStopClock(ts) {
+    var loc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : undefined;
+    return new Date(ts).toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit" });
+  }
   function sleepRender() {
     var left = Math.max(0, Math.ceil((sleepEnd - Date.now()) / 1000));
     // Round 214 new 5: the countdown also names the clock time playback stops ("14:59 (11:45 PM)"),
     // not only for clock-set timers as before - "pauses in 45 minutes" still leaves you doing the math.
-    var sleepStopTxt = sleepEnd ? (sleepClockTxt || new Date(sleepEnd).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })) : "";
+    var sleepStopTxt = sleepEnd ? (sleepClockTxt || sleepStopClock(sleepEnd)) : "";
     sleepLabel.textContent = sleepEnd ? T("Pauses in ") + fmt(left) + (sleepStopTxt ? " (" + sleepStopTxt + ")" : "") : T("Off");
     if (sleepExtend) sleepExtend.hidden = !sleepEnd;
     if (typeof sleepShrinkPaint === "function") sleepShrinkPaint();
@@ -8162,7 +8169,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     sleepClockTxt = ""; sleepLastTick = 0;
     sleepEnd = endMs ? endMs : (mins ? Date.now() + mins * 60000 : 0); sleepPaused = false; sleepTimerEnded = false;
     if (!endMs && mins > 0) { try { localStorage.setItem("vp-sleep-last.v1", String(mins)); } catch (e) {} }
-    if (endMs) { mins = 1; sleepClockTxt = new Date(endMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); }
+    if (endMs) { mins = 1; sleepClockTxt = sleepStopClock(endMs); }
     try { if (sleepEnd) localStorage.setItem("vp-sleep-end.v1", String(sleepEnd)); else localStorage.removeItem("vp-sleep-end.v1"); } catch(e) {}
     markActive(sleepChips, String(mins)); sleepRender();
     toast(endMs ? T("Sleep timer: until ") + sleepClockTxt : mins ? T("Sleep timer: ") + mins + " " + T("min") : T("Sleep timer off"));
@@ -8259,7 +8266,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (sleepEnd - Date.now() <= 660000) { toast(T("Less than 11 minutes left - use Off to stop the timer.")); return; }
     sleepEnd -= 600000;
     try { localStorage.setItem("vp-sleep-end.v1", String(sleepEnd)); } catch (e) {}
-    if (sleepClockTxt) { sleepClockTxt = new Date(sleepEnd).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); try { localStorage.setItem("vp-sleep-clock.v1", JSON.stringify({ end: sleepEnd, txt: sleepClockTxt })); } catch (e) {} }
+    if (sleepClockTxt) { sleepClockTxt = sleepStopClock(sleepEnd); try { localStorage.setItem("vp-sleep-clock.v1", JSON.stringify({ end: sleepEnd, txt: sleepClockTxt })); } catch (e) {} }
     sleepRender();
     toast("-10 " + T("min") + " - " + T("Pauses in ") + fmt(Math.max(0, Math.ceil((sleepEnd - Date.now()) / 1000))));
   });
@@ -8275,7 +8282,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     try { localStorage.setItem("vp-sleep-end.v1", String(sleepEnd)); } catch (e) {}
     // Round 204 fix: extending a clock-time timer left the old clock time on the label and in
     // storage, so "Pauses in 24:00 (12:22 AM)" lied about the new stop time.
-    if (sleepClockTxt) { sleepClockTxt = new Date(sleepEnd).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); try { localStorage.setItem("vp-sleep-clock.v1", JSON.stringify({ end: sleepEnd, txt: sleepClockTxt })); } catch (e) {} }
+    if (sleepClockTxt) { sleepClockTxt = sleepStopClock(sleepEnd); try { localStorage.setItem("vp-sleep-clock.v1", JSON.stringify({ end: sleepEnd, txt: sleepClockTxt })); } catch (e) {} }
     sleepRender();
     toast("+10 " + T("min") + " - " + T("Pauses in ") + fmt(Math.max(0, Math.ceil((sleepEnd - Date.now()) / 1000))));
   });
