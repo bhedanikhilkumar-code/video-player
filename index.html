@@ -27386,6 +27386,80 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
+  // Activity log (round 259 new 3): the app has Undo for the last change and a bin for removed
+  // videos, but no record of what changed over the last days - "where did that video go?" had
+  // no answer. Every save of the queue, Watch later or Favourites is compared with the
+  // previous state, and a card lists the last 100 changes (what was added or removed, with
+  // titles and when), filterable by list. Reordering is not logged. Kept on this device only,
+  // not in the backup. Hindi and Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Activity log": ["गतिविधि लॉग", "પ્રવૃત્તિ લોગ"],
+    "What was added to or removed from your queue, Watch later and Favourites, newest first. Kept on this device.": ["आपकी कतार, बाद में देखें और पसंदीदा में क्या जुड़ा या हटा, नया सबसे ऊपर. सिर्फ़ इसी डिवाइस पर.", "તમારી કતાર, પછી જુઓ અને મનપસંદમાં શું ઉમેરાયું કે કાઢ્યું, નવું સૌથી ઉપર. ફક્ત આ ડિવાઇસ પર."],
+    "{list}: {n} added": ["{list}: {n} जुड़े", "{list}: {n} ઉમેર્યા"],
+    "{list}: {n} removed": ["{list}: {n} हटे", "{list}: {n} કાઢ્યા"],
+    "just now": ["अभी", "હમણાં"],
+    "{n} min ago": ["{n} मिनट पहले", "{n} મિનિટ પહેલાં"],
+    "{n} h ago": ["{n} घंटे पहले", "{n} કલાક પહેલાં"],
+    "Nothing logged yet - changes to your queue, Watch later and Favourites show up here.": ["अभी कुछ दर्ज नहीं - कतार, बाद में देखें और पसंदीदा के बदलाव यहां दिखेंगे.", "હજી કંઈ નોંધાયું નથી - કતાર, પછી જુઓ અને મનપસંદના ફેરફાર અહીં દેખાશે."],
+    "Clear log": ["लॉग साफ़ करें", "લોગ સાફ કરો"],
+    "Activity log cleared": ["गतिविधि लॉग साफ़ हुआ", "પ્રવૃત્તિ લોગ સાફ થયો"],
+    "Activity log restored": ["गतिविधि लॉग वापस आया", "પ્રવૃત્તિ લોગ પાછો આવ્યો"]
+  });
+  (function () {
+    var KEY = "vp-activity.v1", MAXN = 100, NAMES = { queue: "Queue", later: "Watch later", favs: "Favourites" };
+    var log = []; try { var a = JSON.parse(localStorage.getItem(KEY) || "[]"); if (Array.isArray(a)) log = a.filter(function (e) { return e && typeof e.t === "number" && NAMES[e.l] && Array.isArray(e.x) && (e.k === "a" || e.k === "r"); }).slice(0, MAXN); } catch (e) {}
+    function snap() { var o = {}; Object.keys(NAMES).forEach(function (k) { o[k] = (lib[k] || []).map(function (x) { return { id: x.id, title: x.title || "" }; }); }); return o; }
+    var prev = snap(), card = null;
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(log)); } catch (e) {} }
+    var baseSave = saveLib;
+    saveLib = function () {
+      var r = baseSave.apply(this, arguments), now = snap(), changed = false;
+      Object.keys(NAMES).forEach(function (k) {
+        var was = {}, is = {}; prev[k].forEach(function (x) { was[x.id] = x; }); now[k].forEach(function (x) { is[x.id] = x; });
+        var add = now[k].filter(function (x) { return !was[x.id]; }), rem = prev[k].filter(function (x) { return !is[x.id]; });
+        if (add.length) { log.unshift({ t: Date.now(), l: k, k: "a", x: add.slice(0, 5).map(function (x) { return x.title || x.id; }), n: add.length }); changed = true; }
+        if (rem.length) { log.unshift({ t: Date.now(), l: k, k: "r", x: rem.slice(0, 5).map(function (x) { return x.title || x.id; }), n: rem.length }); changed = true; }
+      });
+      prev = now;
+      if (changed) { if (log.length > MAXN) log.length = MAXN; persist(); if (card && card.open) paint(); }
+      return r;
+    };
+    card = mkCard("activityCard", "weeklyCard", '<div class="row" id="alChips" role="group"></div><ul class="lib-list" id="alList" style="list-style:none;padding:0;margin:6px 0"></ul><p class="hint" id="alEmpty"></p><p><button type="button" class="chip" id="alClear"></button></p>'); if (!card) return;
+    var filt = "all";
+    function ago(t) {
+      var m = Math.floor((Date.now() - t) / 60000);
+      if (m < 1) return T("just now"); if (m < 60) return T("{n} min ago").replace("{n}", m);
+      if (m < 1440) return T("{n} h ago").replace("{n}", Math.floor(m / 60));
+      var d = new Date(t); return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    }
+    function paint() {
+      card.querySelector("summary").textContent = T("Activity log");
+      card.querySelector(".r239-desc").textContent = T("What was added to or removed from your queue, Watch later and Favourites, newest first. Kept on this device.");
+      var chips = $("alChips"); chips.textContent = "";
+      [["all", T("All")], ["queue", T(NAMES.queue)], ["later", T(NAMES.later)], ["favs", T(NAMES.favs)]].forEach(function (c) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip" + (filt === c[0] ? " active" : ""); b.textContent = c[1]; b.setAttribute("aria-pressed", String(filt === c[0]));
+        b.addEventListener("click", function () { filt = c[0]; paint(); }); chips.appendChild(b); chips.appendChild(document.createTextNode(" "));
+      });
+      var ul = $("alList"); ul.textContent = ""; var shown = 0;
+      log.forEach(function (e) {
+        if (filt !== "all" && e.l !== filt) return; if (shown >= 30) return; shown++;
+        var li = document.createElement("li"); li.style.cssText = "padding:5px 0;border-bottom:1px solid rgba(128,128,128,.18)";
+        var h = document.createElement("div"); h.style.fontWeight = "600";
+        h.textContent = T(e.k === "a" ? "{list}: {n} added" : "{list}: {n} removed").replace("{list}", T(NAMES[e.l])).replace("{n}", e.n || e.x.length);
+        var s = document.createElement("div"); s.className = "hint"; s.textContent = ago(e.t) + " - " + e.x.join(", ") + ((e.n || e.x.length) > e.x.length ? " ..." : "");
+        li.appendChild(h); li.appendChild(s); ul.appendChild(li);
+      });
+      $("alEmpty").hidden = shown > 0; $("alEmpty").textContent = T("Nothing logged yet - changes to your queue, Watch later and Favourites show up here.");
+      $("alClear").hidden = !log.length; $("alClear").textContent = T("Clear log");
+    }
+    $("alClear").addEventListener("click", function () {
+      var old = log.slice(); log = []; persist(); paint();
+      toastUndo(T("Activity log cleared"), function () { log = old.concat(log); persist(); paint(); }, T("Activity log restored"));
+    });
+    card.addEventListener("toggle", function () { if (card.open) paint(); });
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+
   // r259-end
 
   // Sort Watch later by most played (round 256 new 1): Watch later could be sorted A to Z
@@ -30216,6 +30290,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Export as browser bookmarks", "export browser bookmarks bookmarks.html chrome safari firefox edge save queue favourites watch later playlists folders backup", "#bmExpCard"],
       ["Skip parts", "skip parts segments ad read recap middle cut jump over sponsor boring stretch mark start end per video skip intro outro", "#skipPartsCard"],
       ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played has:note advanced library search narrow", "#sqTip259"],
+      ["Activity log", "activity log history of changes what was added removed queue watch later favourites where did it go timeline recent changes", "#activityCard"],
       ["Open from any page", "open from any page bookmarklet bookmark bar drag youtube tab current time send video here browser", "#bmkCard"],
       ["Channels as OPML", "channels opml rss feed export feedly inoreader netnewswire subscriptions saved channels reader", "#chanOpmlBtn"],
       ["Weekly totals", "weekly totals weeks compare best week bars watch stats last 8 weeks trend heavier lighter", "#weeklyCard"],
