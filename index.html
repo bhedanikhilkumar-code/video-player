@@ -16690,7 +16690,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // again now that the Note pills can show.
   if (typeof renderLib === "function") renderLib();
   var noteTimer = null, noteShown = null;
-  function notesSave() { try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); return true; } catch (e) { storageWarn(); return false; } }
+  var notesBaseline239 = Object.assign({}, notes);
+  function notesSave() {
+    try {
+      // Merge only this tab's changes. An unrelated note saved elsewhere must survive.
+      var latest = JSON.parse(localStorage.getItem(NOTES_KEY) || "{}");
+      if (!latest || typeof latest !== "object" || Array.isArray(latest)) latest = {};
+      var keys = Object.keys(notes).concat(Object.keys(notesBaseline239));
+      keys.forEach(function (id) { if (notes[id] !== notesBaseline239[id]) { if (typeof notes[id] === "string" && notes[id].trim()) latest[id] = notes[id]; else delete latest[id]; } });
+      localStorage.setItem(NOTES_KEY, JSON.stringify(latest)); notes = latest;
+      notesBaseline239 = Object.assign({}, notes); return true;
+    } catch (e) { storageWarn(); return false; }
+  }
+  window.addEventListener("storage", function (e) {
+    if (e.key !== NOTES_KEY || noteTimer) return;
+    try { var incoming = JSON.parse(e.newValue || "{}"); if (!incoming || typeof incoming !== "object" || Array.isArray(incoming)) return; notes = incoming; notesBaseline239 = Object.assign({}, notes); renderNotes(); renderLib(); } catch (err) {}
+  });
   // Times written in a note (1:23 or 1:02:03) become buttons that jump to that moment.
   function renderNoteTimes() {
     var box = $("noteTimes"), b = $("noteBox"); if (!box || !b) return;
