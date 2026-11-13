@@ -18031,6 +18031,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Around this time", "#aroundCard"],
     ["Watch later triage", "#triageCard"],
     ["Favourites duel", "#duelCard"],
     ["Video of the day", "#dailyPickCard"],
@@ -18039,8 +18040,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Take it to YouTube", "#ytTakeCard"],
     ["Weave playlists", "#weaveCard"],
     ["Import YouTube subscriptions", "#chanImportRow"],
-    ["Playlist last played and Recent sort", "#plSortBtn"],
-    ["Play at a clock time", "#playAtRow"]
+    ["Playlist last played and Recent sort", "#plSortBtn"]
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25116,6 +25116,45 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   card.addEventListener('toggle',function(){if(card.open)paint();});
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Around this time (round 248 new 3): the history knows when you watch. This card sorts every
+  // video you finished or started by the time of day it was last watched (morning, afternoon,
+  // evening, night), shows how your history spreads over the day, and lists the videos from the
+  // bucket you are in right now, so "what do I usually watch at this hour" is one tap: Play one,
+  // or queue them all. Worked out from the history on this device; nothing is stored.
+  Object.assign(TR_MSG, {
+    "Around this time": ["इसी वक़्त के आसपास", "આ સમયની આસપાસ"],
+    "Videos you last watched at this time of day, from your history, with Play and Queue all.": ["दिन के इसी समय पर आपने आख़िरी बार देखे वीडियो, इतिहास से, Play और Queue all के साथ.", "દિવસના આ સમયે તમે છેલ્લે જોયેલી વીડિયો, ઇતિહાસમાંથી, Play અને Queue all સાથે."],
+    "Morning": ["सुबह", "સવાર"],
+    "Afternoon": ["दोपहर", "બપોર"],
+    "Evening": ["शाम", "સાંજ"],
+    "Night": ["रात", "રાત"],
+    "Now: {b}": ["अभी: {b}", "હમણાં: {b}"],
+    "{n} in history": ["इतिहास में {n}", "ઇતિહાસમાં {n}"],
+    "Nothing in your history from this time of day yet.": ["दिन के इस समय का इतिहास में अभी कुछ नहीं.", "દિવસના આ સમયનું ઇતિહાસમાં હજી કંઈ નથી."],
+    "Queue all": ["सब कतार में", "બધું કતારમાં"],
+    "Added to the queue:": ["कतार में जोड़े गए:", "કતારમાં ઉમેર્યા:"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='aroundCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div id="arBars" style="margin:8px 0"></div><p class="hint" id="arNow"></p><div id="arList"></div><div class="row" id="arAct" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div><p class="hint" id="arMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var stA=document.createElement('style');stA.textContent='#aroundCard .ar-b{display:grid;grid-template-columns:84px minmax(0,1fr) 34px;gap:8px;align-items:center;margin:5px 0;font-size:13px}#aroundCard .ar-t{height:10px;border-radius:6px;background:rgba(127,160,152,.22);overflow:hidden}#aroundCard .ar-t i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#3ab498,#7fd2bf)}#aroundCard .ar-b.now{font-weight:700}#aroundCard .ar-r{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}#aroundCard .ar-n{flex:1 1 100%;font-size:14px;overflow-wrap:anywhere}';document.head.appendChild(stA);
+  var NAMES=['Morning','Afternoon','Evening','Night'];
+  function bucket(h){return h>=5&&h<11?0:h>=11&&h<17?1:h>=17&&h<22?2:3;}
+  function paint(){card.querySelector('summary').textContent=T('Around this time');card.querySelector('.r239-desc').textContent=T('Videos you last watched at this time of day, from your history, with Play and Queue all.');
+    var B=$('arBars'),L=$('arList'),A=$('arAct');B.textContent='';L.textContent='';A.textContent='';
+    var cnt=[0,0,0,0],byB=[[],[],[],[]];(lib.hist||[]).forEach(function(x){if(!x||typeof x.ts!=='number'||!validItem(x))return;var b=bucket(new Date(x.ts).getHours());cnt[b]++;byB[b].push(x);});
+    var nb=bucket(new Date().getHours()),mx=Math.max(1,cnt[0],cnt[1],cnt[2],cnt[3]);
+    NAMES.forEach(function(n,i){var r=document.createElement('div');r.className='ar-b'+(i===nb?' now':'');var l=document.createElement('span');l.textContent=T(n);var t=document.createElement('span');t.className='ar-t';var f=document.createElement('i');f.style.width=Math.round(cnt[i]/mx*100)+'%';t.appendChild(f);var c=document.createElement('span');c.textContent=String(cnt[i]);r.appendChild(l);r.appendChild(t);r.appendChild(c);B.appendChild(r);});
+    $('arNow').textContent=T('Now: {b}').replace('{b}',T(NAMES[nb]))+' · '+T('{n} in history').replace('{n}',cnt[nb]);
+    var list=byB[nb].sort(function(a,b){return b.ts-a.ts;}).slice(0,5);
+    if(!list.length){var p=document.createElement('p');p.className='hint';p.textContent=T('Nothing in your history from this time of day yet.');L.appendChild(p);return;}
+    function play(x){var t=x.title||titleFor(x.id)||x.id;if(findIn(lib.queue,x.id)<0){if(lib.queue.length>=50){$('arMsg').textContent=T('The queue is full at 50 videos. Remove some first.');return;}lib.queue.unshift({id:x.id,title:t});}var i=findIn(lib.queue,x.id);saveLib();renderLib();playQueueAt(i);if(frameBox&&frameBox.scrollIntoView)frameBox.scrollIntoView({behavior:window.vpReducedMotion()?'auto':'smooth',block:'center'});}
+    list.forEach(function(x){var t=x.title||titleFor(x.id)||x.id,r=document.createElement('div');r.className='ar-r';var n=document.createElement('div');n.className='ar-n';n.textContent=t;r.appendChild(n);var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Play');b.setAttribute('aria-label',T('Play')+': '+t);b.addEventListener('click',function(){play(x);});r.appendChild(b);L.appendChild(r);});
+    var q=document.createElement('button');q.type='button';q.className='chip';q.textContent=T('Queue all');A.appendChild(q);q.addEventListener('click',function(){var n=0;list.forEach(function(x){if(findIn(lib.queue,x.id)<0&&lib.queue.length<50){lib.queue.push({id:x.id,title:x.title||titleFor(x.id)||x.id});n++;}});saveLib();renderLib();$('arMsg').textContent=n?T('Added to the queue:')+' '+n:T('Already in the queue, or the queue is full at 50.');});}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27676,6 +27715,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var FEATS = [
       ["Favourites duel", "favourites duel tournament head to head pick better video champion rank compare two videos bracket", "#duelCard"],
       ["Watch later triage", "watch later triage one at a time oldest first decide keep remove favourite play clean backlog", "#triageCard"],
+      ["Around this time", "around this time of day morning afternoon evening night usually watch history suggestions hour", "#aroundCard"],
       ["Video of the day", "video of the day daily pick one video a day favourites watch later habit same all day unwatched first", "#dailyPickCard"],
       ["Review reminders", "review reminders spaced repetition learn remember study lesson revisit 1 3 7 14 30 days due again", "#reviewCard"],
       ["Title tidy", "title tidy clean titles official video hd lyrics tags brackets rename remove junk saved titles library", "#titleTidyCard"],
