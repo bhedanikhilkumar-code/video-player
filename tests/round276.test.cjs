@@ -46,5 +46,6 @@ assert(html.includes('return ctx.setSinkId(id)'));
 assert(html.includes("['pause','seeking','emptied','loadstart'].forEach"));
 assert(html.includes('output276.gain.setValueAtTime(0,ctx.currentTime);flushDelay276()'));
 assert(html.includes('window.vpStorageWarning276 = storageWarn'));
+assert(html.includes("if(exact.length===1){apply(exact[0]);return;}"),'only exact filenames may auto-load subtitles');
 for(const name of ['Video contact sheet','Subtitle folder match','Audio sync delay','Local playlist exchange','Browse media folder'])assert(exchange.includes(name),name);
 console.log('round276: script syntax, recipe validation, filename matching, real audio reset and silence-detector regression checks passed');
