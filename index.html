@@ -18031,6 +18031,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Favourites duel", "#duelCard"],
     ["Video of the day", "#dailyPickCard"],
     ["Review reminders", "#reviewCard"],
     ["Title tidy", "#titleTidyCard"],
@@ -18039,8 +18040,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Import YouTube subscriptions", "#chanImportRow"],
     ["Playlist last played and Recent sort", "#plSortBtn"],
     ["Play at a clock time", "#playAtRow"],
-    ["Playlist groups", "#plList"],
-    ["Playlist default speed", "#plList"],
+    ["Playlist groups", "#plList"]
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25022,6 +25022,55 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var oldRL7=renderLib;renderLib=function(){oldRL7();if(card.open&&!(document.activeElement&&document.activeElement.closest('#dailyPickCard')))paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Favourites duel (round 248 new 1): ranking a long Favourites list by eye is hard, and stars
+  // only say "good". The duel shows two videos at a time from Favourites, Watch later or the
+  // queue; you pick the better one, winners meet in the next round (4, 8 or 16 videos picked at
+  // random from the list), and the end gives a champion, a runner-up and the two semi-finalists
+  // with Play and Queue. Nothing is stored and nothing in your lists changes until you queue.
+  Object.assign(TR_MSG, {
+    "Favourites duel": ["पसंदीदा मुक़ाबला", "મનપસંદ મુકાબલો"],
+    "Pick the better video, two at a time. A few rounds later you have a champion and a top four.": ["दो-दो में से बेहतर वीडियो चुनें. कुछ राउंड बाद आपके पास विजेता और टॉप चार होंगे.", "બે-બે માંથી સારો વીડિયો પસંદ કરો. થોડા રાઉન્ડ પછી વિજેતા અને ટોપ ચાર મળશે."],
+    "Duel from": ["मुक़ाबला किससे", "મુકાબલો ક્યાંથી"],
+    "Videos in the duel": ["मुक़ाबले में वीडियो", "મુકાબલામાં વીડિયો"],
+    "Start duel": ["मुक़ाबला शुरू करें", "મુકાબલો શરૂ કરો"],
+    "Play again": ["फिर खेलें", "ફરી રમો"],
+    "Need at least 4 videos in this list for a duel.": ["मुक़ाबले के लिए इस सूची में कम से कम 4 वीडियो चाहिए.", "મુકાબલા માટે આ યાદીમાં ઓછામાં ઓછી 4 વીડિયો જોઈએ."],
+    "Round {r} of {t} - match {m} of {n}": ["राउंड {r}/{t} - मैच {m}/{n}", "રાઉન્ડ {r}/{t} - મૅચ {m}/{n}"],
+    "Pick": ["चुनें", "પસંદ કરો"],
+    "Champion": ["विजेता", "વિજેતા"],
+    "Runner-up": ["उपविजेता", "ઉપવિજેતા"],
+    "Semi-finalist": ["सेमीफाइनलिस्ट", "સેમિફાઇનલિસ્ટ"],
+    "Play champion": ["विजेता चलाएँ", "વિજેતા ચલાવો"],
+    "Queue top four": ["टॉप चार कतार में", "ટોપ ચાર કતારમાં"],
+    "Top four queued:": ["टॉप चार कतार में:", "ટોપ ચાર કતારમાં:"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='duelCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="du-f"><label class="hint" id="duSrcL" for="duSrc"></label><select id="duSrc"></select><label class="hint" id="duSizeL" for="duSize"></label><select id="duSize"></select></div><div class="row" id="duAct" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div><div id="duArena"></div><p class="hint" id="duMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var stD=document.createElement('style');stD.textContent='#duelCard .du-f{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;align-items:center;margin:8px 0}#duelCard .du-f select{width:100%;max-width:220px}#duelCard .du-opt{display:block;width:100%;text-align:left;margin:8px 0;padding:14px 16px;border-radius:16px;white-space:normal;overflow-wrap:anywhere;font-weight:650;line-height:1.35}#duelCard .du-vs{text-align:center;font-size:12px;opacity:.7;margin:0}#duelCard .du-rank{margin:6px 0;padding-left:22px}#duelCard .du-rank li{margin:4px 0;overflow-wrap:anywhere}';document.head.appendChild(stD);
+  var st=null,srcV='f',sizeV=8;
+  function items(){var l=srcV==='l'?lib.later:srcV==='q'?lib.queue:lib.favs,seen={},o=[];(l||[]).forEach(function(x){if(x&&validItem(x)&&!seen[x.id]){seen[x.id]=1;o.push({id:x.id,title:x.title||titleFor(x.id)||x.id});}});return o;}
+  function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t;}return a;}
+  function start(){var a=items();if(a.length<4){st=null;$('duMsg').textContent=T('Need at least 4 videos in this list for a duel.');paint();return;}var n=4;while(n*2<=Math.min(sizeV,a.length))n*=2;st={cur:shuffle(a).slice(0,n),nxt:[],i:0,lost:[],round:1,total:Math.round(Math.log(n)/Math.LN2),champ:null};$('duMsg').textContent='';paint();}
+  function pick(w){var c=st.cur;st.nxt.push(c[st.i+w]);st.lost.push(c[st.i+1-w]);st.i+=2;if(st.i>=c.length){if(st.nxt.length===1)st.champ=st.nxt[0];else{st.cur=st.nxt;st.nxt=[];st.i=0;st.round++;}}paint();}
+  function ranking(){var L=st.lost,r=[st.champ,L[L.length-1],L[L.length-3],L[L.length-2]];return r.filter(Boolean);}
+  function paint(){card.querySelector('summary').textContent=T('Favourites duel');card.querySelector('.r239-desc').textContent=T('Pick the better video, two at a time. A few rounds later you have a champion and a top four.');
+    $('duSrcL').textContent=T('Duel from');$('duSizeL').textContent=T('Videos in the duel');
+    var s=$('duSrc');s.textContent='';[['f','Favourites'],['l','Watch later'],['q','Queue']].forEach(function(a){var o=document.createElement('option');o.value=a[0];o.textContent=T(a[1]);s.appendChild(o);});s.value=srcV;s.onchange=function(){srcV=s.value;};
+    var z=$('duSize');z.textContent='';[4,8,16].forEach(function(n){var o=document.createElement('option');o.value=String(n);o.textContent=String(n);z.appendChild(o);});z.value=String(sizeV);z.onchange=function(){sizeV=+z.value||8;};
+    var A=$('duAct'),R=$('duArena');A.textContent='';R.textContent='';
+    function ab(tx,fn){var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T(tx);A.appendChild(b);b.addEventListener('click',fn);return b;}
+    ab(st&&st.champ?'Play again':'Start duel',start);
+    if(!st)return;
+    if(st.champ){var rk=ranking(),names=['Champion','Runner-up','Semi-finalist','Semi-finalist'];var ol=document.createElement('ol');ol.className='du-rank';rk.forEach(function(x,i){var li=document.createElement('li');var b=document.createElement('strong');b.textContent=T(names[i])+': ';li.appendChild(b);li.appendChild(document.createTextNode(x.title));ol.appendChild(li);});R.appendChild(ol);
+      ab('Play champion',function(){var c=rk[0];if(findIn(lib.queue,c.id)<0){if(lib.queue.length>=50){$('duMsg').textContent=T('The queue is full at 50 videos. Remove some first.');return;}lib.queue.unshift({id:c.id,title:c.title});}var i=findIn(lib.queue,c.id);saveLib();renderLib();playQueueAt(i);if(frameBox&&frameBox.scrollIntoView)frameBox.scrollIntoView({behavior:window.vpReducedMotion()?'auto':'smooth',block:'center'});});
+      ab('Queue top four',function(){var n=0;rk.forEach(function(x){if(findIn(lib.queue,x.id)<0&&lib.queue.length<50){lib.queue.push({id:x.id,title:x.title});n++;}});saveLib();renderLib();$('duMsg').textContent=T('Top four queued:')+' '+n;});return;}
+    var p=document.createElement('p');p.className='hint';p.textContent=T('Round {r} of {t} - match {m} of {n}').replace('{r}',st.round).replace('{t}',st.total).replace('{m}',st.i/2+1).replace('{n}',st.cur.length/2);R.appendChild(p);
+    [0,1].forEach(function(w){var x=st.cur[st.i+w],b=document.createElement('button');b.type='button';b.className='chip du-opt';b.textContent=x.title;b.setAttribute('aria-label',T('Pick')+': '+x.title);b.addEventListener('click',function(){pick(w);});R.appendChild(b);if(!w){var v=document.createElement('p');v.className='du-vs';v.textContent='vs';v.setAttribute('aria-hidden','true');R.appendChild(v);}});}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27580,6 +27629,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Favourites duel", "favourites duel tournament head to head pick better video champion rank compare two videos bracket", "#duelCard"],
       ["Video of the day", "video of the day daily pick one video a day favourites watch later habit same all day unwatched first", "#dailyPickCard"],
       ["Review reminders", "review reminders spaced repetition learn remember study lesson revisit 1 3 7 14 30 days due again", "#reviewCard"],
       ["Title tidy", "title tidy clean titles official video hd lyrics tags brackets rename remove junk saved titles library", "#titleTidyCard"],
