@@ -2373,6 +2373,7 @@ setTimeout(done,3000);})();
         <button class="chip" id="queueTxtImportBtn" type="button">Add links from a text file</button>
         <button class="chip" id="hxBtn" type="button" aria-expanded="false">Import a history file</button>
         <button class="chip" id="calBtn" type="button" aria-expanded="false">Add to calendar</button>
+        <button class="chip" id="binBtn" type="button" aria-expanded="false">Recently removed</button>
         <input id="queueTxtFile" type="file" accept="text/plain,.txt,.text,.md,.csv" hidden>
       </div>
       <div class="pl-paste" id="plPastePanel" hidden>
@@ -2393,6 +2394,10 @@ setTimeout(done,3000);})();
         <div class="row"><select class="chip" id="calSrc"><option value="queue">Queue</option><option value="later">Watch later</option></select> <label class="hint" id="calWhenL" for="calWhen">Starts at</label> <input class="chip" type="datetime-local" id="calWhen"></div>
         <p class="hint" id="calInfo" role="status"></p>
         <div class="row"><button class="chip" id="calGo" type="button">Save calendar file</button> <button class="chip" id="calClose" type="button">Close</button></div>
+      </div>
+      <div class="pl-paste" id="binPanel" hidden>
+        <div id="binList"></div>
+        <div class="row"><button class="chip" id="binEmpty" type="button" hidden>Empty bin</button> <button class="chip" id="binClose" type="button">Close</button></div>
       </div>
       <p class="hint" id="plMsg" role="status">Add videos to the queue, give it a name, and save it.</p>
       <ul class="lib-list" id="plList"></ul>
@@ -17704,6 +17709,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Recently removed", "#binBtn"],
     ["Add to calendar", "#calBtn"],
     ["Import a history file", "#hxBtn"],
     ["Drop long videos from the queue", "#qDropLongBtn"],
@@ -22415,6 +22421,75 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
 
+  // Recently removed (round 235 new 4): removing a favourite or a Watch later video can be undone only for
+  // ten seconds, by the toast. A bin now remembers the last 20 videos taken out of Favourites or Watch
+  // later (kept 30 days, on this device) whatever removed them - the row button, auto-remove after
+  // watching, Clear, a trim - and a panel lists them with Restore (back on top of the list they came
+  // from, Watch later still capped at 50) and Empty bin. Moving a video between lists is not a removal.
+  Object.assign(TR_MSG, {
+    "Recently removed": ["हाल में हटाए गए", "તાજેતરમાં કાઢેલા"],
+    "Restore": ["वापस लाएं", "પાછું લાવો"],
+    "Empty bin": ["बिन खाली करें", "બિન ખાલી કરો"],
+    "Favourites": ["पसंदीदा", "મનપસંદ"],
+    "Nothing removed lately. Videos you take out of Favourites or Watch later wait here for 30 days.": ["हाल में कुछ नहीं हटाया. पसंदीदा या बाद में देखें से हटाए वीडियो यहां 30 दिन रहते हैं.", "તાજેતરમાં કંઈ કાઢ્યું નથી. મનપસંદ કે પછી જોવામાંથી કાઢેલા વીડિયો અહીં 30 દિવસ રહે છે."],
+    "Restored": ["वापस लाया गया", "પાછું લાવ્યા"],
+    "Already in that list.": ["पहले से उसी सूची में है.", "પહેલેથી તે યાદીમાં છે."],
+    "Bin emptied": ["बिन खाली हुआ", "બિન ખાલી થયું"]
+  });
+  var BIN_KEY = "vp-bin.v1", binItems = [], binPrev = null;
+  try { var bin0 = JSON.parse(localStorage.getItem(BIN_KEY) || "null"); if (Array.isArray(bin0)) binItems = bin0.filter(function (b) { return b && validItem(b.item) && (b.list === "favs" || b.list === "later") && typeof b.at === "number" && Date.now() - b.at < 30 * 86400000; }).slice(0, 20); } catch (e) {}
+  function binSave() { try { localStorage.setItem(BIN_KEY, JSON.stringify(binItems)); } catch (e) {} }
+  function binSnap() { return { favs: lib.favs.slice(), later: lib.later.slice() }; }
+  function binTrack() {
+    var now = binSnap();
+    if (binPrev) {
+      var added = [];
+      ["favs", "later"].forEach(function (k) {
+        binPrev[k].forEach(function (x) { if (findIn(now[k], x.id) < 0) { added.push({ list: k, item: x, at: Date.now() }); } });
+      });
+      if (added.length) {
+        added.forEach(function (a) { binItems = binItems.filter(function (b) { return !(b.list === a.list && b.item.id === a.item.id); }); binItems.unshift(a); });
+        binItems = binItems.slice(0, 20); binSave();
+      }
+    }
+    binPrev = now;
+    if (typeof window.__vpBinPaint === "function") window.__vpBinPaint();
+  }
+  binPrev = binSnap();
+  var saveLibBin = saveLib;
+  saveLib = function () { binTrack(); return saveLibBin.apply(this, arguments); };
+  (function () {
+    var btn = $("binBtn"), panel = $("binPanel"); if (!btn || !panel) return;
+    var listEl = $("binList"), emptyB = $("binEmpty"), closeB = $("binClose");
+    function paint() {
+      btn.textContent = T("Recently removed") + (binItems.length ? " (" + binItems.length + ")" : "");
+      emptyB.textContent = T("Empty bin"); closeB.textContent = T("Close"); emptyB.hidden = !binItems.length;
+      if (panel.hidden) return;
+      listEl.innerHTML = "";
+      if (!binItems.length) { var p = document.createElement("p"); p.className = "hint"; p.textContent = T("Nothing removed lately. Videos you take out of Favourites or Watch later wait here for 30 days."); listEl.appendChild(p); return; }
+      binItems.forEach(function (b, i) {
+        var row = document.createElement("div"); row.className = "row bin-row";
+        var t = document.createElement("span"); t.className = "hint bin-t"; t.textContent = (b.item.title || b.item.id) + " - " + T(b.list === "favs" ? "Favourites" : "Watch later");
+        var r = document.createElement("button"); r.type = "button"; r.className = "chip"; r.textContent = T("Restore");
+        r.addEventListener("click", function () {
+          var list = b.list === "favs" ? lib.favs : lib.later;
+          if (findIn(list, b.item.id) >= 0) { toast(T("Already in that list.")); return; }
+          if (b.list === "later" && lib.later.length >= 50) { toast(T("Watch later is full (50 videos).")); return; }
+          var it = b.item; if (b.list === "later") it.ts = it.ts || Date.now();
+          binItems = binItems.filter(function (x) { return x !== b; }); binSave();
+          list.unshift(it); saveLib(); renderLib(); paint(); toast(T("Restored"));
+        });
+        row.appendChild(t); row.appendChild(r); listEl.appendChild(row);
+      });
+    }
+    window.__vpBinPaint = paint; (window.__relang = window.__relang || []).push(paint);
+    btn.addEventListener("click", function () { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); paint(); if (!panel.hidden && window.vpExpandSection) window.vpExpandSection("library"); });
+    closeB.addEventListener("click", function () { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); });
+    emptyB.addEventListener("click", function () { binItems = []; binSave(); paint(); toast(T("Bin emptied")); });
+    paint();
+  })();
+  (function () { var st = document.createElement("style"); st.textContent = ".bin-row{align-items:center;justify-content:space-between;gap:8px}.bin-t{flex:1;min-width:0;overflow-wrap:anywhere}"; document.head.appendChild(st); })();
+
   // Drop long videos from the queue (round 234 new 5): Sort by length orders a queue and Fit-time picks videos for a window, but a short evening still meant removing the hour-long ones row by row. One chip removes every upcoming video whose learned length (from this session or Recently watched) is over 30 minutes (the playing video and videos with an unknown length stay), with the usual Undo toast. Hindi and Gujarati text, What's new and feature finder included.
   Object.assign(TR_MSG, {
     "Drop long videos from the queue": ["कतार से लंबे वीडियो हटाएं", "કતારમાંથી લાંબા વીડિયો કાઢો"],
@@ -25111,6 +25186,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Recently removed", "recently removed bin trash undo restore deleted favourites watch later accident bring back", "#binBtn"],
       ["Add to calendar", "calendar ics event schedule evening plan reminder queue watch later block time session", "#calBtn"],
       ["Import a history file", "import google takeout watch history json youtube file bring old history favourites watch later migrate", "#hxBtn"],
       ["Drop long videos from the queue", "drop long videos queue remove over 30 minutes short evening length filter time tidy upcoming", "#qDropLongBtn"],
