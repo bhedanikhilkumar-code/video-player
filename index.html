@@ -22741,6 +22741,30 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     btn.addEventListener("click", function () { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); paint(); if (!panel.hidden && window.vpExpandSection) window.vpExpandSection("library"); });
   })();
 
+  // Round 236 fix 3: settings were overwritten across tabs - every save wrote this tab's whole copy of the
+  // preferences, so a tab left open in the background reset whatever the other tab (or the installed app)
+  // had changed since this one loaded (theme, speed, language...). A save now keeps only what THIS tab
+  // changed since its last save or load and takes every other setting from storage.
+  (function () {
+    var base = {};
+    function snap() { Object.keys(prefs).forEach(function (k) { try { base[k] = JSON.stringify(prefs[k]); } catch (e) {} }); }
+    snap();
+    var origSave = savePrefs;
+    savePrefs = function () {
+      try {
+        var stored = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
+        if (stored && typeof stored === "object" && !Array.isArray(stored)) {
+          Object.keys(stored).forEach(function (k) {
+            if (!(k in prefs) || typeof stored[k] !== typeof prefs[k]) return;
+            var mine; try { mine = JSON.stringify(prefs[k]); } catch (e) { return; }
+            if (mine === base[k] && JSON.stringify(stored[k]) !== mine) prefs[k] = stored[k];
+          });
+        }
+      } catch (e) {}
+      var r = origSave.apply(this, arguments); snap(); return r;
+    };
+  })();
+
   // Round 234 fix: list rows read '... - Resume 1:00' in English on Hindi and Gujarati pages, and
   // the 'Saved on this device only.' note under Recently watched also stayed English (its
   // translation row pointed at the first paragraph after the list, which became the hidden
