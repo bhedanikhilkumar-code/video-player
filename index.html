@@ -2321,6 +2321,7 @@ setTimeout(done,3000);})();
         <span class="hint lib-tools-msg" id="libBackupMsg" role="status"></span>
       </div>
       <p class="hint" id="backupAge" role="status"></p>
+      <p class="hint" id="dataSize" role="status"></p>
       <div class="tip-card backup-remind" id="backupRemind" hidden>
         <div class="tip-main"><p id="backupRemindTx"></p></div>
         <div class="tip-btns">
@@ -12560,12 +12561,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function bkRender() {
     var last = bkLast();
     if (bkAgeEl) bkAgeEl.textContent = bkAgeText(last);
+    if (typeof dataSizePaint === "function") dataSizePaint();
     if (!bkCard || !bkTx) return;
     var stale = !last || (Date.now() - last) > 14 * 864e5;
     var show = stale && !bkSnoozed() && bkCount() >= 3;
     bkCard.hidden = !show;
     if (show) bkTx.textContent = T("Your lists live only in this browser. Export a backup so a cleanup never wipes them.") + " " + bkAgeText(last);
   }
+  // App data size (round 229 new 7): everything the app remembers lives in this
+  // browser's storage, and until now there was no way to see how much that actually is.
+  // A line under the backup row adds up every vp-* entry (lists, history, notes, settings)
+  // and shows the rough size, switching to MB past a megabyte. It refreshes with the
+  // backup line and on every repaint. Hindi and Gujarati text, What's new, feature finder.
+  function dataSizePaint() {
+    var el = $("dataSize"); if (!el) return;
+    var chars = 0;
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf("vp-") === 0) chars += k.length + String(localStorage.getItem(k) || "").length;
+      }
+    } catch (e) {}
+    var bytes = chars * 2;
+    var size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + " MB" : (bytes / 1024).toFixed(bytes < 10240 ? 1 : 0) + " KB";
+    el.textContent = T("App data on this device: {size}").replace("{size}", size);
+    el.setAttribute("aria-label", T("How much storage this app uses on this device"));
+  }
+  (window.__relang = window.__relang || []).push(dataSizePaint);
+  dataSizePaint();
   if ($("backupNowBtn")) $("backupNowBtn").addEventListener("click", function () { $("libExport").click(); });
   if ($("backupLaterBtn")) $("backupLaterBtn").addEventListener("click", function () { try { localStorage.setItem(BK_SNOOZE, String(Date.now() + 3 * 864e5)); } catch (e) {} bkRender(); });
   (window.__relang = window.__relang || []).push(bkRender);
@@ -17251,6 +17274,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["App data size", "#dataSize"],
     ["Reset look and feel", "#resetLookBtn"],
     ["Sort picked files by date", "#lpDateBtn"],
     ["Total size of picked local files", "#lpTotalLine"],
@@ -17329,6 +17353,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Files sorted by date, newest first.": ["फाइलें तारीख से क्रमित, सबसे नई पहले.", "ફાઇલો તારીખથી ગોઠવાઈ, સૌથી નવી પહેલા."],
     "Sort picked files by date": ["चुनी गई फाइलें तारीख से क्रमाएं", "પસંદ કરેલી ફાઇલો તારીખથી ગોઠવો"],
     "Reset look and feel": ["लुक रीसेट करें", "લુક રીસેટ કરો"],
+    "App data on this device: {size}": ["इस डिवाइस पर ऐप डेटा: {size}", "આ ડિવાઇસ પર એપ ડેટા: {size}"],
+    "How much storage this app uses on this device": ["यह ऐप इस डिवाइस पर कितनी स्टोरेज उपयोग करता है", "આ એપ આ ડિવાઇસ પર કેટલી સ્ટોરેજ વાપરે છે"],
+    "App data size": ["ऐप डेटा साइज़", "એપ ડેટા સાઇઝ"],
     "Reset the look to default? Theme, accent, card style, text size, contrast, motion and every visual effect go back to default. Language, volume, speed and your other settings, lists and stats stay.": ["लुक डिफ़ॉल्ट पर रीसेट करें? थीम, एक्सेंट, कार्ड स्टाइल, टेक्स्ट साइज़, कंट्रास्ट, मोशन और हर विज़ुअल इफेक्ट डिफ़ॉल्ट पर लौट जाएगा. भाषा, वॉल्यूम, स्पीड और आपकी बाकी सेटिंग्स, लिस्ट और आंकड़े बने रहते हैं.", "લુક ડિફોલ્ટ પર રીસેટ કરો? થીમ, એક્સન્ટ, કાર્ડ સ્ટાઇલ, ટેક્સ્ટ સાઇઝ, કોન્ટ્રાસ્ટ, મોશન અને દરેક વિઝ્યુઅલ ઇફેક્ટ ડિફોલ્ટ પર પાછા આવશે. ભાષા, વોલ્યુમ, સ્પીડ અને તમારી બાકીની સેટિંગ્સ, યાદીઓ અને આંકડા રહે છે."],
     "Sort the selected files from largest to smallest": ["चुनी फ़ाइलें सबसे बड़ी से सबसे छोटी क्रमाएं", "પસંદ કરેલી ફાઇલો સૌથી મોટીથી સૌથી નાની ગોઠવો"],
     "Files are already in size order.": ["फ़ाइलें पहले से साइज़ क्रम में हैं.", "ફાઇલો પહેલેથી સાઇઝ ક્રમમાં છે."],
@@ -24101,6 +24128,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Add playlist to queue", "playlist youtube import", "#plBtn"],
       ["Paste a list of links", "paste many links bulk", "#plPasteBtn"],
       ["Saved playlists", "playlist saved study", "#lhPlaylists"],
+      ["App data size", "app data size storage how much space device lists history notes settings kb mb", "#dataSize"],
       ["Backup reminder", "backup reminder last backup export safe storage", "#backupAge"],
       ["Add current video to a playlist", "add current video playlist now playing save", "#plAddCurBtn"],
       ["Play Music (saved music queue)", "play music saved", "#playMusicBtn"],
