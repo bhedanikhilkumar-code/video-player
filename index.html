@@ -24846,7 +24846,14 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     // nothing - the error escaped the handler and the help card never opened; a rejected userChoice also
     // escaped as an unhandled error. Now a refused prompt drops the stale event and shows the help card.
     if (ev) {
-      try { ev.prompt(); ev.userChoice.then(function () { ev = null; }, function () { ev = null; }); return; }
+      try {
+        // Round 241 fix: prompt() itself returns a promise that rejects when the browser refuses
+        // (not a user gesture, event already used); it was left unhandled and logged an
+        // "Uncaught (in promise)" error. Now a refusal is caught and drops the stale event so the next tap shows the help card.
+        var pr = ev.prompt();
+        if (pr && typeof pr.catch === "function") pr.catch(function () { ev = null; });
+        ev.userChoice.then(function () { ev = null; }, function () { ev = null; }); return;
+      }
       catch (err) { ev = null; }
     }
     if (!help) return;
