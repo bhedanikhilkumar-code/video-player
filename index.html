@@ -16125,10 +16125,11 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
 
   // Continue watching: every video with a saved position, with progress, not just the last one.
   var continueItems;
+  function continueEligible266(h) { var end = h && (prefs.finishAt === "90" || prefs.finishAt === "95") ? Math.min(h.dur - 5, h.dur * Number(prefs.finishAt) / 100) : h && h.dur - 5; return !!(h && h.id && h.t >= 10 && h.dur > 0 && h.t < end); }
   function renderContinue() {
     var wrap = $("continueWrap"); if (!wrap) return;
     var ul = $("continueList"); ul.innerHTML = "";
-    var items = lib.hist.filter(function (x) { return x.t >= 10 && x.dur > 0 && x.t < x.dur - 5; });
+    var items = lib.hist.filter(continueEligible266);
     // Round 253 new 3: the card's sort chip picks the order; Newest keeps the saved order.
     if (prefs.contSort === "left") items = items.slice().sort(function (a, b) { return (b.t / b.dur) - (a.t / a.dur); });
     else if (prefs.contSort === "started") items = items.slice().sort(function (a, b) { return (a.t / a.dur) - (b.t / b.dur); });
@@ -16212,7 +16213,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // on the same list the card shows, so what you see is what the tap touches.
   function contVisible() {
     if (typeof continueItems !== "undefined" && continueItems) return continueItems;
-    return lib.hist.filter(function (h) { return h && h.id && h.t >= 10 && h.dur > 0 && h.t < h.dur - 5; }).slice(0, 6);
+    return lib.hist.filter(continueEligible266).slice(0, 6);
   }
   var contQueueBtn = $("contQueueBtn");
   function contQueuePaint() { if (contQueueBtn) { contQueueBtn.textContent = T("Queue all"); contQueueBtn.setAttribute("aria-label", T("Add every Continue watching video to the queue")); } }
@@ -16221,7 +16222,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   if (contQueueBtn) contQueueBtn.addEventListener("click", function () {
     var snap = lib.queue.slice(), sp = qPos, add = [];
     contVisible().forEach(function (h) {
-      if (!h || !h.id || !(h.t >= 10 && h.dur > 0 && h.t < h.dur - 5)) return;
+      if (!continueEligible266(h)) return;
       if (findIn(lib.queue, h.id) >= 0) return;
       if (lib.queue.length + add.length >= 50) return;
       add.push({ id: h.id, title: h.title || "" });
@@ -16247,7 +16248,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   if (contShufBtn) contShufBtn.addEventListener("click", function () {
     var pool = [];
     contVisible().forEach(function (h) {
-      if (!h || !h.id || !(h.t >= 10 && h.dur > 0 && h.t < h.dur - 5)) return;
+      if (!continueEligible266(h)) return;
       pool.push({ id: h.id, title: h.title || "" });
     });
     if (!pool.length) { toast(T("No continue watching videos to shuffle.")); return; }
@@ -16278,7 +16279,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   if (contClearBtn) contClearBtn.addEventListener("click", function () {
     var hit = [];
     contVisible().forEach(function (h) {
-      if (!h || !h.id || !(h.t >= 10 && h.dur > 0 && h.t < h.dur - 5)) return;
+      if (!continueEligible266(h)) return;
       hit.push(h);
     });
     if (!hit.length) { toast(T("No continue watching videos to clear.")); return; }
@@ -16306,7 +16307,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   if (contTxtBtn) contTxtBtn.addEventListener("click", function () {
     var hit = [];
     contVisible().forEach(function (h) {
-      if (!h || !h.id || !(h.t >= 10 && h.dur > 0 && h.t < h.dur - 5)) return;
+      if (!continueEligible266(h)) return;
       hit.push(h);
     });
     if (!hit.length) { toast(T("Nothing to continue yet. Watch any video for 10 seconds and it will wait for you here.")); return; }
@@ -28952,7 +28953,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     chips.setAttribute("role", "group"); chips.setAttribute("aria-labelledby", "finishAtLab");
     [["", "End"], ["95", "95%"], ["90", "90%"]].forEach(function (o) {
       var c = document.createElement("button"); c.type = "button"; c.className = "chip"; c.dataset.value = o[0];
-      c.addEventListener("click", function () { prefs.finishAt = o[0]; savePrefs(); paintFin(); toast(T("Finished at: {m}").replace("{m}", T(o[1]))); });
+      c.addEventListener("click", function () { prefs.finishAt = o[0]; savePrefs(); paintFin(); renderContinue(); toast(T("Finished at: {m}").replace("{m}", T(o[1]))); });
       chips.appendChild(c);
     });
     function paintFin() {
