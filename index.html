@@ -2253,6 +2253,8 @@ setTimeout(done,3000);})();
         <p class="hint" id="lpSilHint" hidden>Quiet stretches of 1.5 seconds or more in a local file are skipped on their own - long pauses in lectures and voice notes fly by. Works on files you open here, not on YouTube videos.</p>
         <div class="row"><button class="chip" id="lpLoudBtn" type="button" aria-pressed="false">📏 Loudness match: off</button></div>
         <p class="hint" id="lpLoudHint" hidden>Quiet files are lifted and loud files are softened toward one steady loudness on their own, so a playlist of mixed files never blasts or whispers between tracks. Works on files you open here; the YouTube player's sound cannot be changed (a browser security limit).</p>
+        <div class="row"><button class="chip" id="lpSinkBtn" type="button" hidden>🔊 Speaker</button></div>
+        <p class="hint" id="lpSinkHint" hidden>Send this tab's local-file sound to another speaker or headset - the browser asks which one. Works where your browser lets a page pick its sound output (Chrome and Edge); the YouTube player's sound cannot be moved (a browser security limit).</p>
         <div class="row"><button class="chip" id="lpMonoBtn" type="button" aria-pressed="false">🔈 Mono sound: off</button></div>
         <p class="hint" id="lpMonoHint" hidden>Both ears hear the same sound - handy with one earphone or a weaker ear on one side. Works on files you open here; the YouTube player's sound cannot be changed (a browser security limit).</p>
         <label class="dl-lab" for="lpBal"><span id="lpBalLab">Balance: </span><b id="lpBalVal">Center</b></label>
@@ -30978,6 +30980,46 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
   WNEW.unshift(["Seek history","#seekHistRow"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  // Choose the speaker (round 275 new 5): a local file always played through
+  // the device's default output, so moving just this tab's sound to a Bluetooth
+  // speaker or headset meant switching the whole device. Where the browser
+  // allows per-tab output (Chrome and Edge, through setSinkId and the browser's
+  // own picker), a Speaker chip in the local player asks which speaker or
+  // headset should play this tab's local files and shows the choice on the
+  // chip. The button stays hidden where per-tab output is not allowed
+  // (Safari, Firefox), the choice lasts for this tab session (nothing is
+  // saved), and the YouTube player's sound cannot be moved (a browser security
+  // limit). Hindi and Gujarati, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Choose the speaker": ["स्पीकर चुनें", "સ્પીकर પસંદ કરો"],
+    "🔊 Speaker": ["🔊 स्पीकर", "🔊 સ્પીકર"],
+    "This tab's sound could not be moved there.": ["इस टैब की आवाज़ वहां नहीं भेजी जा सकी.", "આ ટૅબનો અવાજ ત્યાં મોકલી શકાયો નહીં."]
+  });
+  (function () {
+    var vid = $("lpVideo"), btn = $("lpSinkBtn"), hint = $("lpSinkHint");
+    if (!vid || !btn) return;
+    if (typeof vid.setSinkId !== "function" || !navigator.mediaDevices || typeof navigator.mediaDevices.selectAudioOutput !== "function") return;
+    function paint() {
+      btn.hidden = false;
+      if (!btn.dataset.picked) btn.textContent = T("🔊 Speaker");
+      if (hint) { hint.hidden = false; hint.textContent = T("Send this tab's local-file sound to another speaker or headset - the browser asks which one. Works where your browser lets a page pick its sound output (Chrome and Edge); the YouTube player's sound cannot be moved (a browser security limit)."); }
+    }
+    (window.__relang = window.__relang || []).push(paint);
+    btn.addEventListener("click", function () {
+      navigator.mediaDevices.selectAudioOutput().then(function (d) {
+        return vid.setSinkId(d.deviceId).then(function () {
+          btn.dataset.picked = "1";
+          btn.textContent = "🔊 " + (d.label || T("🔊 Speaker"));
+          btn.classList.add("active");
+        });
+      }).catch(function (err) {
+        if (err && (err.name === "NotAllowedError" || err.name === "NotFoundError")) return;
+        toast(T("This tab's sound could not be moved there."));
+      });
+    });
+    paint();
+  })();
+  WNEW.unshift(["Choose the speaker","#lpSinkBtn"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 })();
 
 
@@ -33709,6 +33751,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Skip silence", "skip silence quiet pauses auto jump ahead lectures voice notes silent parts fast forward local file", "#lpSilBtn"],
       ["Loudness match", "loudness match auto volume leveling steady same loudness quiet loud files normalize playlist tracks local", "#lpLoudBtn"],
       ["Seek history", "seek history jump back recent positions spots rewind where was i before skip lecture lost place chips", "#seekHistRow"],
+      ["Choose the speaker", "choose speaker audio output bluetooth headset sound device another speaker tab set sink local file", "#lpSinkBtn"],
       ["Local playlist keys", "local playlist keys n p next previous file home end start keyboard shortcut several files", "#lpPickBtn"],
       ["Swipe to remove", "swipe remove queue row left phone touch delete drop gesture undo", "#queueList"],
       ["Copy frame", "copy frame screenshot clipboard image paste chat local video picture still capture", "#lpShotCopyBtn"],
