@@ -26773,6 +26773,52 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     });
   })();
 
+  function mkCard(id, anchorId, inner) {
+    var a = $(anchorId); if (!a || !a.parentNode) return null;
+    var card = document.createElement("details"); card.id = id; card.className = "r239-card";
+    card.innerHTML = '<summary></summary><p class="hint r239-desc"></p>' + inner;
+    a.parentNode.insertBefore(card, a.nextSibling); return card;
+}
+
+  // Break tracker (round 257 new 1): the streak and Weekly totals cards show how much you
+  // watch, but not how long you stay away. This card reads the saved daily totals (last 100
+  // days) and says how many days ago you last watched, the longest stretch of days with no
+  // watching, and on how many of the last 30 days you watched. Read-only, on this device,
+  // honest when there are fewer than 2 watched days. Hindi and Gujarati text, feature finder.
+  Object.assign(TR_MSG, {
+    "Break tracker": ["ब्रेक ट्रैकर", "બ્રેક ટ્રેકર"],
+    "How long your breaks between watching days are, from the last 100 days on this device.": ["पिछले 100 दिनों में देखने के दिनों के बीच आपके ब्रेक कितने लंबे हैं, इसी डिवाइस से.", "છેલ્લા 100 દિવસમાં જોવાના દિવસો વચ્ચેના તમારા બ્રેક કેટલા લાંબા છે, આ ડિવાઇસ પરથી."],
+    "Watched today": ["आज देखा", "આજે જોયું"],
+    "Last watched {n} days ago": ["आख़िरी बार {n} दिन पहले देखा", "છેલ્લે {n} દિવસ પહેલાં જોયું"],
+    "Longest break: {n} days without watching": ["सबसे लंबा ब्रेक: {n} दिन बिना देखे", "સૌથી લાંબો બ્રેક: {n} દિવસ જોયા વગર"],
+    "No break between your watching days so far.": ["अब तक देखने के दिनों के बीच कोई ब्रेक नहीं.", "અત્યાર સુધી જોવાના દિવસો વચ્ચે કોઈ બ્રેક નથી."],
+    "Watched on {a} of the last 30 days": ["पिछले 30 में से {a} दिन देखा", "છેલ્લા 30 માંથી {a} દિવસ જોયું"]
+  });
+  (function () {
+    var card = mkCard("breakCard", "weeklyCard", '<div id="brkMain" role="status"></div>'); if (!card) return;
+    function dnum(k) { var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k); return m ? Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86400000) : NaN; }
+    function paint() {
+      card.querySelector("summary").textContent = T("Break tracker");
+      card.querySelector(".r239-desc").textContent = T("How long your breaks between watching days are, from the last 100 days on this device.");
+      var main = $("brkMain"); main.textContent = "";
+      var d = (stats && stats.days) || {}, nums = [];
+      Object.keys(d).forEach(function (k) { var n = dnum(k); if (!isNaN(n) && Number(d[k]) > 0) nums.push(n); });
+      nums.sort(function (a, b) { return a - b; });
+      function line(t) { var p = document.createElement("p"); p.className = "hint"; p.style.margin = "4px 0"; p.textContent = t; main.appendChild(p); }
+      if (nums.length < 2) { line(T("Not enough watching yet - watch on at least 2 different days to see a pattern.")); return; }
+      var now = new Date(), today = Math.round(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+      var since = today - nums[nums.length - 1];
+      line(since <= 0 ? T("Watched today") : T("Last watched {n} days ago").replace("{n}", since));
+      var best = 0, i; for (i = 1; i < nums.length; i++) best = Math.max(best, nums[i] - nums[i - 1] - 1);
+      line(best > 0 ? T("Longest break: {n} days without watching").replace("{n}", best) : T("No break between your watching days so far."));
+      var c30 = nums.filter(function (n) { return today - n < 30 && today - n >= 0; }).length;
+      line(T("Watched on {a} of the last 30 days").replace("{a}", c30));
+    }
+    card.addEventListener("toggle", function () { if (card.open) paint(); });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+
   // Sort Watch later by most played (round 256 new 1): Watch later could be sorted A to Z
   // and by rating, but not by what you actually replay - so a parked favourite you have
   // watched ten times sat mixed in with videos you opened once and dropped. A chip by
@@ -29569,6 +29615,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Sort Watch later by most played", "sort watch later by most played play count replays watched times order backlog", "#laterSortPlaysBtn"],
       ["Sort Recently watched by most played", "sort history recently watched by most played play count replays order find favourites", "#histSortPlaysBtn"],
       ["Queue this week", "queue this week last 7 days watched history back into queue replay series evenings", "#histWeekBtn"],
+      ["Break tracker", "break tracker gap days since last watched longest break away streak habit pause watch stats", "#breakCard"],
       ["Weekly totals", "weekly totals weeks compare best week bars watch stats last 8 weeks trend heavier lighter", "#weeklyCard"],
       ["Share Watch later", "share watch later link send backlog list another device phone add replace", "#laterShareBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
