@@ -2065,6 +2065,7 @@ setTimeout(done,3000);})();
             <div class="marks-list" id="noteFindOut"></div>
           </details>
           <div class="row" style="margin-top:10px"><button class="chip" id="noteTxtBtn" type="button">Save all notes as text file</button><button class="chip" id="notesCopyAllBtn" type="button">📋 Copy all notes</button><button class="chip" id="studySheetBtn" type="button">Save study sheet (.md)</button></div>
+          <div class="row" id="notesMoreRow" style="margin-top:6px"><button class="chip" id="notesClearAllBtn" type="button">🗑 Clear all notes</button></div>
         </div>
 
         <div class="ctl-card wide" id="ctl-lyrics">
@@ -15425,6 +15426,31 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   (window.__relang = window.__relang || []).push(studyPaint202); studyPaint202();
 
+  // Clear all notes (round 224 new 1): notes could only be cleared one video at a time, so
+  // wiping a study session meant loading every video. One chip clears every saved note and one
+  // Undo toast puts the exact notes back (a note typed meanwhile on the same video is kept).
+  Object.assign(TR_MSG, {
+    "🗑 Clear all notes": ["🗑 सभी नोट्स मिटाएं", "🗑 બધી નોંધો સાફ કરો"],
+    "All notes cleared": ["सभी नोट्स मिटाए", "બધી નોંધો સાફ થઈ"],
+    "Clear all notes with Undo": ["Undo के साथ सभी नोट्स मिटाएं", "Undo સાથે બધી નોંધો સાફ કરો"]
+  });
+  (function () {
+    var b = $("notesClearAllBtn"); if (!b) return;
+    function paint() { b.textContent = T("🗑 Clear all notes"); }
+    b.addEventListener("click", function () {
+      noteFlush();
+      var ids = Object.keys(notes).filter(function (id) { return typeof notes[id] === "string" && notes[id].trim(); });
+      if (!ids.length) { toast(T("No notes saved yet.")); return; }
+      var snap = {}; ids.forEach(function (id) { snap[id] = notes[id]; delete notes[id]; });
+      notesSave(); renderNotes(); if (typeof renderLib === "function") renderLib();
+      toastUndo(T("All notes cleared") + " (" + ids.length + ")", function () {
+        Object.keys(snap).forEach(function (id) { if (typeof notes[id] !== "string" || !notes[id].trim()) notes[id] = snap[id]; });
+        notesSave(); renderNotes(); if (typeof renderLib === "function") renderLib();
+      });
+    });
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+
   // Find in all notes: search every saved note and jump to the matching video.
   (function () {
     var inp = $("noteFindIn"), out = $("noteFindOut"); if (!inp || !out) return;
@@ -16302,6 +16328,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Clear all notes with Undo", "#notesClearAllBtn"],
     ["Moments mark on lists", "#favList .moment-badge"],
     ["Import moments from a file", "#markFileBtn"],
     ["Random moment", "#markRandBtn"],
@@ -16311,14 +16338,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Save the download queue as text", "#dlQTxtBtn"],
     ["Copy link from the mini player", "#miniCopy"],
     ["Clear favourites", "#favClearBtn"],
-    ["Shuffle play Recently watched", "#histShufBtn"],
-    ["Save continue watching as a text file", "#contTxtBtn"],
-    ["Best day in Watch stats", "#statsBest"],
-    ["Save picked files as a text file", "#lpTxtBtn"],
-    ["Clear all of Continue watching", "#contClearBtn"],
-    ["Shuffle play Continue watching", "#contShufBtn"],
-    ["Favourite from the mini player", "#miniFav"],
-    ["Sort picked files by size", "#lpSizeBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -22900,6 +22919,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Clear all notes with Undo", "clear all notes delete wipe every note undo study session reset", "#notesClearAllBtn"],
       ["Moments mark on lists", "moments mark pill count lists rows library favourites watch later history queue bookmark saved moments at a glance", "#favList .moment-badge"],
       ["Import moments from a file", "import moments text file txt load chapters timestamps bookmarks restore another device notes app youtu.be", "#markFileBtn"],
       ["Random moment", "random moment jump any saved moment shuffle study chorus bookmark surprise next previous", "#markRandBtn"],
