@@ -2293,6 +2293,7 @@ setTimeout(done,3000);})();
         <h3 id="settingsH">Settings</h3>
         <p class="hint" id="settingsHint">Everything the app remembers is stored on this device only: volume, speed, theme, language, queue modes, the sleep timer and saver choices.</p>
         <label class="dl-chk"><input type="checkbox" id="autoPauseChk"> <span id="autoPauseT">Pause when I leave this tab</span></label>
+        <label class="dl-chk"><input type="checkbox" id="crossPauseChk"> <span id="crossPauseT">Pause when another tab plays</span></label>
         <label class="dl-chk"><input type="checkbox" id="privChk"> <span id="privT">Private viewing (do not record what I watch)</span></label>
         <p class="hint" id="privHint" hidden>Private viewing is on: videos you open are not added to Recently watched, Continue watching or Watch stats until you turn it off. Favourites, queue and Watch later still work.</p>
         <label class="dl-chk"><input type="checkbox" id="autoResumeChk"> <span id="autoResumeT">Resume when I come back</span></label>
@@ -28622,6 +28623,48 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     pinchLabel();
   })();
   WNEW.unshift(["Pinch to zoom", "#gesturePad"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+
+  // Pause when another tab plays (round 264 new 4): with the app open in two tabs (or the
+  // installed app plus a browser tab), starting a video in one left the other tab playing
+  // too, so two sounds ran over each other. This setting makes a tab that starts playing
+  // tell its siblings through localStorage; a sibling that is itself playing pauses (a
+  // YouTube video through the player, a local file through its element) and says why.
+  // Only a start in the last few seconds counts, so an old note never pauses anything.
+  // Off by default, remembered on this device in prefs and riding the backup. Hindi and
+  // Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Pause when another tab plays": ["\u091C\u092C \u0926\u0942\u0938\u0930\u093E \u091F\u0948\u092C \u091A\u0932\u093E\u090F \u0924\u092C \u0930\u094B\u0915\u0947\u0902", "\u0A9C\u0ACD\u0AAF\u0ABE\u0AB0\u0AC7 \u0AAC\u0AC0\u0A9C\u0AC1\u0A82 \u0A9F\u0AC7\u0AAC \u0A9A\u0AB2\u0ABE\u0AB5\u0AC7 \u0AA4\u0ACD\u0AAF\u0ABE\u0AB0\u0AC7 \u0AB0\u0ACB\u0A95\u0ACB"],
+    "Pause this tab when another tab or the installed app starts a video.": ["\u091C\u092C \u0915\u094B\u0908 \u0926\u0942\u0938\u0930\u093E \u091F\u0948\u092C \u092F\u093E \u0907\u0902\u0938\u094D\u091F\u0949\u0932 \u0915\u093F\u092F\u093E \u090F\u092A \u0935\u0940\u0921\u093F\u092F\u094B \u0936\u0941\u0930\u0942 \u0915\u0930\u0947 \u0924\u092C \u092F\u0939 \u091F\u0948\u092C \u0930\u094B\u0915\u0947\u0902.", "\u0A9C\u0ACD\u0AAF\u0ABE\u0AB0\u0AC7 \u0AAC\u0AC0\u0A9C\u0AC1\u0A82 \u0A9F\u0AC7\u0AAC \u0A95\u0AC7 \u0A87\u0AA8\u0ACD\u0AB8\u0ACD\u0A9F\u0AC9\u0AB2 \u0A95\u0AB0\u0AC7\u0AB2\u0AC0 \u0A8F\u0AAA \u0AB5\u0AC0\u0AA1\u0ABF\u0AAF\u0ACB \u0AB6\u0AB0\u0AC2 \u0A95\u0AB0\u0AC7 \u0AA4\u0ACD\u0AAF\u0ABE\u0AB0\u0AC7 \u0A86 \u0A9F\u0AC7\u0AAC \u0AB0\u0ACB\u0A95\u0ACB."],
+    "Paused - another tab started playing.": ["\u0930\u094B\u0915\u093E \u0917\u092F\u093E - \u0926\u0942\u0938\u0930\u0947 \u091F\u0948\u092C \u0928\u0947 \u091A\u0932\u093E\u0928\u093E \u0936\u0941\u0930\u0942 \u0915\u093F\u092F\u093E.", "\u0AB0\u0ACB\u0A95\u0ABE\u0AAF\u0AC1\u0A82 - \u0AAC\u0AC0\u0A9C\u0ABE \u0A9F\u0AC7\u0AAC\u0AC7 \u0A9A\u0AB2\u0ABE\u0AB5\u0AB5\u0ABE\u0AA8\u0AC1\u0A82 \u0AB6\u0AB0\u0AC2 \u0A95\u0AB0\u0ACD\u0AAF\u0AC1\u0A82."]
+  });
+  (function () {
+    var chk = $("crossPauseChk"); if (!chk) return;
+    var KEY = "vp-nowplaying.v1", myTab = String(Date.now()) + "-" + Math.random().toString(36).slice(2, 8);
+    chk.checked = prefs.crossPause === true;
+    chk.addEventListener("change", function () { prefs.crossPause = chk.checked; savePrefs(); });
+    (window.__relang = window.__relang || []).push(function () {
+      var t = $("crossPauseT"); if (t) t.textContent = T("Pause when another tab plays");
+      chk.setAttribute("aria-label", T("Pause this tab when another tab or the installed app starts a video."));
+    });
+    function announce() {
+      try { localStorage.setItem(KEY, JSON.stringify({ tab: myTab, ts: Date.now() })); } catch (e) {}
+    }
+    var prevFx = window.__vpStateFx;
+    window.__vpStateFx = function (st) { if (prevFx) prevFx(st); if (st === 1 && prefs.crossPause === true) announce(); };
+    var lpv = $("lpVideo");
+    if (lpv) lpv.addEventListener("play", function () { if (prefs.crossPause === true) announce(); });
+    window.addEventListener("storage", function (e) {
+      if (e.key !== KEY || prefs.crossPause !== true) return;
+      var rec; try { rec = JSON.parse(e.newValue || "null"); } catch (err) {}
+      if (!rec || rec.tab === myTab || typeof rec.ts !== "number" || Date.now() - rec.ts > 8000) return;
+      var did = false;
+      if (playing && curId) { send("pauseVideo"); did = true; }
+      var v = $("lpVideo");
+      if (v && !v.hidden && !v.paused && !v.ended) { v.pause(); did = true; }
+      if (did) toast(T("Paused - another tab started playing."));
+    });
+  })();
+  WNEW.unshift(["Pause when another tab plays", "#crossPauseChk"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
 
 /*R244-END*/
 
