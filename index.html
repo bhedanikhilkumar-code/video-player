@@ -2468,6 +2468,7 @@ setTimeout(done,3000);})();
       <button class="chip" id="favStaleBtn" type="button" hidden></button>
       <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="histShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="histSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="histQueueBtn" type="button">Queue unfinished</button><button class="chip" id="histYestBtn" type="button">📅 Yesterday</button><button class="chip" id="histPlBtn" type="button">Save unfinished as playlist</button><button class="chip" id="histTrimBtn" type="button">Trim old history</button><button class="chip" id="histDoneBtn" type="button">Clear watched</button><button class="chip" id="histUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="histShortsBtn" type="button" aria-pressed="false">Hide shorts: off</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
       <ul class="lib-list" id="histList"></ul>
+      <div class="row" id="histTidy" style="margin-top:6px"></div>
       <p class="hint" id="histFinLine" role="status" hidden></p>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsPlaysBtn" type="button" aria-pressed="false">Sort by plays: off</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsCsvBtn" type="button">Save as spreadsheet (.csv)</button><button class="chip" id="statsCopyBtn" type="button">Copy my stats</button><button class="chip" id="statsClear" type="button">Clear</button></div>
@@ -17921,6 +17922,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["History tidy-up", "#histKeepBtn"],
     ["Scratch pad", "#scratchH"],
     ["Wind-down reminder", "#windRow"],
     ["This month's recap", "#mrecapBtn"],
@@ -23617,6 +23619,20 @@ box.addEventListener('input',function(){try{localStorage.setItem(KEY,JSON.string
 clr.addEventListener('click',function(){var old=box.value;box.value='';try{localStorage.setItem(KEY,'""');}catch(e){}paint();toastUndo(T('Scratch pad cleared'),function(){box.value=old;try{localStorage.setItem(KEY,JSON.stringify(old));}catch(e){}paint();},T('Scratch pad restored'));});
 (window.__relang=window.__relang||[]).push(paint);paint();})();
 
+Object.assign(TR_MSG, {"History tidy-up": ["हिस्ट्री सफ़ाई", "હિસ્ટ્રી સફાઈ"], "Remove older than:": ["इससे पुराना हटाएँ:", "આનાથી જૂનું દૂર કરો:"], "days": ["दिन", "દિવસ"], "Remove older": ["पुराना हटाएँ", "જૂનું દૂર કરો"], "Removed older history:": ["पुरानी हिस्ट्री हटाई:", "જૂની હિસ્ટ્રી દૂર કરી:"], "Nothing that old in history.": ["इतना पुराना कुछ नहीं है।", "આટલું જૂનું કંઈ નથી."], "History restored": ["हिस्ट्री वापस आई", "હિસ્ટ્રી પાછી આવી"]});
+(function(){var row=$('histTidy');if(!row)return;
+var lab=document.createElement('span');lab.className='label';lab.id='histKeepLab';
+var sel=document.createElement('select');sel.className='chip';sel.id='histKeepSel';
+[7,30,90].forEach(function(d){var o=document.createElement('option');o.value=String(d);sel.appendChild(o);});sel.value='30';
+var b=document.createElement('button');b.type='button';b.className='chip';b.id='histKeepBtn';
+row.appendChild(lab);row.appendChild(sel);row.appendChild(b);
+function paint(){lab.textContent=T('Remove older than:');sel.setAttribute('aria-label',T('Remove older than:'));[].forEach.call(sel.options,function(o){o.textContent=o.value+' '+T('days');});b.textContent=T('Remove older');}
+b.addEventListener('click',function(){var d=parseInt(sel.value,10)||30,cut=Date.now()-d*864e5,snap=lib.hist.slice();
+var keep=snap.filter(function(x){return !(typeof x.ts==='number'&&x.ts<cut);}),gone=snap.length-keep.length;
+if(!gone){toast(T('Nothing that old in history.'));return;}
+lib.hist=keep;saveLib();renderLib();
+toastUndo(T('Removed older history:')+' '+gone,function(){lib.hist=snap;saveLib();renderLib();},T('History restored'));});
+(window.__relang=window.__relang||[]).push(paint);paint();})();
 Object.assign(TR_MSG, {"Wind-down reminder": ["वाइंड-डाउन रिमाइंडर", "વાઇન્ડ-ડાઉન રિમાઇન્ડર"], "Wind-down reminder:": ["वाइंड-डाउन रिमाइंडर:", "વાઇન્ડ-ડાઉન રિમાઇન્ડર:"], "9 PM": ["रात 9 बजे", "રાતે 9"], "10 PM": ["रात 10 बजे", "રાતે 10"], "11 PM": ["रात 11 बजे", "રાતે 11"], "Winding down? A sleep timer can stop playback for you.": ["दिन ख़त्म हो रहा है? स्लीप टाइमर वीडियो अपने-आप रोक देगा.", "દિવસ પૂરો થાય છે? સ્લીપ ટાઇમર વીડિયો આપમેળે રોકી દેશે."], "Start 30-min timer": ["30 मिनट का टाइमर लगाएं", "30 મિનિટનો ટાઇમર લગાવો"], "Not now": ["अभी नहीं", "હજી નહીં"]});
 (function(){var card=$('ctl-sleep');if(!card)return;var row=document.createElement('div');row.className='row';row.id='windRow';row.style.marginTop='10px';var lab=document.createElement('span');lab.className='label';lab.id='windLab';var chips=document.createElement('span');chips.className='chips';chips.id='windChips';row.appendChild(lab);row.appendChild(chips);var at=$('sleepAtRow');card.insertBefore(row,at?at.nextSibling:null);
 var st=document.createElement('style');st.textContent='.wind-banner{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9995;width:min(430px,calc(100vw - 32px));padding:14px 16px;box-sizing:border-box;border:1px solid var(--hairline);border-radius:18px;background:var(--card);color:var(--ink);box-shadow:0 16px 50px #0005;text-align:center}.wind-banner[hidden]{display:none}.wind-banner p{margin:0 0 10px;font-size:15px}.wind-banner .row{justify-content:center}';document.head.appendChild(st);
@@ -26143,6 +26159,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["History tidy-up", "history clean tidy older delete remove days keep old recently watched", "#histKeepBtn"],
       ["Scratch pad", "scratch pad quick note notepad free text ideas links jot down notes", "#scratchH"],
       ["Wind-down reminder", "wind down bedtime evening reminder sleep timer night stop playback habit", "#windRow"],
       ["This month's recap", "month recap summary 30 days monthly journal share watched busiest day copy text log", "#mrecapBtn"],
