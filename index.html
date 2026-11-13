@@ -32752,6 +32752,61 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     });
     WNEW.unshift(["Pop notes at their time", "#notePopBtn"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   })();
+  // Moments tour (round 283 new 2): saved moments are a revision list, but replaying
+  // them meant tapping every chip by hand. The Tour chip plays each saved moment of
+  // the current video for about eight seconds - enough to catch the step or the
+  // hook - then hops to the next on its own, with a toast naming where you are
+  // (Tour 2 of 5: Chorus). The chip becomes Stop tour, changing the video ends the
+  // tour, and a finishing toast says so. Pausing simply waits; the tour only counts
+  // while the video plays. Hindi and Gujarati text, What's new and feature finder
+  // included. Checked first: Random moment jumps once and Pause at moments halts at
+  // every moment - nothing walked the whole list hands-free.
+  Object.assign(TR_MSG, {
+    "Moments tour": ["\u092a\u0932\u094b\u0902 \u0915\u093e \u091f\u0942\u0930", "\u0a95\u0acd\u0ab7\u0aa3\u094b\u0aa8\u0940 \u0a9f\u0ac2\u0ab0"],
+    "Stop tour": ["\u091f\u0942\u0930 \u0930\u094b\u0915\u0947\u0902", "\u0a9f\u0ac2\u0ab0 \u0ab0\u094b\u0a95\u094b"],
+    "Tour {i} of {n}: {name}": ["\u091f\u0942\u0930 {i} / {n}: {name}", "\u0a9f\u0ac2\u0ab0 {i} / {n}: {name}"],
+    "Moments tour finished.": ["\u092a\u0932\u094b\u0902 \u0915\u093e \u091f\u0942\u0930 \u092a\u0942\u0930\u093e \u0939\u0941\u0906.", "\u0a95\u0acd\u0ab7\u0aa3\u094b\u0aa8\u0940 \u0a9f\u0ac2\u0ab0 \u0aaa\u0ac2\u0ab0\u0940 \u0aa5\u0a88."],
+    "Tour stopped.": ["\u091f\u0942\u0930 \u0930\u0941\u0915 \u0917\u092f\u093e.", "\u0a9f\u0ac2\u0ab0 \u0a85\u0a9f\u0a95\u0acd\u0aaf\u0ac1\u0a82."],
+    "Save a moment first, then take the tour.": ["\u092a\u0939\u0932\u0947 \u0915\u094b\u0908 \u092a\u0932 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902, \u092b\u093f\u0930 \u091f\u0942\u0930 \u0932\u0947\u0902.", "\u0aaa\u0ab9\u0ab2\u0abe \u0a95\u0acb\u0a88 \u0a95\u0acd\u0ab7\u0aa3 \u0ab8\u0ac7\u0ab5 \u0a95\u0ab0\u094b, \u0aaa\u0a9b\u0ac0 \u0a9f\u0ac2\u0ab0 \u0ab2\u094b."]
+  });
+  (function () {
+    var anchor = $("markRandBtn"); if (!anchor) return;
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "chip"; btn.id = "markTourBtn"; btn.setAttribute("aria-pressed", "false");
+    anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+    var touring = false, idx = 0, list = [], segEnd = 0, tourId = null, iv = 0;
+    function paint() {
+      btn.textContent = "\u25B6 " + T(touring ? "Stop tour" : "Moments tour");
+      btn.setAttribute("aria-pressed", touring ? "true" : "false");
+      btn.classList.toggle("active", touring);
+    }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    function stop(msg) { touring = false; clearInterval(iv); paint(); if (msg) toast(msg); }
+    function jump() {
+      var m = list[idx];
+      manualSeek(Math.max(0, m.t), curTime);
+      segEnd = m.t + 8;
+      toast(T("Tour {i} of {n}: {name}").replace("{i}", idx + 1).replace("{n}", list.length).replace("{name}", m.name || fmt(m.t)));
+    }
+    btn.addEventListener("click", function () {
+      if (touring) { stop(T("Tour stopped.")); return; }
+      var items = (curId && marks && marks[curId]) ? marks[curId].slice() : [];
+      if (!items.length) { toast(T("Save a moment first, then take the tour.")); return; }
+      items.sort(function (a, b) { return a.t - b.t; });
+      list = items; idx = 0; touring = true; tourId = curId;
+      jump(); paint();
+      iv = setInterval(function () {
+        if (!touring) return;
+        if (curId !== tourId) { stop(); return; }
+        if (playing && curTime >= segEnd - 0.3) {
+          idx++;
+          if (idx >= list.length) stop(T("Moments tour finished."));
+          else jump();
+        }
+      }, 500);
+    });
+    WNEW.unshift(["Moments tour", "#markTourBtn"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
 })();
 
 
@@ -35923,6 +35978,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Copy backup to the clipboard", "copy backup clipboard paste whatsapp notes move new phone no file download export", "#libCopyBackup"],
       ["Save a playlist as .m3u", "save playlist m3u extinf vlc kodi other players music importers export file", "#lhPlaylists"],
       ["Pop notes at their time", "note pop time reminder line shows itself watching remember marked part overlay", "#notePopBtn"],
+      ["Moments tour", "moments tour play each saved moment automatically eight seconds revision recap hands free walk through", "#markTourBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
       ["Rate backlog", "rate backlog unrated videos stars rating give stars favourites history without rating", "#rateBacklogCard"],
       ["Weekday rhythm", "weekday rhythm busiest day of the week monday sunday pattern when do i watch bars stats", "#weekdayCard"],
