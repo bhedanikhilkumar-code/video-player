@@ -12477,17 +12477,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         savePlaylists(); renderPlaylists(); plSay(T("Duplicated as") + " \"" + nm.slice(0, 40) + "\".");
       });
       btn(T("To top"), "", function () {
-        // Round 242 fix 3: since Pin a playlist, the DISPLAY order always shows pinned playlists
-        // first (plDisplayOrder), so To top used to move a playlist to storage index 0 and the user
-        // saw nothing change whenever another playlist was pinned. "Top" now means the first visible
-        // spot the playlist can take: index 0 for a pinned playlist, the first spot after the pinned
-        // block for an unpinned one. The already-first check reads the real display order.
-        if (plDisplayOrder()[0] === idx) { plSay(T("This playlist is already first.")); return; }
+        // Round 242 fix 3 (corrected): pinned playlists always display first (plDisplayOrder's
+        // pinned sort is stable), so moving to storage index 0 already lands an unpinned playlist
+        // at the top of its group - the highest it can reach. The real gaps were the already-first
+        // check, which read the STORAGE index: with storage [Zoo, Apple(pinned)] it let To top run
+        // on Zoo for no visible change, and with a pinned playlist not at storage 0 it refused a
+        // move that WOULD have been visible. The check now reads the display order: a playlist is
+        // "first" when it already sits at the highest spot it can reach (0 for pinned, right after
+        // the pinned block for unpinned).
+        var disp = plDisplayOrder();
+        var reach = 0;
+        if (pl.pinned !== true) { playlists.forEach(function (p) { if (p.pinned === true) reach++; }); }
+        if (disp.indexOf(idx) <= reach) { plSay(T("This playlist is already first.")); return; }
         var oldAt = idx;
-        playlists.splice(idx, 1);
-        var topAt = 0;
-        if (pl.pinned !== true) { playlists.forEach(function (p) { if (p.pinned === true) topAt++; }); }
-        playlists.splice(topAt, 0, pl);
+        playlists.splice(idx, 1); playlists.unshift(pl);
         savePlaylists(); renderPlaylists();
         plSay(T("Moved to the top:") + " \"" + pl.name + "\"." + (plSortAZ ? " " + T("Sort is A to Z, so the new order shows when you switch Sort back to Newest.") : ""));
         toastUndo(T("Moved to the top:") + " " + pl.name, function () { var at = playlists.indexOf(pl); if (at >= 0) { playlists.splice(at, 1); playlists.splice(Math.min(oldAt, playlists.length), 0, pl); savePlaylists(); renderPlaylists(); } }, T("Playlist order restored"));
