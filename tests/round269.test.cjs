@@ -31,4 +31,13 @@ function slice(from, to) { const a = html.indexOf(from); assert.ok(a >= 0, from 
   assert.equal(p(null), '');
   assert.equal(p('playlist'), ''); // whole words only
 }
+// Privacy screen setting is cleaned on load and import.
+{
+  const ctx = vm.createContext({});
+  vm.runInContext(slice('function cleanR269(', '  Object.assign(TR_MSG'), ctx);
+  assert.equal(JSON.stringify(ctx.cleanR269(null)), '{"escHide":0}');
+  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 1, junk: 5 })), '{"escHide":1}');
+  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 'yes' })), '{"escHide":0}');
+  assert.equal(JSON.stringify(ctx.cleanR269([1])), '{"escHide":0}');
+}
 console.log('round269 tests ok');
