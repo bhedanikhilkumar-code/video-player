@@ -14075,6 +14075,10 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
           var cls = lv ? "l" + lv : ""; if (dayKey(cd) === calTodayKey) cls = (cls + " today").trim();
           if (cls) cell.className = cls;
           cell.title = cd.toLocaleDateString(calLoc, { weekday: "short", day: "numeric", month: "short" }) + ": " + (cSecs > 0 ? fmtWatch(cSecs) : T("No watching"));
+          // Round 245 fix 4: the day's minutes only lived in a title tooltip, which a phone never shows,
+          // so the Watch calendar squares could not be read on touch screens. They now carry an
+          // aria-label and a tap shows the same text under the grid.
+          cell.setAttribute("role", "img"); cell.setAttribute("aria-label", cell.title);
           calEl.appendChild(cell);
         }
         var calLab = $("statsCalLab");
@@ -24473,6 +24477,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   card.addEventListener('toggle',function(){if(card.open)paint();});
   var oldRL6=renderLib;renderLib=function(){oldRL6();if(card.open&&!document.activeElement.closest('#wordsCard'))paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
+  // Round 245 fix 4 (tap a Watch calendar square): see the note where the squares are drawn.
+  (function(){var calEl=$('statsCal');if(!calEl||!calEl.parentNode)return;var out=document.createElement('p');out.className='hint';out.id='statsCalDay';out.setAttribute('role','status');out.hidden=true;calEl.parentNode.insertBefore(out,calEl.nextSibling);
+  calEl.addEventListener('click',function(e){var c=e.target&&e.target.closest?e.target.closest('i'):null;if(!c||!c.title)return;out.textContent=c.title;out.hidden=false;});
+  var oldHide=$('statsCalWrap');if(oldHide&&window.MutationObserver)new MutationObserver(function(){if(oldHide.hidden)out.hidden=true;}).observe(oldHide,{attributes:true,attributeFilter:['hidden']});
   })();
 /*R244-END*/
 
