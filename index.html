@@ -18281,6 +18281,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Playlist resume": ["प्लेलिस्ट जारी रखें", "પ્લેલિસ્ટ ચાલુ રાખો"]
   });
   var WNEW = [
+    ["Review desk", "#reviewDesk261"],
     ["Recall cards", "#recallCard261"],
     ["Saved searches", "#ssRow"],
     ["Getting started", "#startCard"],
@@ -18290,7 +18291,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Speed ramp", "#rampCard"],
     ["Activity log", "#activityCard"],
     ["Search operators", "#sqTip259"],
-    ["Skip parts", "#skipPartsCard"],
   ];
   // Round 256: the two new sort names need Hindi/Gujarati for the What's new card
   // (their chips were translated in their own commits; the card renders through T()).
@@ -27583,6 +27583,38 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     return {read:read,change:change,source:source,listen:function(f){listeners.push(f);},button:btn,clean:clean};
   })();
 
+  // Round 261: a due-card review session, separate from the card editor.
+  Object.assign(TR_MSG, {
+    "Review desk": ["दोहराई डेस्क", "પુનરાવર્તન ડેસ્ક"],
+    "Answer from memory, reveal, then choose when to see the card again. Due dates stay on this device.": ["याद से जवाब दें, फिर देखें और अगली दोहराई चुनें. तारीखें इसी डिवाइस पर रहती हैं.", "યાદથી જવાબ આપો, પછી જુઓ અને ફરી ક્યારે જોવું તે પસંદ કરો. તારીખો આ ઉપકરણ પર રહે છે."],
+    "Review due cards": ["आज के कार्ड दोहराएं", "બાકી કાર્ડ ફરી જુઓ"], "Practice all cards": ["सभी कार्ड का अभ्यास", "બધા કાર્ડનો અભ્યાસ"],
+    "Only this video": ["केवल यह वीडियो", "ફક્ત આ વીડિયો"], "Reveal answer": ["जवाब दिखाएं", "જવાબ બતાવો"],
+    "Again in 10 minutes": ["10 मिनट बाद फिर", "10 મિનિટ પછી ફરી"], "Got it": ["याद है", "યાદ છે"],
+    "End review": ["दोहराई खत्म करें", "પુનરાવર્તન પૂરું કરો"], "Review complete": ["दोहराई पूरी", "પુનરાવર્તન પૂરું"],
+    "No due cards. Add cards or practice all.": ["अभी कोई कार्ड बाकी नहीं. नए कार्ड जोड़ें या सभी का अभ्यास करें.", "હાલ કોઈ કાર્ડ બાકી નથી. નવા ઉમેરો અથવા બધાનો અભ્યાસ કરો."],
+    "{n} due now": ["{n} कार्ड अभी बाकी", "{n} કાર્ડ હમણાં બાકી"],
+    "Card {a} of {b}": ["कार्ड {a}/{b}", "કાર્ડ {a}/{b}"],
+    "Next review in {n} days": ["अगली दोहराई {n} दिन बाद", "આગલું પુનરાવર્તન {n} દિવસ પછી"],
+    "Practice does not change due dates.": ["अभ्यास से दोहराई की तारीख नहीं बदलती.", "અભ્યાસથી પુનરાવર્તનની તારીખ બદલાતી નથી."]
+  });
+  (function(){
+    if(!recall261)return;
+    var card=mkCard("reviewDesk261","recallCard261",'<label class="row"><input type="checkbox" id="rvOnly261"><span id="rvOnlyL261"></span></label><p id="rvDue261" class="hint" role="status"></p><div class="row"><button type="button" class="chip" id="rvStart261"></button><button type="button" class="chip" id="rvAll261"></button></div><div class="desk-stage261" id="rvStage261" hidden><p id="rvProgress261" class="hint" role="status"></p><h4 id="rvQ261"></h4><p id="rvA261" hidden></p><p class="hint" id="rvSchedule261"></p><div class="row"><button class="chip" type="button" id="rvReveal261"></button><button class="chip" type="button" id="rvAgain261"></button><button class="chip" type="button" id="rvGood261"></button><button class="chip" type="button" id="rvSource261"></button><button class="chip" type="button" id="rvEnd261"></button></div></div>');
+    if(!card)return;var session=[],total=0,index=0,revealed=false,practice=false,completed=false;var days=[1,3,7,14,30,60,60];
+    function filtered(){return recall261.read().filter(function(x){return !$("rvOnly261").checked||(curId&&x.video===curId);});}
+    function current(){var all=recall261.read();while(session.length&&!all.some(function(x){return x.key===session[0];}))session.shift();return all.find(function(x){return x.key===session[0];});}
+    function paint(){
+      card.querySelector("summary").textContent=T("Review desk");card.querySelector(".r239-desc").textContent=T("Answer from memory, reveal, then choose when to see the card again. Due dates stay on this device.");
+      $("rvOnlyL261").textContent=T("Only this video");$("rvDue261").textContent=completed?T("Review complete"):T("{n} due now").replace("{n}",filtered().filter(function(x){return x.due<=Date.now();}).length);
+      [["rvStart261","Review due cards"],["rvAll261","Practice all cards"],["rvReveal261","Reveal answer"],["rvAgain261","Again in 10 minutes"],["rvGood261","Got it"],["rvSource261","Replay source"],["rvEnd261","End review"]].forEach(function(x){$(x[0]).textContent=T(x[1]);});
+      var x=current();$("rvStage261").hidden=!x;if(!x)return;
+      $("rvProgress261").textContent=T("Card {a} of {b}").replace("{a}",index+1).replace("{b}",total);$("rvQ261").textContent=x.q;$("rvA261").textContent=x.a;$("rvA261").hidden=!revealed;$("rvReveal261").hidden=revealed;$("rvAgain261").disabled=$("rvGood261").disabled=!revealed;$("rvAgain261").hidden=practice;$("rvSource261").hidden=!x.video;$("rvSchedule261").textContent=practice?T("Practice does not change due dates."):T("Next review in {n} days").replace("{n}",days[x.step]);
+    }
+    function start(all){practice=all;session=filtered().filter(function(x){return all||x.due<=Date.now();}).sort(function(a,b){return a.due-b.due;}).slice(0,50).map(function(x){return x.key;});total=session.length;index=0;revealed=false;completed=false;if(!total)toast(T("No due cards. Add cards or practice all."));paint();}
+    function rate(good){if(!revealed)return;var x=current();if(!x)return;if(!practice&&!recall261.change(function(a){var c=a.find(function(c){return c.key===x.key;});if(!c)return;c.due=Date.now()+(good?days[c.step]*86400000:600000);c.step=good?Math.min(6,c.step+1):0;}))return;session.shift();index++;revealed=false;completed=!session.length;paint();if(!completed)$("rvReveal261").focus();}
+    $("rvStart261").addEventListener("click",function(){start(false);});$("rvAll261").addEventListener("click",function(){start(true);});$("rvReveal261").addEventListener("click",function(){revealed=true;paint();$("rvGood261").focus();});$("rvAgain261").addEventListener("click",function(){rate(false);});$("rvGood261").addEventListener("click",function(){rate(true);});$("rvEnd261").addEventListener("click",function(){session=[];completed=false;paint();});$("rvSource261").addEventListener("click",function(){var x=current();if(x)recall261.source(x);});$("rvOnly261").addEventListener("change",function(){session=[];completed=false;paint();});card.addEventListener("toggle",function(){if(card.open)paint();});recall261.listen(paint);(window.__relang=window.__relang||[]).push(paint);paint();
+  })();
+
   // Saved searches (round 260 new 1): the library search box remembers the last few searches,
   // but they scroll away and cannot be kept. A search such as "is:later -shorts" that is
   // worth repeating can now be saved with one tap (up to 10), and shows as a chip under the
@@ -30735,6 +30767,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Review desk", "review due cards study flashcard spaced repetition reveal practice recall", "#reviewDesk261"],
       ["Recall cards", "question answer flashcards study learn personal memory recall cards", "#recallCard261"],
       ["Queue today", "queue today videos watched today this morning again replay history back into queue", "#histTodayBtn"],
       ["Clear today", "clear today history remove only todays entries recently watched cleanup keep older", "#histClrTodayBtn"],
