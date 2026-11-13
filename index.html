@@ -2169,7 +2169,7 @@ setTimeout(done,3000);})();
       <input id="lpFile" type="file" multiple accept="video/*,audio/*" aria-label="Choose a video or audio file from your device" hidden>
       <div class="row" id="lpPickRow"><button class="chip" id="lpPickBtn" type="button">📁 Choose files</button><span class="hint" id="lpPickName" role="status">No file chosen</span></div>
       <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button><button class="chip" id="lpPip" type="button" hidden>PiP</button><button class="chip" id="lpClose" type="button" disabled>Close files</button></div>
-      <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><div class="row lp-qmodes"><button class="chip" id="lpShuffleBtn" type="button" aria-pressed="false">Shuffle: off</button><button class="chip" id="lpRepeatBtn" type="button" aria-pressed="false">Repeat all: off</button><button class="chip" id="lpCopyBtn" type="button">Copy list</button><button class="chip" id="lpSortBtn" type="button">Sort A to Z</button></div><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
+      <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><div class="row lp-qmodes"><button class="chip" id="lpShuffleBtn" type="button" aria-pressed="false">Shuffle: off</button><button class="chip" id="lpRepeatBtn" type="button" aria-pressed="false">Repeat all: off</button><button class="chip" id="lpCopyBtn" type="button">Copy list</button><button class="chip" id="lpSortBtn" type="button">Sort A to Z</button><button class="chip" id="lpSizeBtn" type="button">Sort by size</button></div><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
       <p class="hint" id="lpSessionMsg" role="status">Select one or more local files. Notification and lock-screen controls are local-file only, where supported by your browser. They do not enable screen-off YouTube playback.</p>
       <video id="lpVideo" controls playsinline preload="metadata" crossorigin="anonymous" class="lp-video" hidden></video>
       <div class="lp-viz" id="lpViz" hidden><canvas id="lpVizCv" height="56"></canvas></div>
@@ -15844,6 +15844,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Sort picked files by size", "#lpSizeBtn"],
     ["Watch later from the mini player", "#miniLater"],
     ["Sort stats by plays", "#statsPlaysBtn"],
     ["Queue all of Continue watching", "#contQueueBtn"],
@@ -15860,7 +15861,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Copy your saved channels", ".chan-copy"],
     ["Queue unwatched favourites", "#favQueueUnwBtn"],
     ["Copy this day in history", ".hist-day-c"],
-    ["Save a playlist as a text file", "#lhPlaylists"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -20438,6 +20438,37 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     (window.__relang = window.__relang || []).push(paint);
     paint();
   })();
+
+  // Sort picked files by size (round 220 new 5): a picked batch could be ordered A to Z,
+  // but clearing space or finding the one heavy clip in tonight's folder meant reading
+  // every size in the list. One chip orders the picked files largest first, keeps the
+  // playing file highlighted at its new place, and says so when the list already is in
+  // size order - the same etiquette as Sort A to Z. Hindi and Gujarati text, What's new
+  // (kept at 10) and feature finder included.
+  Object.assign(TR_MSG, {
+    "Sort by size": ["साइज़ से क्रमाएं", "સાઇઝથી ગોઠવો"],
+    "Sort the selected files from largest to smallest": ["चुनी फ़ाइलें सबसे बड़ी से सबसे छोटी क्रमाएं", "પસંદ કરેલી ફાઇલો સૌથી મોટીથી સૌથી નાની ગોઠવો"],
+    "Files are already in size order.": ["फ़ाइलें पहले से साइज़ क्रम में हैं.", "ફાઇલો પહેલેથી સાઇઝ ક્રમમાં છે."],
+    "Files sorted by size, largest first.": ["फ़ाइलें साइज़ से क्रमाईं, सबसे बड़ी पहले.", "ફાઇલો સાઇઝથી ગોઠવાઈ, સૌથી મોટી પહેલા."],
+    "Sort picked files by size": ["चुनी फ़ाइलें साइज़ से क्रमाएं", "પસંદ કરેલી ફાઇલો સાઇઝથી ગોઠવો"]
+  });
+  (function () {
+    var sizeBtn = $("lpSizeBtn"); if (!sizeBtn) return;
+    function paint() { sizeBtn.textContent = T("Sort by size"); sizeBtn.setAttribute("aria-label", T("Sort the selected files from largest to smallest")); }
+    sizeBtn.addEventListener("click", function () {
+      if (!localFiles.length) { toast(T("Choose files first, then sort them.")); return; }
+      var playing = localIndex >= 0 ? localFiles[localIndex] : null;
+      var sorted = localFiles.slice().sort(function (a, b) { return (b.size || 0) - (a.size || 0); });
+      var same = sorted.every(function (f, i) { return f === localFiles[i]; });
+      if (same) { toast(T("Files are already in size order.")); return; }
+      localFiles = sorted;
+      if (playing) localIndex = localFiles.indexOf(playing);
+      updateLocalButtons();
+      toast(T("Files sorted by size, largest first."));
+    });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
   function localPlay() { var p = vid.play(); if (p && p.catch) p.catch(function(){ sessionMsg.textContent = T("Tap Play on the local player to continue. Your browser blocked automatic playback."); }); }
   function playLocalAt(i, auto) {
     if (i < 0 || i >= localFiles.length) return;
@@ -22322,6 +22353,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Only unwatched in history", "only unwatched history filter hide finished watched resume pile recently watched", "#histUnwBtn"],
       ["Clear watched favourites", "favourites clear watched finished seen clean tidy remove done backlog starred", "#favClrWBtn"],
       ["Only unwatched favourites", "only unwatched favourites filter hide watched finished starred list picking evening", "#favUnwBtn"],
+      ["Sort picked files by size", "sort size largest smallest picked local files big heavy clip order size", "#lpSizeBtn"],
       ["Sort picked files A to Z", "sort picked selected local files alphabetically name order tidy folder track numbers", "#lpSortBtn"],
       ["Copy the download queue", "copy download queue waiting batch links clipboard share move another device status", "#dlQCopyBtn"],
       ["Save a history day as a playlist", "save history day date heading as playlist keep themed evening replay named list", ".hist-day-p"],
