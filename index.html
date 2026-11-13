@@ -24925,16 +24925,16 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   function scan(){var map={},order=[];function add(x){if(x&&x.id&&x.title&&!map[x.id]){map[x.id]=x.title;order.push(x.id);}}
     [lib.queue,lib.favs,lib.later,lib.hist].forEach(function(l){(l||[]).forEach(add);});playlists.forEach(function(p){(p.items||[]).forEach(add);});
     var ch=[];order.forEach(function(id){var n=tidy(map[id]);if(n!==map[id])ch.push({id:id,o:map[id],n:n});});return {total:order.length,ch:ch};}
-  function apply(ch){var by={};ch.forEach(function(c){by[c.id]=c.n;});var snap={};ch.forEach(function(c){snap[c.id]=c.o;});
-    function set(arr,m){(arr||[]).forEach(function(x){if(x&&m[x.id]!==undefined&&x.title)x.title=m[x.id];});}
-    [lib.queue,lib.favs,lib.later,lib.hist].forEach(function(l){set(l,by);});playlists.forEach(function(p){set(p.items,by);});saveLib();savePlaylists();renderLib();renderPlaylists();return snap;}
+  function lists(){var o=[['q',lib.queue],['f',lib.favs],['l',lib.later],['h',lib.hist]];playlists.forEach(function(p,i){o.push(['p'+i,p.items]);});return o;}
+  function apply(){var snap={};lists().forEach(function(L){(L[1]||[]).forEach(function(x){if(x&&x.title){var n=tidy(x.title);if(n!==x.title){snap[L[0]+'|'+x.id]=x.title;x.title=n;}}});});saveLib();savePlaylists();renderLib();renderPlaylists();return snap;}
+  function restore(snap){lists().forEach(function(L){(L[1]||[]).forEach(function(x){if(x&&snap[L[0]+'|'+x.id]!==undefined)x.title=snap[L[0]+'|'+x.id];});});saveLib();savePlaylists();renderLib();renderPlaylists();}
   function paint(){card.querySelector('summary').textContent=T('Title tidy');card.querySelector('.r239-desc').textContent=T('Remove tags like (Official Video), [HD], (Lyrics) and repeated !!! from your saved titles, with a preview and Undo.');
     var A=$('ttAct'),I=$('ttInfo'),L=$('ttList');A.textContent='';L.textContent='';
     var r=scan();var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Scan titles');A.appendChild(b);b.addEventListener('click',paint);
     if(!r.ch.length){I.textContent=T('All saved titles are already clean.');return;}
     I.textContent=T('{n} of {t} titles can be tidied').replace('{n}',r.ch.length).replace('{t}',r.total);
     var t=document.createElement('button');t.type='button';t.className='chip';t.textContent=T('Tidy all');A.appendChild(t);
-    t.addEventListener('click',function(){var c2=scan().ch;if(!c2.length)return;var snap=apply(c2);var n=c2.length;toastUndo(T('Titles tidied:')+' '+n,function(){apply(Object.keys(snap).map(function(id){return {id:id,o:'',n:snap[id]};}));paint();},T('Titles restored'));paint();});
+    t.addEventListener('click',function(){var c2=scan().ch;if(!c2.length)return;var snap=apply();var n=c2.length;toastUndo(T('Titles tidied:')+' '+n,function(){restore(snap);paint();},T('Titles restored'));paint();});
     r.ch.slice(0,6).forEach(function(c){var li=document.createElement('li');var o=document.createElement('div');o.className='tt-old';o.textContent=c.o;var n=document.createElement('div');n.className='tt-new';n.textContent=c.n;li.appendChild(o);li.appendChild(n);L.appendChild(li);});}
   card.addEventListener('toggle',function(){if(card.open)paint();});
   (window.__relang=window.__relang||[]).push(paint);paint();
