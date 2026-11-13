@@ -18066,6 +18066,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Hour chart as PNG", "#statsPngBtn"],
     ["Skip Shorts in the queue", "#qSkipShortsBtn"],
     ["Hold to rush at 2x", "#hold2xBtn"],
     ["Bigger tap targets", "#a11yTap"],
@@ -18075,7 +18076,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Watch by dates", "#dueCard"],
     ["Most played", "#mostPlayedCard"],
     ["Let go of favourites", "#favLetGoCard"],
-    ["Sort: Longest first", "#lhLaterSortBtn"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25714,6 +25714,64 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint);
     paint();
   })();
+  // Save the hour chart as a PNG (round 251 new 3): the When-you-watch bars in Watch
+  // stats are lovely on screen, but sharing "my watching pattern" meant a screenshot with
+  // the whole page around it. One chip draws the same 24-hour chart on a canvas - title,
+  // bars in the app accent colour, hour labels in the app language - and saves it as a
+  // tidy PNG image. Nothing is uploaded; the image is drawn and saved on this device.
+  Object.assign(TR_MSG, {
+    "Save chart as PNG": ["चार्ट PNG सेव करें", "ચાર્ટ PNG સાચવો"],
+    "Hour chart saved as a PNG image.": ["घंटों का चार्ट PNG इमेज में सेव हुआ.", "કલાક ચાર્ટ PNG ઇમેજ તરીકે સાચવાયું."],
+    "Watch a little first - the chart is empty.": ["पहले थोड़ा देखें - चार्ट अभी खाली है.", "પહેલા થોડું જુઓ - ચાર્ટ હજુ ખાલી છે."],
+    "Hour chart as PNG": ["घंटों का चार्ट PNG", "કલાક ચાર્ટ PNG"]
+  });
+  (function () {
+    var anchor = $("statsClear"); if (!anchor || !anchor.parentNode) return;
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.id = "statsPngBtn";
+    anchor.parentNode.insertBefore(b, anchor);
+    b.addEventListener("click", function () {
+      var hours = (stats && stats.hours) || {}, tot = 0, max = 1, i;
+      for (i = 0; i < 24; i++) { var v = Math.floor(hours[i] || 0); tot += v; if (v > max) max = v; }
+      if (tot <= 0) { toast(T("Watch a little first - the chart is empty.")); return; }
+      var loc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-US";
+      var W = 960, H = 480, pad = 56, base = H - 64, top = 84;
+      var cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+      var g = cv.getContext("2d");
+      var accent = (getComputedStyle(document.documentElement).getPropertyValue("--accent") || "").trim() || "#3a8a77";
+      g.fillStyle = "#14141c"; g.fillRect(0, 0, W, H);
+      g.fillStyle = "#f5f5f7"; g.font = "700 28px system-ui, sans-serif";
+      g.fillText(T("When you watch"), pad, 46);
+      g.font = "400 15px system-ui, sans-serif"; g.fillStyle = "#a7a7b2";
+      g.fillText(fmtWatch(tot) + T(" watched"), pad, 70);
+      var slot = (W - pad * 2) / 24, bw = Math.max(8, slot * 0.62);
+      g.strokeStyle = "rgba(255,255,255,.18)"; g.lineWidth = 1;
+      g.beginPath(); g.moveTo(pad, base + .5); g.lineTo(W - pad, base + .5); g.stroke();
+      for (i = 0; i < 24; i++) {
+        var hv = Math.floor(hours[i] || 0);
+        var bh = hv > 0 ? Math.max(4, Math.round(hv / max * (base - top))) : 0;
+        var x = pad + i * slot + (slot - bw) / 2;
+        if (bh > 0) {
+          g.globalAlpha = (hv >= max) ? 1 : 0.45 + 0.4 * (hv / max);
+          g.fillStyle = accent;
+          if (g.roundRect) { g.beginPath(); g.roundRect(x, base - bh, bw, bh, [5, 5, 0, 0]); g.fill(); }
+          else g.fillRect(x, base - bh, bw, bh);
+          g.globalAlpha = 1;
+        }
+        if (i % 6 === 0) {
+          g.fillStyle = "#a7a7b2"; g.font = "400 13px system-ui, sans-serif"; g.textAlign = "center";
+          g.fillText(new Date(2000, 0, 1, i).toLocaleTimeString(loc, { hour: "numeric" }), pad + i * slot + slot / 2, base + 26);
+          g.textAlign = "left";
+        }
+      }
+      var a = document.createElement("a");
+      a.href = cv.toDataURL("image/png"); a.download = "video-player-hour-chart.png";
+      document.body.appendChild(a); a.click(); a.remove();
+      toast(T("Hour chart saved as a PNG image."));
+    });
+    (window.__relang = window.__relang || []).push(function () { b.textContent = T("Save chart as PNG"); });
+    b.textContent = T("Save chart as PNG");
+  })();
 /*R244-END*/
 
 })();
@@ -28272,6 +28330,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Hour chart as PNG", "hour chart png save image when you watch pattern share download picture stats", "#statsPngBtn"],
       ["Skip Shorts in the queue", "skip shorts queue short videos under a minute auto-next hop over reels 60 seconds", "#qSkipShortsBtn"],
       ["Hold to rush at 2x", "hold to rush 2x speed press and hold finger quick scan slow part temporary boost let go", "#hold2xBtn"],
       ["Bigger tap targets", "bigger tap targets taller buttons rows accessibility motor shaky hands thumb easy press", "#a11yTap"],
