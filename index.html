@@ -26639,6 +26639,38 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       toast(T("Saved the playlist") + ": " + nm);
     });
   })();
+
+  // Sort Watch later by rating (round 255 new 4): Watch later could be sorted A to Z and
+  // trimmed, but the stars you gave never decided what to watch first. A chip by Sort A to Z
+  // orders the list best-rated first (ties keep their order, unrated stay at the end); tap
+  // again for lowest first. Undo restores the order, like the other sorts. Hindi and
+  // Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Sort Watch later by rating, best first": ["बाद में देखें को रेटिंग से क्रमित करें, सबसे अच्छा पहले", "પછી જુઓને રેટિંગથી ગોઠવો, સૌથી સારા પહેલા"],
+    "Need at least 2 rated videos in Watch later to sort.": ["क्रम के लिए बाद में देखें में कम से कम 2 रेटेड वीडियो चाहिए.", "ક્રમ માટે પછી જુઓમાં ઓછામાં ઓછા 2 રેટેડ વીડિયો જોઈએ."],
+    "Watch later sorted: best rated first": ["बाद में देखें क्रमित: सबसे अच्छे रेटेड पहले", "પછી જુઓ ગોઠવાયું: સૌથી સારા રેટેડ પહેલા"],
+    "Watch later sorted: lowest rated first": ["बाद में देखें क्रमित: कम रेटेड पहले", "પછી જુઓ ગોઠવાયું: ઓછા રેટેડ પહેલા"],
+    "Watch later restored": ["बाद में देखें पहले जैसा", "પછી જુઓ પહેલા જેવું"]
+  });
+  (function () {
+    var azBtn = $("laterSortAzBtn"); if (!azBtn || !azBtn.parentNode) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "laterSortRateBtn";
+    azBtn.parentNode.insertBefore(btn, azBtn.nextSibling);
+    var nextBest = true;
+    function paint() { btn.textContent = nextBest ? T("Sort by rating") : T("Sort: lowest rated first"); btn.setAttribute("aria-label", T("Sort Watch later by rating, best first")); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      var rated = [], unrated = [];
+      lib.later.forEach(function (x) { if (vpRateOf(x.id) > 0) rated.push(x); else unrated.push(x); });
+      if (rated.length < 2) { toast(T("Need at least 2 rated videos in Watch later to sort.")); return; }
+      var snap = lib.later.slice(), dir = nextBest ? -1 : 1;
+      rated.sort(function (a, b) { return dir * (vpRateOf(a.id) - vpRateOf(b.id)); });
+      if (typeof laterSort !== "undefined" && laterSort && laterSort.mode() !== "new") laterSort.set("new");
+      lib.later = rated.concat(unrated); saveLib(); renderLib();
+      toastUndo(dir === -1 ? T("Watch later sorted: best rated first") : T("Watch later sorted: lowest rated first"), function () { lib.later = snap; saveLib(); renderLib(); }, T("Watch later restored"));
+      nextBest = !nextBest; paint();
+    });
+  })();
 /*R244-END*/
 
 })();
@@ -29202,6 +29234,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Sort queue by rating", "sort queue by rating stars best rated first liked order stars queue order", "#sortRateQueueBtn"],
       ["Sort favourites by most played", "sort favourites most played play count real score order popular replay", "#favSortPlaysBtn"],
       ["Sort a playlist by rating", "sort playlist by rating stars best rated first liked order stars playlist order undo", "#lhPlaylists"],
+      ["Sort Watch later by rating", "sort watch later by rating stars best rated first liked order stars watch later", "#laterSortRateBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
       ["Rate backlog", "rate backlog unrated videos stars rating give stars favourites history without rating", "#rateBacklogCard"],
       ["Weekday rhythm", "weekday rhythm busiest day of the week monday sunday pattern when do i watch bars stats", "#weekdayCard"],
