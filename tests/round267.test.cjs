@@ -29,4 +29,17 @@ function grab(ctx, name) {
   assert.equal(ctx.startAtTarget267(0, 30, 10), 0); // too short
   assert.equal(ctx.startAtTarget267(0, 600, 7), 0); // invalid
 }
+// Brightness swipe: bounded 50-150, left third only when enabled.
+{
+  const ctx = vm.createContext({ prefs: { padBright: true } });
+  grab(ctx, 'padBrightNext267'); grab(ctx, 'padBrightZone267');
+  assert.equal(ctx.padBrightNext267(100, 1, 2), 110);
+  assert.equal(ctx.padBrightNext267(148, 1, 10), 150);
+  assert.equal(ctx.padBrightNext267(52, -1, 10), 50);
+  assert.equal(ctx.padBrightNext267(NaN, -1, 1), 95);
+  const pad = { getBoundingClientRect: () => ({ left: 10, width: 300 }) };
+  assert.equal(ctx.padBrightZone267(50, pad), true);
+  assert.equal(ctx.padBrightZone267(150, pad), false);
+  ctx.prefs.padBright = false; assert.equal(ctx.padBrightZone267(50, pad), false);
+}
 console.log('round267 ok');
