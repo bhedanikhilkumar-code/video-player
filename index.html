@@ -36834,7 +36834,14 @@ html.low-fx #vpStateFx .fx-buf i { animation-duration:1.6s; }
   mount();
   function paintBufTitle() { bufBox.title = T("Buffering"); }
   paintBufTitle(); (window.__relang = window.__relang || []).push(paintBufTitle);
+  // Round 281 fix 1: this block runs after the main app script and overwrote
+  // window.__vpStateFx outright, silently dropping every listener chained there -
+  // "Pause when another tab plays" stopped announcing YouTube playback (only local
+  // files still announced through their own play listener), so two tabs could sound
+  // at once. Chain the previous listener like the other hook users do.
+  var prevStateFx49 = window.__vpStateFx;
   window.__vpStateFx = function (st) {
+    if (prevStateFx49) prevStateFx49(st);
     mount();
     if (st === 3) { fx.classList.add("buffering"); lastSt = st; return; }
     fx.classList.remove("buffering");
