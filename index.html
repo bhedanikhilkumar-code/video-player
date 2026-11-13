@@ -15131,9 +15131,10 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     pclkEl.addEventListener("pointerdown", function () { pclkHide(true); });
   }
   function pclkNow() {
-    var d = new Date(), h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? "PM" : "AM";
-    h = h % 12; if (h === 0) h = 12;
-    return h + ":" + (m < 10 ? "0" : "") + m + " " + ap;
+    // Round 253 fix 3: the paused clock formatted itself with hardcoded English AM/PM in
+    // every app language; it now uses the shared done-by clock, which follows the app
+    // language (same-day times show no weekday, exactly as before).
+    return doneByClock(new Date());
   }
   function pclkPaint() {
     if (!pclkShown || !pclkEl) return;
@@ -31202,9 +31203,11 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
   var KEY = "vp-clock-ov.v1", on = false, timer = null;
   try { on = localStorage.getItem(KEY) === "1"; } catch (e) {}
   function now() {
-    var d = new Date(), h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? "PM" : "AM";
-    h = h % 12; if (h === 0) h = 12;
-    return h + ":" + (m < 10 ? "0" : "") + m + " " + ap;
+    // Round 253 fix 3: the on-video clock formatted itself with hardcoded English AM/PM
+    // in every app language; it now follows the app language saved on this device.
+    var lg = "en";
+    try { var p = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null"); if (p && (p.lang === "hi" || p.lang === "gu")) lg = p.lang; } catch (e) {}
+    return new Date().toLocaleTimeString(lg === "hi" ? "hi-IN" : lg === "gu" ? "gu-IN" : undefined, { hour: "numeric", minute: "2-digit" });
   }
   function paint() {
     btn.textContent = T("🕐 Clock");
