@@ -2412,7 +2412,7 @@ setTimeout(done,3000);})();
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
       <p class="hint" id="favTime" role="status"></p>
-      <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="histQueueBtn" type="button">Queue unfinished</button><button class="chip" id="histPlBtn" type="button">Save unfinished as playlist</button><button class="chip" id="histTrimBtn" type="button">Trim old history</button><button class="chip" id="histDoneBtn" type="button">Clear watched</button><button class="chip" id="histUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhHist">Recently watched</h3><span class="row"><button class="chip" id="histTxtBtn" type="button">Save as text file</button><button class="chip" id="histCopyBtn" type="button">Copy list</button><button class="chip" id="histShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="histQueueBtn" type="button">Queue unfinished</button><button class="chip" id="histPlBtn" type="button">Save unfinished as playlist</button><button class="chip" id="histTrimBtn" type="button">Trim old history</button><button class="chip" id="histDoneBtn" type="button">Clear watched</button><button class="chip" id="histUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="clearHistBtn">Clear</button></span></div>
       <ul class="lib-list" id="histList"></ul>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsPlaysBtn" type="button" aria-pressed="false">Sort by plays: off</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsCsvBtn" type="button">Save as spreadsheet (.csv)</button><button class="chip" id="statsCopyBtn" type="button">Copy my stats</button><button class="chip" id="statsClear" type="button">Clear</button></div>
@@ -14439,6 +14439,35 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   (window.__relang = window.__relang || []).push(function () { if (contTxtBtn) { contTxtBtn.textContent = T("Save as text file"); contTxtBtn.setAttribute("aria-label", T("Save the continue watching list as a text file")); } });
   if (contTxtBtn) contTxtBtn.setAttribute("aria-label", T("Save the continue watching list as a text file"));
 
+  // Shuffle play Recently watched (round 222 new 2): favourites, Watch later, Continue
+  // watching, the queue and even picked local files all had a one-tap shuffle, but the
+  // history card - where last night's songs actually live - did not, so replaying a mixed
+  // evening meant queueing day by day. One tap gathers every video the card shows, queues
+  // them in a fresh shuffled order and starts playing; the saved resume positions stay put
+  // for when each video comes around. Hindi and Gujarati text, What's new (capped) and
+  // feature finder included.
+  Object.assign(TR_MSG, {
+    "Shuffle play Recently watched": ["\u0939\u093f\u0938\u094d\u091f\u094d\u0930\u0940 \u092e\u093f\u0932\u093e\u0915\u0930 \u091a\u0932\u093e\u090f\u0902", "\u0ab9\u0abf\u0ab8\u0acd\u0a9f\u0acd\u0ab0\u0ac0 \u0aab\u0ac7\u0ab0\u0ab5\u0ac0\u0aa8\u0ac7 \u0a9a\u0ab2\u0abe\u0ab5\u0acb"],
+    "Playing history in shuffled order: ": ["\u0939\u093f\u0938\u094d\u091f\u094d\u0930\u0940 \u092e\u093f\u0932\u093e\u0915\u0930 \u091a\u0932\u093e \u0930\u0939\u0947 \u0939\u0948\u0902: ", "\u0ab9\u0abf\u0ab8\u0acd\u0a9f\u0acd\u0ab0\u0ac0 \u0aab\u0ac7\u0ab0\u0ab5\u0ac0\u0aa8\u0ac7 \u0a9a\u0ab2\u0abe\u0ab5\u0ac0 \u0ab0\u0ab9\u0acd\u0aaf\u0abe \u0a9b\u0ac0\u0a8f: "],
+    "No history videos to shuffle yet.": ["\u092e\u093f\u0932\u093e\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u0939\u093f\u0938\u094d\u091f\u094d\u0930\u0940 \u092e\u0947\u0902 \u0915\u094b\u0908 \u0935\u0940\u0921\u093f\u092f\u094b \u0928\u0939\u0940\u0902.", "\u0aab\u0ac7\u0ab0\u0ab5\u0ab5\u0abe \u0aae\u0abe\u0a9f\u0ac7 \u0ab9\u0abf\u0ab8\u0acd\u0a9f\u0acd\u0ab0\u0ac0\u0aae\u0abe\u0a82 \u0a95\u0acb\u0a88 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aa8\u0aa5\u0ac0."]
+  });
+  var histShufBtn = $("histShufBtn");
+  if (histShufBtn) histShufBtn.addEventListener("click", function () {
+    var pool = [];
+    lib.hist.forEach(function (h) {
+      if (!h || !h.id) return;
+      pool.push({ id: h.id, title: h.title || "" });
+    });
+    if (!pool.length) { toast(T("No history videos to shuffle yet.")); return; }
+    lib.queue = plShuffled(pool);
+    qPos = -1; resetShuffle(); saveLib(); renderLib();
+    toast(T("Playing history in shuffled order: ") + lib.queue.length + " " + (lib.queue.length === 1 ? T("video") : T("videos")) + ".");
+    playQueueAt(0);
+    if (frameBox && frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+  });
+  (window.__relang = window.__relang || []).push(function () { if (histShufBtn) { histShufBtn.textContent = T("\ud83c\udfb2 Shuffle play"); histShufBtn.setAttribute("aria-label", T("Shuffle play Recently watched")); } });
+  if (histShufBtn) histShufBtn.setAttribute("aria-label", T("Shuffle play Recently watched"));
+
   // Sleep timer: also offer "stop when this video ends" (pauses instead of auto-next).
   var sleepAtEnd = false;
   var sleepVids = 0;
@@ -15979,6 +16008,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Shuffle play Recently watched", "#histShufBtn"],
     ["Save continue watching as a text file", "#contTxtBtn"],
     ["Best day in Watch stats", "#statsBest"],
     ["Save picked files as a text file", "#lpTxtBtn"],
@@ -15995,7 +16025,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Only unwatched favourites", "#favUnwBtn"],
     ["Sort picked files A to Z", "#lpSortBtn"],
     ["Copy the download queue", "#dlQCopyBtn"],
-    ["Save a history day as a playlist", ".hist-day-p"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -22548,6 +22577,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Shuffle play Recently watched", "shuffle play history recently watched random mix replay evening songs start play", "#histShufBtn"],
       ["Save continue watching as a text file", "save continue watching half watched rotation resume list text file txt download keep positions left at", "#contTxtBtn"],
       ["Best day in Watch stats", "best day most watched single biggest record peak watch stats date time watched", "#statsBest"],
       ["Save picked files as a text file", "save picked selected local files list text file txt download keep note folder sizes names", "#lpTxtBtn"],
