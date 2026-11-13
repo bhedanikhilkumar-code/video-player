@@ -12556,7 +12556,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       btn(T("Rename"), "", async function () {
         var nv = cleanName(await vpAsk(T("New name for this playlist"), pl.name)); if (!nv || nv === pl.name) return;
         var f = plFind(nv); if (f >= 0 && f !== idx) { plSay(T("You already have a playlist named") + " \"" + nv + "\"."); return; }
-        pl.name = nv; savePlaylists(); renderPlaylists(); plSay(T("Renamed."));
+        var oldNm247 = pl.name; pl.name = nv; if (window.__vpPlanRename) window.__vpPlanRename(oldNm247, nv); savePlaylists(); renderPlaylists(); plSay(T("Renamed."));
       });
       btn(T("Export"), "", function () {
         var data = { app: "hd-video-player", type: "playlist", version: 1, exportedAt: new Date().toISOString(),
@@ -24393,6 +24393,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   (function(){var host=$('plList');if(!host)return;var KEY='vp-plan.v1';
   var plan={};try{var p0=JSON.parse(localStorage.getItem(KEY)||'{}');if(p0&&typeof p0==='object'&&!Array.isArray(p0))for(var d=0;d<7;d++)if(typeof p0[d]==='string'&&p0[d])plan[d]=p0[d].slice(0,60);}catch(e){}
   function save(){try{localStorage.setItem(KEY,JSON.stringify(plan));}catch(e){}}
+  // Round 247 fix 1: renaming a playlist used to leave the plan pointing at the old name (flagged as renamed or deleted); Rename now carries it.
+  window.__vpPlanRename=function(o,n){var ch=false;for(var d=0;d<7;d++)if(plan[d]===o){plan[d]=n;ch=true;}if(ch){save();if(card.open)paint();}};
   var card=document.createElement('details');card.id='weekPlanCard';card.className='r239-card';
   card.innerHTML='<summary></summary><p class="hint r239-desc"></p><p id="wpToday" class="wp-today" role="status"></p><div class="row" id="wpAct" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div><div id="wpDays"></div><p class="hint" id="wpMsg" role="status"></p>';
   host.parentNode.insertBefore(card,host);
