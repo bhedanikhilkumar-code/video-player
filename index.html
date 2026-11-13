@@ -2465,6 +2465,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favQueueUnwBtn" type="button">➕ Queue unwatched</button><button class="chip" id="favQueueTopBtn" type="button">⭐ Queue top rated</button><button class="chip" id="favCopyRatedBtn" type="button">📋 Copy ratings</button><button class="chip" id="favClearRatedBtn" type="button">Clear ratings</button><button class="chip" id="favRand5Btn" type="button">🎰 Random 5</button><button class="chip" id="favShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="favUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button>
       <button class="chip" id="favShortsBtn" type="button" aria-pressed="false">Hide shorts: off</button><button class="chip" id="favRatedBtn" type="button" aria-pressed="false">Only rated: off</button><button class="chip" id="favClrWBtn" type="button">Clear watched</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button><button class="chip" id="favSortAzBtn" type="button">Sort A to Z</button><button class="chip" id="favClearBtn" type="button">Clear</button></span></div>
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
+      <div class="row" id="chanImportRow"><button class="chip" id="chanImportBtn" type="button">&#128229; Import YouTube subscriptions</button><input type="file" id="chanImportFile" accept=".csv,text/csv" hidden></div>
       <ul class="lib-list" id="favList"></ul>
       <p class="hint" id="favTime" role="status"></p>
       <div class="row" id="listsCsv" style="margin-top:6px"></div>
@@ -18025,6 +18026,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Import YouTube subscriptions", "#chanImportRow"],
     ["Playlist last played and Recent sort", "#plSortBtn"],
     ["Play at a clock time", "#playAtRow"],
     ["Playlist groups", "#plList"],
@@ -18034,7 +18036,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Weekly plan", "#weekPlanCard"],
     ["Video tags", "#tagsCard"],
     ["Activity calendar", "#actCalCard"],
-    ["Repeat titles", "#repeatCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24736,6 +24737,60 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (days < 60) return T("played {n} days ago").replace("{n}", days);
     return new Date(ts).toLocaleDateString();
   }
+  // Subscriptions import (round 246 new 5): moving to this app meant re-starring every YouTube
+  // channel by hand. The chip under Saved channels reads the subscriptions.csv that Google
+  // Takeout exports (Channel ID, Channel URL, Channel Title), adds the channels you do not
+  // already keep (same name or same link skipped, the 30-channel cap respected) and offers Undo.
+  // The file is read on this device only.
+  Object.assign(TR_MSG, {
+    "Import YouTube subscriptions": ["YouTube सब्सक्रिप्शन इम्पोर्ट करें", "YouTube સબ્સ્ક્રિપ્શન ઇમ્પોર્ટ કરો"],
+    "Pick the subscriptions.csv from a Google Takeout export. It is read on this device only.": ["Google Takeout से निकाला subscriptions.csv चुनें. फ़ाइल सिर्फ़ इसी डिवाइस पर पढ़ी जाती है.", "Google Takeoutમાંથી subscriptions.csv પસંદ કરો. ફાઇલ ફક્ત આ જ ડિવાઇસ પર વંચાય છે."],
+    "No new channels in that file.": ["उस फ़ाइल में कोई नया चैनल नहीं.", "તે ફાઇલમાં કોઈ નવી ચેનલ નથી."],
+    "That file could not be read as a subscriptions list.": ["वह फ़ाइल सब्सक्रिप्शन लिस्ट के रूप में नहीं पढ़ी जा सकी.", "તે ફાઇલ સબ્સ્ક્રિપ્શન યાદી તરીકે વંચાઈ શકી નહીં."],
+    "Channels imported: {n}": ["चैनल जुड़े: {n}", "ચેનલ ઉમેરાઈ: {n}"],
+    "Some did not fit - saved channels stop at 30.": ["कुछ नहीं जुड़े - सेव चैनल 30 तक सीमित हैं.", "કંઈક ઉમેરાયા નહીં - સેવ ચેનલ 30 સુધી મર્યાદિત છે."],
+    "Channel import undone.": ["चैनल इम्पोर्ट वापस लिया.", "ચેનલ ઇમ્પોર્ટ પાછું લીધું."]
+  });
+  (function () {
+    var btn = $("chanImportBtn"), file = $("chanImportFile"); if (!btn || !file) return;
+    function paint() { btn.textContent = "\uD83D\uDCE5 " + T("Import YouTube subscriptions"); }
+    btn.addEventListener("click", function () { toast(T("Pick the subscriptions.csv from a Google Takeout export. It is read on this device only.")); file.click(); });
+    file.addEventListener("change", function () {
+      var f = file.files && file.files[0]; file.value = "";
+      if (!f) return;
+      var rd = new FileReader();
+      rd.onerror = function () { toast(T("That file could not read - try again.")); };
+      rd.onload = function () {
+        var text = String(rd.result || "");
+        var lines = text.split(/\r\n|\r|\n/), added = 0, skipped = 0, rows = 0;
+        var before = vpChans.slice();
+        lines.forEach(function (ln) {
+          ln = ln.trim(); if (!ln) return;
+          if (/^channel\s*id/i.test(ln)) return; // header
+          var i1 = ln.indexOf(","), i2 = i1 < 0 ? -1 : ln.indexOf(",", i1 + 1);
+          if (i2 < 0) return;
+          var url = ln.slice(i1 + 1, i2).trim().replace(/^"|"$/g, "");
+          var name = ln.slice(i2 + 1).trim().replace(/^"|"$/g, "").replace(/""/g, '"').slice(0, 60);
+          if (!name) return;
+          rows++;
+          url = /^https?:\/\/(www\.)?youtube\.com\//i.test(url) ? url.replace(/^http:/i, "https:") : "";
+          if (chanFind(name) >= 0) return;
+          if (url && vpChans.some(function (c) { return c.u === url; })) return;
+          if (vpChans.length >= 30) { skipped++; return; }
+          vpChans.push({ n: name, u: url }); added++;
+        });
+        if (!rows) { toast(T("That file could not be read as a subscriptions list.")); return; }
+        if (!added) { toast(T("No new channels in that file.")); return; }
+        vpChansSave(); chanRowRender(); chanStarRender();
+        toastUndo(T("Channels imported: {n}").replace("{n}", added) + (skipped ? " " + T("Some did not fit - saved channels stop at 30.") : ""),
+          function () { vpChans.splice(0, vpChans.length); before.forEach(function (c) { vpChans.push(c); }); vpChansSave(); chanRowRender(); chanStarRender(); },
+          T("Channel import undone."));
+      };
+      rd.readAsText(f);
+    });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27294,6 +27349,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Import YouTube subscriptions", "import youtube subscriptions csv google takeout channels saved favourite star move from youtube app", "#chanImportRow"],
       ["Playlist last played and Recent sort", "playlist last played recent sort order played days ago stamp row when did i run this playlist newest a to z", "#plSortBtn"],
       ["Play at a clock time", "play at clock time alarm start playback morning wake up schedule video queue begins later sleep timer card", "#playAtRow"],
       ["Playlist groups", "playlist groups group folder organise study music filter chip row above list file playlist under word tidy many playlists", "#plList"],
