@@ -16,3 +16,7 @@ assert.ok(html.includes('window.addEventListener("pagehide", function () { if (s
 assert.ok(!html.includes('window.addEventListener("pagehide", saveStats);'));
 assert.ok(html.includes('e.key !== STATS_KEY || !e.newValue || statsDirty'));
 console.log('round272 fix2 ok');
+// Fix 3: changing blocked channels keeps the title words.
+assert.ok(html.includes('function put(arr) { var o = cleanR271(prefs.r271); o.block = cleanR271({ block: arr }).block; prefs.r271 = o; savePrefs(); }'));
+assert.ok(!html.includes('prefs.r271 = cleanR271({ block: arr })'));
+console.log('round272 fix3 ok');
