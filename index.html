@@ -11479,11 +11479,45 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Include notes: off": ["नोट्स में भी खोजें: बंद", "નોંધોમાં પણ શોધો: બંધ"],
     "Search your private notes as well as titles and video IDs": ["शीर्षक और वीडियो ID के साथ अपने निजी नोट्स भी खोजें", "શીર્ષક અને વીડિયો ID સાથે પોતાની ખાનગી નોંધો પણ શોધો"]
   });
+  // Search operators (round 259 new 2): the search box also understands "exact phrase",
+  // -word (leave out), is:fav, is:later, is:queued, is:new (never played), is:played and
+  // has:note. Everything else is matched as plain words, all of which must be found. A search
+  // with no operators behaves exactly as before.
+  var sqCache259 = { q: null, r: null };
+  function sqParse259(q) {
+    if (sqCache259.q === q) return sqCache259.r;
+    var r = { words: [], not: [], ops: [] }, re = /(-?)"([^"]*)"|(\S+)/g, m;
+    while ((m = re.exec(q))) {
+      if (m[2] !== undefined) { if (m[2].trim()) (m[1] ? r.not : r.words).push(m[2].trim()); continue; }
+      var w = m[3];
+      if (/^(is|has):(fav|favs|favourite|favorite|later|queued|queue|new|played|note|notes)$/.test(w)) { r.ops.push(w.replace(/s$/, "").replace("favourite", "fav").replace("favorite", "fav").replace("queued", "queue")); continue; }
+      if (w.length > 1 && w.charAt(0) === "-") r.not.push(w.slice(1)); else r.words.push(w);
+    }
+    sqCache259 = { q: q, r: r }; return r;
+  }
+  function sqOps259(id, ops) {
+    for (var i = 0; i < ops.length; i++) {
+      var o = ops[i], ok;
+      if (o === "is:fav") ok = findIn(lib.favs, id) >= 0;
+      else if (o === "is:later") ok = findIn(lib.later, id) >= 0;
+      else if (o === "is:queue") ok = findIn(lib.queue, id) >= 0;
+      else if (o === "is:new" || o === "is:played") { var rec = typeof stats === "object" && stats && stats.videos ? stats.videos[id] : null; var pl = rec && rec.plays > 0; ok = o === "is:new" ? !pl : !!pl; }
+      else ok = typeof notes !== "undefined" && notes && typeof notes[id] === "string" && notes[id].trim() !== "";
+      if (!ok) return false;
+    }
+    return true;
+  }
+  function sqText259(hay, p) {
+    for (var i = 0; i < p.words.length; i++) if (hay.indexOf(p.words[i]) < 0) return false;
+    for (var j = 0; j < p.not.length; j++) if (hay.indexOf(p.not[j]) >= 0) return false;
+    return true;
+  }
   function libSearchHit202(it, q) {
     if (!it) return false;
     var hay = (it.title || "") + " " + (it.id || "");
     if (libSearchNotes202 && typeof notes !== "undefined" && notes && typeof notes[it.id] === "string") hay += " " + notes[it.id];
-    return hay.toLowerCase().indexOf(q) >= 0;
+    var p = sqParse259(q);
+    return sqText259(hay.toLowerCase(), p) && sqOps259(it.id, p.ops);
   }
   function libNotesPaint202() {
     var b = $("libNotesBtn"); if (!b) return;
@@ -11542,7 +11576,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (scoped) total++;
         var hay = pl.name.toLowerCase();
         pl.items.forEach(function (x) { hay += " " + (x.title || "").toLowerCase() + " " + x.id; if (libSearchNotes202 && typeof notes !== "undefined" && notes && typeof notes[x.id] === "string") hay += " " + notes[x.id].toLowerCase(); });
-        var ok = scoped && (!q || hay.indexOf(q) >= 0);
+        var sp259 = q ? sqParse259(q) : null;
+        var ok = scoped && (!q || (sqText259(hay, sp259) && (!sp259.ops.length || pl.items.some(function (x) { return sqOps259(x.id, sp259.ops); }))));
         li.style.display = ok ? "" : "none";
         if (ok) { shown++; n++; }
       });
@@ -27338,6 +27373,19 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
 
+  // Search operators tip (round 259 new 2): one line under the library search box that lists
+  // the operators; Hindi and Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, has:note": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, has:note", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, has:note"]
+  });
+  (function () {
+    var m = $("libSearchMsg"); if (!m || !m.parentNode) return;
+    var tip = document.createElement("span"); tip.className = "hint"; tip.id = "sqTip259"; tip.style.cssText = "display:block;margin-top:4px";
+    m.parentNode.insertBefore(tip, m.nextSibling);
+    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, has:note"); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+
   // r259-end
 
   // Sort Watch later by most played (round 256 new 1): Watch later could be sorted A to Z
@@ -30167,6 +30215,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Bookmark folders as playlists", "bookmark folders playlists import browser bookmarks make a playlist for each folder organise sorted", "#bmCard"],
       ["Export as browser bookmarks", "export browser bookmarks bookmarks.html chrome safari firefox edge save queue favourites watch later playlists folders backup", "#bmExpCard"],
       ["Skip parts", "skip parts segments ad read recap middle cut jump over sponsor boring stretch mark start end per video skip intro outro", "#skipPartsCard"],
+      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played has:note advanced library search narrow", "#sqTip259"],
       ["Open from any page", "open from any page bookmarklet bookmark bar drag youtube tab current time send video here browser", "#bmkCard"],
       ["Channels as OPML", "channels opml rss feed export feedly inoreader netnewswire subscriptions saved channels reader", "#chanOpmlBtn"],
       ["Weekly totals", "weekly totals weeks compare best week bars watch stats last 8 weeks trend heavier lighter", "#weeklyCard"],
