@@ -18048,6 +18048,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Picks for now", "#picksCard"],
     ["Watch by dates", "#dueCard"],
     ["Most played", "#mostPlayedCard"],
     ["Let go of favourites", "#favLetGoCard"],
@@ -18057,7 +18058,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Today's list", "#todayCard"],
     ["Where is this video?", "#whereCard"],
     ["Around this time", "#aroundCard"],
-    ["Watch later triage", "#triageCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25459,6 +25459,52 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var oldRL11=renderLib;renderLib=function(){oldRL11();if(card.open&&!(document.activeElement&&document.activeElement.closest('#dueCard')))paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Picks for now (round 250 new 2): with long lists the hard part is choosing, not playing.
+  // This card suggests five videos from your own lists and says WHY each is there - the video
+  // parked three weeks ago, the 5-star favourite you have not played in a fortnight, the one
+  // you started and never finished. Videos already in the queue are skipped. Read-only until
+  // you tap Play or Queue.
+  Object.assign(TR_MSG, {
+    "Picks for now": ["अभी के चुनाव", "હમણાંના ચુણાવ"],
+    "Five suggestions from your own lists, each with its reason - no random shuffle.": ["आपकी अपनी लिस्ट से पाँच सुझाव, हर एक की वजह के साथ - कुछ भी रैंडम नहीं.", "તમારી પોતાની યાદીઓમાંથી પાંચ સૂચનો, દરેકનું કારણ સાથે - કંઈ રેન્ડમ નહીં."],
+    "Nothing to suggest yet - park or star a few videos first.": ["अभी सुझाने लायक कुछ नहीं - पहले कुछ वीडियो पार्क या स्टार करें.", "હજી સૂચવવા જેવું કંઈ નથી - પહેલા થોડા વીડિયો પાર્ક કે સ્ટાર કરો."],
+    "Parked today": ["आज पार्क किया", "આજે પાર્ક કર્યો"],
+    "Parked yesterday": ["कल पार्क किया", "ગઈકાલે પાર્ક કર્યો"],
+    "Parked {n} days ago": ["{n} दिन पहले पार्क किया", "{n} દિવસ પહેલા પાર્ક કર્યો"],
+    "Rated {n} stars, not played lately": ["{n} स्टार रेटेड, हाल में नहीं चला", "{n} સ્ટાર રેટેડ, તાજેતરમાં નથી ચાલ્યો"],
+    "You started this but never finished": ["आपने यह शुरू किया पर पूरा नहीं किया", "તમે આ શરૂ કર્યું પણ પૂરું ન કર્યું"],
+    "Refresh picks": ["सुझाव ताज़ा करें", "સૂચનો તાજી કરો"],
+    "Queued:": ["कतार में जुड़ा:", "કતારમાં ઉમેરાયો:"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='picksCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div id="pkList"></div><div class="row" id="pkAct" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div><p class="hint" id="pkMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var stK=document.createElement('style');stK.textContent='#picksCard .pk-r{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0}#picksCard .pk-t{flex:1 1 100%;font-size:14px;font-weight:600;overflow-wrap:anywhere}#picksCard .pk-w{flex:1 1 100%;font-size:12px;opacity:.75}';document.head.appendChild(stK);
+  function picks(){var out=[],seen={},inq={};(lib.queue||[]).forEach(function(x){if(x)inq[x.id]=1;});
+    var now=Date.now();
+    function add(id,title,reason){if(out.length>=5||seen[id]||inq[id])return;seen[id]=1;out.push({id:id,title:title||titleFor(id)||id,reason:reason});}
+    (lib.later||[]).filter(validItem).slice().sort(function(a,b){return (a.ts||now)-(b.ts||now);}).forEach(function(x){if(out.length>=2)return;var hi=findIn(lib.hist,x.id);if(hi>=0&&lib.hist[hi]&&lib.hist[hi].done)return;var d=Math.floor((now-(x.ts||now))/864e5);add(x.id,x.title,d<=0?T('Parked today'):d===1?T('Parked yesterday'):T('Parked {n} days ago').replace('{n}',d));});
+    (lib.favs||[]).filter(function(x){return validItem(x)&&vpRateOf(x.id)>=4;}).forEach(function(x){if(out.length>=4)return;var hi=findIn(lib.hist,x.id);var last=hi>=0&&lib.hist[hi]?(lib.hist[hi].ts||0):0;if(now-last<14*864e5)return;add(x.id,x.title,T('Rated {n} stars, not played lately').replace('{n}',vpRateOf(x.id)));});
+    (lib.hist||[]).forEach(function(x){if(out.length>=5)return;if(!validItem(x)||x.done)return;add(x.id,x.title,T('You started this but never finished'));});
+    return out;}
+  function paint(){card.querySelector('summary').textContent=T('Picks for now');card.querySelector('.r239-desc').textContent=T('Five suggestions from your own lists, each with its reason - no random shuffle.');
+    var L=$('pkList'),A=$('pkAct');L.textContent='';A.textContent='';$('pkMsg').textContent='';
+    var t=picks();
+    if(!t.length){var p=document.createElement('p');p.className='hint';p.textContent=T('Nothing to suggest yet - park or star a few videos first.');L.appendChild(p);}
+    t.forEach(function(x){var r=document.createElement('div');r.className='pk-r';
+      var n=document.createElement('div');n.className='pk-t';n.textContent=x.title;r.appendChild(n);
+      var w=document.createElement('div');w.className='pk-w';w.textContent=x.reason;r.appendChild(w);
+      var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Play');b.setAttribute('aria-label',T('Play')+': '+x.title);
+      b.addEventListener('click',function(){if(findIn(lib.queue,x.id)<0){if(lib.queue.length>=50){$('pkMsg').textContent=T('The queue is full at 50 videos. Remove some first.');return;}lib.queue.unshift({id:x.id,title:x.title});}var qi=findIn(lib.queue,x.id);saveLib();renderLib();playQueueAt(qi);if(frameBox&&frameBox.scrollIntoView)frameBox.scrollIntoView({behavior:window.vpReducedMotion()?'auto':'smooth',block:'center'});});r.appendChild(b);
+      var q=document.createElement('button');q.type='button';q.className='chip';q.textContent=T('Queue');q.setAttribute('aria-label',T('Queue')+': '+x.title);
+      q.addEventListener('click',function(){if(findIn(lib.queue,x.id)>=0){$('pkMsg').textContent=T('Already in the queue, or the queue is full at 50.');return;}if(lib.queue.length>=50){$('pkMsg').textContent=T('The queue is full at 50 videos. Remove some first.');return;}lib.queue.push({id:x.id,title:x.title});saveLib();renderLib();$('pkMsg').textContent=T('Queued:')+' '+x.title;});r.appendChild(q);
+      L.appendChild(r);});
+    var rf=document.createElement('button');rf.type='button';rf.className='chip';rf.textContent=T('Refresh picks');rf.addEventListener('click',paint);A.appendChild(rf);}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRL12=renderLib;renderLib=function(){oldRL12();if(card.open&&!(document.activeElement&&document.activeElement.closest('#picksCard')))paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -28017,6 +28063,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Picks for now", "picks for now suggestions what to watch recommendations reasons parked favourite unfinished choose evening", "#picksCard"],
       ["Watch by dates", "watch by date due deadline overdue parked watch later day plan red badge schedule", "#dueCard"],
       ["Watch later triage", "watch later triage one at a time oldest first decide keep remove favourite play clean backlog", "#triageCard"],
       ["Around this time", "around this time of day morning afternoon evening night usually watch history suggestions hour", "#aroundCard"],
