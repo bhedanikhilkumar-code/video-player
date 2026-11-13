@@ -9977,6 +9977,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }).join("\n");
     vpCopySafe(text, function (ok) { if (ok && typeof copyTick === "function") copyTick(btn); toast(ok ? T("Day copied to clipboard") : T("Could not copy. Try again.")); });
   }
+  // Save this day as a playlist (round 219 new 2): a day heading could queue, clear or copy
+  // its videos, but keeping a themed day (a friend's-phone day, one evening's mix) to replay
+  // later meant queueing it and then saving the queue by hand. One chip saves just that
+  // day's videos as a named playlist (named after the day label, deduplicated like the other
+  // savers, 50-video cap), with the same Undo the other Save-as-playlist chips give.
+  Object.assign(TR_MSG, {
+    "Save day as playlist": ["दिन की प्लेलिस्ट बनाएं", "દિવસની પ્લેલિસ્ટ બનાવો"],
+    "Saved day": ["सेव किया दिन", "સાચવેલો દિવસ"],
+    "Save a history day as a playlist": ["हिस्ट्री के दिन की प्लेलिस्ट बनाएं", "હિસ્ટ્રીના દિવસની પ્લેલિસ્ટ બનાવો"]
+  });
+  function histDayToPlaylist() {
+    var ids = this._ids || []; if (!ids.length) return;
+    var items = [];
+    ids.forEach(function (id) { var hi = findIn(lib.hist, id); if (hi >= 0) items.push({ id: id, title: lib.hist[hi].title || "" }); });
+    libToPlaylist(items, this._lab || T("Saved day"));
+  }
   function paintHistDays() {
     if (!histList) return;
     Array.prototype.forEach.call(histList.querySelectorAll(".hist-day"), function (n) { n.remove(); });
@@ -10005,6 +10021,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       hcp._ids = curIds;
       hcp.addEventListener("click", histDayCopy);
       h.appendChild(hcp);
+      var hpl = document.createElement("button"); hpl.type = "button"; hpl.className = "chip hist-day-p"; hpl.textContent = T("Save day as playlist");
+      hpl.setAttribute("aria-label", T("Save day as playlist") + ": " + lab);
+      hpl._ids = curIds; hpl._lab = lab;
+      hpl.addEventListener("click", histDayToPlaylist);
+      h.appendChild(hpl);
       histList.insertBefore(h, li);
     });
   }
@@ -15632,6 +15653,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Save a history day as a playlist", ".hist-day-p"],
     ["Shuffle play favourites", "#favShufBtn"],
     ["Mute from the mini player", "#miniMute"],
     ["Copy your picked local files", "#lpCopyBtn"],
@@ -22042,6 +22064,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Snooze all in Watch later", "snooze all watch later park hide backlog every video one day wake undo", "#laterSnoozeAllBtn"],
       ["Copy all notes", "copy all notes clipboard share study text every saved note paste", "#notesCopyAllBtn"],
       ["Wake all snoozed videos", "wake all snoozed watch later sleeping hidden come back unsnooze every", "#laterWakeBtn"],
+      ["Save a history day as a playlist", "save history day date heading as playlist keep themed evening replay named list", ".hist-day-p"],
       ["Shuffle play favourites", "shuffle play favourites random mix starred saved videos evening start play all", "#favShufBtn"],
       ["Shuffle play Watch later", "shuffle play watch later saved videos random mix evening start play all", "#laterShufBtn"],
       ["Clear finished downloads", "clear finished done completed failed download queue make room tidy remove", "#dlQClearFin"],
