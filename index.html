@@ -12446,6 +12446,13 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       });
       pinBtn.setAttribute("aria-pressed", String(pl.pinned === true));
       btn(T("Play"), "", playPl);
+      var rs260 = window.__vpPlResume ? window.__vpPlResume(pl) : null;
+      if (rs260) btn(rs260.label, "", function () {
+        lib.queue = pl.items.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1;
+        saveLib(); renderLib(); showLibErr(""); plHookPlay246(pl); plSay(rs260.msg);
+        playQueueAt(rs260.index);
+        if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+      });
       btn(T("Shuffle play"), "", function () {
         if (!pl.items.length) return;
         lib.queue = plShuffled(pl.items); qPos = -1; resetShuffle();
@@ -13111,7 +13118,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     // Round 231 fix 1: the focus session choices (auto-pick) rode no backup - vp-focus.v1
     // is counted by Reset all settings since round 229, but it was missing here, so a
     // restore on a new phone silently turned the focus auto choice back on.
-    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1", "vp-today.v1", "vp-saved-searches.v1"].forEach(function (k) {
+    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1", "vp-today.v1", "vp-saved-searches.v1", "vp-plresume.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
     });
     // Round 223 fix 2: small one-word settings kept under their own keys (list sort orders,
@@ -13375,7 +13382,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
             savePrefs(); gotSettings = true; }
           if (s.queueModes && typeof s.queueModes === "object") { ["shuffle", "repeat", "auto"].forEach(function (k) { if (typeof s.queueModes[k] === "boolean") queueModes[k] = s.queueModes[k]; }); try { localStorage.setItem("vp-queue-modes.v1", JSON.stringify(queueModes)); } catch (e) {} gotSettings = true; }
           if (s.vmem && typeof s.vmem === "object") { Object.keys(s.vmem).forEach(function (k) { vmem[k] = s.vmem[k]; }); vmemSave(); gotSettings = true; }
-          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1", "vp-today.v1", "vp-saved-searches.v1"].forEach(function (k) {
+          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1", "vp-flip.v1", "vp-keymap.v1", "vp-tags.v1", "vp-plan.v1", "vp-review.v1", "vp-today.v1", "vp-saved-searches.v1", "vp-plresume.v1"].forEach(function (k) {
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
           if (s.rawKeys && typeof s.rawKeys === "object" && !Array.isArray(s.rawKeys)) {
@@ -27689,6 +27696,45 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
+  // Playlist resume (round 260 new 4): playing a saved playlist always started at video 1, so a
+  // long course or album stopped halfway had to be found again by hand. While a saved playlist
+  // is playing in its own order (Play, not Shuffle play), the video you have reached is
+  // remembered per playlist; the playlist row then shows a Continue button (video n of m) that
+  // loads the playlist and starts there. Nothing is shown until you have moved past video 1 and
+  // are not on the last video. Kept on this device and in the backup. Hindi and Gujarati text,
+  // feature finder included.
+  Object.assign(TR_MSG, {
+    "\u25B6 Continue at video {n} of {m}": ["\u25B6 वीडियो {n}/{m} से जारी रखें", "\u25B6 વીડિયો {n}/{m} થી ચાલુ રાખો"],
+    "Continuing \"{name}\" at video {n} of {m}.": ["\"{name}\" वीडियो {n}/{m} से जारी है.", "\"{name}\" વીડિયો {n}/{m} થી ચાલુ છે."]
+  });
+  (function () {
+    var KEY = "vp-plresume.v1", res = {}, active = null;
+    try { var o = JSON.parse(localStorage.getItem(KEY) || "{}"); if (o && typeof o === "object" && !Array.isArray(o)) Object.keys(o).forEach(function (k) { if (o[k] && typeof o[k].id === "string") res[k] = { id: o[k].id }; }); } catch (e) {}
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(res)); } catch (e) {} }
+    var base = plHookPlay246;
+    plHookPlay246 = function (pl) { active = pl; return base.apply(this, arguments); };
+    function inOrder(pl) {
+      if (!pl || !pl.items || lib.queue.length !== pl.items.length) return false;
+      for (var i = 0; i < pl.items.length; i++) if (lib.queue[i].id !== pl.items[i].id) return false;
+      return true;
+    }
+    setInterval(function () {
+      if (!active || !curId || qPos < 0) return;
+      if (!inOrder(active)) { active = null; return; }
+      var i = qPos; if (!lib.queue[i] || lib.queue[i].id !== curId) return;
+      var was = res[active.name] && res[active.name].id;
+      if (i === 0 || i >= active.items.length - 1) { if (was) { delete res[active.name]; persist(); renderPlaylists(); } return; }
+      if (was !== curId) { res[active.name] = { id: curId }; persist(); renderPlaylists(); }
+    }, 2000);
+    window.__vpPlResume = function (pl) {
+      var r = res[pl.name]; if (!r) return null;
+      var at = -1; for (var i = 0; i < pl.items.length; i++) if (pl.items[i].id === r.id) { at = i; break; }
+      if (at < 1 || at >= pl.items.length - 1) return null;
+      return { index: at, label: T("\u25B6 Continue at video {n} of {m}").replace("{n}", at + 1).replace("{m}", pl.items.length),
+        msg: T("Continuing \"{name}\" at video {n} of {m}.").replace("{name}", pl.name).replace("{n}", at + 1).replace("{m}", pl.items.length) };
+    };
+  })();
+
   // Copied link prompt (round 259 new 5): a link copied in another app or tab had to be pasted
   // by hand. With this switched on (off by default), coming back to the app checks the
   // clipboard once per return, and if it holds a YouTube video link that has not been offered
@@ -29482,7 +29528,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Break reminder, Keep screen awake, Fullscreen rotate and Stats on video as they were, although
   // the dialog promises settings go back to defaults. They are cleared with the rest now.
   var KEYS = ["vp-prefs.v1", "vp-keymap.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1", "vp-stillwatch.v1", "vp-ctl-use.v1",
-    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1", "vp-saved-searches.v1"];
+    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1", "vp-saved-searches.v1", "vp-plresume.v1"];
   btn.addEventListener("click", async function () {
     if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices, downloader choices, list sort orders, fade, focus and mini player choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
@@ -30633,6 +30679,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Saved searches", "saved searches save search keep pin favourite query operators is:later chips repeat run again library", "#ssRow"],
       ["Getting started", "getting started checklist first steps beginner new user tour learn app tick progress show me onboarding", "#startCard"],
       ["Spread channels", "spread channels reorder queue same channel back to back variety interleave mix upcoming different creators", "#spreadCard"],
+      ["Playlist resume", "playlist resume continue where you stopped course album halfway remember position video number play again", ".pl-item"],
       ["Copied link prompt", "copied link prompt clipboard youtube link paste offer play queue later come back app focus switch tab automatic", "#clipCard"],
       ["Open from any page", "open from any page bookmarklet bookmark bar drag youtube tab current time send video here browser", "#bmkCard"],
       ["Channels as OPML", "channels opml rss feed export feedly inoreader netnewswire subscriptions saved channels reader", "#chanOpmlBtn"],
