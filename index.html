@@ -17722,6 +17722,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Tidy Watch later", "#tidyBtn"],
     ["Park the rest of the queue", "#qParkBtn"],
     ["Shuffle the rest of the queue", "#qMixRestBtn"],
     ["Select videos", "#selBtn"],
@@ -22680,6 +22681,61 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
 
+  // Tidy Watch later (round 236 new 3): a 50-video Watch later fills with videos that no longer need to be
+  // there. A panel under Playlists counts three groups - already in Favourites, already watched to the
+  // end (in history with no resume spot left), and parked for over 60 days - and removes a group with one
+  // tap. Pinned videos are never touched, every removal has Undo and lands in Recently removed.
+  Object.assign(TR_MSG, {
+    "Tidy Watch later": ["बाद में देखें साफ़ करें", "પછી જુઓ સાફ કરો"],
+    "Already in Favourites": ["पहले से पसंदीदा में", "પહેલેથી મનપસંદમાં"],
+    "Already watched to the end": ["पूरा देख चुके", "પૂરું જોઈ લીધેલા"],
+    "Parked over 60 days": ["60 दिन से ज़्यादा पुराने", "60 દિવસથી જૂના"],
+    "Nothing to tidy - Watch later is clean. Pinned videos are never listed.": ["साफ़ करने को कुछ नहीं - बाद में देखें साफ़ है. पिन किए वीडियो कभी नहीं गिने जाते.", "સાફ કરવા કંઈ નથી - પછી જુઓ સાફ છે. પિન કરેલા વીડિયો ક્યારેય ગણાતા નથી."],
+    "Removed from Watch later": ["बाद में देखें से हटाए", "પછી જુઓ માંથી કાઢ્યા"],
+    "Watch later restored": ["बाद में देखें वापस आई", "પછી જુઓ પાછું આવ્યું"]
+  });
+  (function () {
+    var host = $("binBtn"); if (!host) return;
+    var btn = document.createElement("button"); btn.className = "chip"; btn.type = "button"; btn.id = "tidyBtn"; btn.setAttribute("aria-expanded", "false");
+    host.parentNode.insertBefore(btn, host);
+    var panel = document.createElement("div"); panel.className = "pl-paste"; panel.id = "tidyPanel"; panel.hidden = true;
+    host.parentNode.parentNode.insertBefore(panel, host.parentNode.nextSibling);
+    function groups() {
+      var now = Date.now();
+      function ok(x) { return x.pin !== true; }
+      function done(x) { var h = findIn(lib.hist, x.id); if (h < 0) return false; var e = lib.hist[h]; return !(typeof e.t === "number" && e.t > 0 && !(e.dur > 0 && e.t >= e.dur * 0.9)); }
+      return [
+        { k: "Already in Favourites", rows: lib.later.filter(function (x) { return ok(x) && findIn(lib.favs, x.id) >= 0; }) },
+        { k: "Already watched to the end", rows: lib.later.filter(function (x) { return ok(x) && done(x); }) },
+        { k: "Parked over 60 days", rows: lib.later.filter(function (x) { return ok(x) && typeof x.ts === "number" && x.ts > 0 && now - x.ts > 60 * 86400000; }) }
+      ];
+    }
+    function paint() {
+      btn.textContent = T("Tidy Watch later");
+      if (panel.hidden) return;
+      panel.innerHTML = "";
+      var g = groups(), any = false;
+      g.forEach(function (gr) {
+        if (!gr.rows.length) return; any = true;
+        var row = document.createElement("div"); row.className = "row bin-row";
+        var t = document.createElement("span"); t.className = "hint bin-t"; t.textContent = T(gr.k) + " (" + gr.rows.length + ")";
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = T("Remove");
+        b.addEventListener("click", function () {
+          var snap = lib.later.slice(), ids = {}; gr.rows.forEach(function (x) { ids[x.id] = 1; });
+          lib.later = lib.later.filter(function (x) { return !ids[x.id]; });
+          saveLib(); renderLib(); paint();
+          toastUndo(T("Removed from Watch later") + " " + gr.rows.length, function () { lib.later = snap; saveLib(); renderLib(); paint(); }, T("Watch later restored"));
+        });
+        row.appendChild(t); row.appendChild(b); panel.appendChild(row);
+      });
+      if (!any) { var p = document.createElement("p"); p.className = "hint"; p.textContent = T("Nothing to tidy - Watch later is clean. Pinned videos are never listed."); panel.appendChild(p); }
+      var cr = document.createElement("div"); cr.className = "row"; var cb = document.createElement("button"); cb.type = "button"; cb.className = "chip"; cb.textContent = T("Close");
+      cb.addEventListener("click", function () { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); }); cr.appendChild(cb); panel.appendChild(cr);
+    }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); paint(); if (!panel.hidden && window.vpExpandSection) window.vpExpandSection("library"); });
+  })();
+
   // Round 234 fix: list rows read '... - Resume 1:00' in English on Hindi and Gujarati pages, and
   // the 'Saved on this device only.' note under Recently watched also stayed English (its
   // translation row pointed at the first paragraph after the list, which became the hidden
@@ -25353,6 +25409,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var FEATS = [
       ["Shuffle the rest of the queue", "shuffle mix rest queue random upcoming order one time half played", "#qMixRestBtn"],
       ["Park the rest of the queue", "park queue watch later save for later move upcoming clear evening over keep not lose", "#qParkBtn"],
+      ["Tidy Watch later", "tidy clean watch later already favourite watched old parked remove clutter", "#tidyBtn"],
       ["Select videos", "select multiple checkbox bulk favourites watch later remove move queue several tick batch", "#selBtn"],
       ["Recently removed", "recently removed bin trash undo restore deleted favourites watch later accident bring back", "#binBtn"],
       ["Add to calendar", "calendar ics event schedule evening plan reminder queue watch later block time session", "#calBtn"],
