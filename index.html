@@ -32094,6 +32094,74 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
     WNEW.unshift(["Your own shortcut keys", "#xkRow280"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   })();
+  // Round 281 new 3: Rate right after finishing. Star ratings drive the top-rated queue,
+  // the rated filter and the favourites average, but a rating only happens if you think of
+  // the little stars on the Now playing card - most videos end unrated and the good ones
+  // blend in. Now, when a favourite ends and it has no rating yet, a small glass card
+  // offers the five stars for a few seconds: one tap rates the video that just finished
+  // (not whatever loads next), "Not now" or twenty quiet seconds dismiss it, and nothing
+  // shows for unrated non-favourites, during the sleep timer, or for a video you rated
+  // before. It chains onto the shared player-state hook without replacing the other
+  // listeners, retranslates, and registers in the feature finder and What's new.
+  Object.assign(TR_MSG, {
+    "Enjoyed it? Tap a star": ["अच्छा लगा? स्टार पर टैप करें", "ગમ્યું? સ્ટાર પર ટૅપ કરો"],
+    "Not now": ["अभी नहीं", "હમણાં નહીં"],
+    "Rate right after finishing": ["खत्म होते ही रेटिंग दें", "પૂરું થતાં જ રેટિંગ આપો"],
+    "Your rating": ["आपकी रेटिंग", "તમારી રેટિંગ"]
+  });
+  (function () {
+    var card = null, hideT = null, cardId = null;
+    function hide() {
+      clearTimeout(hideT); hideT = null; cardId = null;
+      if (card) { card.remove(); card = null; }
+    }
+    function show(id) {
+      hide(); cardId = id;
+      card = document.createElement("div"); card.className = "rate-after281"; card.setAttribute("role", "dialog"); card.setAttribute("aria-label", T("Rate this video"));
+      var t = document.createElement("span"); t.className = "rate-after-t"; t.textContent = T("Enjoyed it? Tap a star");
+      card.appendChild(t);
+      var wrap = document.createElement("span"); wrap.className = "rate-after-stars";
+      for (var i = 1; i <= 5; i++) (function (n) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "rate-star"; b.textContent = "★";
+        b.setAttribute("aria-label", n + " " + T(n > 1 ? "stars" : "star"));
+        b.addEventListener("click", function () {
+          var m = {}; try { m = JSON.parse(localStorage.getItem("vp-rate.v1") || "{}") || {}; } catch (e) {}
+          m[id] = n;
+          try { localStorage.setItem("vp-rate.v1", JSON.stringify(m)); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
+          try { window.dispatchEvent(new Event("vp-rate-changed")); } catch (e) {}
+          if (typeof renderLib === "function") renderLib();
+          toast(T("Rating saved: ") + n + "/5"); hide();
+        });
+        wrap.appendChild(b);
+      })(i);
+      card.appendChild(wrap);
+      var later = document.createElement("button"); later.type = "button"; later.className = "chip rate-after-skip"; later.textContent = T("Not now");
+      later.addEventListener("click", hide); card.appendChild(later);
+      document.body.appendChild(card);
+      hideT = setTimeout(hide, 20000);
+    }
+    var prevFx281 = window.__vpStateFx;
+    window.__vpStateFx = function (st) {
+      if (prevFx281) prevFx281(st);
+      if (st === 1) { hide(); return; }
+      if (st !== 0) return;
+      if (typeof sleepPaused !== "undefined" && sleepPaused) return;
+      var id = curId; if (!id) return;
+      if (findIn(lib.favs, id) < 0) return;
+      if (vpRateOf(id) > 0) return;
+      show(id);
+    };
+    var st3 = document.createElement("style");
+    st3.textContent = ".rate-after281{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:96;display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;max-width:92vw;background:var(--card);border:1px solid var(--hairline);border-radius:999px;padding:10px 16px;box-shadow:0 14px 40px rgba(0,0,0,.32);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}"
+      + ".rate-after281 .rate-after-t{font-size:13px;font-weight:600}"
+      + ".rate-after281 .rate-after-stars{display:flex;gap:2px}"
+      + ".rate-after281 .rate-star{background:none;border:0;padding:2px 3px;font-size:24px;line-height:1;cursor:pointer;color:rgba(128,128,140,.55);-webkit-tap-highlight-color:transparent}"
+      + ".rate-after281 .rate-star:active{transform:scale(1.2)}"
+      + "html.high-contrast .rate-after281{background:#000;border-color:#fff}";
+    document.head.appendChild(st3);
+    WNEW.unshift(["Rate right after finishing", "#rateRow"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
+
   // Round 281 new 2: Group Watch later by channel. A parked list of thirty videos mixes
   // every creator into one scroll, so "what do I have from this channel?" meant reading
   // every row. A toggle chip in the Watch later head now folds the same rows (current
@@ -35182,6 +35250,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Rate right after finishing", "rate after finishing video ends quick stars favourite unrated prompt enjoyed", "#rateRow"],
       ["Watch later grouped by channel", "watch later group by channel creator folders sections tidy backlog organised", "#laterGroupBtn281"],
       ["Hold a row for quick actions", "hold press long press right click row quick actions play now play next add queue watch later favourite remove action sheet", "#library"],
       ["Channel intro skip", "channel intro skip theme song opening every episode podcast auto first seconds creator remember", "#chIntroRow280"],
