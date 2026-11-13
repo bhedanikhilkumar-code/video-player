@@ -9329,7 +9329,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (gl) gl.innerHTML = T("Double-tap") + "<br>-" + st + "s";
     if (gr) gr.innerHTML = T("Double-tap") + "<br>+" + st + "s";
     var pad2 = $("gesturePad");
-    if (pad2) pad2.setAttribute("aria-label", T("Gesture pad. Double-tap the left side to go back ") + st + T(" seconds, the right side to go forward ") + st + T(" seconds. Swipe up or down to change the volume.") + " " + T("Arrow keys work here too."));
+    // Round 264 fix 1: this rebuilt label dropped the 30-second swipe and hold-to-rush
+    // sentences the static label (and its translations) carry, so after any double-tap
+    // size change - and from the first paint - screen-reader users never heard them.
+    if (pad2) pad2.setAttribute("aria-label", T("Gesture pad. Double-tap the left side to go back ") + st + T(" seconds, the right side to go forward ") + st + T(" seconds. Swipe up or down to change the volume.") + " " + T("Swipe left or right to jump 30 seconds.") + " " + T("Press and hold for 2x speed.") + " " + T("Arrow keys work here too.") + (typeof pinchPadSuffix === "function" ? pinchPadSuffix() : ""));
     var dc = $("dtSeekChips");
     if (dc) [].forEach.call(dc.children, function (c) { var on = Number(c.dataset.v) === st; c.classList.toggle("active", on); c.setAttribute("aria-pressed", on ? "true" : "false"); c.setAttribute("aria-label", T("Double-tap skip") + " " + c.dataset.v + " " + T("seconds")); });
     var sc2 = $("sc2");
@@ -28610,6 +28613,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }, { passive: true });
     pad.addEventListener("touchend", function (e) { if (e.touches.length < 2) { pinching = false; startD = 0; } }, { passive: true });
     pad.addEventListener("touchcancel", function () { pinching = false; startD = 0; }, { passive: true });
+    Object.assign(TR_MSG, {
+      "Swipe left or right to jump 30 seconds.": ["\u092C\u093E\u090F\u0902 \u092F\u093E \u0926\u093E\u090F\u0902 \u0938\u094D\u0935\u093E\u0907\u092A \u0915\u0930\u0928\u0947 \u0938\u0947 30 \u0938\u0947\u0915\u0902\u0921 \u0906\u0917\u0947-\u092A\u0940\u091B\u0947.", "\u0AA1\u0ABE\u0AAC\u0AC7 \u0A95\u0AC7 \u0A9C\u0AAE\u0AA3\u0AC7 \u0AB8\u0ACD\u0AB5\u0ABE\u0A87\u0AAA \u0A95\u0AB0\u0AA4\u0ABE\u0A82 30 \u0AB8\u0AC7\u0A95\u0A82\u0AA1 \u0A86\u0A97\u0AB3-\u0AAA\u0ABE\u0A9B\u0AB3."],
+      "Press and hold for 2x speed.": ["2x \u0938\u094D\u092A\u0940\u0921 \u0915\u0947 \u0932\u093F\u090F \u0926\u092C\u093E\u090F \u0930\u0916\u0947\u0902.", "2x \u0AB8\u0ACD\u0AAA\u0AC0\u0AA1 \u0AAE\u0ABE\u0A9F\u0AC7 \u0AA6\u0AAC\u0ABE\u0AB5\u0AC0 \u0AB0\u0ABE\u0A96\u0ACB."]
+    });
+    function pinchPadSuffix() { return " " + T("Pinch with two fingers to zoom the picture."); }
     // The pad's aria-label is rebuilt elsewhere with the chosen double-tap size, so do
     // not rebuild it here: strip any earlier pinch suffix from the current label and
     // append the translated pinch sentence, whatever language or skip size is active.
