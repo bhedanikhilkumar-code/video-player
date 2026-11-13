@@ -13082,6 +13082,30 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
           plSay(T("Playlist saved as a text file."));
         } catch (e) { plSay(T("Could not copy. Try again.")); }
       });
+      // Round 282 new 5: a playlist could leave the app as re-importable .json or a
+      // readable .txt, but not in the one format every other player (VLC, YouTube Music
+      // importers, Kodi) understands - .m3u. This chip downloads an extended M3U: titles
+      // ride as #EXTINF lines, links point at youtube.com watch pages, and the file is
+      // named after the playlist like the .txt one.
+      Object.assign(TR_MSG, {
+        "Save as .m3u": [".m3u \u092e\u0947\u0902 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902", ".m3u\u0aae\u0abe\u0a82 \u0ab8\u0ac7\u0ab5 \u0a95\u0ab0\u0acb"],
+        "Playlist saved as an .m3u file.": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f .m3u \u092b\u093c\u093e\u0907\u0932 \u092e\u0947\u0902 \u0938\u0947\u0935 \u0939\u0941\u0908.", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f .m3u \u0aab\u0abe\u0a87\u0ab2\u0aae\u0abe\u0a82 \u0ab8\u0ac7\u0ab5 \u0aa5\u0a88."],
+        "Save a playlist as .m3u": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f .m3u \u092e\u0947\u0902 \u0938\u0947\u0935 \u0915\u0930\u0947\u0902", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f .m3u\u0aae\u0abe\u0a82 \u0ab8\u0ac7\u0ab5 \u0a95\u0ab0\u0acb"]
+      });
+      btn(T("Save as .m3u"), "", function () {
+        if (!pl.items.length) { plSay(T("No videos in this playlist yet.")); return; }
+        var text = "#EXTM3U\n#PLAYLIST:" + pl.name + "\n" + pl.items.map(function (x) {
+          return "#EXTINF:-1," + String(x.title || x.id).replace(/[\r\n,]+/g, " ").trim() + "\nhttps://www.youtube.com/watch?v=" + x.id;
+        }).join("\n") + "\n";
+        try {
+          var safe = pl.name.replace(/[^\w -]+/g, "").trim().replace(/\s+/g, "-").slice(0, 40);
+          var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "audio/x-mpegurl" })); a.download = "video-player-playlist-" + (safe || "list") + ".m3u";
+          document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+          plSay(T("Playlist saved as an .m3u file."));
+        } catch (e) { plSay(T("Could not copy. Try again.")); }
+      });
+      // Deferred What's new registration: this block runs before the list declaration.
+      setTimeout(function () { WNEW.unshift(["Save a playlist as .m3u", "#lhPlaylists"]); WNEW.length = Math.min(10, WNEW.length); wnewRender(); }, 0);
       Object.assign(TR_MSG, { "Playlist deleted:": ["प्लेलिस्ट हटाई:", "પ્લેલિસ્ટ કાઢી:"] });
       btn(T("Delete"), "pl-del", async function () {
         if (!await vpConfirm(T("Delete the playlist") + " \"" + pl.name + "\"? " + T("Your queue stays as it is."), T("Delete"))) return;
@@ -35812,6 +35836,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Share as QR code", "share qr code queue watch later favourites link another phone camera scan move list", "#favShareBtn282"],
       ["Volume slider in the mini player", "mini player volume slider sound level docked floating pip turn down up loud quiet", "#miniVol"],
       ["Copy backup to the clipboard", "copy backup clipboard paste whatsapp notes move new phone no file download export", "#libCopyBackup"],
+      ["Save a playlist as .m3u", "save playlist m3u extinf vlc kodi other players music importers export file", "#lhPlaylists"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
       ["Rate backlog", "rate backlog unrated videos stars rating give stars favourites history without rating", "#rateBacklogCard"],
       ["Weekday rhythm", "weekday rhythm busiest day of the week monday sunday pattern when do i watch bars stats", "#weekdayCard"],
