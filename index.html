@@ -18049,6 +18049,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Hold to rush at 2x", "#hold2xBtn"],
     ["Bigger tap targets", "#a11yTap"],
     ["History by date", "#histDateCard"],
     ["Moment drill", "#drillCard"],
@@ -18058,7 +18059,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Let go of favourites", "#favLetGoCard"],
     ["Sort: Longest first", "#lhLaterSortBtn"],
     ["Find a moment", "#momFindCard"],
-    ["Watch sessions", "#sessCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25613,6 +25613,59 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   (window.__relang=window.__relang||[]).push(function(){var s=$('a11yTapT');if(s)s.textContent=T('Bigger tap targets (taller buttons and rows)');});
   var s0=$('a11yTapT');if(s0)s0.textContent=T('Bigger tap targets (taller buttons and rows)');
   })();
+  // Hold to rush at 2x (round 251 new 1): YouTube's own app lets you press-and-hold the
+  // video to rush through a slow part at 2x and drop back to your speed the moment you let
+  // go; a web page cannot catch touches on the YouTube iframe, so the same gesture lives on
+  // a Hold chip in the Speed card. Hold it (finger, mouse, or Enter/Space) and the video
+  // rushes at 2x; let go and the speed you had comes back. Nothing is saved - the speed
+  // memory of the video keeps your normal speed.
+  Object.assign(TR_MSG, {
+    "\u25B8\u25B8 Hold: 2x": ["\u25B8\u25B8 दबाकर रखें: 2x", "\u25B8\u25B8 દબાવી રાખો: 2x"],
+    "Rushing at 2x - let go to return": ["2x रफ़्तार - छोड़ें तो वापस", "2x ઝડપ - છોડો એટલે પાછી"],
+    "Hold to rush at 2x": ["2x रफ़्तार के लिए दबाकर रखें", "2x ઝડપ માટે દબાવી રાખો"],
+    "Press and hold to rush at 2x - let go and your speed comes back.": ["दबाकर रखें तो वीडियो 2x रफ़्तार से चलेगा - छोड़ते ही आपकी रफ़्तार वापस.", "દબાવી રાખો એટલે વીડિયો 2x ઝડપે ચાલશે - છોડતાં જ તમારી ઝડપ પાછી."]
+  });
+  (function () {
+    var anchor = $("speedStepUp"); if (!anchor || !anchor.parentNode) return;
+    var row = anchor.parentNode;
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.id = "hold2xBtn";
+    b.textContent = T("\u25B8\u25B8 Hold: 2x");
+    b.setAttribute("aria-pressed", "false");
+    row.insertBefore(b, anchor.nextSibling);
+    var hint = document.createElement("p"); hint.className = "hint"; hint.id = "hold2xHint";
+    row.parentNode.insertBefore(hint, row.nextSibling);
+    var held = false, prevSpeed = 1;
+    function rushOn() {
+      if (held) return;
+      if (!ready || !curId) { toast(T("Load a video first.")); return; }
+      held = true; prevSpeed = prefs.speed;
+      send("setPlaybackRate", [2]);
+      b.classList.add("active"); b.setAttribute("aria-pressed", "true");
+      b.textContent = T("Rushing at 2x - let go to return");
+    }
+    function rushOff() {
+      if (!held) return;
+      held = false;
+      send("setPlaybackRate", [prevSpeed]);
+      b.classList.remove("active"); b.setAttribute("aria-pressed", "false");
+      b.textContent = T("\u25B8\u25B8 Hold: 2x");
+    }
+    b.addEventListener("pointerdown", function (e) { e.preventDefault(); rushOn(); });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) { b.addEventListener(ev, rushOff); });
+    document.addEventListener("pointerup", rushOff);
+    window.addEventListener("blur", rushOff);
+    b.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+    b.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); rushOn(); } });
+    b.addEventListener("keyup", function (e) { if (e.key === "Enter" || e.key === " ") rushOff(); });
+    (window.__relang = window.__relang || []).push(function () {
+      if (!held) b.textContent = T("\u25B8\u25B8 Hold: 2x");
+      b.setAttribute("aria-label", T("Hold to rush at 2x"));
+      hint.textContent = T("Press and hold to rush at 2x - let go and your speed comes back.");
+    });
+    b.setAttribute("aria-label", T("Hold to rush at 2x"));
+    hint.textContent = T("Press and hold to rush at 2x - let go and your speed comes back.");
+  })();
 /*R244-END*/
 
 })();
@@ -28171,6 +28224,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Hold to rush at 2x", "hold to rush 2x speed press and hold finger quick scan slow part temporary boost let go", "#hold2xBtn"],
       ["Bigger tap targets", "bigger tap targets taller buttons rows accessibility motor shaky hands thumb easy press", "#a11yTap"],
       ["History by date", "history by date pick day what did i watch last tuesday calendar recently watched queue whole day", "#histDateCard"],
       ["Moment drill", "moment drill practice replay each saved moment span guitar solo trick loop through bookmarks one after another", "#drillCard"],
