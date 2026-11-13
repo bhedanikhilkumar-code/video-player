@@ -6279,6 +6279,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var found = txt.match(/(?:^|[^a-z0-9.@-])((?:https?:\/\/)?(?:[a-z0-9-]+\.)*(?:youtube(?:-nocookie)?\.com|youtu\.be)\/[^\s<>"'`]+)/gi) || [];
     found = found.map(function (m) { return m.replace(/^[^a-z0-9]+(?=https?:|[a-z0-9-]+\.)/i, ""); });
     for (var fi = 0; fi < found.length; fi++) { var got = parseVideoIdOne(found[fi]); if (got) return got; }
+    // Round 267 fix 3: a consent or redirect link that carries the real video link inside a
+    // parameter (consent.youtube.com/m?continue=https://www.youtube.com/watch?v=ID) was refused,
+    // because the whole thing counted as one link. Try each embedded link on its own.
+    for (var ni = 0; ni < found.length; ni++) {
+      var pieces = found[ni].replace(/https?%3A%2F%2F/gi, function (x) { return decodeURIComponent(x); }).split(/(?=https?:\/\/)/i);
+      if (pieces.length < 2) continue;
+      for (var pi = 1; pi < pieces.length; pi++) { var inner = parseVideoIdOne(pieces[pi].replace(/%2F/gi, "/").replace(/%3F/gi, "?").replace(/%3D/gi, "=").replace(/%26/gi, "&")); if (inner) return inner; }
+    }
     if (!depth && /%2F|%3A/i.test(raw)) { try { return parseVideoId(decodeURIComponent(raw), 1); } catch (e) {} }
     return null;
   }
