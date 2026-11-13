@@ -14390,13 +14390,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "No continue watching videos to add - they are all queued (or the queue is full).": ["डालने के लिए कोई जारी वीडियो नहीं - सभी कतार में हैं (या कतार भरी है).", "નાખવા માટે કોઈ ચાલુ વીડિયો નથી - બધી કતારમાં છે (કે કતાર ભરાઈ છે)."],
     "Queue all of Continue watching": ["देखना जारी रखें सभी कतार में", "ચાલુ જોવાનું બધું કતારમાં"]
   });
+  // Round 222 fix 4: the Continue watching card shows at most six rows (renderContinue caps
+  // at slice(0, 6)), but the head chips scanned the whole history, so Queue all, Shuffle
+  // play, Clear all and the text file acted on half-watched videos the card was not showing -
+  // Clear all could wipe the saved position of a video nowhere on screen. Every chip now acts
+  // on the same list the card shows, so what you see is what the tap touches.
+  function contVisible() {
+    if (typeof continueItems !== "undefined" && continueItems) return continueItems;
+    return lib.hist.filter(function (h) { return h && h.id && h.t >= 10 && h.dur > 0 && h.t < h.dur - 5; }).slice(0, 6);
+  }
   var contQueueBtn = $("contQueueBtn");
   function contQueuePaint() { if (contQueueBtn) { contQueueBtn.textContent = T("Queue all"); contQueueBtn.setAttribute("aria-label", T("Add every Continue watching video to the queue")); } }
   (window.__relang = window.__relang || []).push(contQueuePaint);
   contQueuePaint();
   if (contQueueBtn) contQueueBtn.addEventListener("click", function () {
     var snap = lib.queue.slice(), sp = qPos, add = [];
-    lib.hist.forEach(function (h) {
+    contVisible().forEach(function (h) {
       if (!h || !h.id || !(h.t >= 10 && h.dur > 0 && h.t < h.dur - 5)) return;
       if (findIn(lib.queue, h.id) >= 0) return;
       if (lib.queue.length + add.length >= 50) return;
@@ -14422,7 +14431,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var contShufBtn = $("contShufBtn");
   if (contShufBtn) contShufBtn.addEventListener("click", function () {
     var pool = [];
-    lib.hist.forEach(function (h) {
+    contVisible().forEach(function (h) {
       if (!h || !h.id || !(h.t >= 10 && h.dur > 0 && h.t < h.dur - 5)) return;
       pool.push({ id: h.id, title: h.title || "" });
     });
@@ -14453,7 +14462,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var contClearBtn = $("contClearBtn");
   if (contClearBtn) contClearBtn.addEventListener("click", function () {
     var hit = [];
-    lib.hist.forEach(function (h) {
+    contVisible().forEach(function (h) {
       if (!h || !h.id || !(h.t >= 10 && h.dur > 0 && h.t < h.dur - 5)) return;
       hit.push(h);
     });
@@ -14481,7 +14490,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var contTxtBtn = $("contTxtBtn");
   if (contTxtBtn) contTxtBtn.addEventListener("click", function () {
     var hit = [];
-    lib.hist.forEach(function (h) {
+    contVisible().forEach(function (h) {
       if (!h || !h.id || !(h.t >= 10 && h.dur > 0 && h.t < h.dur - 5)) return;
       hit.push(h);
     });
