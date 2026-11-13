@@ -2339,7 +2339,7 @@ setTimeout(done,3000);})();
         <button class="chip" type="button" data-scope="hist" aria-pressed="false">History</button>
       </div>
       <div id="continueWrap" hidden>
-        <div class="lib-head"><h3 id="lhContinue">Continue watching</h3><span class="row"><button class="chip" id="contQueueBtn" type="button">Queue all</button><button class="chip" id="contCopyBtn" type="button">Copy list</button></span></div>
+        <div class="lib-head"><h3 id="lhContinue">Continue watching</h3><span class="row"><button class="chip" id="contQueueBtn" type="button">Queue all</button><button class="chip" id="contShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="contCopyBtn" type="button">Copy list</button></span></div>
         <ul class="lib-list" id="continueList"></ul>
         <p class="lib-empty" id="continueEmpty" hidden><span class="lib-empty-ic" aria-hidden="true">&#9654;</span><span id="continueEmptyTx">Nothing to continue yet. Watch any video for 10 seconds and it will wait for you here.</span></p>
       </div>
@@ -14333,6 +14333,34 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
   });
 
+  // Shuffle play Continue watching (round 221 new 2): the card could line every unfinished
+  // video up in order (Queue all), but an evening of half-watched songs plays better mixed -
+  // favourites and Watch later already had a Shuffle play chip, this card did not. One tap
+  // gathers the same videos Queue all would (10+ seconds in, not finished), queues them in a
+  // fresh shuffled order and starts playing; the saved positions stay put for when each one
+  // comes around. Hindi and Gujarati text, What's new (capped) and feature finder included.
+  Object.assign(TR_MSG, {
+    "Shuffle play Continue watching": ["देखना जारी रखें मिलाकर चलाएं", "ચાલુ જોવાનું ફેરવીને ચલાવો"],
+    "Playing Continue watching in shuffled order: ": ["देखना जारी रखें मिलाकर चला रहे हैं: ", "ચાલુ જોવાનું ફેરવીને ચલાવી રહ્યા છીએ: "],
+    "No continue watching videos to shuffle.": ["मिलाने के लिए कोई जारी वीडियो नहीं.", "ફેરવવા માટે કોઈ ચાલુ વીડિયો નથી."]
+  });
+  var contShufBtn = $("contShufBtn");
+  if (contShufBtn) contShufBtn.addEventListener("click", function () {
+    var pool = [];
+    lib.hist.forEach(function (h) {
+      if (!h || !h.id || !(h.t >= 10 && h.dur > 0 && h.t < h.dur - 5)) return;
+      pool.push({ id: h.id, title: h.title || "" });
+    });
+    if (!pool.length) { toast(T("No continue watching videos to shuffle.")); return; }
+    lib.queue = plShuffled(pool);
+    qPos = -1; resetShuffle(); saveLib(); renderLib();
+    toast(T("Playing Continue watching in shuffled order: ") + lib.queue.length + " " + (lib.queue.length === 1 ? T("video") : T("videos")) + ".");
+    playQueueAt(0);
+    if (frameBox && frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+  });
+  (window.__relang = window.__relang || []).push(function () { if (contShufBtn) { contShufBtn.textContent = T("🎲 Shuffle play"); contShufBtn.setAttribute("aria-label", T("Shuffle play Continue watching")); } });
+  if (contShufBtn) contShufBtn.setAttribute("aria-label", T("Shuffle play Continue watching"));
+
   // Sleep timer: also offer "stop when this video ends" (pauses instead of auto-next).
   var sleepAtEnd = false;
   var sleepVids = 0;
@@ -15873,6 +15901,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Shuffle play Continue watching", "#contShufBtn"],
     ["Favourite from the mini player", "#miniFav"],
     ["Sort picked files by size", "#lpSizeBtn"],
     ["Watch later from the mini player", "#miniLater"],
@@ -15889,7 +15918,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Mute from the mini player", "#miniMute"],
     ["Copy your picked local files", "#lpCopyBtn"],
     ["Copy your saved channels", ".chan-copy"],
-    ["Queue unwatched favourites", "#favQueueUnwBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -22404,6 +22432,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Shuffle play Continue watching", "shuffle play continue watching resume unfinished random mix evening half watched start play", "#contShufBtn"],
       ["Favourite from the mini player", "favourite star mini player floating docked save like keep playing video bookmark heart", "#miniFav"],
       ["Save a playlist as a text file", "save playlist text file download txt titles links readable export keep", "#lhPlaylists"],
       ["Add the playing video to a playlist", "add playing now current video to playlist save collect organise picker", "#infoPlBtn"],
