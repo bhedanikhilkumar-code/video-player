@@ -2169,7 +2169,7 @@ setTimeout(done,3000);})();
       <input id="lpFile" type="file" multiple accept="video/*,audio/*" aria-label="Choose a video or audio file from your device" hidden>
       <div class="row" id="lpPickRow"><button class="chip" id="lpPickBtn" type="button">📁 Choose files</button><span class="hint" id="lpPickName" role="status">No file chosen</span></div>
       <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button><button class="chip" id="lpPip" type="button" hidden>PiP</button><button class="chip" id="lpClose" type="button" disabled>Close files</button></div>
-      <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><div class="row lp-qmodes"><button class="chip" id="lpShuffleBtn" type="button" aria-pressed="false">Shuffle: off</button><button class="chip" id="lpRepeatBtn" type="button" aria-pressed="false">Repeat all: off</button></div><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
+      <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><div class="row lp-qmodes"><button class="chip" id="lpShuffleBtn" type="button" aria-pressed="false">Shuffle: off</button><button class="chip" id="lpRepeatBtn" type="button" aria-pressed="false">Repeat all: off</button><button class="chip" id="lpCopyBtn" type="button">Copy list</button></div><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
       <p class="hint" id="lpSessionMsg" role="status">Select one or more local files. Notification and lock-screen controls are local-file only, where supported by your browser. They do not enable screen-off YouTube playback.</p>
       <video id="lpVideo" controls playsinline preload="metadata" crossorigin="anonymous" class="lp-video" hidden></video>
       <div class="lp-viz" id="lpViz" hidden><canvas id="lpVizCv" height="56"></canvas></div>
@@ -3226,7 +3226,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Gesture pad. Double-tap the left side to go back ": ["जेस्चर पैड. बाईं ओर डबल-टैप से ", "જેસ્ચર પૅડ. ડાબી બાજુ ડબલ-ટૅપથી "],
    " seconds, the right side to go forward ": [" सेकंड पीछे, दाईं ओर से ", " સેકંડ પાછળ, જમણી બાજુથી "],
    " seconds. Swipe up or down to change the volume.": [" सेकंड आगे. आवाज़ के लिए ऊपर/नीचे स्वाइप करें.", " સેકંડ આગળ. અવાજ માટે ઉપર/નીચે સ્વાઇપ કરો."],
-   "Selected files": ["चुनी गई फ़ाइलें", "પસંદ કરેલી ફાઇલો"],
+   "Copy the selected files as a list": ["चुनी गई फ़ाइलें लिस्ट में कॉपी करें", "પસંદ કરેલી ફાઇલો યાદીમાં કૉપી કરો"],
+    "Choose files first, then copy the list.": ["पहले फ़ाइलें चुनें, फिर लिस्ट कॉपी करें.", "પહેલા ફાઇલો પસંદ કરો, પછી યાદી કૉપી કરો."],
+    "File list copied": ["फ़ाइल लिस्ट कॉपी हुई", "ફાઇલ યાદી કૉપી થઈ"],
+    "Selected files": ["चुनी गई फ़ाइलें", "પસંદ કરેલી ફાઇલો"],
    "Current file": ["अभी की फ़ाइल", "હાલની ફાઇલ"],
    "Files stay on this device. Pick files again after a reload.": ["फ़ाइलें इसी डिवाइस पर रहती हैं. रीलोड के बाद फिर चुनें.", "ફાઇલો આ ઉપકરણ પર જ રહે છે. રીલોડ પછી ફરી પસંદ કરો."],
    "Local practice loop": ["लोकल अभ्यास लूप", "લોકલ અભ્યાસ લૂપ"],
@@ -15588,6 +15591,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Copy your picked local files", "#lpCopyBtn"],
     ["Copy your saved channels", ".chan-copy"],
     ["Queue unwatched favourites", "#favQueueUnwBtn"],
     ["Copy this day in history", ".hist-day-c"],
@@ -15596,7 +15600,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Skip buttons in the mini player", "#miniRew"],
     ["Find in lyrics", "#lyrFindQ"],
     ["Snooze all in Watch later", "#laterSnoozeAllBtn"],
-    ["Watch later count on the app icon", "#badgeLater"],
     ["Halve or double the loop", "#abNudgeRow"],
   ];
   Object.assign(TR_MSG, {
@@ -20098,6 +20101,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   (function () { var b = $("lpRepeatBtn"); if (b) b.addEventListener("click", function () { lp.lrepeat = lp.lrepeat >= 2 ? 0 : lp.lrepeat + 1; saveLp(); renderLpModes(); updateLocalButtons(); }); })();
   (window.__relang = window.__relang || []).push(renderLpModes);
   renderLpModes();
+
+  // Copy file list (round 218 new 4): a picked batch of local files could be played, shuffled
+  // and repeated, but not taken out of the app - noting what is in tonight's folder meant
+  // typing names by hand. The Copy list chip next to Shuffle copies them numbered, with each
+  // file's size, through the shared hang-safe copy helper.
+  (function () {
+    var cpBtn = $("lpCopyBtn"); if (!cpBtn) return;
+    function paint() { cpBtn.textContent = T("Copy list"); cpBtn.setAttribute("aria-label", T("Copy the selected files as a list")); }
+    cpBtn.addEventListener("click", function () {
+      if (!localFiles.length) { toast(T("Choose files first, then copy the list.")); return; }
+      var text = localFiles.map(function (f, i) {
+        var mb = f.size ? " (" + (f.size / 1048576).toFixed(f.size < 10485760 ? 1 : 0) + " MB)" : "";
+        return (i + 1) + ". " + f.name + mb;
+      }).join("\n");
+      vpCopySafe(text, function (ok) { toast(ok ? T("File list copied") : T("Could not copy. Try again.")); });
+    });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
   function localPlay() { var p = vid.play(); if (p && p.catch) p.catch(function(){ sessionMsg.textContent = T("Tap Play on the local player to continue. Your browser blocked automatic playback."); }); }
   function playLocalAt(i, auto) {
     if (i < 0 || i >= localFiles.length) return;
@@ -22166,6 +22188,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Finish burst", "finish burst sparks celebration ribbon video ends done complete cheer confetti end", "#finChk"],
       ["Note mark on lists", "note mark pill lists rows library favourites watch later history queue search written remember see glance", "#notesH"],
       ["Queue unwatched favourites", "queue unwatched favourites unfinished not watched add all bulk evening play saved", "#favQueueUnwBtn"],
+      ["Copy your picked local files", "copy selected local files list names sizes clipboard share note whatsapp music folder", "#lpCopyBtn"],
       ["Copy your saved channels", "copy saved channels list favourite channel names links clipboard share friend whatsapp", ".chan-copy"],
       ["Copy your lists", "copy list watch later favourites history clipboard paste share chat titles links", "#laterCopyBtn"],
       ["Copy a playlist", "copy playlist list titles links clipboard paste share chat note text numbered", "#lhPlaylists"],
