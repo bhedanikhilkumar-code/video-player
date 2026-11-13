@@ -26503,6 +26503,53 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       nextMost = !nextMost; paint();
     });
   })();
+
+  // Weekday rhythm (round 255 new 1): Watch stats shows today, the last 7 days and the best
+  // single day, but not which days of the WEEK you usually watch on. This card adds up the
+  // saved daily totals (the last 100 days the app keeps) per weekday and draws seven small
+  // bars, Monday first, with the busiest weekday named. Read-only, worked out on this device,
+  // honest when there is too little data, weekday names follow the app language. Hindi and
+  // Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Weekday rhythm": ["सप्ताह की लय", "અઠવાડિયાની લય"],
+    "Which days of the week you watch most, from the last 100 days on this device.": ["हफ़्ते के किन दिनों में आप सबसे ज़्यादा देखते हैं, इसी डिवाइस के पिछले 100 दिनों से.", "અઠવાડિયાના કયા દિવસોમાં તમે સૌથી વધુ જુઓ છો, આ ડિવાઇસના છેલ્લા 100 દિવસમાંથી."],
+    "Busiest weekday:": ["सबसे व्यस्त दिन:", "સૌથી વ્યસ્ત દિવસ:"],
+    "Not enough watching yet - watch on at least 2 different days to see a pattern.": ["अभी काफ़ी देखा नहीं गया - पैटर्न देखने के लिए कम से कम 2 अलग दिन देखें.", "હજુ પૂરતું જોયું નથી - પેટર્ન જોવા ઓછામાં ઓછા 2 અલગ દિવસ જુઓ."],
+    "total": ["कुल", "કુલ"]
+  });
+  (function () {
+    var host = $("statsBox"); if (!host || !host.parentNode) return;
+    var card = document.createElement("details"); card.id = "weekdayCard"; card.className = "r239-card";
+    card.innerHTML = '<summary></summary><p class="hint r239-desc"></p><div id="wdBars" role="img" style="display:flex;gap:6px;align-items:flex-end;height:84px;margin:10px 0 4px"></div><p class="hint" id="wdMain" role="status"></p>';
+    host.parentNode.insertBefore(card, host.nextSibling);
+    function paint() {
+      card.querySelector("summary").textContent = T("Weekday rhythm");
+      card.querySelector(".r239-desc").textContent = T("Which days of the week you watch most, from the last 100 days on this device.");
+      var bars = $("wdBars"), main = $("wdMain"); bars.textContent = "";
+      var tot = [0, 0, 0, 0, 0, 0, 0], days = 0;
+      Object.keys((stats && stats.days) || {}).forEach(function (k) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(k), s = Number(stats.days[k]) || 0; if (!m || !(s > 0)) return;
+        var wd = (new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])).getDay() + 6) % 7; tot[wd] += s; days++;
+      });
+      var loc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : undefined, max = Math.max.apply(null, tot), best = tot.indexOf(max);
+      if (days < 2 || !(max > 0)) { bars.hidden = true; main.textContent = T("Not enough watching yet - watch on at least 2 different days to see a pattern."); return; }
+      bars.hidden = false;
+      var names = [];
+      for (var i = 0; i < 7; i++) {
+        var nm = new Date(2024, 0, 1 + i).toLocaleDateString(loc, { weekday: "short" }); names.push(nm);
+        var col = document.createElement("div"); col.style.cssText = "flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;font-size:11px;gap:3px";
+        var b = document.createElement("div"); b.style.cssText = "width:100%;border-radius:8px 8px 4px 4px;min-height:3px;background:" + (i === best ? "var(--teal,#14b8a6)" : "color-mix(in srgb, var(--teal,#14b8a6) 38%, transparent)") + ";height:" + Math.max(3, Math.round(tot[i] / max * 56)) + "px";
+        b.title = nm + ": " + fmtWatch(tot[i]);
+        var l = document.createElement("span"); l.textContent = nm; l.style.opacity = i === best ? "1" : ".7"; if (i === best) l.style.fontWeight = "700";
+        col.appendChild(b); col.appendChild(l); bars.appendChild(col);
+      }
+      bars.setAttribute("aria-label", names.map(function (n, i) { return n + " " + fmtWatch(tot[i]); }).join(", "));
+      main.textContent = T("Busiest weekday:") + " " + new Date(2024, 0, 1 + best).toLocaleDateString(loc, { weekday: "long" }) + " (" + fmtWatch(tot[best]) + " " + T("total") + ")";
+    }
+    card.addEventListener("toggle", function () { if (card.open) paint(); });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
 /*R244-END*/
 
 })();
@@ -29066,6 +29113,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Sort queue by rating", "sort queue by rating stars best rated first liked order stars queue order", "#sortRateQueueBtn"],
       ["Sort favourites by most played", "sort favourites most played play count real score order popular replay", "#favSortPlaysBtn"],
       ["Sort a playlist by rating", "sort playlist by rating stars best rated first liked order stars playlist order undo", "#lhPlaylists"],
+      ["Weekday rhythm", "weekday rhythm busiest day of the week monday sunday pattern when do i watch bars stats", "#weekdayCard"],
       ["Find a playlist", "find a playlist filter search saved playlists by name narrow list many playlists scroll", "#plFilterIn"],
       ["Make a copy of a playlist", "make a copy duplicate playlist clone variation season two gym version same videos new name", "#lhPlaylists"],
       ["Sort Continue watching", "sort continue watching order newest almost done just started a to z pick what to finish first resume list", "#contSortBtn"],
