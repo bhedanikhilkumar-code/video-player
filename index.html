@@ -29623,6 +29623,106 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
 
 /*R244-END*/
 
+  // Round 269 new 1: Voice control - say a short command (pause, play, next, previous, forward,
+  // back, louder, quieter, mute, faster, slower) and the player does it. Uses the browser's own
+  // speech recognition, so it only listens after you tap Start listening, and it hides itself
+  // where the browser has none. English, Hinglish and Hindi words are understood.
+  var VOICE269 = [
+    ["unmute", ["unmute", "sound on", "awaaz chalu", "आवाज़ चालू"]],
+    ["mute", ["mute", "silence", "chup", "चुप", "म्यूट"]],
+    ["previous", ["previous", "prev", "go to previous", "last video", "pichla", "pehle wala", "पिछला"]],
+    ["next", ["next", "skip", "agla", "next video", "अगला", "नेक्स्ट"]],
+    ["forward", ["forward", "fast forward", "skip ahead", "ahead", "aage badho", "आगे बढ़ो", "आगे"]],
+    ["back", ["back", "rewind", "go back", "replay", "peeche", "पीछे"]],
+    ["louder", ["louder", "volume up", "turn it up", "increase volume", "awaaz badhao", "tez", "आवाज़ बढ़ाओ", "वॉल्यूम बढ़ाओ"]],
+    ["quieter", ["quieter", "softer", "volume down", "turn it down", "lower volume", "awaaz kam", "dheere", "आवाज़ कम", "धीरे"]],
+    ["faster", ["faster", "speed up", "tez chalao", "तेज़ चलाओ"]],
+    ["slower", ["slower", "slow down", "dheere chalao", "धीरे चलाओ"]],
+    ["pause", ["pause", "stop", "ruko", "ruk jao", "band karo", "रुको", "रुक जाओ", "पॉज़"]],
+    ["play", ["play", "resume", "continue", "chalao", "chalu karo", "शुरू करो", "चलाओ", "प्ले"]]
+  ];
+  // Turns what was heard into one command name, or "" when nothing matches. Longer phrases are
+  // checked first inside each command, and unmute/previous/slower come before their short cousins.
+  function parseVoice269(heard) {
+    var s = " " + String(heard || "").toLowerCase().replace(/[.,!?;:"'()]/g, " ").replace(/\s+/g, " ").trim() + " ";
+    if (s.length < 4) return "";
+    for (var i = 0; i < VOICE269.length; i++) {
+      var ph = VOICE269[i][1];
+      for (var j = 0; j < ph.length; j++) if (s.indexOf(" " + ph[j] + " ") >= 0) return VOICE269[i][0];
+    }
+    return "";
+  }
+  function voiceDo269(cmd) {
+    var b;
+    if (cmd === "pause") { if (playing && (b = $("playBtn"))) b.click(); }
+    else if (cmd === "play") { if (!playing && (b = $("playBtn")) && !b.disabled) b.click(); }
+    else if (cmd === "next") { if ((b = $("nextBtn")) && !b.disabled) b.click(); else return false; }
+    else if (cmd === "previous") { if ((b = $("prevQueueBtn")) && !b.disabled) b.click(); else return false; }
+    else if (cmd === "forward" || cmd === "back") { if (!(duration > 0)) return false; manualSeek(Math.max(0, Math.min(duration, curTime + (cmd === "forward" ? 10 : -10)))); }
+    else if (cmd === "louder" || cmd === "quieter") {
+      var v = $("vol"); if (!v) return false;
+      v.value = String(Math.max(0, Math.min(100, (+v.value || 0) + (cmd === "louder" ? 10 : -10))));
+      v.dispatchEvent(new Event("input", { bubbles: true })); v.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    else if (cmd === "mute" || cmd === "unmute") { b = $("muteBtn"); if (!b) return false; var isMuted = muted === true; if ((cmd === "mute") !== isMuted) b.click(); }
+    else if (cmd === "faster" || cmd === "slower") speedKeyStep(cmd === "faster" ? 1 : -1);
+    else return false;
+    return true;
+  }
+  Object.assign(TR_MSG, {
+    "Voice control": ["आवाज़ से नियंत्रण", "અવાજથી નિયંત્રણ"],
+    "Say a short command and the player obeys: pause, play, next, previous, forward, back, louder, quieter, mute, faster, slower. It listens only after you tap Start listening.": ["छोटा कमांड बोलें और प्लेयर मान लेगा: pause, play, next, previous, forward, back, louder, quieter, mute, faster, slower. यह तभी सुनता है जब आप Start listening दबाएँ.", "ટૂંકો આદેશ બોલો અને પ્લેયર માનશે: pause, play, next, previous, forward, back, louder, quieter, mute, faster, slower. તમે Start listening દબાવો ત્યારે જ તે સાંભળે છે."],
+    "Start listening": ["सुनना शुरू करें", "સાંભળવાનું શરૂ કરો"],
+    "Stop listening": ["सुनना बंद करें", "સાંભળવાનું બંધ કરો"],
+    "Not listening.": ["सुन नहीं रहा.", "સાંભળતું નથી."],
+    "Listening... say a command.": ["सुन रहा है... कमांड बोलें.", "સાંભળે છે... આદેશ બોલો."],
+    "Heard:": ["सुना:", "સાંભળ્યું:"],
+    "No command in that.": ["इसमें कोई कमांड नहीं मिला.", "તેમાં કોઈ આદેશ મળ્યો નથી."],
+    "Done:": ["हो गया:", "થઈ ગયું:"],
+    "That could not be done now.": ["यह अभी नहीं हो सका.", "આ હમણાં થઈ શક્યું નથી."],
+    "Microphone access was blocked. Allow it in the browser to use voice control.": ["माइक्रोफ़ोन की अनुमति रोकी गई. आवाज़ नियंत्रण के लिए ब्राउज़र में अनुमति दें.", "માઇક્રોફોનની પરવાનગી અટકાવાઈ. અવાજ નિયંત્રણ માટે બ્રાઉઝરમાં પરવાનગી આપો."],
+    "This browser has no speech recognition, so voice control is not available here.": ["इस ब्राउज़र में स्पीच रिकग्निशन नहीं है, इसलिए आवाज़ नियंत्रण यहाँ उपलब्ध नहीं.", "આ બ્રાઉઝરમાં સ્પીચ રેકગ્નિશન નથી, તેથી અવાજ નિયંત્રણ અહીં ઉપલબ્ધ નથી."]
+  });
+  (function () {
+    var card = card268("voiceCard269", "Voice control", "#lenCard268"); if (!card) return;
+    var hint = document.createElement("p"); hint.className = "hint"; card.appendChild(hint);
+    var row = document.createElement("div"); row.className = "row"; row.style.marginTop = "8px"; card.appendChild(row);
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "voiceBtn269"; btn.setAttribute("aria-pressed", "false"); row.appendChild(btn);
+    var st = document.createElement("span"); st.className = "label"; st.id = "voiceStatus269"; st.setAttribute("role", "status"); card.appendChild(st);
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var rec = null, on = false, note = "", noteKey = "", noteExtra = "";
+    function paint() {
+      hint.textContent = T("Say a short command and the player obeys: pause, play, next, previous, forward, back, louder, quieter, mute, faster, slower. It listens only after you tap Start listening.");
+      btn.textContent = T(on ? "Stop listening" : "Start listening"); btn.setAttribute("aria-pressed", on ? "true" : "false"); btn.disabled = !SR;
+      st.textContent = !SR ? T("This browser has no speech recognition, so voice control is not available here.") : noteKey ? T(noteKey) + (noteExtra ? " " + noteExtra : "") : on ? T("Listening... say a command.") : T("Not listening.");
+    }
+    function say(k, extra) { noteKey = k; noteExtra = extra || ""; paint(); }
+    function stop() { on = false; try { if (rec) { rec.onend = null; rec.abort(); } } catch (e) {} rec = null; noteKey = ""; noteExtra = ""; paint(); }
+    function start() {
+      if (!SR) return;
+      try {
+        rec = new SR(); rec.continuous = true; rec.interimResults = false; rec.maxAlternatives = 3;
+        rec.lang = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-IN";
+        rec.onresult = function (ev) {
+          for (var i = ev.resultIndex; i < ev.results.length; i++) {
+            if (!ev.results[i].isFinal) continue;
+            var heard = "", cmd = "";
+            for (var j = 0; j < ev.results[i].length && !cmd; j++) { heard = ev.results[i][j].transcript || ""; cmd = parseVoice269(heard); }
+            if (!cmd) { say("No command in that.", "(" + T("Heard:") + " " + String(heard).slice(0, 40) + ")"); continue; }
+            var ok = false; try { ok = voiceDo269(cmd); } catch (e) {}
+            say(ok ? "Done:" : "That could not be done now.", ok ? cmd : "");
+          }
+        };
+        rec.onerror = function (e) { if (e && (e.error === "not-allowed" || e.error === "service-not-allowed")) { stop(); say("Microphone access was blocked. Allow it in the browser to use voice control."); } };
+        rec.onend = function () { if (on) { try { rec.start(); } catch (e) { stop(); } } };
+        on = true; noteKey = ""; rec.start(); paint();
+      } catch (e) { stop(); }
+    }
+    btn.addEventListener("click", function () { if (on) stop(); else start(); });
+    document.addEventListener("visibilitychange", function () { if (document.hidden && on) stop(); });
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+  WNEW.unshift(["Voice control","#voiceCard269"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 })();
 </script>
 <script>
@@ -32313,6 +32413,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var FEATS = [
       ["Queue length filter", "skip long short videos queue length minutes filter auto next too long too short", "#lenCard268"],
       ["Check saved videos", "dead links removed private unavailable broken videos clean queue watch later favourites check", "#chkCard268"],
+      ["Voice control", "voice commands speak say pause play next hands free microphone talk control hinglish ruko agla awaaz", "#voiceCard269"],
       ["Play range", "start end trim play only part of video skip intro outro cut limit section", "#rangeCard268"],
       ["Eye rest", "eye break rest 20-20-20 pause look away tired eyes health reminder", "#eyeCard268"],
       ["Voice announcements", "read title aloud speak announce now playing voice speech driving low vision", "#announceCard268"],
