@@ -9888,6 +9888,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     saveLib(); renderLib();
     toastUndo(T("Day removed from history."), function () { lib.hist = snapH; saveLib(); renderLib(); }, T("History restored"));
   }
+  // Copy this day (round 218 new 1): the day headings could queue or clear a whole day, but
+  // taking one day's videos out of the app (a friend's phone day, a themed evening) meant
+  // copying the full history and trimming by hand. A Copy this day chip puts just that day's
+  // numbered titles and links on the clipboard through the hang-safe copy helper.
+  Object.assign(TR_MSG, {
+    "Copy this day": ["यह दिन कॉपी करें", "આ દિવસ કૉપી કરો"],
+    "Day copied to clipboard": ["दिन कॉपी हुआ", "દિવસ કૉપી થયો"]
+  });
+  function histDayCopy() {
+    var ids = this._ids || []; if (!ids.length) return;
+    var btn = this;
+    var text = ids.map(function (id, i) {
+      var hi = findIn(lib.hist, id);
+      return (i + 1) + ". " + ((hi >= 0 && lib.hist[hi].title) || titleFor(id) || id) + "\nhttps://youtu.be/" + id;
+    }).join("\n");
+    vpCopySafe(text, function (ok) { if (ok && typeof copyTick === "function") copyTick(btn); toast(ok ? T("Day copied to clipboard") : T("Could not copy. Try again.")); });
+  }
   function paintHistDays() {
     if (!histList) return;
     Array.prototype.forEach.call(histList.querySelectorAll(".hist-day"), function (n) { n.remove(); });
@@ -9911,11 +9928,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       hc._ids = curIds;
       hc.addEventListener("click", histDayClear);
       h.appendChild(hc);
+      var hcp = document.createElement("button"); hcp.type = "button"; hcp.className = "chip hist-day-c"; hcp.textContent = T("Copy this day");
+      hcp.setAttribute("aria-label", T("Copy this day") + ": " + lab);
+      hcp._ids = curIds;
+      hcp.addEventListener("click", histDayCopy);
+      h.appendChild(hcp);
       histList.insertBefore(h, li);
     });
   }
   var histDaySt = document.createElement("style");
-  histDaySt.textContent = ".hist-day{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 2px 2px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}.hist-day:first-child{margin-top:2px}:root[data-theme=\"dark\"] .hist-day,:root[data-theme=\"midnight\"] .hist-day{color:#aab2bd}";
+  histDaySt.textContent = ".hist-day{list-style:none;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:10px 2px 2px;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink2)}.hist-day:first-child{margin-top:2px}:root[data-theme=\"dark\"] .hist-day,:root[data-theme=\"midnight\"] .hist-day{color:#aab2bd}";
   document.head.appendChild(histDaySt);
   var baseRenderLibHD = renderLib;
   renderLib = function () { baseRenderLibHD(); paintHistDays(); };
@@ -15523,6 +15545,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Copy this day in history", ".hist-day-c"],
     ["Save a playlist as a text file", "#lhPlaylists"],
     ["Add the playing video to a playlist", "#infoPlBtn"],
     ["Skip buttons in the mini player", "#miniRew"],
@@ -15532,7 +15555,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Halve or double the loop", "#abNudgeRow"],
     ["Copy all notes", "#notesCopyAllBtn"],
     ["Wake all snoozed videos", "#laterWakeBtn"],
-    ["Shuffle play Watch later", "#laterShufBtn"],
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -21932,6 +21954,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["A-B fine-tune nudge chips", "ab loop nudge second fine tune adjust shift point repeat section", "#abNudgeRow"],
       ["Loop last 10s chip", "loop last 10 seconds replay again one tap ab repeat instant", "#abLast10Btn"],
       ["Clear this day chip in history", "clear this day history remove whole date delete undo binge", "#lhHist"],
+      ["Copy this day in history", "copy this day history one day list titles links clipboard share chat whatsapp numbered", ".hist-day-c"],
       ["Queue this day from history", "queue this day history heading yesterday today videos continue carry on add all that day one tap", "#lhHist"],
       ["Star on queue and Watch later rows", "star favourite queue watch later rows toggle without playing fill heart like save", "#queueList"],
       ["Save all queue videos to favourites", "save all queue videos to favourites keep liked starred one tap undo duplicates skipped hearts", "#queueToFavBtn"],
