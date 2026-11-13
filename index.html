@@ -31594,9 +31594,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     // so toggling mono never needs the graph rebuilt.
     var monoN = ctx.createGain(); monoN.channelCountMode = "explicit"; monoN.channelCount = 2;
     node.connect(monoN);
-    var delay276 = ctx.createDelay(2);
-    delay276.delayTime.value = window.__vpDelayValue276 ? window.__vpDelayValue276() / 1000 : 0;
-    monoN.connect(delay276); delay276.connect(ctx.destination); window.__lpDelay276 = delay276;
+    var delay276 = null, output276 = ctx.createGain();
+    output276.gain.value = vid.paused ? 0 : 1; output276.connect(ctx.destination); window.__lpOutput276 = output276;
+    function flushDelay276() {
+      if(delay276){try{monoN.disconnect(delay276);delay276.disconnect();}catch(e){}}
+      delay276=ctx.createDelay(2);delay276.delayTime.value=window.__vpDelayValue276?window.__vpDelayValue276()/1000:0;
+      monoN.connect(delay276);delay276.connect(output276);window.__lpDelay276=delay276;
+    }
+    function muteAndFlush276(){output276.gain.setValueAtTime(0,ctx.currentTime);flushDelay276();}
+    function openOutput276(){output276.gain.setValueAtTime(vid.paused||vid.seeking?0:1,ctx.currentTime);}
+    flushDelay276();
+    ['pause','seeking','emptied','loadstart'].forEach(function(ev){vid.addEventListener(ev,muteAndFlush276);});
+    ['play','playing','seeked'].forEach(function(ev){vid.addEventListener(ev,openOutput276);});
     monoNode = monoN;
     eqNodes = { b: fb, m: fm, t: ft }; nightNode = comp; panNode = pan;
     if (typeof eqApply === "function") eqApply();

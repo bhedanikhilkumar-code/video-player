@@ -43,6 +43,8 @@ now=10;emit(sv,'seeking');const oldHops=hops;for(let i=0;i<4;i++){now+=0.25;sile
 assert(html.includes('window.__lpMeterSource276.connect(analyser)'));
 assert(!html.includes('window.__lpNode.connect(analyser)'));
 assert(html.includes('return ctx.setSinkId(id)'));
+assert(html.includes("['pause','seeking','emptied','loadstart'].forEach"));
+assert(html.includes('output276.gain.setValueAtTime(0,ctx.currentTime);flushDelay276()'));
 assert(html.includes('window.vpStorageWarning276 = storageWarn'));
 for(const name of ['Video contact sheet','Subtitle folder match','Audio sync delay','Local playlist exchange','Browse media folder'])assert(exchange.includes(name),name);
 console.log('round276: script syntax, recipe validation, filename matching, real audio reset and silence-detector regression checks passed');
