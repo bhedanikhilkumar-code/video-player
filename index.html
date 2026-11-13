@@ -16445,7 +16445,22 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
 
   // Saved moments: named, tappable timestamps for the current YouTube video, saved on this device.
   var MARKS_KEY = "vp-marks.v1", marks = {};
-  try { var mkIn = JSON.parse(localStorage.getItem(MARKS_KEY) || "null"); if (mkIn && typeof mkIn === "object") marks = mkIn; } catch (e) {}
+  // Reject corrupt rows before any player-load hook can read or sort them.
+  function cleanMarks261(input) {
+    var out = {};
+    if (!input || typeof input !== "object" || Array.isArray(input)) return out;
+    Object.keys(input).forEach(function (id) {
+      if (!/^[a-zA-Z0-9_-]{11}$/.test(id) || !Array.isArray(input[id])) return;
+      var seen = Object.create(null), a = [];
+      input[id].forEach(function (m) {
+        if (!m || typeof m.t !== "number" || !Number.isFinite(m.t) || m.t < 0 || seen[Math.floor(m.t)] || a.length >= 30) return;
+        var t = Math.floor(m.t); seen[t] = true; a.push({t:t, name:typeof m.name === "string" ? m.name.slice(0,40) : ""});
+      });
+      if (a.length) out[id] = a.sort(function(a,b){return a.t-b.t;});
+    });
+    return out;
+  }
+  try { marks = cleanMarks261(JSON.parse(localStorage.getItem(MARKS_KEY) || "null")); } catch (e) {}
   function marksSave() { try { localStorage.setItem(MARKS_KEY, JSON.stringify(marks)); return true; } catch (e) { storageWarn(); return false; } }
   // Loop a moment (round 146): every saved moment grows a repeat chip - one tap
   // loops the video from that moment to the next saved moment (or to the outro
