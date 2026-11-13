@@ -18108,6 +18108,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Two-week trend", "#trendCard"],
     ["Mark a playlist as watched", "#lhPlaylists"],
     ["Battery guard", "#battGuardRow"],
     ["Hour chart as PNG", "#statsPngBtn"],
@@ -18117,7 +18118,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["History by date", "#histDateCard"],
     ["Moment drill", "#drillCard"],
     ["Picks for now", "#picksCard"],
-    ["Watch by dates", "#dueCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25881,9 +25881,54 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
   Object.assign(TR_MSG, {
+    "Two-week trend": ["दो हफ़्ते का रुझान", "બે અઠવાડિયાનો વલણ"]
+  });
+  Object.assign(TR_MSG, {
     "\u2714 All watched": ["\u2714 सभी देखे हुए", "\u2714 બધા જોયેલા"],
     "Mark a playlist as watched": ["प्लेलिस्ट को देखा हुआ करें", "પ્લેલિસ્ટને જોયેલી કરો"]
   });
+  // Two-week trend (round 252 new 1): Watch stats totals and the 30-day calendar show long
+  // patterns, but the question "am I watching more or less than last week?" needed mental
+  // math across two screens. This card draws the last 14 days as bars with the daily
+  // average as a line and says plainly how the week compares with the one before, in the
+  // app language. Read-only; it lives under Watch stats and repaints with the library.
+  Object.assign(TR_MSG, {
+    "Two-week trend": ["दो हफ़्ते का रुझान", "બે અઠવાડિયાનો વલણ"],
+    "The last 14 days as bars, the average as a line, and how this week compares with the one before.": ["पिछले 14 दिन बार में, औसत रेखा में, और इस हफ़्ते की तुलना पिछले हफ़्ते से.", "છેલ્લા 14 દિવસ બારમાં, સરેરાશ રેખામાં, અને આ અઠવાડિયાની તુલના પાછલા અઠવાડિયા સાથે."],
+    "Nothing watched in the last 14 days.": ["पिछले 14 दिनों में कुछ नहीं देखा गया.", "છેલ્લા 14 દિવસમાં કંઈ જોયું નથી."],
+    "This week:": ["इस हफ़्ते:", "આ અઠવાડિયે:"],
+    "last week:": ["पिछले हफ़्ते:", "પાછલા અઠવાડિયે:"],
+    "Daily average": ["दैनिक औसत", "દૈનિક સરેરાશ"],
+    "No watching": ["कुछ नहीं देखा", "કંઈ જોયું નથી"]
+  });
+  (function(){var host=$('statsBox');if(!host||!host.parentNode)return;
+  var card=document.createElement('details');card.id='trendCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div id="trendBars"></div><p class="hint" id="trendSum" role="status"></p>';
+  host.parentNode.insertBefore(card,host.nextSibling);
+  var stK=document.createElement('style');stK.textContent='#trendBars{display:flex;gap:3px;align-items:flex-end;height:74px;position:relative;margin:8px 0 4px;border-bottom:1px solid rgba(120,140,150,.35);padding-bottom:2px}#trendBars .tr-b{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;position:relative}#trendBars .tr-b i{display:block;border-radius:4px 4px 0 0;background:linear-gradient(180deg,var(--teal),rgba(58,138,119,.55));min-height:3px;transition:height .3s ease}#trendBars .tr-b.today i{box-shadow:0 0 0 1.5px var(--teal)}#trendBars .tr-avg{position:absolute;left:0;right:0;border-top:1.5px dashed var(--teal);opacity:.65;pointer-events:none}#trendBars .tr-lab{position:absolute;top:100%;left:0;right:0;font-size:10px;text-align:center;opacity:.6;margin-top:2px}html.low-fx #trendBars .tr-b i{transition:none}';document.head.appendChild(stK);
+  function days14(){var out=[];var now=new Date();now.setHours(0,0,0,0);
+    for(var i=13;i>=0;i--){var d=new Date(now);d.setDate(d.getDate()-i);var secs=Math.floor((stats&&stats.days&&stats.days[dayKey(d)])||0);out.push({d:d,secs:secs});}
+    return out;}
+  function paint(){card.querySelector('summary').textContent=T('Two-week trend');card.querySelector('.r239-desc').textContent=T('The last 14 days as bars, the average as a line, and how this week compares with the one before.');
+    var box=$('trendBars'),sum=$('trendSum');box.innerHTML='';sum.textContent='';
+    var rows=days14();var tot=rows.reduce(function(a,r){return a+r.secs;},0);
+    var loc=prefs.lang==='hi'?'hi-IN':prefs.lang==='gu'?'gu-IN':'en-US';
+    if(!tot){sum.textContent=T('Nothing watched in the last 14 days.');return;}
+    var max=1;rows.forEach(function(r){if(r.secs>max)max=r.secs;});
+    var avg=Math.round(tot/14);
+    rows.forEach(function(r,idx){var c=document.createElement('div');c.className='tr-b'+(idx===13?' today':'');
+      var bar=document.createElement('i');bar.style.height=Math.max(4,Math.round(r.secs/max*56))+'px';c.appendChild(bar);
+      bar.title=r.d.toLocaleDateString(loc,{weekday:'short',day:'numeric',month:'short'})+': '+(r.secs>0?fmtWatch(r.secs):T('No watching'));
+      c.setAttribute('role','img');c.setAttribute('aria-label',bar.title);
+      if(idx===0||idx===13){var lb=document.createElement('span');lb.className='tr-lab';lb.textContent=r.d.toLocaleDateString(loc,{day:'numeric',month:'narrow'});c.appendChild(lb);}
+      box.appendChild(c);});
+    var avgLine=document.createElement('div');avgLine.className='tr-avg';avgLine.style.bottom=Math.max(4,Math.round(avg/max*56))+'px';avgLine.title=T('Daily average')+': '+fmtWatch(avg);box.appendChild(avgLine);
+    var w2=rows.slice(7).reduce(function(a,r){return a+r.secs;},0),w1=rows.slice(0,7).reduce(function(a,r){return a+r.secs;},0);
+    var cmp=w1>0?Math.round((w2-w1)/w1*100):(w2>0?100:0);
+    sum.textContent=T('This week:')+' '+fmtWatch(w2)+' · '+T('last week:')+' '+fmtWatch(w1)+(w1>0?' ('+(cmp>=0?'+':'')+cmp+'%)':'')+' · '+T('Daily average')+': '+fmtWatch(avg);}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -28442,6 +28487,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Two-week trend", "two week trend 14 days bars average line this week vs last week compare watching more less graph chart", "#trendCard"],
       ["Mark a playlist as watched", "mark playlist watched all videos done finished course catch up progress tick whole list", "#lhPlaylists"],
       ["Battery guard", "battery guard pause video low charge 10 20 30 percent charger off phone dying", "#battGuardRow"],
       ["Hour chart as PNG", "hour chart png save image when you watch pattern share download picture stats", "#statsPngBtn"],
