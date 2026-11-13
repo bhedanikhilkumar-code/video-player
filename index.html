@@ -2354,7 +2354,7 @@ setTimeout(done,3000);})();
         <p class="hint" id="contTime" role="status" hidden></p>
         <p class="lib-empty" id="continueEmpty" hidden><span class="lib-empty-ic" aria-hidden="true">&#9654;</span><span id="continueEmptyTx">Nothing to continue yet. Watch any video for 10 seconds and it will wait for you here.</span></p>
       </div>
-      <div class="lib-head"><h3 id="lhPlaylists">Saved playlists</h3></div>
+      <div class="lib-head"><h3 id="lhPlaylists">Saved playlists</h3><span class="row"><button class="chip" id="plSurpriseBtn" type="button">🎲 Surprise me</button></span></div>
       <div class="row music-controls"><button class="btn" id="playMusicBtn" type="button">Play Music</button><button class="chip" id="saveMusicBtn" type="button">Save queue as Music</button></div>
       <p class="hint">Save your current queue as Music once. Play Music starts that saved list in Music mode. Saved on this device only.</p>
       <div class="pl-save">
@@ -17570,6 +17570,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Surprise playlist", "#plSurpriseBtn"],
     ["Playlists done-by clock", "#plTotalLine"],
     ["Watch later done-by clock", "#laterTime"],
     ["Copy search matches", "#libCopyMatchBtn"],
@@ -21920,6 +21921,40 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     paint();
   })();
 
+  // Surprise playlist (round 232 new 5): Watch later, favourites and Recently watched
+  // each have a one-tap Surprise me, but the collections you organised on purpose did
+  // not - landing on tonight's playlist still meant reading your own list. One chip in
+  // the playlists head picks a random non-empty playlist, replaces the queue with its
+  // videos (up to the 50-video limit), starts the first one and says which playlist it
+  // picked, with the usual Undo toast restoring the old queue and its place. With only
+  // empty playlists it says so honestly. Hindi and Gujarati text, What's new and
+  // feature finder included.
+  Object.assign(TR_MSG, {
+    "Surprise playlist": ["सरप्राइज़ प्लेलिस्ट", "સરપ્રાઇઝ પ્લેલિસ્ટ"],
+    "Play a random playlist": ["कोई प्लेलिस्ट रैंडम चलाएं", "કોઈ પ્લેલિસ્ટ રેન્ડમ ચલાવો"],
+    "Playing the playlist:": ["प्लेलिस्ट चल रही है:", "પ્લેલિસ્ટ ચાલે છે:"],
+    "No playlist has any videos yet.": ["किसी प्लेलिस्ट में अभी वीडियो नहीं.", "કોઈ પ્લેલિસ્ટમાં હજી વીડિયો નથી."]
+  });
+  (function () {
+    var btn = $("plSurpriseBtn"); if (!btn) return;
+    function paint() { btn.textContent = T("🎲 Surprise me"); btn.setAttribute("aria-label", T("Play a random playlist")); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      if (typeof playlists === "undefined" || !Array.isArray(playlists)) { toast(T("No playlist has any videos yet.")); return; }
+      var pool = playlists.filter(function (p) { return p && Array.isArray(p.items) && p.items.length; });
+      if (!pool.length) { toast(T("No playlist has any videos yet.")); return; }
+      var pl = pool[Math.floor(Math.random() * pool.length)];
+      var snap = lib.queue.slice(), sp = qPos;
+      lib.queue = pl.items.slice(0, 50).map(function (x) { return { id: x.id, title: x.title || titleFor(x.id) || "" }; });
+      qPos = -1;
+      saveLib(); renderLib();
+      toastUndo(T("Playing the playlist:") + " " + (pl.name || ""), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+      linkInput.value = lib.queue[0].id;
+      loadVideo(null, null, -1, true);
+      if (frameBox && frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+    });
+  })();
+
   // Quick wins (round 232 new 1): a backlog evening often starts with "just clear the
   // short ones", but picking every 5-minute-or-less video out of a long Watch later list
   // meant reading every row's length. One chip queues them all at once: every un-snoozed,
@@ -24509,6 +24544,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Surprise playlist", "surprise playlist random pick play any collection queue dice luck evening", "#plSurpriseBtn"],
       ["Playlists done-by clock", "playlists done by clock time finish wall clock when done whole collection total length end", "#plTotalLine"],
       ["Watch later done-by clock", "watch later done by clock time finish wall clock when done total length backlog end", "#laterTime"],
       ["Copy search matches", "copy search matches results numbered list clipboard share find hits videos links", "#libCopyMatchBtn"],
