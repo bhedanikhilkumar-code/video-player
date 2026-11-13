@@ -17722,6 +17722,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Storage check", "#storBtn"],
     ["Tidy Watch later", "#tidyBtn"],
     ["Park the rest of the queue", "#qParkBtn"],
     ["Shuffle the rest of the queue", "#qMixRestBtn"],
@@ -22765,6 +22766,62 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     };
   })();
 
+  // Storage check (round 236 new 4): everything the app keeps (lists, notes, history, stats, settings) lives in
+  // this browser's storage, which is small (about 5 MB) and fails silently when full. A panel under Playlists
+  // adds up the app's own keys, shows the total against a 5 MB budget, lists the five biggest in plain
+  // words and says what is safe to trim, so a warning is never a surprise. Read-only: nothing is changed.
+  Object.assign(TR_MSG, {
+    "Storage check": ["स्टोरेज जांच", "સ્ટોરેજ તપાસ"],
+    "Used by this app": ["इस ऐप ने इस्तेमाल किया", "આ એપે વાપર્યું"],
+    "of about 5 MB": ["लगभग 5 MB में से", "લગભગ 5 MB માંથી"],
+    "Plenty of room.": ["काफ़ी जगह है.", "પૂરતી જગ્યા છે."],
+    "Getting full - export a backup and trim notes, history or downloads.": ["भर रहा है - बैकअप निकालें और नोट्स, हिस्ट्री या डाउनलोड घटाएं.", "ભરાઈ રહ્યું છે - બેકઅપ કાઢો અને નોટ્સ, હિસ્ટ્રી કે ડાઉનલોડ ઘટાડો."],
+    "Biggest items": ["सबसे बड़े हिस्से", "સૌથી મોટા ભાગ"],
+    "Library (lists and history)": ["लाइब्रेरी (सूचियां और हिस्ट्री)", "લાઇબ્રેરી (યાદીઓ અને હિસ્ટ્રી)"],
+    "Other data": ["अन्य डेटा", "અન્ય ડેટા"]
+  });
+  (function () {
+    var host = $("binBtn"); if (!host) return;
+    var btn = document.createElement("button"); btn.className = "chip"; btn.type = "button"; btn.id = "storBtn"; btn.setAttribute("aria-expanded", "false");
+    host.parentNode.insertBefore(btn, host);
+    var panel = document.createElement("div"); panel.className = "pl-paste"; panel.id = "storPanel"; panel.hidden = true;
+    host.parentNode.parentNode.insertBefore(panel, host.parentNode.nextSibling);
+    var NAMES = { "vp-library.v1": "Library (lists and history)", "vp-notes.v1": "Notes", "vp-lyrics.v1": "Lyrics", "vp-stats.v1": "Watch stats", "vp-dl-hist": "Downloads", "vp-prefs.v1": "Settings" };
+    function measure() {
+      var tot = 0, items = [];
+      try {
+        for (var i = 0; i < localStorage.length; i++) {
+          var k = localStorage.key(i); if (!k || k.indexOf("vp-") !== 0) continue;
+          var v = localStorage.getItem(k) || ""; var n = (k.length + v.length) * 2; tot += n;
+          items.push({ k: k, n: n });
+        }
+      } catch (e) {}
+      items.sort(function (a, b) { return b.n - a.n; });
+      return { tot: tot, items: items };
+    }
+    function kb(n) { return n >= 1048576 ? (n / 1048576).toFixed(2) + " MB" : Math.max(1, Math.round(n / 1024)) + " KB"; }
+    function paint() {
+      btn.textContent = T("Storage check");
+      if (panel.hidden) return;
+      var m = measure(), pct = Math.min(100, Math.round(m.tot / (5 * 1048576) * 100));
+      panel.innerHTML = "";
+      var h = document.createElement("p"); h.className = "hint"; h.textContent = T("Used by this app") + ": " + kb(m.tot) + " (" + pct + "%) " + T("of about 5 MB"); panel.appendChild(h);
+      var bar = document.createElement("div"); bar.className = "qprog-track"; var fill = document.createElement("i"); fill.className = "qprog-fill"; fill.style.width = Math.max(2, pct) + "%"; bar.appendChild(fill); panel.appendChild(bar);
+      var s = document.createElement("p"); s.className = "hint"; s.textContent = pct >= 70 ? T("Getting full - export a backup and trim notes, history or downloads.") : T("Plenty of room."); panel.appendChild(s);
+      var t = document.createElement("p"); t.className = "hint"; t.textContent = T("Biggest items") + ":"; panel.appendChild(t);
+      m.items.slice(0, 5).forEach(function (it) {
+        var r = document.createElement("div"); r.className = "row bin-row";
+        var a = document.createElement("span"); a.className = "hint bin-t"; a.textContent = T(NAMES[it.k] || "Other data") + (NAMES[it.k] ? "" : " (" + it.k + ")");
+        var b = document.createElement("span"); b.className = "hint"; b.textContent = kb(it.n);
+        r.appendChild(a); r.appendChild(b); panel.appendChild(r);
+      });
+      var cr = document.createElement("div"); cr.className = "row"; var cb = document.createElement("button"); cb.type = "button"; cb.className = "chip"; cb.textContent = T("Close");
+      cb.addEventListener("click", function () { panel.hidden = true; btn.setAttribute("aria-expanded", "false"); }); cr.appendChild(cb); panel.appendChild(cr);
+    }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); paint(); if (!panel.hidden && window.vpExpandSection) window.vpExpandSection("library"); });
+  })();
+
   // Round 234 fix: list rows read '... - Resume 1:00' in English on Hindi and Gujarati pages, and
   // the 'Saved on this device only.' note under Recently watched also stayed English (its
   // translation row pointed at the first paragraph after the list, which became the hidden
@@ -25439,6 +25496,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Shuffle the rest of the queue", "shuffle mix rest queue random upcoming order one time half played", "#qMixRestBtn"],
       ["Park the rest of the queue", "park queue watch later save for later move upcoming clear evening over keep not lose", "#qParkBtn"],
       ["Tidy Watch later", "tidy clean watch later already favourite watched old parked remove clutter", "#tidyBtn"],
+      ["Storage check", "storage space full quota size memory used how much data backup trim 5 mb", "#storBtn"],
       ["Select videos", "select multiple checkbox bulk favourites watch later remove move queue several tick batch", "#selBtn"],
       ["Recently removed", "recently removed bin trash undo restore deleted favourites watch later accident bring back", "#binBtn"],
       ["Add to calendar", "calendar ics event schedule evening plan reminder queue watch later block time session", "#calBtn"],
