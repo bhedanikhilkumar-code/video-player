@@ -27100,6 +27100,41 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint);
     paint();
   })();
+  // Channels as OPML (round 258 new 3): saved channels could be imported from Google Takeout but
+  // not taken out again. A chip beside Import YouTube subscriptions writes them as an OPML file,
+  // the list format RSS readers (Feedly, NetNewsWire, Inoreader) import, with each channel's
+  // public video feed. A feed needs the channel's UC... id, so only channels saved with a
+  // /channel/UC... link can go in; the message says how many were left out and why.
+  // Hindi and Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Channels as OPML": ["चैनल OPML में", "ચેનલ OPML માં"],
+    "OPML file saved: 1 channel": ["OPML फ़ाइल सेव हुई: 1 चैनल", "OPML ફાઇલ સેવ થઈ: 1 ચેનલ"],
+    "OPML file saved: {n} channels": ["OPML फ़ाइल सेव हुई: {n} चैनल", "OPML ફાઇલ સેવ થઈ: {n} ચેનલ"],
+    "{n} left out - only channels saved with a /channel/UC... link have a feed.": ["{n} छोड़े गए - सिर्फ़ /channel/UC... लिंक वाले चैनल का फ़ीड होता है.", "{n} બાકાત - ફક્ત /channel/UC... લિંક વાળી ચેનલનું ફીડ હોય છે."],
+    "No saved channel has a channel link with a feed.": ["किसी सेव चैनल के पास फ़ीड वाला चैनल लिंक नहीं है.", "કોઈ સેવ ચેનલ પાસે ફીડ વાળી ચેનલ લિંક નથી."]
+  });
+  (function () {
+    var row = $("chanImportRow"); if (!row) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "chanOpmlBtn"; row.appendChild(btn);
+    var msg = document.createElement("p"); msg.className = "hint"; msg.id = "chanOpmlMsg"; msg.setAttribute("role", "status"); row.parentNode.insertBefore(msg, row.nextSibling);
+    function paint() { btn.textContent = "\uD83D\uDCE4 " + T("Channels as OPML"); }
+    function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+    btn.addEventListener("click", function () {
+      var ok = [], out = 0;
+      vpChans.forEach(function (c) { var m = /youtube\.com\/channel\/(UC[A-Za-z0-9_-]{22})/.exec(c.u || ""); if (m) ok.push({ n: c.n, id: m[1] }); else out++; });
+      if (!ok.length) { msg.textContent = T("No saved channel has a channel link with a feed."); return; }
+      var xml = '<?xml version="1.0" encoding="UTF-8"?>\n<opml version="2.0">\n  <head><title>YouTube channels</title></head>\n  <body>\n    <outline text="YouTube channels" title="YouTube channels">\n' + ok.map(function (c) {
+        return '      <outline type="rss" text="' + esc(c.n) + '" title="' + esc(c.n) + '" xmlUrl="https://www.youtube.com/feeds/videos.xml?channel_id=' + c.id + '" htmlUrl="https://www.youtube.com/channel/' + c.id + '"/>\n';
+      }).join("") + "    </outline>\n  </body>\n</opml>\n";
+      try {
+        var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([xml], { type: "text/x-opml" })); a.download = "youtube-channels.opml";
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+        msg.textContent = (ok.length === 1 ? T("OPML file saved: 1 channel") : T("OPML file saved: {n} channels").replace("{n}", ok.length)) + (out ? " " + T("{n} left out - only channels saved with a /channel/UC... link have a feed.").replace("{n}", out) : "");
+      } catch (e) { msg.textContent = T("Could not copy. Try again."); }
+    });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
   // r258-end
 
   // Sort Watch later by most played (round 256 new 1): Watch later could be sorted A to Z
@@ -29927,6 +29962,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["List overlap", "list overlap duplicates watch later already queued favourite remove tidy clean up", "#laterOverlapCard"],
       ["Import browser bookmarks", "import browser bookmarks bookmarks.html chrome safari firefox edge export youtube links watch later favourites move switch", "#bmCard"],
       ["Export as browser bookmarks", "export browser bookmarks bookmarks.html chrome safari firefox edge save queue favourites watch later playlists folders backup", "#bmExpCard"],
+      ["Channels as OPML", "channels opml rss feed export feedly inoreader netnewswire subscriptions saved channels reader", "#chanOpmlBtn"],
       ["Weekly totals", "weekly totals weeks compare best week bars watch stats last 8 weeks trend heavier lighter", "#weeklyCard"],
       ["Share Watch later", "share watch later link send backlog list another device phone add replace", "#laterShareBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
