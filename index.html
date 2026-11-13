@@ -2339,7 +2339,7 @@ setTimeout(done,3000);})();
         <button class="chip" type="button" data-scope="hist" aria-pressed="false">History</button>
       </div>
       <div id="continueWrap" hidden>
-        <div class="lib-head"><h3 id="lhContinue">Continue watching</h3><span class="row"><button class="chip" id="contCopyBtn" type="button">Copy list</button></span></div>
+        <div class="lib-head"><h3 id="lhContinue">Continue watching</h3><span class="row"><button class="chip" id="contQueueBtn" type="button">Queue all</button><button class="chip" id="contCopyBtn" type="button">Copy list</button></span></div>
         <ul class="lib-list" id="continueList"></ul>
         <p class="lib-empty" id="continueEmpty" hidden><span class="lib-empty-ic" aria-hidden="true">&#9654;</span><span id="continueEmptyTx">Nothing to continue yet. Watch any video for 10 seconds and it will wait for you here.</span></p>
       </div>
@@ -14229,6 +14229,36 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   renderContinue();
 
+  // Queue all from Continue watching (round 220 new 2): the card gathers everything you
+  // started and have not finished, but lining the whole set up for an evening meant opening
+  // each row (or queueing day by day from history). One chip adds every Continue watching
+  // video to the queue in its shown order, skipping ones already queued and stopping at the
+  // 50-video limit, with Undo that restores the queue exactly. Hindi and Gujarati text,
+  // What's new (kept at 10) and feature finder included.
+  Object.assign(TR_MSG, {
+    "Queue all": ["सभी कतार में डालें", "બધું કતારમાં નાખો"],
+    "Add every Continue watching video to the queue": ["देखना जारी रखें के सभी वीडियो कतार में डालें", "ચાલુ જોવાની દરેક વીડિયો કતારમાં નાખો"],
+    "No continue watching videos to add - they are all queued (or the queue is full).": ["डालने के लिए कोई जारी वीडियो नहीं - सभी कतार में हैं (या कतार भरी है).", "નાખવા માટે કોઈ ચાલુ વીડિયો નથી - બધી કતારમાં છે (કે કતાર ભરાઈ છે)."],
+    "Queue all of Continue watching": ["देखना जारी रखें सभी कतार में", "ચાલુ જોવાનું બધું કતારમાં"]
+  });
+  var contQueueBtn = $("contQueueBtn");
+  function contQueuePaint() { if (contQueueBtn) { contQueueBtn.textContent = T("Queue all"); contQueueBtn.setAttribute("aria-label", T("Add every Continue watching video to the queue")); } }
+  (window.__relang = window.__relang || []).push(contQueuePaint);
+  contQueuePaint();
+  if (contQueueBtn) contQueueBtn.addEventListener("click", function () {
+    var snap = lib.queue.slice(), sp = qPos, add = [];
+    lib.hist.forEach(function (h) {
+      if (!h || !h.id || !(h.t >= 10 && h.dur > 0 && h.t < h.dur - 5)) return;
+      if (findIn(lib.queue, h.id) >= 0) return;
+      if (lib.queue.length + add.length >= 50) return;
+      add.push({ id: h.id, title: h.title || "" });
+    });
+    if (!add.length) { toast(T("No continue watching videos to add - they are all queued (or the queue is full).")); return; }
+    add.forEach(function (x) { lib.queue.push(x); });
+    saveLib(); renderLib();
+    toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+  });
+
   // Sleep timer: also offer "stop when this video ends" (pauses instead of auto-next).
   var sleepAtEnd = false;
   var sleepVids = 0;
@@ -15769,6 +15799,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Queue all of Continue watching", "#contQueueBtn"],
     ["Clear watched favourites", "#favClrWBtn"],
     ["Copy the continue watching list", "#contCopyBtn"],
     ["Only unwatched in history", "#histUnwBtn"],
@@ -15785,7 +15816,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Save a playlist as a text file", "#lhPlaylists"],
     ["Add the playing video to a playlist", "#infoPlBtn"],
     ["Skip buttons in the mini player", "#miniRew"],
-    ["Snooze all in Watch later", "#laterSnoozeAllBtn"],
   ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -22464,6 +22494,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Aurora glow", "aurora glow northern lights colours ribbons drift video frame pretty ambience sky", "#auroraChk"],
       ["Volume waves", "volume waves ripples rings sound level loud quiet feedback glass frame", "#vwaveChk"],
       ["Start over", "start over beginning restart from zero resumed partway video watch again fresh", "#infoCard"],
+      ["Queue all of Continue watching", "queue all continue watching resume unfinished line up evening add every video", "#contQueueBtn"],
       ["Time left in Continue watching", "time left remaining continue watching how much left unwatched minutes fit break", "#lhContinue"],
       ["Magnetic moments", "magnet magnetic snap moment dot seek bar stick sticks exact saved moment scrub drag", "#seek"],
       ["Fine scrub", "fine scrub precise exact second press hold seek bar slow accurate adjust", "#seek"],
