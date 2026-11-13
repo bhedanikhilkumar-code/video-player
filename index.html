@@ -27472,10 +27472,20 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   });
   (function () {
     var KEY = "vp-activity.v1", MAXN = 100, NAMES = { queue: "Queue", later: "Watch later", favs: "Favourites" };
-    var log = []; try { var a = JSON.parse(localStorage.getItem(KEY) || "[]"); if (Array.isArray(a)) log = a.filter(function (e) { return e && typeof e.t === "number" && NAMES[e.l] && Array.isArray(e.x) && (e.k === "a" || e.k === "r"); }).slice(0, MAXN); } catch (e) {}
+    var log = [];
+    function loadLog() { try { var a = JSON.parse(localStorage.getItem(KEY) || "[]"); if (Array.isArray(a)) log = a.filter(function (e) { return e && typeof e.t === "number" && NAMES[e.l] && Array.isArray(e.x) && (e.k === "a" || e.k === "r"); }).slice(0, MAXN); } catch (e) {} }
+    loadLog();
     function snap() { var o = {}; Object.keys(NAMES).forEach(function (k) { o[k] = (lib[k] || []).map(function (x) { return { id: x.id, title: x.title || "" }; }); }); return o; }
     var prev = snap(), card = null;
     function persist() { try { localStorage.setItem(KEY, JSON.stringify(log)); } catch (e) {} }
+    // Round 262 fix: with the app open in two tabs, the other tab's changes were never shown here
+    // and this tab's next save diffed against a stale snapshot, so the same add or remove was
+    // logged a second time. A library save elsewhere resets the snapshot (the other tab already
+    // wrote its own log lines, shared through storage) and a log write elsewhere refreshes the view.
+    window.addEventListener("storage", function (e) {
+      if (e.key === "vp-library.v1") prev = snap();
+      if (e.key === KEY) { loadLog(); if (card && card.open) paint(); }
+    });
     var baseSave = saveLib;
     saveLib = function () {
       var r = baseSave.apply(this, arguments), now = snap(), changed = false;
