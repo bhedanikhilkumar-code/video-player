@@ -2408,7 +2408,7 @@ setTimeout(done,3000);})();
       <div class="lib-head"><h3 id="lhLater">Watch later</h3><span class="row"><button class="chip" id="laterAutoBtn" type="button" aria-pressed="false">Auto-remove watched: off</button><button class="chip" id="laterUnwBtn" type="button" aria-pressed="false">Only unwatched: off</button><button class="chip" id="laterQueueBtn" type="button">➕ Queue unwatched</button><button class="chip" id="laterShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="laterWakeBtn" type="button" hidden>⏰ Wake all</button><button class="chip" id="laterSnoozeAllBtn" type="button" hidden>😴 Snooze all</button><button class="chip" id="laterSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="laterPlBtn" type="button">Save as playlist</button><button class="chip" id="laterTxtBtn" type="button">Save as text file</button><button class="chip" id="laterCopyBtn" type="button">Copy list</button><button class="chip" id="laterClrWBtn" type="button">Clear watched</button><button class="chip" id="laterTrimBtn" type="button">Trim old (30d+)</button><button class="chip" id="laterClearBtn" type="button">Clear</button></span></div>
       <ul class="lib-list" id="laterList"></ul>
       <p class="hint" id="laterTime" role="status"></p>
-      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favQueueUnwBtn" type="button">➕ Queue unwatched</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button></span></div>
+      <div class="lib-head"><h3 id="lhFavs">Favourites</h3><span class="row"><button class="chip" id="surpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="favTxtBtn" type="button">Save as text file</button><button class="chip" id="favCopyBtn" type="button">Copy list</button><button class="chip" id="favQueueBtn" type="button">➕ Queue favourites</button><button class="chip" id="favQueueUnwBtn" type="button">➕ Queue unwatched</button><button class="chip" id="favShufBtn" type="button">🎲 Shuffle play</button><button class="chip" id="favPlBtn" type="button">Save as playlist</button></span></div>
       <div class="row chan-row" id="chanRow" hidden><span class="label" id="chanRowLab">Saved channels</span><span class="chips" id="chanChips"></span></div>
       <ul class="lib-list" id="favList"></ul>
       <p class="hint" id="favTime" role="status"></p>
@@ -4787,6 +4787,30 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   (window.__relang = window.__relang || []).push(function () { if (laterShufBtn) { laterShufBtn.textContent = T("🎲 Shuffle play"); laterShufBtn.setAttribute("aria-label", T("Shuffle play Watch later")); } });
   if (laterShufBtn) laterShufBtn.setAttribute("aria-label", T("Shuffle play Watch later"));
+
+  // Shuffle play favourites (round 219 new 1): Watch later and every saved playlist had a
+  // Shuffle play chip, but favourites - the list people curate most - only had Surprise me
+  // (one random video) or Queue favourites (in saved order). One tap now queues every
+  // favourite in a fresh shuffled order and starts playing, exactly like the Watch later
+  // chip; the saved favourites order is untouched. Hindi and Gujarati text, What's new and
+  // feature finder included.
+  Object.assign(TR_MSG, {
+    "Shuffle play favourites": ["पसंदीदा मिलाकर चलाएं", "મનપસંદ ફેરવીને ચલાવો"],
+    "Playing favourites in shuffled order: ": ["पसंदीदा मिलाकर चला रहे हैं: ", "મનપસંદ ફેરવીને ચલાવી રહ્યા છીએ: "],
+    "No favourites to shuffle.": ["मिलाने के लिए कोई पसंदीदा नहीं.", "ફેરવવા માટે કોઈ મનપસંદ નથી."]
+  });
+  var favShufBtn = $("favShufBtn");
+  if (favShufBtn) favShufBtn.addEventListener("click", function () {
+    var pool = lib.favs.filter(function (it) { return it && typeof it.id === "string"; });
+    if (!pool.length) { showLibErr(T("No favourites to shuffle.")); return; }
+    lib.queue = plShuffled(pool.map(function (it) { return { id: it.id, title: it.title || "" }; }));
+    qPos = -1; resetShuffle(); saveLib(); renderLib(); showLibErr("");
+    toast(T("Playing favourites in shuffled order: ") + lib.queue.length + " " + (lib.queue.length === 1 ? T("video") : T("videos")) + ".");
+    playQueueAt(0);
+    if (frameBox && frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+  });
+  (window.__relang = window.__relang || []).push(function () { if (favShufBtn) { favShufBtn.textContent = T("🎲 Shuffle play"); favShufBtn.setAttribute("aria-label", T("Shuffle play favourites")); } });
+  if (favShufBtn) favShufBtn.setAttribute("aria-label", T("Shuffle play favourites"));
 
   // Round 214 new 3: Wake all snoozed - snoozing hides a Watch-later video for days one row at a
   // time, but after a busy stretch the only way back was tapping each snooze chip in turn. One
@@ -15608,6 +15632,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Shuffle play favourites", "#favShufBtn"],
     ["Mute from the mini player", "#miniMute"],
     ["Copy your picked local files", "#lpCopyBtn"],
     ["Copy your saved channels", ".chan-copy"],
@@ -22017,6 +22042,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Snooze all in Watch later", "snooze all watch later park hide backlog every video one day wake undo", "#laterSnoozeAllBtn"],
       ["Copy all notes", "copy all notes clipboard share study text every saved note paste", "#notesCopyAllBtn"],
       ["Wake all snoozed videos", "wake all snoozed watch later sleeping hidden come back unsnooze every", "#laterWakeBtn"],
+      ["Shuffle play favourites", "shuffle play favourites random mix starred saved videos evening start play all", "#favShufBtn"],
       ["Shuffle play Watch later", "shuffle play watch later saved videos random mix evening start play all", "#laterShufBtn"],
       ["Clear finished downloads", "clear finished done completed failed download queue make room tidy remove", "#dlQClearFin"],
       ["Enter opens the first search match", "enter return open first search match result library keyboard play top hit", "#libSearch"],
