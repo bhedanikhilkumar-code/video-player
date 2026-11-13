@@ -2225,6 +2225,8 @@ setTimeout(done,3000);})();
         <p class="hint" id="whatsNewHint">The latest additions to the app - tap one to jump straight to it.</p>
         <ul class="wnew-list" id="whatsNewList"></ul>
       </div>
+      <div class="row faq-search-row"><input id="faqSearch" type="search" placeholder="Search help" aria-label="Search help questions" autocomplete="off" spellcheck="false"></div>
+      <p class="hint" id="faqSearchMsg" role="status" hidden></p>
       <details class="faq"><summary id="faq1s">How do I play a video?</summary><p id="faq1a">Paste any YouTube link in the first box and tap Load video. You can also add several links to the queue and they will play one after another.</p></details>
       <details class="faq"><summary id="faq2s">Can I download YouTube videos?</summary><p id="faq2a">No. YouTube does not allow downloading, so this app plays YouTube links in the player instead. The downloader works for many other sites, for example TikTok, TED, SoundCloud and Streamable.</p></details>
       <details class="faq"><summary id="faq3s">Why does the downloader say "waking up the free server"?</summary><p id="faq3a">The download helper runs on a free server that sleeps when nobody uses it. The first request wakes it, which can take up to a minute. After that it is fast.</p></details>
@@ -11790,6 +11792,39 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Hindi and Gujarati pages; label is translated and refreshed with the language.
   Object.assign(TR_MSG, { "Play or pause": ["\u091a\u0932\u093e\u090f\u0902 \u092f\u093e \u0930\u094b\u0915\u0947\u0902", "\u0a9a\u0ab2\u0abe\u0ab5\u0acb \u0a95\u0ac7 \u0ab0\u0acb\u0a95\u0acb"] });
   (window.__relang = window.__relang || []).push(function () { var mp = $("miniPlay"); if (mp) mp.setAttribute("aria-label", T("Play or pause")); });
+  // Search the help (round 216): the Help and FAQ card is ten questions long and could only be
+  // scrolled. A search box above them filters the questions as you type (matching the question
+  // and its answer in whichever language the page shows), opens the matches, says how many
+  // matched or that none did, and puts every question back the way it was when cleared.
+  Object.assign(TR_MSG, {
+    "Search help": ["\u092e\u0926\u0926 \u092e\u0947\u0902 \u0916\u094b\u091c\u0947\u0902", "\u0aae\u0aa6\u0aa6\u0aae\u0abe\u0a82 \u0ab6\u0acb\u0aa7\u0acb"],
+    "Search help questions": ["\u092e\u0926\u0926 \u0915\u0947 \u0938\u0935\u093e\u0932 \u0916\u094b\u091c\u0947\u0902", "\u0aae\u0aa6\u0aa6\u0aa8\u0abe \u0aaa\u0acd\u0ab0\u0ab6\u0acd\u0aa8\u0acb \u0ab6\u0acb\u0aa7\u0acb"],
+    "No question matches that.": ["\u0907\u0938\u0938\u0947 \u0915\u094b\u0908 \u0938\u0935\u093e\u0932 \u092e\u0947\u0932 \u0928\u0939\u0940\u0902 \u0916\u093e\u0924\u093e\u0964", "\u0a86\u0aa8\u0ac0 \u0ab8\u0abe\u0aa5\u0ac7 \u0a95\u0acb\u0a88 \u0aaa\u0acd\u0ab0\u0ab6\u0acd\u0aa8 \u0aae\u0ac7\u0ab3 \u0a96\u0abe\u0aa4\u0acb \u0aa8\u0aa5\u0ac0."],
+    "{n} of {total} questions": ["{total} \u092e\u0947\u0902 \u0938\u0947 {n} \u0938\u0935\u093e\u0932", "{total} \u0aae\u0abe\u0a82\u0aa5\u0ac0 {n} \u0aaa\u0acd\u0ab0\u0ab6\u0acd\u0aa8\u0acb"],
+    "Search the help": ["\u092e\u0926\u0926 \u092e\u0947\u0902 \u0916\u094b\u091c\u0947\u0902", "\u0aae\u0aa6\u0aa6\u0aae\u0abe\u0a82 \u0ab6\u0acb\u0aa7\u0acb"]
+  });
+  (function () {
+    var box = $("faqSearch"), msg = $("faqSearchMsg"); if (!box || !msg) return;
+    var items = [].slice.call(document.querySelectorAll("details.faq"));
+    function run() {
+      var q = box.value.trim().toLowerCase(), n = 0;
+      items.forEach(function (d) {
+        if (d.getAttribute("data-was") === null) d.setAttribute("data-was", d.open ? "1" : "0");
+        if (!q) { d.hidden = false; d.open = d.getAttribute("data-was") === "1"; d.removeAttribute("data-was"); n++; return; }
+        var hit = d.textContent.toLowerCase().indexOf(q) >= 0;
+        d.hidden = !hit; if (hit) { d.open = true; n++; }
+      });
+      if (!q) { msg.hidden = true; msg.textContent = ""; return; }
+      msg.hidden = false;
+      msg.textContent = n ? T("{n} of {total} questions").replace("{n}", n).replace("{total}", items.length) : T("No question matches that.");
+    }
+    box.addEventListener("input", run);
+    (window.__relang = window.__relang || []).push(function () {
+      box.setAttribute("placeholder", T("Search help")); box.setAttribute("aria-label", T("Search help questions"));
+      if (box.value.trim()) run();
+    });
+  })();
+
   // Data Saver suggestion (round 215): many phones run with the system's Data Saver
   // always on, but the app's own Data saver (480p cap, no list thumbnails) sits in
   // Settings unnoticed. When the phone reports saveData, the app offers its matching
@@ -15261,6 +15296,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "{n} files chosen": ["{n} फ़ाइलें चुनी गईं", "{n} ફાઇલો પસંદ થઈ"]
   });
   var WNEW = [
+    ["Search the help", "#faqSearch"],
     ["Battery saver suggestion", "#saverBatt"],
     ["Data Saver suggestion", "#saverData"],
     ["Halve or double the loop", "#abNudgeRow"],
@@ -15269,8 +15305,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     ["Shuffle play Watch later", "#laterShufBtn"],
     ["Clear finished downloads", "#dlQClearFin"],
     ["Stop the sleep timer from the pill", "#ctl-sleep"],
-    ["Sort Oldest first", "#lhLater"],
-    ["Press / to find in the library", "#libSearch"]
+    ["Sort Oldest first", "#lhLater"]
   ];
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -21652,6 +21687,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Tap a note to dismiss it", "tap toast note dismiss close early notification banner bottom controls hide", "#vpToast"],
       ["Shuffle play from the queue", "shuffle play random queue video pick any luck dice mix now playing", "#shufflePlayBtn"],
       ["Battery saver suggestion", "battery saver suggestion low battery 20 percent offer turn on calm animations power saving phone", "#saverBatt"],
+      ["Search the help", "search the help faq questions find answer filter help card type keyword support how do i", "#faqSearch"],
       ["Halve or double the loop", "halve double loop length scale a-b repeat window half twice longer shorter same middle practice", "#abNudgeRow"],
       ["Data Saver suggestion", "data saver suggestion phone system save data offer turn on less mobile data 480p thumbnails", "#saverData"],
       ["Shift+Arrow fine seek", "shift arrow fine seek one second precise keyboard arrow keys exact frame practice", "#sc28"],
