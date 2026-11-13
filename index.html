@@ -18008,6 +18008,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Activity calendar", "#actCalCard"],
     ["Repeat titles", "#repeatCard"],
     ["Overlapping playlists", "#overlapCard"],
     ["Mix builder", "#mixCard"],
@@ -18017,7 +18018,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Library check", "#libCheckCard"],
     ["Print your lists", "#printCard"],
     ["Customize shortcuts", "#keymapCard"],
-    ["Playlist QR code", "#plList"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24228,6 +24228,56 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var oldRL3=renderLib;renderLib=function(){oldRL3();if(card.open)paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Activity calendar (round 245 new 1): Watch stats list days, a weekday chart and a best day, but
+  // nothing shows the month at a glance. This card draws a month grid (Mon-Sun) from the on-device
+  // watch seconds per day, shaded by how long you watched, with the active days of the month, the
+  // current streak and the longest streak. Watch seconds are only kept for the last 100 days, so
+  // older months are empty and say so. Tap a day to read its minutes. Nothing is stored.
+  Object.assign(TR_MSG, {
+    "Activity calendar": ["एक्टिविटी कैलेंडर", "એક્ટિવિટી કેલેન્ડર"],
+    "Each day you watched is shaded by how long. Kept for the last 100 days.": ["जिस दिन देखा वह कितनी देर देखा उसके हिसाब से रंगा है. पिछले 100 दिन रखे जाते हैं.", "જે દિવસે જોયું તે કેટલું જોયું તે મુજબ રંગાયેલ છે. છેલ્લા 100 દિવસ રખાય છે."],
+    "Active days this month:": ["इस महीने सक्रिय दिन:", "આ મહિને સક્રિય દિવસ:"],
+    "Current streak:": ["मौजूदा लगातार दिन:", "હાલના સતત દિવસ:"],
+    "Longest streak:": ["सबसे लंबे लगातार दिन:", "સૌથી લાંબા સતત દિવસ:"],
+    "days": ["दिन", "દિવસ"],
+    "Previous month": ["पिछला महीना", "પાછલો મહિનો"],
+    "Next month": ["अगला महीना", "આગલો મહિનો"],
+    "No watching recorded": ["कोई वॉच दर्ज नहीं", "કોઈ જોવાનું નોંધાયું નથી"],
+    "watched": ["देखा", "જોયું"],
+    "Older than the 100 days kept on this device.": ["यह डिवाइस पर रखे 100 दिनों से पुराना.", "આ ડિવાઇસ પર રખાયેલા 100 દિવસથી જૂનું."]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='actCalCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="ac-nav"><button type="button" class="chip" id="acPrev"></button><b id="acTitle" role="status"></b><button type="button" class="chip" id="acNext"></button></div><div class="ac-grid" id="acGrid" role="grid"></div><p class="hint" id="acSum"></p><p class="hint" id="acDay" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var st=document.createElement('style');st.textContent='#actCalCard .ac-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0}#actCalCard .ac-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}#actCalCard .ac-h{font-size:11px;text-align:center;color:var(--ink2)}#actCalCard .ac-d{aspect-ratio:1;min-height:34px;border-radius:12px;border:1px solid #8ba9a833;background:#ffffff1c;color:inherit;font:inherit;font-size:12px;padding:0;cursor:pointer;box-shadow:inset 0 1px 0 #ffffff33}#actCalCard .ac-d[data-l="1"]{background:#2bb59a40}#actCalCard .ac-d[data-l="2"]{background:#2bb59a80}#actCalCard .ac-d[data-l="3"]{background:#2bb59ac8;color:#04231d;font-weight:700}#actCalCard .ac-d.today{outline:2px solid var(--teal);outline-offset:1px}#actCalCard .ac-e{visibility:hidden}html.high-contrast #actCalCard .ac-d{border:1px solid currentColor}html.high-contrast #actCalCard .ac-d[data-l="3"]{background:currentColor;color:var(--card)}';document.head.appendChild(st);
+  var mon=new Date();mon.setDate(1);mon.setHours(12,0,0,0);
+  function loc(){var l=document.documentElement.lang;return l==='hi'?'hi-IN':l==='gu'?'gu-IN':undefined;}
+  function key(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function secs(d){var v=stats&&stats.days?stats.days[key(d)]:0;return v>0?v:0;}
+  function streaks(){var cur=0,best=0,run=0,today=new Date();today.setHours(12,0,0,0);for(var i=100;i>=0;i--){var d=new Date(today.getTime()-i*86400000);if(secs(d)>=1){run++;if(run>best)best=run;}else run=0;}
+    var d0=new Date(today);if(secs(d0)<1)d0=new Date(today.getTime()-86400000);while(secs(d0)>=1){cur++;d0=new Date(d0.getTime()-86400000);}return {cur:cur,best:best};}
+  function level(s){return s<=0?0:s<900?1:s<3600?2:3;}
+  function mins(s){return Math.max(1,Math.round(s/60));}
+  function paint(){card.querySelector('summary').textContent=T('Activity calendar');card.querySelector('.r239-desc').textContent=T('Each day you watched is shaded by how long. Kept for the last 100 days.');
+    $('acPrev').textContent='‹';$('acPrev').setAttribute('aria-label',T('Previous month'));$('acNext').textContent='›';$('acNext').setAttribute('aria-label',T('Next month'));
+    $('acTitle').textContent=mon.toLocaleDateString(loc(),{month:'long',year:'numeric'});
+    var g=$('acGrid');g.textContent='';var first=(mon.getDay()+6)%7;
+    for(var w=0;w<7;w++){var h=document.createElement('div');h.className='ac-h';h.textContent=new Date(2024,0,1+w).toLocaleDateString(loc(),{weekday:'narrow'});g.appendChild(h);}
+    for(var e=0;e<first;e++){var x=document.createElement('div');x.className='ac-e';g.appendChild(x);}
+    var dim=new Date(mon.getFullYear(),mon.getMonth()+1,0).getDate(),act=0,todayK=key(new Date());
+    for(var n=1;n<=dim;n++){var d=new Date(mon.getFullYear(),mon.getMonth(),n,12);var s=secs(d);if(s>=1)act++;
+      var b=document.createElement('button');b.type='button';b.className='ac-d'+(key(d)===todayK?' today':'');b.dataset.l=String(level(s));b.textContent=String(n);
+      b.setAttribute('aria-label',d.toLocaleDateString(loc(),{day:'numeric',month:'long'})+': '+(s>=1?mins(s)+' '+T('min'):T('No watching recorded')));
+      (function(d,s,b){b.addEventListener('click',function(){var old=d.getTime()<Date.now()-100*86400000&&s<1;$('acDay').textContent=d.toLocaleDateString(loc(),{weekday:'long',day:'numeric',month:'long'})+' - '+(s>=1?mins(s)+' '+T('min')+' '+T('watched'):(old?T('Older than the 100 days kept on this device.'):T('No watching recorded')));});})(d,s,b);
+      g.appendChild(b);}
+    var k=streaks();$('acSum').textContent=T('Active days this month:')+' '+act+' · '+T('Current streak:')+' '+k.cur+' '+T('days')+' · '+T('Longest streak:')+' '+k.best+' '+T('days');
+    $('acDay').textContent='';}
+  $('acPrev').addEventListener('click',function(){mon=new Date(mon.getFullYear(),mon.getMonth()-1,1,12);paint();});
+  $('acNext').addEventListener('click',function(){var n=new Date(mon.getFullYear(),mon.getMonth()+1,1,12);if(n.getTime()>Date.now())return;mon=n;paint();});
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -26786,6 +26836,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Activity calendar", "activity calendar month heatmap streak days watched grid consistency habit calendar view", "#actCalCard"],
       ["Repeat titles", "repeat titles duplicate same title different link reupload copies saved twice keep one clean library", "#repeatCard"],
       ["Overlapping playlists", "overlapping playlists duplicate similar merge combine same videos tidy share half dedupe playlists", "#overlapCard"],
       ["Mix builder", "mix builder build queue minutes time budget favourites watch later playlists history fit evening plan shortest random save playlist", "#mixCard"],
