@@ -2074,6 +2074,10 @@ setTimeout(done,3000);})();
           </details>
           <div class="row" style="margin-top:10px"><button class="chip" id="noteTxtBtn" type="button">Save all notes as text file</button><button class="chip" id="notesCopyAllBtn" type="button">📋 Copy all notes</button><button class="chip" id="studySheetBtn" type="button">Save study sheet (.md)</button></div>
           <div class="row" id="notesMoreRow" style="margin-top:6px"><button class="chip" id="notesImportBtn" type="button">📂 Import notes from file</button><input id="notesFileIn" type="file" accept=".txt,text/plain" hidden aria-label="Import notes from a text file"> <button class="chip" id="notesClearAllBtn" type="button">🗑 Clear all notes</button></div>
+          <h3 id="scratchH" style="margin-top:14px">Scratch pad</h3>
+          <textarea class="note-box" id="scratchBox" maxlength="4000" rows="3" aria-labelledby="scratchH"></textarea>
+          <p class="hint" id="scratchHint">One free note, not tied to any video - ideas, links to check, anything. Saved on this device as you type.</p>
+          <div class="row" style="margin-top:6px"><span class="hint" id="scratchCount" role="status"></span><button class="chip" id="scratchClearBtn" type="button" hidden>Clear</button></div>
         </div>
 
         <div class="ctl-card wide" id="ctl-lyrics">
@@ -12822,7 +12826,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // Round 231 fix 1: the focus session choices (auto-pick) rode no backup - vp-focus.v1
     // is counted by Reset all settings since round 229, but it was missing here, so a
     // restore on a new phone silently turned the focus auto choice back on.
-    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1"].forEach(function (k) {
+    ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1"].forEach(function (k) {
       try { var v = localStorage.getItem(k); if (v !== null) data.settings[k] = JSON.parse(v); } catch (e) {}
     });
     // Round 223 fix 2: small one-word settings kept under their own keys (list sort orders,
@@ -13071,7 +13075,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
             savePrefs(); gotSettings = true; }
           if (s.queueModes && typeof s.queueModes === "object") { ["shuffle", "repeat", "auto"].forEach(function (k) { if (typeof s.queueModes[k] === "boolean") queueModes[k] = s.queueModes[k]; }); try { localStorage.setItem("vp-queue-modes.v1", JSON.stringify(queueModes)); } catch (e) {} gotSettings = true; }
           if (s.vmem && typeof s.vmem === "object") { Object.keys(s.vmem).forEach(function (k) { vmem[k] = s.vmem[k]; }); vmemSave(); gotSettings = true; }
-          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1"].forEach(function (k) {
+          ["vp-lp.v1", "vp-lp-pos.v1", "vp-lpview.v1", "vp-chapters.v1", "vp-ctl-use.v1", "vp-search-hist.v1", "vp-chanmap.v1", "vp-focus.v1", "vp-scratch.v1"].forEach(function (k) {
             if (s[k] !== undefined) { try { localStorage.setItem(k, JSON.stringify(s[k])); gotSettings = true; } catch (e) {} }
           });
           if (s.rawKeys && typeof s.rawKeys === "object" && !Array.isArray(s.rawKeys)) {
@@ -17908,6 +17912,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Scratch pad", "#scratchH"],
     ["Wind-down reminder", "#windRow"],
     ["This month's recap", "#mrecapBtn"],
     ["Pin a playlist", "#plList"],
@@ -23017,7 +23022,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     host.parentNode.insertBefore(btn, host);
     var panel = document.createElement("div"); panel.className = "pl-paste"; panel.id = "storChkPanel"; panel.hidden = true;
     host.parentNode.parentNode.insertBefore(panel, host.parentNode.nextSibling);
-    var NAMES = { "vp-library.v1": "Library (lists and history)", "vp-notes.v1": "Notes", "vp-lyrics.v1": "Lyrics", "vp-stats.v1": "Watch stats", "vp-dl-hist": "Downloads", "vp-prefs.v1": "Settings" };
+    var NAMES = { "vp-library.v1": "Library (lists and history)", "vp-notes.v1": "Notes", "vp-lyrics.v1": "Lyrics", "vp-stats.v1": "Watch stats", "vp-dl-hist": "Downloads", "vp-prefs.v1": "Settings", "vp-scratch.v1": "Scratch pad" };
     function measure() {
       var tot = 0, items = [];
       try {
@@ -23593,6 +23598,15 @@ function display(k){return k==='ArrowUp'?'↑':k==='ArrowDown'?'↓':k;}
 function answer(k){if(pos>=keys.length||solved)return;var idx=keys.indexOf(k);if(idx<0)return;if(idx===pos){solved=true;wrong=-1;}else wrong=idx;paint();}
 function paint(){card.querySelector('summary').textContent=T('Keyboard practice');card.querySelector('.r239-desc').textContent=T('Learn player shortcuts safely. Tap an answer or focus the practice pad and press a key. Playback does not change.');$('practiceProgress').textContent=Math.min(pos+(solved?1:0),8)+'/8 '+T('questions completed');$('practiceQuestion').textContent=pos>=8?T('Practice complete'):T('Which shortcut does this?')+' '+T(actions[pos]);$('practicePad').textContent=T('Practice pad - press a shortcut here');$('practiceChoices').textContent='';if(pos<8){[pos,(pos+3)%8,(pos+5)%8].sort(function(a,b){return a-b;}).forEach(function(i){var b=document.createElement('button');b.className='chip';b.type='button';b.textContent=display(keys[i]);b.disabled=solved;b.setAttribute('aria-label',keys[i]);b.onclick=function(){answer(keys[i]);};$('practiceChoices').appendChild(b);});}$('practiceFeedback').textContent=solved?T('Correct. The real player was not changed.'):wrong>=0?T('Try again. This shortcut is for:')+' '+T(actions[wrong]):'';$('practiceNext').textContent=T('Next question');$('practiceNext').disabled=!solved;$('practiceNext').hidden=pos>=8;$('practiceReset').textContent=T('Restart practice');}
 card.addEventListener('keydown',function(e){if(e.ctrlKey||e.metaKey||e.altKey||e.target.id!=='practicePad')return;var k=e.code&&/^Key[A-Z]$/.test(e.code)?e.code.slice(3):e.key;if(keys.indexOf(k)<0)return;e.preventDefault();e.stopImmediatePropagation();if(!e.repeat)answer(k);},true);$('practiceNext').onclick=function(){if(!solved)return;pos++;solved=false;wrong=-1;paint();$('practicePad').focus();};$('practiceReset').onclick=function(){pos=0;solved=false;wrong=-1;paint();};(window.__relang=window.__relang||[]).push(paint);paint();})();
+
+Object.assign(TR_MSG, {"Scratch pad": ["स्क्रैच पैड", "સ્ક્રૅચ પૅડ"], "One free note, not tied to any video - ideas, links to check, anything. Saved on this device as you type.": ["एक खाली नोट, किसी वीडियो से नहीं जुड़ा - आइडिया, देखने के लिंक, कुछ भी. टाइप करते ही इस डिवाइस पर सेव होता है.", "એક મુક્ત નોંધ, કોઈ વીડિયો સાથે બંધાયેલી નહીં - આइडિયા, જોવાની લિંક, કંઈ પણ. ટાઇપ કરતાં જ આ ડિવાઇસ પર સેવ થાય છે."], "Scratch pad cleared": ["स्क्रैच पैड साफ़ हुआ", "સ્ક્રૅચ પૅડ સાફ થયું"], "Scratch pad restored": ["स्क्रैच पैड वापस आया", "સ્ક્રૅચ પૅડ પાછું આવ્યું"], "words": ["शब्द", "શબ્દો"]});
+(function(){var box=$('scratchBox');if(!box)return;var KEY='vp-scratch.v1';try{box.value=JSON.parse(localStorage.getItem(KEY)||'""');}catch(e){}
+var cnt=$('scratchCount'),clr=$('scratchClearBtn');
+function words(){var w=box.value.trim();return w?w.split(/\s+/).length:0;}
+function paint(){$('scratchH').textContent=T('Scratch pad');$('scratchHint').textContent=T('One free note, not tied to any video - ideas, links to check, anything. Saved on this device as you type.');clr.textContent=T('Clear');var n=words();cnt.textContent=n?n+' '+T('words'):'';clr.hidden=!box.value;}
+box.addEventListener('input',function(){try{localStorage.setItem(KEY,JSON.stringify(box.value));}catch(e){if(typeof storageWarn==='function')storageWarn();}paint();});
+clr.addEventListener('click',function(){var old=box.value;box.value='';try{localStorage.setItem(KEY,'""');}catch(e){}paint();toastUndo(T('Scratch pad cleared'),function(){box.value=old;try{localStorage.setItem(KEY,JSON.stringify(old));}catch(e){}paint();},T('Scratch pad restored'));});
+(window.__relang=window.__relang||[]).push(paint);paint();})();
 
 Object.assign(TR_MSG, {"Wind-down reminder": ["वाइंड-डाउन रिमाइंडर", "વાઇન્ડ-ડાઉન રિમાઇન્ડર"], "Wind-down reminder:": ["वाइंड-डाउन रिमाइंडर:", "વાઇન્ડ-ડાઉન રિમાઇન્ડર:"], "9 PM": ["रात 9 बजे", "રાતે 9"], "10 PM": ["रात 10 बजे", "રાતે 10"], "11 PM": ["रात 11 बजे", "રાતે 11"], "Winding down? A sleep timer can stop playback for you.": ["दिन ख़त्म हो रहा है? स्लीप टाइमर वीडियो अपने-आप रोक देगा.", "દિવસ પૂરો થાય છે? સ્લીપ ટાઇમર વીડિયો આપમેળે રોકી દેશે."], "Start 30-min timer": ["30 मिनट का टाइमर लगाएं", "30 મિનિટનો ટાઇમર લગાવો"], "Not now": ["अभी नहीं", "હજી નહીં"]});
 (function(){var card=$('ctl-sleep');if(!card)return;var row=document.createElement('div');row.className='row';row.id='windRow';row.style.marginTop='10px';var lab=document.createElement('span');lab.className='label';lab.id='windLab';var chips=document.createElement('span');chips.className='chips';chips.id='windChips';row.appendChild(lab);row.appendChild(chips);var at=$('sleepAtRow');card.insertBefore(row,at?at.nextSibling:null);
@@ -26113,6 +26127,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Scratch pad", "scratch pad quick note notepad free text ideas links jot down notes", "#scratchH"],
       ["Wind-down reminder", "wind down bedtime evening reminder sleep timer night stop playback habit", "#windRow"],
       ["This month's recap", "month recap summary 30 days monthly journal share watched busiest day copy text log", "#mrecapBtn"],
       ["Pin a playlist", "pin playlist pinned top favourite list keep first sort order badge", "#plList"],
