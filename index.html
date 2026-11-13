@@ -1803,7 +1803,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="linkHint">Watch, share, Shorts, and live links are all supported.</p>
       <div class="resume" id="resumeBox" hidden>
         <span id="resumeText"></span>
-        <span class="row" style="gap:8px;flex:none"><button class="chip" id="resumeGo" type="button">Continue</button><button class="chip" id="resumeX" type="button" aria-label="Dismiss">x</button></span>
+        <span class="row" style="gap:8px;flex:none"><button class="chip" id="resumeGo" type="button">Continue</button><button class="chip" id="resumeX" type="button" aria-label="Dismiss">x</button></span><label class="dl-chk" id="autoContLab" style="flex:none"><input type="checkbox" id="autoContChk"> <span id="autoContT">Always</span></label>
       </div>
       <div class="resume" id="laterNudge" hidden>
         <span id="laterNudgeText"></span>
@@ -28541,6 +28541,39 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paintRush();
   })();
   WNEW.unshift(["Rush speed choice", "#ctl-speed"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+
+  // Auto-start continue (round 264 new 2): the Continue bar always waited for a tap. An
+  // Always checkbox on the bar now starts the saved spot by itself the next time the app
+  // opens - once the box appears, a short beat passes (so the page settles and the tap can
+  // still be cancelled with the x) and playback begins. The choice is remembered on this
+  // device in prefs and rides the backup. Hindi and Gujarati text, What's new and feature
+  // finder included.
+  Object.assign(TR_MSG, {
+    "Always": ["\u0939\u092E\u0947\u0936\u093E", "\u0AB9\u0AAE\u0AC7\u0AB6\u0ABE"],
+    "Always start where I left off when the app opens.": ["\u090F\u092A \u0916\u0941\u0932\u0924\u0947 \u0939\u0940 \u0939\u092E\u0947\u0936\u093E \u0935\u0939\u0940\u0902 \u0938\u0947 \u091A\u0932\u093E\u090F\u0902 \u091C\u0939\u093E\u0902 \u091B\u094B\u0921\u093C\u093E \u0925\u093E.", "\u0A8F\u0AAA \u0A96\u0AC1\u0AB2\u0AA4\u0ABE\u0A82 \u0A9C \u0AB9\u0AAE\u0AC7\u0AB6\u0ABE \u0A9C\u0ACD\u0AAF\u0ABE\u0A82 \u0A9B\u0ACB\u0AA1\u0ACD\u0AAF\u0AC1\u0A82 \u0AA4\u0ACD\u0AAF\u0ABE\u0A82\u0AA5\u0AC0 \u0A9A\u0ABE\u0AB2\u0ABE\u0AB5\u0ACB."],
+    "Starting where you left off": ["\u0935\u0939\u0940\u0902 \u0938\u0947 \u0936\u0941\u0930\u0942 \u0939\u094B \u0930\u0939\u093E \u0939\u0948 \u091C\u0939\u093E\u0902 \u091B\u094B\u0921\u093C\u093E \u0925\u093E", "\u0A9C\u0ACD\u0AAF\u0ABE\u0A82 \u0A9B\u0ACB\u0AA1\u0ACD\u0AAF\u0AC1\u0A82 \u0AA4\u0ACD\u0AAF\u0ABE\u0A82\u0AA5\u0AC0 \u0AB6\u0AB0\u0AC2 \u0AA5\u0A88 \u0AB0\u0AB9\u0ACD\u0AAF\u0AC1\u0A82"],
+    "Auto-start continue": ["\u0911\u091F\u094B-\u0938\u094D\u091F\u093E\u0930\u094D\u091F \u0915\u0902\u091F\u093F\u0928\u094D\u092F\u0942", "\u0A93\u0A9F\u0ACB-\u0AB8\u0ACD\u0A9F\u0ABE\u0AB0\u0ACD\u0A9F \u0A95\u0A82\u0A9F\u0ABF\u0AA8\u0ACD\u0AAF\u0AC2"]
+  });
+  (function () {
+    var chk = $("autoContChk"), labT = $("autoContT"), box = $("resumeBox");
+    if (!chk || !box) return;
+    chk.checked = prefs.autoCont === true;
+    chk.addEventListener("change", function () { prefs.autoCont = chk.checked; savePrefs(); });
+    (window.__relang = window.__relang || []).push(function () {
+      labT.textContent = T("Always");
+      chk.setAttribute("aria-label", T("Always start where I left off when the app opens."));
+      var lt = $("autoContLab"); if (lt) lt.title = T("Always start where I left off when the app opens.");
+    });
+    labT.textContent = T("Always");
+    chk.setAttribute("aria-label", T("Always start where I left off when the app opens."));
+    if (prefs.autoCont === true && !box.hidden && !curId) {
+      var go = $("resumeGo");
+      if (go) setTimeout(function () {
+        if (!box.hidden && !curId) { toast(T("Starting where you left off") + "\u2026"); go.click(); }
+      }, 1500);
+    }
+  })();
+  WNEW.unshift(["Auto-start continue", "#resumeBox"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
 
 /*R244-END*/
 
