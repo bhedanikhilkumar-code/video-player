@@ -18008,6 +18008,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Import preview", "#libImport"],
     ["Library check", "#libCheckCard"],
     ["Print your lists", "#printCard"],
     ["Customize shortcuts", "#keymapCard"],
@@ -18017,7 +18018,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Playlist note", "#plList"],
     ["All-time recap", "#arecapBtn"],
     ["Lists as CSV", "#listsCsvBtn"],
-    ["Watch later overlap", "#laterOverlapBtn"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -23947,6 +23947,40 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var oldRL=renderLib;renderLib=function(){oldRL();if(card.open)paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Import preview (round 243 new 4): Import backup applied a file the moment it was chosen, so a
+  // backup from the wrong phone or an old date changed the lists before you could look. Now a
+  // dialog first says what the file would add (new queue, favourites, Watch later, playlists and
+  // history entries; things already here are not counted) and only Import applies it; Cancel
+  // changes nothing. A file that adds no lists (settings only, or unreadable) goes straight to
+  // the normal import so its own messages still show. The preview sits in front of the existing
+  // import, which is unchanged.
+  Object.assign(TR_MSG, {
+    "This backup file would add": ["यह बैकअप फ़ाइल जोड़ेगी", "આ બૅકઅપ ફાઇલ ઉમેરશે"],
+    "Nothing changes until you confirm.": ["पुष्टि करने तक कुछ नहीं बदलता.", "પુષ્ટિ સુધી કંઈ બદલાતું નથી."],
+    "Import": ["इम्पोर्ट करें", "ઇમ્પોર્ટ કરો"],
+    "Import cancelled - nothing changed.": ["इम्पोर्ट रद्द - कुछ नहीं बदला.", "ઇમ્પોર્ટ રદ - કંઈ બદલાયું નથી."]
+  });
+  (function(){var input=$('libImportFile');if(!input)return;var bypass=false;
+  function news(list,arr,cap){var n=0,seen={};(Array.isArray(arr)?arr:[]).forEach(function(x){if(validItem(x)&&!seen[x.id]&&findIn(list,x.id)<0){seen[x.id]=1;n++;}});return cap?Math.min(n,Math.max(0,cap-list.length)):n;}
+  input.addEventListener('change',function(e){
+    if(bypass){bypass=false;return;}
+    var f=input.files&&input.files[0];if(!f)return;
+    e.stopImmediatePropagation(); input.value='';
+    var go=function(){bypass=true;try{var dt=new DataTransfer();dt.items.add(f);input.files=dt.files;}catch(er){}input.dispatchEvent(new Event('change'));};
+    var rd=new FileReader();
+    rd.onload=function(){var d=null;try{d=JSON.parse(rd.result);}catch(er){}
+      if(!d||typeof d!=='object'||typeof window.vpConfirm!=='function'){go();return;}
+      var fv=Array.isArray(d.favourites)?d.favourites:d.favs;
+      var pn=0;(Array.isArray(d.playlists)?d.playlists:[]).forEach(function(p){if(!p||typeof p.name!=='string'||!Array.isArray(p.items))return;var items=p.items.filter(validItem);var same=playlists.some(function(q){return q.name===p.name&&q.items.length===items.length&&q.items.every(function(it,ix){return it.id===items[ix].id;});});if(!same&&playlists.length+pn<PL_MAX)pn++;});
+      var parts=[],a=news(lib.queue,d.queue,50),b=news(lib.favs,fv),c=news(lib.later,d.later,50),h2=news(lib.hist,d.history);
+      if(a)parts.push(T('Queue')+' +'+a);if(b)parts.push(T('Favourites')+' +'+b);if(c)parts.push(T('Watch later')+' +'+c);if(pn)parts.push(T('Playlists')+' +'+pn);if(h2)parts.push(T('History')+' +'+h2);
+      if(!parts.length){go();return;}
+      window.vpConfirm(T('This backup file would add')+': '+parts.join(', ')+'. '+T('Nothing changes until you confirm.'),T('Import')).then(function(ok){
+        if(ok){go();}else{var m=$('libBackupMsg');if(m)m.textContent=T('Import cancelled - nothing changed.');}
+      });};
+    rd.onerror=function(){go();};rd.readAsText(f);
+  },true);
+  })();
 /*R243-END*/
 
 })();
@@ -26505,6 +26539,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Import preview", "import preview backup confirm what will be added dry run check before restore cancel safe file", "#libImport"],
       ["Library check", "library check health capacity full limit 50 empty playlists missing titles tidy fix untitled cap", "#libCheckCard"],
       ["Print your lists", "print lists pdf paper save pdf favourites watch later queue playlists share offline sheet", "#printCard"],
       ["Customize shortcuts", "customize shortcuts rebind remap keyboard keys change letter swap hotkey accessibility screen reader layout", "#keymapCard"],
