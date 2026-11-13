@@ -18048,6 +18048,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["History by date", "#histDateCard"],
     ["Moment drill", "#drillCard"],
     ["Picks for now", "#picksCard"],
     ["Watch by dates", "#dueCard"],
@@ -18057,7 +18058,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Find a moment", "#momFindCard"],
     ["Watch sessions", "#sessCard"],
     ["Today's list", "#todayCard"],
-    ["Where is this video?", "#whereCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25548,6 +25548,50 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   card.addEventListener('toggle',function(){if(card.open)paint();});
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // History by date (round 250 new 4): "what was that thing I watched last Tuesday?" meant
+  // scrolling the whole Recently watched list and reading day headers. This card lets you
+  // pick a day and lists everything watched on it - times, titles, a total, Play per row and
+  // Queue this day to run the whole day back. Days are read in your timezone, not UTC.
+  Object.assign(TR_MSG, {
+    "History by date": ["तारीख से हिस्ट्री", "તારીખ મુજબ હિસ્ટ્રી"],
+    "Pick a day to see everything you watched on it, with Play and a queue-the-day chip.": ["कोई दिन चुनें और देखें उस दिन आपने क्या-क्या देखा, Play और पूरा दिन कतार में डालने के चिप के साथ.", "કોઈ દિવસ પસંદ કરો અને તે દિવસે તમે શું જોયું તે જુઓ, Play અને આખો દિવસ કતારમાં નાખવાના ચિપ સાથે."],
+    "Show": ["दिखाएँ", "બતાવો"],
+    "Pick a date first.": ["पहले तारीख चुनें.", "પહેલા તારીખ પસંદ કરો."],
+    "Nothing watched on this day.": ["इस दिन कुछ नहीं देखा गया.", "આ દિવસે કંઈ જોવાયું નથી."],
+    "1 video this day": ["इस दिन 1 वीडियो", "આ દિવસે 1 વીડિયો"],
+    "{n} videos this day": ["इस दिन {n} वीडियो", "આ દિવસે {n} વીડિયો"],
+    "Queue this day": ["यह दिन कतार में डालें", "આ દિવસ કતારમાં નાખો"],
+    "Day queued:": ["दिन कतार में जुड़ा:", "દિવસ કતારમાં ઉમેરાયો:"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='histDateCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0"><input type="date" class="chip" id="hdIn"><button type="button" class="chip" id="hdGo"></button></div><div id="hdOut"></div><div class="row" id="hdAct" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0"></div><p class="hint" id="hdMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var stH=document.createElement('style');stH.textContent='#histDateCard .hd-r{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}#histDateCard .hd-t{flex:1 1 100%;font-size:14px;overflow-wrap:anywhere}#histDateCard .hd-h{font-weight:650;font-size:14px;margin:8px 0 2px;overflow-wrap:anywhere}';document.head.appendChild(stH);
+  function locH(){var l=document.documentElement.lang;return l==='hi'?'hi-IN':l==='gu'?'gu-IN':undefined;}
+  function dayList(){var v=$('hdIn').value;if(!/^\d{4}-\d{2}-\d{2}$/.test(v))return null;
+    return (lib.hist||[]).filter(function(x){if(!validItem(x)||typeof x.ts!=='number')return false;var d=new Date(x.ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')===v;});}
+  function playH(id,t){if(findIn(lib.queue,id)<0){if(lib.queue.length>=50){$('hdMsg').textContent=T('The queue is full at 50 videos. Remove some first.');return;}lib.queue.unshift({id:id,title:t||titleFor(id)||''});}var i=findIn(lib.queue,id);saveLib();renderLib();playQueueAt(i);if(frameBox&&frameBox.scrollIntoView)frameBox.scrollIntoView({behavior:window.vpReducedMotion()?'auto':'smooth',block:'center'});}
+  function go(){var O=$('hdOut'),A=$('hdAct'),M=$('hdMsg');O.textContent='';A.textContent='';M.textContent='';
+    var v=$('hdIn').value;if(!v){M.textContent=T('Pick a date first.');return;}
+    var items=dayList();
+    var p=v.split('-'),d=new Date(+p[0],+p[1]-1,+p[2]);
+    var h=document.createElement('div');h.className='hd-h';h.textContent=d.toLocaleDateString(locH(),{weekday:'long',day:'numeric',month:'long',year:'numeric'});O.appendChild(h);
+    if(!items.length){var e=document.createElement('p');e.className='hint';e.textContent=T('Nothing watched on this day.');O.appendChild(e);return;}
+    var secs=0;items.forEach(function(x){if(typeof x.dur==='number'&&x.dur>0)secs+=x.dur;});
+    M.textContent=(items.length>1?T('{n} videos this day'):T('1 video this day')).replace('{n}',items.length)+(secs?' · '+fmtWatch(secs):'');
+    items.slice(0,15).forEach(function(x){var r=document.createElement('div');r.className='hd-r';
+      var t=document.createElement('div');t.className='hd-t';t.textContent=new Date(x.ts).toLocaleTimeString(locH(),{hour:'numeric',minute:'2-digit'})+' · '+(x.title||titleFor(x.id)||x.id);r.appendChild(t);
+      var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Play');b.setAttribute('aria-label',T('Play')+': '+(x.title||x.id));b.addEventListener('click',function(){playH(x.id,x.title);});r.appendChild(b);
+      O.appendChild(r);});
+    if(items.length>15){var m=document.createElement('p');m.className='hint';m.textContent=T('and {n} more').replace('{n}',items.length-15);O.appendChild(m);}
+    var q=document.createElement('button');q.type='button';q.className='chip';q.textContent=T('Queue this day');
+    q.addEventListener('click',function(){var n=0;items.forEach(function(x){if(findIn(lib.queue,x.id)<0&&lib.queue.length<50){lib.queue.push({id:x.id,title:x.title||titleFor(x.id)||''});n++;}});saveLib();renderLib();M.textContent=n?T('Day queued:')+' '+n:T('Already in the queue, or the queue is full at 50.');});A.appendChild(q);}
+  function paint(){card.querySelector('summary').textContent=T('History by date');card.querySelector('.r239-desc').textContent=T('Pick a day to see everything you watched on it, with Play and a queue-the-day chip.');$('hdIn').setAttribute('aria-label',T('Pick a date first.'));$('hdGo').textContent=T('Show');}
+  $('hdGo').addEventListener('click',go);$('hdIn').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();go();}});
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -28106,6 +28150,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["History by date", "history by date pick day what did i watch last tuesday calendar recently watched queue whole day", "#histDateCard"],
       ["Moment drill", "moment drill practice replay each saved moment span guitar solo trick loop through bookmarks one after another", "#drillCard"],
       ["Picks for now", "picks for now suggestions what to watch recommendations reasons parked favourite unfinished choose evening", "#picksCard"],
       ["Watch by dates", "watch by date due deadline overdue parked watch later day plan red badge schedule", "#dueCard"],
