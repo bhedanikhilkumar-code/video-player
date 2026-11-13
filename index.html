@@ -1976,6 +1976,14 @@ setTimeout(done,3000);})();
           <p class="hint" id="chSpeedHint">Remember a speed for this channel and it applies by itself when one of its videos plays. A speed saved for the video itself wins.</p>
         </div>
 
+        <div class="ctl-card wide" id="vmemCard280">
+          <h3 id="vmemH280">Remembered videos</h3>
+          <p class="hint" id="vmemHint280">Every video the app remembers something for - its speed, volume, rotation, picture look, A-B loop, intro or outro skips - in one list. Play one again, or forget it here.</p>
+          <ul class="lib-list" id="vmemList280"></ul>
+          <p class="lib-empty" id="vmemEmpty280" hidden><span class="lib-empty-ic" aria-hidden="true">&#9201;</span><span id="vmemEmptyTx280">Nothing remembered yet. Per-video switches like Per-video volume fill this list as you use them.</span></p>
+          <div class="row" style="margin-top:8px"><button class="chip" id="vmemClear280" type="button" hidden>Forget everything</button></div>
+        </div>
+
         <div class="ctl-card wide" id="ctl-quality">
           <h3>Quality</h3>
           <div class="chips" id="qualityChips"></div>
@@ -31749,6 +31757,122 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   WNEW.unshift(["Auto chapters for local files", "#lpChAutoRow278"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   WNEW.unshift(["Practice loop repeat count", "#lpLoopCountRow278"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
 
+  // Round 280 new 3: Remembered videos. Per-video memories pile up in four different
+  // stores (settings, A-B loops, rotations, picture looks) with no single place that
+  // answers "what does the app remember, and where do I clean it up?" - only the
+  // playing video's own note showed its slice. This card lists every remembered video
+  // with what is saved for it, plays it again in one tap, forgets one or all with
+  // Undo. Reads the same stores the features write, translated, in the feature finder
+  // and the What's new card.
+  (function () {
+    var card = $("vmemCard280"), ul = $("vmemList280"), empty = $("vmemEmpty280"), clearB = $("vmemClear280");
+    if (!card || !ul) return;
+    var KEYS = ["vp-vmem.v1", "vp-abmem.v1", "vp-rotmem.v1", "vp-picmem.v1"];
+    function read(k) { try { var v = JSON.parse(localStorage.getItem(k) || "null"); return (v && typeof v === "object" && !Array.isArray(v)) ? v : {}; } catch (e) { return {}; } }
+    function write(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+    Object.assign(TR_MSG, {
+      "Remembered videos": ["\u092f\u093e\u0926 \u0915\u093f\u090f \u0935\u0940\u0921\u093f\u092f\u094b", "\u0aaf\u0abe\u0aa6 \u0a95\u0ab0\u0ac7\u0ab2\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb"],
+      "Every video the app remembers something for - its speed, volume, rotation, picture look, A-B loop, intro or outro skips - in one list. Play one again, or forget it here.": ["\u0939\u0930 \u0935\u0940\u0921\u093f\u092f\u094b \u091c\u093f\u0938\u0915\u0947 \u0932\u093f\u090f \u090f\u092a \u0915\u0941\u091b \u092f\u093e\u0926 \u0930\u0916\u0924\u093e \u0939\u0948 - \u0938\u094d\u092a\u0940\u0921, \u0935\u0949\u0932\u094d\u092f\u0942\u092e, \u0930\u094b\u091f\u0947\u0936\u0928, \u092a\u093f\u0915\u094d\u091a\u0930 \u0932\u0941\u0915, A-B \u0932\u0942\u092a, \u0907\u0902\u091f\u094d\u0930\u094b \u092f\u093e \u0906\u0909\u091f\u094d\u0930\u094b \u0938\u094d\u0915\u093f\u092a - \u090f\u0915 \u0939\u0940 \u0932\u093f\u0938\u094d\u091f \u092e\u0947\u0902. \u0915\u093f\u0938\u0940 \u0915\u094b \u092b\u093f\u0930 \u091a\u0932\u093e\u090f\u0902 \u092f\u093e \u092f\u0939\u093e\u0902 \u0938\u0947 \u092d\u0941\u0932\u093e\u090f\u0902.", "\u0a8f\u0aaa \u0a9c\u0ac7 \u0a95\u0acb\u0a88 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aae\u0abe\u0a9f\u0ac7 \u0a95\u0a82\u0a88 \u0aaf\u0abe\u0aa6 \u0ab0\u0abe\u0a96\u0ac7 \u0a9b\u0ac7 - \u0ab8\u0acd\u0aaa\u0ac0\u0aa1, \u0ab5\u0acb\u0ab2\u0acd\u0aaf\u0ac1\u0aae, \u0ab0\u0acb\u0a9f\u0ac7\u0ab6\u0aa8, \u0aaa\u0abf\u0a95\u0acd\u0a9a\u0ab0 \u0ab2\u0ac1\u0a95, A-B \u0ab2\u0ac2\u0aaa, \u0a87\u0aa8\u0acd\u0a9f\u0acd\u0ab0\u0acb \u0a95\u0ac7 \u0a86\u0a89\u0a9f\u0acd\u0ab0\u0acb \u0ab8\u0acd\u0a95\u0abf\u0aaa - \u0a8f\u0a95 \u0a9c \u0aaf\u0abe\u0aa6\u0ac0\u0aae\u0abe\u0a82. \u0a95\u0acb\u0a88\u0aa8\u0ac7 \u0aab\u0ab0\u0ac0 \u0a9a\u0ab2\u0abe\u0ab5\u0acb \u0a95\u0ac7 \u0a85\u0ab9\u0ac0\u0a82\u0aa5\u0ac0 \u0aad\u0ac1\u0ab2\u0abe\u0ab5\u0acb."],
+      "Nothing remembered yet. Per-video switches like Per-video volume fill this list as you use them.": ["\u0905\u092d\u0940 \u0915\u0941\u091b \u092f\u093e\u0926 \u0928\u0939\u0940\u0902. \u092a\u0930-\u0935\u0940\u0921\u093f\u092f\u094b \u0935\u0949\u0932\u094d\u092f\u0942\u092e \u091c\u0948\u0938\u0947 \u0938\u094d\u0935\u093f\u091a \u0907\u0938\u094d\u0924\u0947\u092e\u093e\u0932 \u0915\u0930\u0924\u0947 \u0939\u0940 \u092f\u0939 \u0932\u093f\u0938\u094d\u091f \u092d\u0930\u0947\u0917\u0940.", "\u0ab9\u0a9c\u0ac0 \u0a95\u0a82\u0a88 \u0aaf\u0abe\u0aa6 \u0aa8\u0aa5\u0ac0. \u0aaa\u0ab0-\u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0ab5\u0acb\u0ab2\u0acd\u0aaf\u0ac1\u0aae \u0a9c\u0ac7\u0ab5\u0abe \u0ab8\u0acd\u0ab5\u0abf\u0a9a \u0ab5\u0abe\u0aaa\u0ab0\u0aa4\u0abe\u0a82 \u0a86 \u0aaf\u0abe\u0aa6\u0ac0 \u0aad\u0ab0\u0abe\u0ab6\u0ac7."],
+      "Forget everything": ["\u0938\u092c \u092d\u0941\u0932\u093e \u0926\u0947\u0902", "\u0aac\u0aa7\u0ac1\u0a82 \u0aad\u0ac2\u0ab2\u0ac0 \u0a9c\u0abe\u0a93"],
+      "Forgot {n} videos.": ["{n} \u0935\u0940\u0921\u093f\u092f\u094b \u092d\u0941\u0932\u093e \u0926\u093f\u090f.", "{n} \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aad\u0ac2\u0ab2\u0ac0 \u0a97\u0aaf\u0abe."],
+      "Forgotten.": ["\u092d\u0941\u0932\u093e \u0926\u093f\u092f\u093e.", "\u0aad\u0ac2\u0ab2\u0ac0 \u0a97\u0aaf\u0ac1\u0a82."],
+      "speed": ["\u0938\u094d\u092a\u0940\u0921", "\u0ab8\u0acd\u0aaa\u0ac0\u0aa1"],
+      "volume": ["\u0935\u0949\u0932\u094d\u092f\u0942\u092e", "\u0ab5\u0acb\u0ab2\u0acd\u0aaf\u0ac1\u0aae"],
+      "subtitles": ["\u0938\u092c\u091f\u093e\u0907\u091f\u0932", "\u0ab8\u0aac\u0a9f\u0abe\u0a87\u0a9f\u0ab2"],
+      "intro skip": ["\u0907\u0902\u091f\u094d\u0930\u094b \u0938\u094d\u0915\u093f\u092a", "\u0a87\u0aa8\u0acd\u0a9f\u0acd\u0ab0\u0acb \u0ab8\u0acd\u0a95\u0abf\u0aaa"],
+      "outro skip": ["\u0906\u0909\u091f\u094d\u0930\u094b \u0938\u094d\u0915\u093f\u092a", "\u0a86\u0a89\u0a9f\u0acd\u0ab0\u0acb \u0ab8\u0acd\u0a95\u0abf\u0aaa"],
+      "watched parts": ["\u0926\u0947\u0916\u0947 \u0939\u093f\u0938\u094d\u0938\u0947", "\u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0aad\u0abe\u0a97\u0acb"],
+      "A-B loop": ["A-B \u0932\u0942\u092a", "A-B \u0ab2\u0ac2\u0aaa"],
+      "rotation": ["\u0930\u094b\u091f\u0947\u0ab6\u0928", "\u0ab0\u0acb\u0a9f\u0ac7\u0ab6\u0aa8"],
+      "picture look": ["\u092a\u093f\u0915\u094d\u091a\u0930 \u0932\u0941\u0915", "\u0aaa\u0abf\u0a95\u0acd\u0a9a\u0ab0 \u0ab2\u0ac1\u0a95"]
+    });
+    function bitsFor(id) {
+      var bits = [], vm = read("vp-vmem.v1")[id];
+      if (vm) {
+        if (typeof vm.speed === "number") bits.push(T("speed"));
+        if (typeof vm.vol === "number") bits.push(T("volume"));
+        if (typeof vm.cc === "boolean") bits.push(T("subtitles"));
+        if (typeof vm.intro === "number") bits.push(T("intro skip"));
+        if (typeof vm.outro === "number") bits.push(T("outro skip"));
+        if (typeof vm.seen === "string" && vm.seen) bits.push(T("watched parts"));
+      }
+      if (read("vp-abmem.v1")[id]) bits.push(T("A-B loop"));
+      if (read("vp-rotmem.v1")[id] != null) bits.push(T("rotation"));
+      if (read("vp-picmem.v1")[id]) bits.push(T("picture look"));
+      return bits;
+    }
+    function allIds() {
+      var ids = [], seen = {};
+      KEYS.forEach(function (k) {
+        var m = read(k);
+        Object.keys(m).forEach(function (id) { if (!seen[id] && /^[\w-]{6,20}$/.test(id)) { seen[id] = 1; ids.push(id); } });
+      });
+      return ids;
+    }
+    function forget(id) {
+      KEYS.forEach(function (k) {
+        var m = read(k);
+        if (m[id] !== undefined) { delete m[id]; write(k, m); }
+        try {
+          var o = JSON.parse(localStorage.getItem(k + ".o") || "[]");
+          if (Array.isArray(o) && o.indexOf(id) >= 0) localStorage.setItem(k + ".o", JSON.stringify(o.filter(function (x) { return x !== id; })));
+        } catch (e) {}
+      });
+    }
+    function paint() {
+      if ($("vmemH280")) $("vmemH280").textContent = T("Remembered videos");
+      if ($("vmemHint280")) $("vmemHint280").textContent = T("Every video the app remembers something for - its speed, volume, rotation, picture look, A-B loop, intro or outro skips - in one list. Play one again, or forget it here.");
+      if ($("vmemEmptyTx280")) $("vmemEmptyTx280").textContent = T("Nothing remembered yet. Per-video switches like Per-video volume fill this list as you use them.");
+      clearB.textContent = T("Forget everything");
+      ul.innerHTML = "";
+      var ids = allIds();
+      empty.hidden = ids.length > 0; ul.hidden = !ids.length; clearB.hidden = !ids.length;
+      ids.forEach(function (id) {
+        var bits = bitsFor(id); if (!bits.length) return;
+        var li = document.createElement("li"); li.className = "lib-item";
+        var open = document.createElement("button"); open.className = "lib-open"; open.type = "button";
+        var img = document.createElement("img"); img.alt = ""; img.loading = "lazy";
+        if (typeof thumbSet === "function") thumbSet(img, id, "default.jpg");
+        var box = document.createElement("span");
+        var t1 = document.createElement("span"); t1.textContent = T("Video ") + id;
+        var meta = document.createElement("span"); meta.className = "cont-meta"; meta.textContent = bits.join(" \u00b7 ");
+        box.appendChild(t1); box.appendChild(meta);
+        open.appendChild(img); open.appendChild(box);
+        open.addEventListener("click", function () {
+          linkInput.value = "https://youtu.be/" + id;
+          var qi = findIn(lib.queue, id);
+          loadVideo(0, null, qi >= 0 ? qi : undefined, true);
+        });
+        var del = document.createElement("button"); del.className = "chip"; del.type = "button"; del.textContent = T("Remove");
+        del.setAttribute("aria-label", T("Remove") + " " + id);
+        del.addEventListener("click", function () {
+          var snap = {};
+          KEYS.forEach(function (k) { snap[k] = localStorage.getItem(k); snap[k + ".o"] = localStorage.getItem(k + ".o"); });
+          forget(id); paint();
+          toastUndo(T("Forgotten."), function () {
+            Object.keys(snap).forEach(function (k) { try { if (snap[k] === null) localStorage.removeItem(k); else localStorage.setItem(k, snap[k]); } catch (e) {} });
+            paint();
+          });
+        });
+        li.appendChild(open); li.appendChild(del); ul.appendChild(li);
+      });
+    }
+    clearB.addEventListener("click", function () {
+      var ids = allIds(); if (!ids.length) return;
+      var snap = {};
+      KEYS.forEach(function (k) { snap[k] = localStorage.getItem(k); snap[k + ".o"] = localStorage.getItem(k + ".o"); });
+      ids.forEach(forget); paint();
+      toastUndo(T("Forgot {n} videos.").replace("{n}", ids.length), function () {
+        Object.keys(snap).forEach(function (k) { try { if (snap[k] === null) localStorage.removeItem(k); else localStorage.setItem(k, snap[k]); } catch (e) {} });
+        paint();
+      });
+    });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+    WNEW.unshift(["Remembered videos", "#vmemCard280"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  })();
+
   // Round 280 new 1: Your own keys. The built-in shortcuts are fixed letters, and after
   // 279 rounds almost every letter does something - but not the one a particular hand
   // reaches for. This lets you give six player actions (mute, full screen, loop, next,
@@ -34682,6 +34806,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Remembered videos", "remembered videos per video memory speed volume rotation picture look ab loop intro outro forget clean manage list", "#vmemCard280"],
       ["Your own shortcut keys", "your own keys custom shortcut extra key rebind personal keyboard letter mute fullscreen loop next previous subtitles", "#xkRow280"],
       ["Remember the A-B loop", "remember ab loop per video save practice points restore pinned", "#abMemBtn278"],
       ["Remember the speed per video", "remember speed per video pin playback rate lecture music", "#speedMemBtn278"],
