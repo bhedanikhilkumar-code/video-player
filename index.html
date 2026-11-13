@@ -26993,6 +26993,71 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
 
+  // Import browser bookmarks (round 258 new 1): people keep YouTube links in a browser
+  // bookmarks folder, and moving them here meant pasting links one by one. This card reads the
+  // bookmarks.html file that Chrome, Safari, Firefox and Edge export, picks out only the
+  // YouTube video links, and adds the ones you do not already keep to Watch later (stops at 50)
+  // or Favourites, with the bookmark name as the title. The same video found twice in the
+  // file is added once. Undo restores the list. The file is read on this device only.
+  // Hindi and Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Import browser bookmarks": ["ब्राउज़र बुकमार्क इम्पोर्ट करें", "બ્રાઉઝર બુકમાર્ક ઇમ્પોર્ટ કરો"],
+    "Pick the bookmarks.html your browser exported. Only YouTube video links are used, and the file is read on this device only.": ["ब्राउज़र से निकाली bookmarks.html चुनें. सिर्फ़ YouTube वीडियो लिंक लिए जाते हैं और फ़ाइल सिर्फ़ इसी डिवाइस पर पढ़ी जाती है.", "બ્રાઉઝરમાંથી કાઢેલી bookmarks.html પસંદ કરો. ફક્ત YouTube વીડિયો લિંક લેવાય છે અને ફાઇલ ફક્ત આ ડિવાઇસ પર વંચાય છે."],
+    "Add to": ["यहाँ जोड़ें", "અહીં ઉમેરો"],
+    "Choose bookmarks file": ["बुकमार्क फ़ाइल चुनें", "બુકમાર્ક ફાઇલ પસંદ કરો"],
+    "No new YouTube videos in that file.": ["उस फ़ाइल में कोई नया YouTube वीडियो नहीं.", "તે ફાઇલમાં કોઈ નવો YouTube વીડિયો નથી."],
+    "That file could not be read as a bookmarks file.": ["वह फ़ाइल बुकमार्क फ़ाइल के रूप में नहीं पढ़ी जा सकी.", "તે ફાઇલ બુકમાર્ક ફાઇલ તરીકે વંચાઈ શકી ન હતી."],
+    "Bookmarks added: {n}": ["बुकमार्क जुड़े: {n}", "બુકમાર્ક ઉમેરાયા: {n}"],
+    "{n} did not fit - Watch later stops at 50.": ["{n} नहीं जुड़े - बाद में देखें 50 तक सीमित है.", "{n} ઉમેરાયા નહીં - પછી જુઓ 50 સુધી મર્યાદિત છે."],
+    "Bookmark import undone.": ["बुकमार्क इम्पोर्ट वापस लिया.", "બુકમાર્ક ઇમ્પોર્ટ પાછું લીધું."]
+  });
+  (function () {
+    var card = mkCard("bmCard", "laterOverlapCard", '<p style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><label for="bmDest" id="bmDestLab"></label><select id="bmDest"><option value="later"></option><option value="favs"></option></select><button type="button" class="chip" id="bmPick"></button><input type="file" id="bmFile" accept=".html,.htm,text/html" hidden></p><p class="hint" id="bmMsg" role="status"></p>'); if (!card) return;
+    var dest = $("bmDest"), pick = $("bmPick"), file = $("bmFile"), msg = $("bmMsg");
+    function paint() {
+      card.querySelector("summary").textContent = T("Import browser bookmarks");
+      card.querySelector(".r239-desc").textContent = T("Pick the bookmarks.html your browser exported. Only YouTube video links are used, and the file is read on this device only.");
+      $("bmDestLab").textContent = T("Add to");
+      dest.options[0].textContent = T("Watch later"); dest.options[1].textContent = T("Favourites");
+      pick.textContent = "\uD83D\uDD16 " + T("Choose bookmarks file");
+    }
+    // Reads every <a href> in the file; a link counts only when its address is on youtube.com
+    // or youtu.be and holds a real video id, so a stray 11-letter word is never taken as one.
+    function readLinks(text) {
+      var doc = new DOMParser().parseFromString(text, "text/html"), out = [], seen = {};
+      Array.prototype.forEach.call(doc.querySelectorAll("a[href]"), function (a) {
+        var href = a.getAttribute("href") || "";
+        if (!/^(https?:)?\/\/([a-z0-9-]+\.)*(youtube\.com|youtu\.be)\//i.test(href)) return;
+        var id = parseVideoId(href); if (!id || seen[id]) return;
+        seen[id] = 1; out.push({ id: id, title: (a.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120) });
+      });
+      return { found: out, anyLinks: doc.querySelectorAll("a[href]").length };
+    }
+    pick.addEventListener("click", function () { file.click(); });
+    file.addEventListener("change", function () {
+      var f = file.files && file.files[0]; file.value = ""; if (!f) return;
+      var rd = new FileReader();
+      rd.onerror = function () { msg.textContent = T("That file could not be read as a bookmarks file."); };
+      rd.onload = function () {
+        var res = readLinks(String(rd.result || ""));
+        if (!res.anyLinks) { msg.textContent = T("That file could not be read as a bookmarks file."); return; }
+        var key = dest.value === "favs" ? "favs" : "later", list = lib[key], snap = list.slice(), added = 0, skipped = 0;
+        res.found.forEach(function (x) {
+          if (findIn(list, x.id) >= 0) return;
+          if (key === "later" && list.length >= 50) { skipped++; return; }
+          list.push({ id: x.id, title: x.title || titleFor(x.id) || "", ts: Date.now() }); added++;
+        });
+        if (!added && !skipped) { msg.textContent = T("No new YouTube videos in that file."); return; }
+        if (added) { saveLib(); renderLib(); }
+        msg.textContent = T("Bookmarks added: {n}").replace("{n}", added) + (skipped ? " " + T("{n} did not fit - Watch later stops at 50.").replace("{n}", skipped) : "");
+        if (added) toastUndo(msg.textContent, function () { lib[key] = snap; saveLib(); renderLib(); msg.textContent = T("Bookmark import undone."); }, T("Bookmark import undone."));
+      };
+      rd.readAsText(f);
+    });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+
   // Sort Watch later by most played (round 256 new 1): Watch later could be sorted A to Z
   // and by rating, but not by what you actually replay - so a parked favourite you have
   // watched ten times sat mixed in with videos you opened once and dropped. A chip by
@@ -29816,6 +29881,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Weekend vs weekdays", "weekend vs weekdays saturday sunday split share percent average day watch stats habit", "#weekendCard"],
       ["Dust off favourites", "dust off favourites not played lately forgotten queue bring back old favourites history", "#dustCard"],
       ["List overlap", "list overlap duplicates watch later already queued favourite remove tidy clean up", "#laterOverlapCard"],
+      ["Import browser bookmarks", "import browser bookmarks bookmarks.html chrome safari firefox edge export youtube links watch later favourites move switch", "#bmCard"],
       ["Weekly totals", "weekly totals weeks compare best week bars watch stats last 8 weeks trend heavier lighter", "#weeklyCard"],
       ["Share Watch later", "share watch later link send backlog list another device phone add replace", "#laterShareBtn"],
       ["Save top rated as a playlist", "save top rated playlist best videos four five stars keep list rated 4 5", "#rbSavePlBtn"],
