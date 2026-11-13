@@ -17724,6 +17724,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["On this day", "#histOtdWrap"],
     ["This week's recap", "#wrecapBtn"],
     ["Today's recap", "#recapBtn"],
     ["Storage check", "#storChkBtn"],
@@ -22940,6 +22941,66 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     btn.addEventListener("click", function () { panel.hidden = !panel.hidden; btn.setAttribute("aria-expanded", String(!panel.hidden)); paint(); if (!panel.hidden && window.vpExpandSection) window.vpExpandSection("library"); });
   })();
 
+
+  // On this day (round 237 new 2): Recently watched runs newest first, so what you watched exactly
+  // a week or a month ago today never surfaces on its own. A small line under the history list names
+  // the videos from this same date in earlier weeks and months (an entry matches when its age lands
+  // within 18 hours of a whole number of weeks, or on the same day-of-month in an earlier month),
+  // each a chip that plays it again, up to 3, with a count of the rest. Read-only, from the
+  // on-device history only; hidden while nothing matches. Follows removes, Clear, Trim and Undo
+  // through the shared render, and repaints on language change.
+  Object.assign(TR_MSG, {
+    "On this day": ["आज के दिन", "આજના દિવસે"],
+    "week ago": ["हफ़्ता पहले", "અઠવાડિયા પહેલાં"],
+    "weeks ago": ["हफ़्ते पहले", "અઠવાડિયા પહેલાં"],
+    "month ago": ["महीना पहले", "મહિના પહેલાં"],
+    "months ago": ["महीने पहले", "મહિના પહેલાં"]
+  });
+  (function () {
+    var note = document.querySelector("#histFinLine + p.hint"); if (!note) return;
+    var wrap = document.createElement("div"); wrap.id = "histOtdWrap"; wrap.hidden = true; wrap.style.margin = "2px 0 6px";
+    var lab = document.createElement("p"); lab.className = "hint"; lab.id = "histOtd"; lab.setAttribute("role", "status"); lab.style.margin = "0 0 4px";
+    var row = document.createElement("div"); row.className = "row"; row.id = "histOtdRow";
+    wrap.appendChild(lab); row.appendChild(document.createTextNode("")); wrap.appendChild(row);
+    note.parentNode.insertBefore(wrap, note.nextSibling);
+    function ageLabel(ts, start) {
+      var hours = (start - ts) / 3600000;
+      var weeks = Math.round(hours / 168);
+      if (weeks >= 1 && Math.abs(hours - weeks * 168) <= 18) return weeks + " " + T(weeks === 1 ? "week ago" : "weeks ago");
+      var a = new Date(ts), b = new Date(start);
+      var months = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+      if (months >= 1 && a.getDate() === b.getDate()) return months + " " + T(months === 1 ? "month ago" : "months ago");
+      return null;
+    }
+    function otdRender() {
+      var start = new Date(); start.setHours(0, 0, 0, 0);
+      var seen = {}, matches = [];
+      lib.hist.forEach(function (x) {
+        if (!x || typeof x.ts !== "number" || x.ts >= start.getTime() || seen[x.id]) return;
+        var al = ageLabel(x.ts, start.getTime());
+        if (!al) return;
+        seen[x.id] = true; matches.push({ x: x, al: al });
+      });
+      matches.sort(function (a, b) { return b.x.ts - a.x.ts; });
+      wrap.hidden = matches.length === 0;
+      row.innerHTML = "";
+      if (!matches.length) { lab.textContent = ""; return; }
+      lab.textContent = "📅 " + T("On this day") + ": " + matches.length + " " + T(matches.length === 1 ? "video" : "videos");
+      matches.slice(0, 3).forEach(function (m) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip";
+        b.textContent = "▶ " + (m.x.title || m.x.id).slice(0, 40) + " · " + m.al;
+        b.setAttribute("aria-label", T("Play") + " " + (m.x.title || m.x.id) + " - " + m.al);
+        b.addEventListener("click", function () { linkInput.value = m.x.id; loadVideo(null, null, undefined, true); });
+        row.appendChild(b);
+      });
+      if (matches.length > 3) { var more = document.createElement("span"); more.className = "hint"; more.style.alignSelf = "center"; more.textContent = "+" + (matches.length - 3) + " " + T("more"); row.appendChild(more); }
+    }
+    var baseRenderLibOTD = renderLib;
+    renderLib = function () { baseRenderLibOTD(); otdRender(); };
+    (window.__relang = window.__relang || []).push(otdRender);
+    otdRender();
+  })();
+
   // Round 234 fix: list rows read '... - Resume 1:00' in English on Hindi and Gujarati pages, and
   // the 'Saved on this device only.' note under Recently watched also stayed English (its
   // translation row pointed at the first paragraph after the list, which became the hidden
@@ -25617,6 +25678,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Storage check", "storage space full quota size memory used how much data backup trim 5 mb", "#storChkBtn"],
       ["Today's recap", "recap today summary journal share what i watched copy text day log", "#recapBtn"],
       ["This week's recap", "week recap summary 7 days weekly journal share what i watched copy text log", "#wrecapBtn"],
+      ["On this day", "on this day history anniversary same date week ago month ago watched before memory rewind", "#histOtdWrap"],
       ["Select videos", "select multiple checkbox bulk favourites watch later remove move queue several tick batch", "#selBtn"],
       ["Recently removed", "recently removed bin trash undo restore deleted favourites watch later accident bring back", "#binBtn"],
       ["Add to calendar", "calendar ics event schedule evening plan reminder queue watch later block time session", "#calBtn"],
