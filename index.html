@@ -5149,7 +5149,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // through both shared renders. Hindi and Gujarati text, What's new and feature
   // finder included.
   Object.assign(TR_MSG, {
-    "Playlists at a glance": ["प्लेलिस्ट एक नज़र में", "પ્લેલિસ્ટ એક નજરમાં"]
+    "Playlists at a glance": ["प्लेलिस्ट एक नज़र में", "પ્લેલિસ્ટ એક નજરમાં"],
+    "Playlists done-by clock": ["प्लेलिस्ट पूरी होने का समय", "પ્લેલિસ્ટ પૂરી થવાનો સમય"]
   });
   Object.assign(TR_MSG, {
     "Average per play": ["प्रति प्ले औसत", "દર પ્લે સરેરાશ"],
@@ -5162,15 +5163,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // load (before that line runs) sees it undefined - keep the line hidden then; the
     // wrapped renders repaint it the moment playlists exist.
     if (typeof playlists === "undefined" || !Array.isArray(playlists)) { plTotalLine.hidden = true; plTotalLine.textContent = ""; return; }
-    var nVids = 0, secs = 0;
+    var nVids = 0, secs = 0, nKnown = 0;
     playlists.forEach(function (pl) {
       if (!pl || !Array.isArray(pl.items)) return;
       nVids += pl.items.length;
-      pl.items.forEach(function (x) { var d = plItemDuration(x); if (d > 0) secs += d; });
+      pl.items.forEach(function (x) { var d = plItemDuration(x); if (d > 0) { secs += d; nKnown++; } });
     });
     var show = playlists.length > 0 && nVids > 0;
     plTotalLine.hidden = !show;
     plTotalLine.textContent = !show ? "" : playlists.length + " " + T("playlists") + " · " + nVids + " " + T("videos") + (secs > 0 ? " · ~ " + fmtWatch(secs) : "");
+    // Playlists done-by clock (round 232 new 4): the glance line sums the learned
+    // lengths, but "would this whole collection run past lunch?" needed a clock and
+    // mental addition - the same gap round 231 closed for Continue watching. When every
+    // video's length is known, the line ends with the wall-clock time the whole
+    // collection would finish if you started now, at the current playback speed, reusing
+    // the translated "done by" wording. While any length is unknown it stays a guess
+    // free total only.
+    if (show && nKnown > 0 && nKnown === nVids) {
+      var pEnd = new Date(Date.now() + Math.round(secs / (prefs.speed > 0 ? prefs.speed : 1)) * 1000);
+      plTotalLine.textContent += " · " + T("done by") + " " + pEnd.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    }
   }
   var baseRenderLibPT = renderLib;
   renderLib = function () { baseRenderLibPT(); plTotalRender(); };
@@ -17558,6 +17570,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Playlists done-by clock", "#plTotalLine"],
     ["Watch later done-by clock", "#laterTime"],
     ["Copy search matches", "#libCopyMatchBtn"],
     ["Quick wins", "#laterQuickBtn"],
@@ -24496,6 +24509,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Playlists done-by clock", "playlists done by clock time finish wall clock when done whole collection total length end", "#plTotalLine"],
       ["Watch later done-by clock", "watch later done by clock time finish wall clock when done total length backlog end", "#laterTime"],
       ["Copy search matches", "copy search matches results numbered list clipboard share find hits videos links", "#libCopyMatchBtn"],
       ["Quick wins", "quick wins short videos 5 minutes less clear backlog watch later queue all shorts fast evening", "#laterQuickBtn"],
