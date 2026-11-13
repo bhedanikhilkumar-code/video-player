@@ -18031,6 +18031,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Find a moment", "#momFindCard"],
     ["Watch sessions", "#sessCard"],
     ["Today's list", "#todayCard"],
     ["Where is this video?", "#whereCard"],
@@ -18040,7 +18041,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Video of the day", "#dailyPickCard"],
     ["Review reminders", "#reviewCard"],
     ["Title tidy", "#titleTidyCard"],
-    ["Take it to YouTube", "#ytTakeCard"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25287,6 +25287,43 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var oldRL9=renderLib;renderLib=function(){oldRL9();if(card.open&&!(document.activeElement&&document.activeElement.closest('#sessCard')))paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Find a moment (round 249 new 2): saved moments live per video, so "where was that guitar
+  // solo I marked?" meant opening video after video. This card searches every saved moment name
+  // (and the video titles) at once and plays a match at exactly its second. Read-only: nothing
+  // is changed or stored.
+  Object.assign(TR_MSG, {
+    "Find a moment": ["मोमेंट खोजें", "મોમેન્ટ શોધો"],
+    "Search every saved moment by name and jump straight to its second.": ["हर सेव किया मोमेंट नाम से खोजें और सीधे उसी सेकंड पर जाएँ.", "દરેક સેવ કરેલો મોમેન્ટ નામથી શોધો અને સીધા તે જ સેકંડે જાઓ."],
+    "Moment name": ["मोमेंट का नाम", "મોમેન્ટનું નામ"],
+    "No moments match.": ["कोई मोमेंट नहीं मिला.", "કોઈ મોમેન્ટ મળ્યો નથી."],
+    "No saved moments yet.": ["अभी कोई सेव मोमेंट नहीं.", "હજી કોઈ સેવ મોમેન્ટ નથી."],
+    "Showing the first 8 matches.": ["पहले 8 नतीजे दिखा रहे हैं.", "પ્રથમ 8 પરિણામ બતાવી રહ્યા છીએ."],
+    "Play from here": ["यहाँ से चलाएँ", "અહીંથી ચલાવો"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='momFindCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0"><input type="text" id="mfIn" style="flex:1;min-width:0" maxlength="120" autocomplete="off"><button type="button" class="chip" id="mfGo"></button></div><div id="mfOut"></div><p class="hint" id="mfMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  var stM=document.createElement('style');stM.textContent='#momFindCard .mf-r{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0}#momFindCard .mf-t{flex:1 1 100%;font-size:14px;overflow-wrap:anywhere}#momFindCard .mf-w{font-size:12px;opacity:.75;flex:1 1 100%}';document.head.appendChild(stM);
+  function allMoments(){var o=[];if(typeof marks!=='object'||!marks)return o;Object.keys(marks).forEach(function(id){if(!/^[\w-]{11}$/.test(id)||!Array.isArray(marks[id]))return;marks[id].forEach(function(m){if(m&&typeof m.t==='number')o.push({id:id,t:m.t,name:String(m.name||''),title:titleFor(id)||id});});});return o;}
+  function playAt(id,t){if(findIn(lib.queue,id)<0){if(lib.queue.length>=50){$('mfMsg').textContent=T('The queue is full at 50 videos. Remove some first.');return;}lib.queue.unshift({id:id,title:titleFor(id)||''});}var i=findIn(lib.queue,id);saveLib();renderLib();playQueueAt(i);
+    var tries=0,tm=setInterval(function(){if(ready&&duration>0&&typeof curTime==='number'){send('seekTo',[t,true]);send('playVideo');clearInterval(tm);}else if(++tries>80)clearInterval(tm);},250);
+    if(frameBox&&frameBox.scrollIntoView)frameBox.scrollIntoView({behavior:window.vpReducedMotion()?'auto':'smooth',block:'center'});}
+  function go(){var q=$('mfIn').value.trim();var M=$('mfMsg'),O=$('mfOut');O.textContent='';
+    if(!q){M.textContent=T('Type something first.');return;}
+    var all=allMoments();if(!all.length){M.textContent=T('No saved moments yet.');return;}
+    var lq=q.toLowerCase(),res=all.filter(function(m){return m.name.toLowerCase().indexOf(lq)>=0||m.title.toLowerCase().indexOf(lq)>=0;});
+    if(!res.length){M.textContent=T('No moments match.');return;}
+    M.textContent=res.length>8?T('Showing the first 8 matches.'):'';
+    res.slice(0,8).forEach(function(m){var r=document.createElement('div');r.className='mf-r';
+      var t=document.createElement('div');t.className='mf-t';t.textContent=(m.name||fmt(m.t))+' · '+fmt(m.t);r.appendChild(t);
+      var w=document.createElement('div');w.className='mf-w';w.textContent=m.title;r.appendChild(w);
+      var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Play from here');b.setAttribute('aria-label',T('Play from here')+': '+(m.name||fmt(m.t))+' - '+m.title);b.addEventListener('click',function(){playAt(m.id,m.t);});r.appendChild(b);O.appendChild(r);});}
+  function paint(){card.querySelector('summary').textContent=T('Find a moment');card.querySelector('.r239-desc').textContent=T('Search every saved moment by name and jump straight to its second.');$('mfIn').setAttribute('aria-label',T('Moment name'));$('mfIn').placeholder=T('Moment name');$('mfGo').textContent=T('Find');}
+  $('mfGo').addEventListener('click',go);$('mfIn').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();go();}});
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -27849,6 +27886,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later triage", "watch later triage one at a time oldest first decide keep remove favourite play clean backlog", "#triageCard"],
       ["Around this time", "around this time of day morning afternoon evening night usually watch history suggestions hour", "#aroundCard"],
       ["Where is this video?", "where is this video find locate which list saved queue favourites watch later history playlist search by title link", "#whereCard"],
+      ["Find a moment", "find a moment search saved moments name second jump play from here bookmark marked solo", "#momFindCard"],
       ["Watch sessions", "watch sessions sittings evening grouped history 3 hour gap queue again put back on span finished minutes", "#sessCard"],
       ["Today's list", "today's list daily plan up to 5 videos tick off done today checklist", "#todayCard"],
       ["Video of the day", "video of the day daily pick one video a day favourites watch later habit same all day unwatched first", "#dailyPickCard"],
