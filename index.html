@@ -7526,7 +7526,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   [[0, "Off"], [10, "10 min"], [15, "15 min"], [30, "30 min"], [45, "45 min"], [60, "60 min"]].forEach(function(o) {
     var b = document.createElement("button"); b.className = "chip"; b.type = "button";
     b.dataset.en = o[1]; b.textContent = T(o[1]); b.dataset.value = String(o[0]); b.setAttribute("aria-pressed", "false");
-    b.addEventListener("click", function() { sleepSet(o[0]); }); sleepChips.appendChild(b);
+    b.addEventListener("click", function() {
+      // Round 226 fix 5: switching a running timer Off lost it
+      // for good, unlike the other clears in the app. Off now shows an Undo that puts the same
+      // stop time back (skipped when a new timer was set meanwhile or the time has passed).
+      var oldEnd = sleepEnd, oldTxt = sleepClockTxt;
+      sleepSet(o[0]);
+      if (!o[0] && oldEnd > Date.now() + 1500) toastUndo(T("Sleep timer off"), function () {
+        if (sleepEnd || oldEnd <= Date.now() + 1000) return;
+        sleepEnd = oldEnd; sleepClockTxt = oldTxt; sleepPaused = false;
+        try { localStorage.setItem("vp-sleep-end.v1", String(sleepEnd)); } catch (e) {}
+        if (sleepTick) clearInterval(sleepTick);
+        sleepTick = setInterval(checkSleep, 1000);
+        markActive(sleepChips, "-1"); sleepRender();
+      }, T("Sleep timer restored."));
+    }); sleepChips.appendChild(b);
   });
   // Round 205 fix 2: the preset chips were built once in English, so Off and 10-60 min stayed English in Hindi and Gujarati.
   (window.__relang = window.__relang || []).push(function () { Array.prototype.forEach.call(sleepChips.querySelectorAll(".chip"), function (c) { if (c.dataset.en) c.textContent = T(c.dataset.en); }); });
@@ -7540,6 +7554,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     prefs.sleepPicFade = sleepPicFadeBox.checked; savePrefs();
     if (!prefs.sleepPicFade) sleepPicRestore();
   }); }
+  Object.assign(TR_MSG, { "Sleep timer restored.": ["स्लीप टाइमर वापस आ गया.", "સ્લીપ ટાઈમર પાછું આવ્યું."] });
   Object.assign(TR_MSG, { "The timer can't run longer than 12 hours.": ["टाइमर 12 घंटे से ज़्यादा नहीं चल सकता.", "ટાઈમર 12 કલાકથી વધુ ચાલી શકતું નથી."] });
   if (sleepExtend) sleepExtend.addEventListener("click", function () {
     if (!sleepEnd) return;
