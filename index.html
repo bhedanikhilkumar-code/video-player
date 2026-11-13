@@ -2382,7 +2382,7 @@ setTimeout(done,3000);})();
       <ul class="lib-list" id="plList"></ul>
       <p class="hint" id="plTotalLine" role="status" hidden></p>
       <div id="musicQueue">
-      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="shufflePlayBtn" type="button">🎲 Shuffle play</button><button class="chip" id="qSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="sortLenQueueBtn" type="button">Sort by length</button><button class="chip" id="sortAzQueueBtn" type="button">Sort A to Z</button><button class="chip" id="queueToLaterBtn" type="button">Save all to Watch later</button><button class="chip" id="queueToFavBtn" type="button">Save all to favourites</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="qSkipWBtn" type="button" aria-pressed="false">Skip watched: off</button><button class="chip" id="qConsumeBtn" type="button" aria-pressed="false">Remove played: off</button><button class="chip" id="qFeedBtn" type="button" aria-pressed="false">Watch later feed: off</button><button class="chip" id="qPickBtn" type="button" aria-pressed="false">☑ Pick many: off</button><button class="chip" id="clearUpcomingBtn" type="button">Clear upcoming</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
+      <div class="lib-head"><h3 id="lhQueue">Up next (queue)</h3><span class="row"><button class="chip" id="nextBtn">Next ⏭</button><button class="chip" id="shareQueueBtn" type="button">Share</button><button class="chip" id="copyQueueBtn" type="button">Copy list</button><button class="chip" id="mixQueueBtn" type="button">Mix order</button><button class="chip" id="reverseQueueBtn" type="button">Reverse order</button><button class="chip" id="shufflePlayBtn" type="button">🎲 Shuffle play</button><button class="chip" id="qSurpriseBtn" type="button">🎲 Surprise me</button><button class="chip" id="qKeepBtn" type="button">✂️ Keep next 10</button><button class="chip" id="sortLenQueueBtn" type="button">Sort by length</button><button class="chip" id="sortAzQueueBtn" type="button">Sort A to Z</button><button class="chip" id="queueToLaterBtn" type="button">Save all to Watch later</button><button class="chip" id="queueToFavBtn" type="button">Save all to favourites</button><button class="chip" id="dedupeQueueBtn" type="button">Remove duplicates</button><button class="chip" id="clearPlayedBtn" type="button">Clear watched</button><button class="chip" id="qSkipWBtn" type="button" aria-pressed="false">Skip watched: off</button><button class="chip" id="qConsumeBtn" type="button" aria-pressed="false">Remove played: off</button><button class="chip" id="qFeedBtn" type="button" aria-pressed="false">Watch later feed: off</button><button class="chip" id="qPickBtn" type="button" aria-pressed="false">☑ Pick many: off</button><button class="chip" id="clearUpcomingBtn" type="button">Clear upcoming</button><button class="chip" id="clearQueueBtn">Clear</button></span></div>
       <div class="q-pick-bar" id="qPickBar" hidden>
         <div class="hint q-pick-count" role="status"><span id="qPickCount"></span><span id="qPickTime" style="display:block;margin-top:4px"></span></div>
         <span class="row">
@@ -17660,6 +17660,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Keep next 10 in the queue", "#qKeepBtn"],
     ["Save search matches as playlist", "#libPlMatchBtn"],
     ["Favourites done-by clock", "#favTime"],
     ["Surprise me in the queue", "#qSurpriseBtn"],
@@ -22062,6 +22063,28 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   })();
 
+  // Keep next 10 in the queue (round 234 new 1): a queue grown from playlist imports and search matches can run to 50 videos, and the only ways to shorten it were Clear upcoming (everything) or picking rows by hand. One tap keeps the next 10 after the playing video and drops the rest, with the usual Undo toast restoring the queue and its place. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Keep next 10 in the queue": ["कतार में अगले 10 रखें", "કતારમાં આગળના 10 રાખો"],
+    "✂️ Keep next 10": ["✂️ अगले 10 रखें", "✂️ આગળના 10 રાખો"],
+    "The queue already has 10 or fewer upcoming videos.": ["कतार में पहले से 10 या कम अगले वीडियो हैं.", "કતારમાં પહેલેથી 10 કે ઓછા આગળના વીડિયો છે."],
+    "Queue trimmed: kept the next 10, removed": ["कतार छोटी की: अगले 10 रखे, हटाए गए", "કતાર ટૂંકી કરી: આગળના 10 રાખ્યા, કાઢ્યા"],
+    "Queue restored": ["कतार वापस आ गई", "કતાર પાછી આવી"]
+  });
+  (function () {
+    var btn = $("qKeepBtn"); if (!btn) return;
+    var KEEP = 10;
+    function paint() { btn.textContent = T("\u2702\uFE0F Keep next 10"); btn.setAttribute("aria-label", T("Keep next 10 in the queue")); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      var start = qPos + 1, extra = lib.queue.length - start - KEEP;
+      if (extra <= 0) { toast(T("The queue already has 10 or fewer upcoming videos.")); return; }
+      var snap = lib.queue.slice(), sp = qPos;
+      lib.queue = lib.queue.slice(0, start + KEEP); resetShuffle(); saveLib(); renderLib(); showLibErr("");
+      toastUndo(T("Queue trimmed: kept the next 10, removed") + " " + extra, function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    });
+  })();
+
   // Surprise me in the queue (round 233 new 5): Watch later, favourites, Recently watched
   // and the playlists each grew a one-tap Surprise me, but the queue itself - the list you
   // are actually watching tonight - still made you pick by eye. One tap jumps to a random
@@ -24725,6 +24748,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Keep next 10 in the queue", "keep next ten trim queue shorten cut upcoming limit long queue tidy scissors", "#qKeepBtn"],
       ["Save search matches as playlist", "save search matches as playlist keep find results named collection library search", "#libPlMatchBtn"],
       ["Favourites done-by clock", "favourites done by clock time finish wall clock when done total length rewatch end", "#favTime"],
       ["Surprise me in the queue", "surprise me queue random pick upcoming jump play dice luck", "#qSurpriseBtn"],
