@@ -17724,6 +17724,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Notes at a glance", "#notesGlance"],
     ["Up next in the mini player", "#miniUpNext"],
     ["Watch time by weekday", "#statsWdayWrap"],
     ["On this day", "#histOtdWrap"],
@@ -23107,6 +23108,38 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     (window.__relang = window.__relang || []).push(paint);
   })();
 
+
+  // Notes at a glance (round 237 new 5): notes pile up one video at a time and only the storage
+  // check ever counts them, so 'how much have I written down?' had no answer. One quiet line under
+  // the Notes card sums the on-device notes: how many, how many videos they sit on, and the total
+  // word count - handy before an export or a clear. Read-only, hidden while there are no notes,
+  // follows every save, import, clear and Undo through the notes save path. Hindi and Gujarati text.
+  Object.assign(TR_MSG, {
+    "notes": ["नोट्स", "નોંધો"],
+    "words": ["शब्द", "શબ્દો"],
+    "Longest": ["सबसे लंबा", "સૌથી લાંબી"]
+  });
+  (function () {
+    var row = $("notesMoreRow"); if (!row || !row.parentNode) return;
+    var line = document.createElement("p"); line.className = "hint"; line.id = "notesGlance"; line.setAttribute("role", "status"); line.hidden = true;
+    row.parentNode.insertBefore(line, row.nextSibling);
+    function notesGlanceRender() {
+      var ids = Object.keys(notes).filter(function (k) { return typeof notes[k] === "string" && notes[k].trim(); });
+      line.hidden = ids.length === 0;
+      if (!ids.length) { line.textContent = ""; return; }
+      var words = 0, longId = null, longWords = -1;
+      ids.forEach(function (k) { var w = notes[k].trim().split(/\s+/).length; words += w; if (w > longWords) { longWords = w; longId = k; } });
+      var longTitle = (longId && typeof titleFor === "function" ? titleFor(longId) : "") || longId || "";
+      line.textContent = ids.length + " " + T("notes") + " · " + words + " " + T("words") + (longTitle ? " · " + T("Longest") + ": " + longTitle.slice(0, 40) : "");
+    }
+    var baseNotesSaveGl = notesSave;
+    notesSave = function () { var r = baseNotesSaveGl(); notesGlanceRender(); return r; };
+    var baseRenderLibNG = renderLib;
+    renderLib = function () { baseRenderLibNG(); notesGlanceRender(); };
+    (window.__relang = window.__relang || []).push(notesGlanceRender);
+    notesGlanceRender();
+  })();
+
   // Round 234 fix: list rows read '... - Resume 1:00' in English on Hindi and Gujarati pages, and
   // the 'Saved on this device only.' note under Recently watched also stayed English (its
   // translation row pointed at the first paragraph after the list, which became the hidden
@@ -25787,6 +25820,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["On this day", "on this day history anniversary same date week ago month ago watched before memory rewind", "#histOtdWrap"],
       ["Watch time by weekday", "weekday chart monday tuesday which day watch most average bars week pattern", "#statsWdayWrap"],
       ["Up next in the mini player", "mini player next video title up next docked floating small what plays after", "#miniUpNext"],
+      ["Notes at a glance", "notes count words total longest writing memory summary glance how much", "#notesGlance"],
       ["Select videos", "select multiple checkbox bulk favourites watch later remove move queue several tick batch", "#selBtn"],
       ["Recently removed", "recently removed bin trash undo restore deleted favourites watch later accident bring back", "#binBtn"],
       ["Add to calendar", "calendar ics event schedule evening plan reminder queue watch later block time session", "#calBtn"],
