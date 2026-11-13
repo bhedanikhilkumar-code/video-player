@@ -31310,6 +31310,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Fill my break": ["मेरा ब्रेक भरें", "મારો બ્રેક ભરો"],
     "Queue as many unwatched Watch later videos as fit, oldest first. Uses lengths the app has already learned.": ["उतने अनदेखे Watch later वीडियो कतार में डालें जितने समय में फिट हों, सबसे पुराने पहले. ऐप को ज्ञात लंबाइयों का उपयोग होता है.", "જેટલા ન જોયેલા Watch later વીડિયો સમયમાં ફિટ થાય તેટલા કતારમાં નાખો, સૌથી જૂના પહેલા. એપને ખબર હોય એવી લંબાઈ વપરાય છે."],
     "Queued {n} videos ({m} min)": ["{n} वीडियो कतार में ({m} मिनट)", "{n} વીડિયો કતારમાં ({m} મિનિટ)"],
+    "Queued {n} video ({m} min)": ["{n} वीडियो कतार में ({m} मिनट)", "{n} વીડિયો કતારમાં ({m} મિનિટ)"],
     "Nothing fits in that time - the shortest unwatched video is about {m} min.": ["इतने समय में कुछ फिट नहीं - सबसे छोटा अनदेखा वीडियो करीब {m} मिनट का है.", "આટલા સમયમાં કંઈ ફિટ નથી - સૌથી ટૂંકો ન જોયેલો વીડિયો આશરે {m} મિનિટનો છે."],
     "No unwatched videos with a known length - play a saved video once so the app learns its length.": ["ज्ञात लंबाई वाला कोई अनदेखा वीडियो नहीं - सेव किया वीडियो एक बार चलाएं ताकि ऐप उसकी लंबाई जान ले.", "જાણીતી લંબાઈવાળો કોઈ ન જોયેલો વીડિયો નથી - સેવ કરેલો વીડિયો એક વાર ચલાવો જેથી એપ તેની લંબાઈ જાણી લે."]
   });
@@ -31328,18 +31329,22 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function paint(){$('fillBreakLab277').textContent=T('Fill my break')+':';go.textContent='\uD83E\uDDE9 '+T('Fill my break');hint.textContent=T('Queue as many unwatched Watch later videos as fit, oldest first. Uses lengths the app has already learned.');[].forEach.call(chipBox.children,function(c,i){c.textContent=CHOICES[i]+' '+T('min');});}
     go.addEventListener('click',function(){
       if(!lib.later.length){msg.textContent=T('Nothing saved for later yet. Load a video and tap Watch later.');return;}
+      // Round 277 fix 1: lengths learned in earlier sessions live on the history
+      // entries (the same fallback the list rows use); without them a fresh session
+      // almost always found "no known length" even for videos watched before.
+      function dOf(it,hi){var d=infoCache[it.id]&&infoCache[it.id].dur;if(typeof d==='number'&&d>0)return d;return hi>=0&&typeof lib.hist[hi].dur==='number'&&lib.hist[hi].dur>0?lib.hist[hi].dur:0;}
       var pool=lib.later.slice().reverse().filter(function(it){
         if(laterSnoozed(it))return false;
         var hi=findIn(lib.hist,it.id);if(hi>=0&&lib.hist[hi].done)return false;
         if(findIn(lib.queue,it.id)>=0)return false;
-        var d=infoCache[it.id]&&infoCache[it.id].dur;return typeof d==='number'&&d>0;
+        return dOf(it,hi)>0;
       });
       if(!pool.length){msg.textContent=T('No unwatched videos with a known length - play a saved video once so the app learns its length.');return;}
       var budget=mins*60,total=0,ids=[];
-      for(var i=0;i<pool.length;i++){var d=infoCache[pool[i].id].dur;if(total+d<=budget&&(lib.queue.length+ids.length)<50){ids.push(pool[i].id);total+=d;}}
-      if(!ids.length){var minD=Math.min.apply(null,pool.map(function(it){return infoCache[it.id].dur;}));msg.textContent=T('Nothing fits in that time - the shortest unwatched video is about {m} min.').replace('{m}',Math.max(1,Math.round(minD/60)));return;}
+      for(var i=0;i<pool.length;i++){var d=dOf(pool[i],findIn(lib.hist,pool[i].id));if(total+d<=budget&&(lib.queue.length+ids.length)<50){ids.push(pool[i].id);total+=d;}}
+      if(!ids.length){var minD=Math.min.apply(null,pool.map(function(it){return dOf(it,findIn(lib.hist,it.id));}));msg.textContent=T('Nothing fits in that time - the shortest unwatched video is about {m} min.').replace('{m}',Math.max(1,Math.round(minD/60)));return;}
       queueAdd(ids.join(' '));
-      msg.textContent=T('Queued {n} videos ({m} min)').replace('{n}',ids.length).replace('{m}',Math.max(1,Math.round(total/60)));
+      msg.textContent=(ids.length===1?T('Queued {n} video ({m} min)'):T('Queued {n} videos ({m} min)')).replace('{n}',ids.length).replace('{m}',Math.max(1,Math.round(total/60)));
       toast(msg.textContent);
     });
     (window.__relang=window.__relang||[]).push(paint);paint();
