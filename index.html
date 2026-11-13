@@ -18008,6 +18008,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Repeat titles", "#repeatCard"],
     ["Overlapping playlists", "#overlapCard"],
     ["Mix builder", "#mixCard"],
     ["Unavailable video check", "#deadCard"],
@@ -18017,7 +18018,6 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Print your lists", "#printCard"],
     ["Customize shortcuts", "#keymapCard"],
     ["Playlist QR code", "#plList"],
-    ["Hide shorts in favourites", "#favShortsBtn"],
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -24191,6 +24191,42 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var oldRP=renderPlaylists;renderPlaylists=function(){oldRP.apply(this,arguments);if(card.open)paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
+  // Repeat titles (round 244 new 5): the same song or lecture is often saved twice under two
+  // different video ids (a re-upload, a lyric video, an official and a fan copy), and the app's
+  // duplicate tools only match ids. This card groups saved videos whose titles are the same once
+  // case, punctuation and spacing are ignored (titles of 6+ characters, two or more different ids),
+  // across the queue, favourites, Watch later and playlists, and shows which lists hold each copy.
+  // 'Keep one' keeps the copy that sits in Favourites (else the first found) and removes the
+  // others from those four lists, with an Undo toast; history is left alone.
+  Object.assign(TR_MSG, {
+    "Repeat titles": ["दोहराए गए टाइटल", "પુનરાવર્તિત શીર્ષક"],
+    "Finds videos saved twice under different links but with the same title.": ["ऐसे वीडियो ढूँढता है जो अलग लिंक से दो बार सेव हैं पर टाइटल वही है.", "એવા વીડિયો શોધે છે જે જુદી લિંકથી બે વાર સેવ છે પણ શીર્ષક સરખું છે."],
+    "No repeated titles found.": ["कोई दोहराया टाइटल नहीं मिला.", "કોઈ પુનરાવર્તિત શીર્ષક મળ્યું નથી."],
+    "copies": ["कॉपी", "નકલ"],
+    "Keep one": ["एक रखें", "એક રાખો"],
+    "Extra copies removed:": ["फ़ालतू कॉपी हटाईं:", "વધારાની નકલ કાઢી:"]
+  });
+  (function(){var host=$('plList');if(!host)return;
+  var card=document.createElement('details');card.id='repeatCard';card.className='r239-card';
+  card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div id="rtRows"></div><p class="hint" id="rtMsg" role="status"></p>';
+  host.parentNode.insertBefore(card,host);
+  function norm(t){return String(t||'').toLowerCase().replace(/[^a-z0-9\u0900-\u0dff]+/g,'');}
+  function groups(){var by={};function add(x,w){if(!validItem(x)||!x.title)return;var k=norm(x.title);if(k.length<6)return;var g=by[k]||(by[k]={title:x.title,ids:{},order:[]});if(!g.ids[x.id]){g.ids[x.id]=[];g.order.push(x.id);}if(g.ids[x.id].indexOf(w)<0)g.ids[x.id].push(w);}
+    lib.favs.forEach(function(x){add(x,'Favourites');});playlists.forEach(function(p){(p.items||[]).forEach(function(x){add(x,'Playlists');});});lib.later.forEach(function(x){add(x,'Watch later');});lib.queue.forEach(function(x){add(x,'Queue');});
+    return Object.keys(by).map(function(k){return by[k];}).filter(function(g){return g.order.length>1;});}
+  function keepOne(g){var snap=JSON.parse(JSON.stringify({queue:lib.queue,favs:lib.favs,later:lib.later,playlists:playlists}));var curId=(qPos>=0&&lib.queue[qPos])?lib.queue[qPos].id:null;
+    var keep=g.order.filter(function(id){return g.ids[id].indexOf('Favourites')>=0;})[0]||g.order[0],drop={};g.order.forEach(function(id){if(id!==keep)drop[id]=1;});
+    var f=function(x){return !(x&&drop[x.id]);};lib.queue=lib.queue.filter(f);lib.favs=lib.favs.filter(f);lib.later=lib.later.filter(f);playlists.forEach(function(p){p.items=(p.items||[]).filter(f);});
+    qPos=curId?lib.queue.findIndex(function(x){return x.id===curId;}):-1;var n=Object.keys(drop).length;saveLib();savePlaylists();renderLib();renderPlaylists();paint();$('rtMsg').textContent=T('Extra copies removed:')+' '+n;
+    toastUndo(T('Extra copies removed:')+' '+n,function(){lib.queue=snap.queue;lib.favs=snap.favs;lib.later=snap.later;playlists.splice(0,playlists.length);snap.playlists.forEach(function(p){playlists.push(p);});qPos=curId?lib.queue.findIndex(function(x){return x.id===curId;}):-1;saveLib();savePlaylists();renderLib();renderPlaylists();paint();},T('Lists restored'));}
+  function paint(){card.querySelector('summary').textContent=T('Repeat titles');card.querySelector('.r239-desc').textContent=T('Finds videos saved twice under different links but with the same title.');var box=$('rtRows');box.textContent='';var gs=groups();
+    if(!gs.length){var e=document.createElement('p');e.className='hint';e.textContent=T('No repeated titles found.');box.appendChild(e);return;}
+    gs.forEach(function(g){var d=document.createElement('div');d.className='row';d.style.cssText='display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0';var s=document.createElement('span');s.className='hint';s.style.flex='1 1 180px';s.textContent=g.title+' - '+g.order.length+' '+T('copies')+': '+g.order.map(function(id){return g.ids[id].map(function(w){return T(w);}).join('+');}).join(' | ');d.appendChild(s);
+      var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Keep one');b.setAttribute('aria-label',T('Keep one')+': '+g.title);b.addEventListener('click',function(){keepOne(g);});d.appendChild(b);box.appendChild(d);});}
+  card.addEventListener('toggle',function(){if(card.open)paint();});
+  var oldRL3=renderLib;renderLib=function(){oldRL3();if(card.open)paint();};
+  (window.__relang=window.__relang||[]).push(paint);paint();
+  })();
 /*R244-END*/
 
 })();
@@ -26749,6 +26785,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Repeat titles", "repeat titles duplicate same title different link reupload copies saved twice keep one clean library", "#repeatCard"],
       ["Overlapping playlists", "overlapping playlists duplicate similar merge combine same videos tidy share half dedupe playlists", "#overlapCard"],
       ["Mix builder", "mix builder build queue minutes time budget favourites watch later playlists history fit evening plan shortest random save playlist", "#mixCard"],
       ["Unavailable video check", "unavailable video check dead deleted private blocked broken links removed saved lists thumbnail cleanup clean library", "#deadCard"],
