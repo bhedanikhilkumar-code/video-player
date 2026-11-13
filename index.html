@@ -12645,6 +12645,20 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         var f = plFind(nv); if (f >= 0 && f !== idx) { plSay(T("You already have a playlist named") + " \"" + nv + "\"."); return; }
         var oldNm247 = pl.name; pl.name = nv; if (window.__vpPlanRename) window.__vpPlanRename(oldNm247, nv); savePlaylists(); renderPlaylists(); plSay(T("Renamed."));
       });
+      btn(T("Make a copy"), "", function () {
+        var base = pl.name.replace(/\s*\(\d+\)\s*$/, ""), nm = base + " (2)", nn = 2;
+        while (plFind(nm) >= 0 && nn < 100) { nn++; nm = base + " (" + nn + ")"; }
+        var cp = { name: nm, items: pl.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) };
+        if (typeof pl.note === "string" && pl.note) cp.note = pl.note;
+        if (typeof pl.group === "string" && pl.group) cp.group = pl.group;
+        if (typeof pl.speed === "number" && pl.speed >= 0.25 && pl.speed <= 3) cp.speed = pl.speed;
+        playlists.splice(idx + 1, 0, cp);
+        savePlaylists(); renderPlaylists();
+        toastUndo(T("Copy made:") + " \"" + nm + "\"", function () {
+          var ci = playlists.indexOf(cp); if (ci >= 0) playlists.splice(ci, 1);
+          savePlaylists(); renderPlaylists();
+        }, T("Copy removed"));
+      });
       btn(T("Export"), "", function () {
         var data = { app: "hd-video-player", type: "playlist", version: 1, exportedAt: new Date().toISOString(),
           name: pl.name, items: pl.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) };
@@ -18136,6 +18150,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Make a copy of a playlist", "#lhPlaylists"],
     ["Sort Continue watching", "#contSortBtn"],
     ["Data estimate", "#dataEstCard"],
     ["Reduce transparency", "#a11yTrans"],
@@ -18144,8 +18159,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Play counts on list rows", "#lhHist"],
     ["Compact lists", "#a11yCompact"],
     ["Two-week trend", "#trendCard"],
-    ["Mark a playlist as watched", "#lhPlaylists"],
-    ["Battery guard", "#battGuardRow"]
+    ["Mark a playlist as watched", "#lhPlaylists"]
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -26208,6 +26222,19 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint);
     paint();
   })();
+
+  // Make a copy of a playlist (round 253 new 4): Rename, Export and Weave cover changing
+  // and sharing a playlist, but starting a variation (a "gym" cut of a songs list, a
+  // season 2 of a course) meant rebuilding it row by row. One chip in a playlist's
+  // actions copies it - videos, note, group and default speed - under a free "(2)" name,
+  // with the usual Undo toast taking the copy away. Hindi and Gujarati text, What's new
+  // and feature finder included.
+  Object.assign(TR_MSG, {
+    "Make a copy": ["कॉपी बनाएं", "કૉપી બનાવો"],
+    "Copy made:": ["कॉपी बनाई गई:", "કૉપી બનાવાઈ:"],
+    "Copy removed": ["कॉपी हटाई गई", "કૉપી કાઢી ગઈ"],
+    "Make a copy of a playlist": ["प्लेलिस्ट की कॉपी बनाएं", "પ્લેલિસ્ટની કૉપી બનાવો"]
+  });
 /*R244-END*/
 
 })();
@@ -28766,6 +28793,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Make a copy of a playlist", "make a copy duplicate playlist clone variation season two gym version same videos new name", "#lhPlaylists"],
       ["Sort Continue watching", "sort continue watching order newest almost done just started a to z pick what to finish first resume list", "#contSortBtn"],
       ["Data estimate", "data estimate mobile data usage gb mb this month watching how much internet plan saver 480p rough guess", "#dataEstCard"],
       ["Reduce transparency", "reduce transparency solid cards no glass blur see through readability low vision iphone setting frosted off", "#a11yTrans"],
