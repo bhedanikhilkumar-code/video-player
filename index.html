@@ -33616,6 +33616,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
   WNEW.unshift(["Skip sponsors", "#sponBtn287"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  Object.assign(TR_MSG, {
+    "Waveform seek bar": ["वेवफ़ॉर्म सीक बार", "વેવફોર્મ સીક બાર"]
+  });
   window.__vpPrefs = prefs;
   window.__vpSavePrefs = savePrefs;
 })();
@@ -34545,6 +34548,74 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Seekbar preview for local files: the thin bar under the player shows the real frame
   // of the moment under your finger or mouse. Frames are drawn on this device, never uploaded.
   var lpSeekWrap = $("lpSeekWrap"), lpSeekBar = $("lpSeekBar"), lpSeekFill = $("lpSeekFill");
+
+  // Waveform seek bar (round 287 new 4): the local seek bar was a plain line - finding the
+  // drop, the quiet verse or the loud chorus in a song meant scrubbing blind. The bar now
+  // draws the file's sound shape behind the progress fill: the audio is decoded on the
+  // device (nothing uploaded), compressed into 240 peaks and kept for the session, so the
+  // shape appears a moment after the file loads and survives repaints and theme flips.
+  // Files over 25 MB are skipped so a long recording never stalls the page (the bar keeps
+  // working as before); Low-end mode hides the drawing. Checked first: the Visualizer
+  // dances to live sound and frame preview shows pictures while scrubbing - nothing mapped
+  // the sound shape onto the seek bar itself. Hindi and Gujarati text lives in the main
+  // closure, What's new and feature finder included.
+  (function () {
+    var bar = $("lpSeekBar"); if (!bar) return;
+    var ACw = window.AudioContext || window.webkitAudioContext;
+    var st = document.createElement("style");
+    st.textContent = "#lpSeekBar{position:relative;overflow:hidden}#lpWaveCvs287{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.5}html.low-fx #lpWaveCvs287,html.high-contrast #lpWaveCvs287{display:none}#lpSeekBar .lp-seekfill{position:relative;z-index:1;pointer-events:none}";
+    document.head.appendChild(st);
+    var cvs = document.createElement("canvas"); cvs.id = "lpWaveCvs287"; cvs.setAttribute("aria-hidden", "true");
+    bar.insertBefore(cvs, bar.firstChild);
+    if (!ACw) return;
+    var cache = new WeakMap(), cur = null;
+    function draw(peaks) {
+      var w = bar.clientWidth || 300, hgt = bar.clientHeight || 24, dpr = Math.min(2, window.devicePixelRatio || 1);
+      cvs.width = Math.round(w * dpr); cvs.height = Math.round(hgt * dpr);
+      var g = cvs.getContext("2d"); if (!g) return;
+      var col = getComputedStyle(document.documentElement).getPropertyValue("--teal").trim() || "#0a8";
+      g.clearRect(0, 0, cvs.width, cvs.height); g.fillStyle = col;
+      var n = peaks.length, bw = cvs.width / n;
+      for (var i = 0; i < n; i++) {
+        var bh = Math.max(1, peaks[i] * cvs.height * 0.92);
+        g.fillRect(i * bw + bw * 0.15, (cvs.height - bh) / 2, Math.max(1, bw * 0.7), bh);
+      }
+    }
+    function build(f) {
+      if (!f) return;
+      if (cache.has(f)) { draw(cache.get(f)); return; }
+      if (f.size > 25 * 1048576) { cvs.width = 0; return; }
+      cur = f; cvs.width = 0;
+      var rd = new FileReader();
+      rd.onload = function () {
+        var dc; try { dc = new ACw(); } catch (e) { return; }
+        dc.decodeAudioData(rd.result, function (buf) {
+          try { dc.close(); } catch (e) {}
+          try {
+            var d0 = buf.getChannelData(0), d1 = buf.numberOfChannels > 1 ? buf.getChannelData(1) : null;
+            var n = 240, step = Math.max(1, Math.floor(d0.length / n)), peaks = [];
+            for (var i = 0; i < n; i++) {
+              var m = 0, off = i * step;
+              for (var j = 0; j < step; j += 64) { var v = Math.abs(d0[off + j] || 0) + (d1 ? Math.abs(d1[off + j] || 0) : 0); if (v > m) m = v; }
+              peaks.push(Math.min(1, m * 0.85));
+            }
+            cache.set(f, peaks);
+            if (cur === f) draw(peaks);
+          } catch (e) {}
+        }, function () { try { dc.close(); } catch (e) {} });
+      };
+      rd.onerror = function () {};
+      rd.readAsArrayBuffer(f);
+    }
+    vid.addEventListener("loadedmetadata", function () {
+      cvs.width = 0;
+      if (localIndex >= 0 && localFiles[localIndex]) build(localFiles[localIndex]);
+    });
+    window.addEventListener("resize", function () {
+      if (localIndex >= 0 && localFiles[localIndex] && cache.has(localFiles[localIndex])) draw(cache.get(localFiles[localIndex]));
+    });
+  })();
+  if (window.__vpWnew283) window.__vpWnew283("Waveform seek bar", "#lpSeekBar");
   var lpThumb = $("lpThumb"), lpThumbCv = $("lpThumbCv"), lpThumbT = $("lpThumbT");
   var thumbVid = document.createElement("video");
   thumbVid.muted = true; thumbVid.preload = "auto"; thumbVid.playsInline = true; thumbVid.crossOrigin = "anonymous";
@@ -37856,6 +37927,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Fade between songs", "fade between songs tracks crossfade smooth transition melt music mode local files gapless soft ending beginning", "#lpFadeBtn285"],
       ["Hall sound", "hall sound reverb echo room concert space acoustics live feeling local files speaker depth", "#lpHallBtn285"],
       ["Frame gallery", "frame gallery saved frames pictures screenshots keep inside app thumbnails download delete collection local files", "#lpGal285"],
+      ["Waveform seek bar", "waveform seek bar sound shape audio peaks loud quiet parts song chorus local files music scrub visual", "#lpSeekBar"],
       ["Skip sponsors", "skip sponsors sponsored segment ad read promo self promotion sponsorblock community auto skip seek past", "#sponBtn287"],
       ["Wide sound", "wide sound stereo widen spread headphones speakers spacious narrow boxed local files music", "#lpWideBtn287"],
       ["Offline thumbnails", "offline thumbnails pictures library rows images saved on device no internet network queue watch later history pwa cache", "#lhQueue"],
