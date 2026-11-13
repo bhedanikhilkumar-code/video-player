@@ -4107,9 +4107,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var h = findIn(lib.hist, it.id);
     return h >= 0 && lib.hist[h].done === true;
   }
+  // Round 235 fix: removing the playing row from the queue left no place in it, so Next jumped back to the first video.
+  // qAfter remembers the row that took its place (index into the queue) until the next Next.
+  var qAfter = -1;
   function playNext() {
     if (!lib.queue.length) return false;
-    var next = qPos + 1;
+    var next = (qPos < 0 && qAfter >= 0) ? qAfter : qPos + 1; qAfter = -1;
     if (queueModes.shuffle) {
       var signature = lib.queue.map(function(x){return x.id;}).join(",");
       if (signature !== queueSignature) { resetShuffle(); queueSignature = signature; }
@@ -4366,9 +4369,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     fillList(queueList, lib.queue, T("Queue is empty. Add links with Add to queue."), T("Remove"), function (item, idx) {
       var snapQ = lib.queue.slice(), snapP = qPos;
       lib.queue.splice(idx, 1);
-      if (idx < qPos) qPos--; else if (idx === qPos) qPos = -1;
+      if (idx < qPos) qPos--; else if (idx === qPos) { qPos = -1; qAfter = idx; }
       saveLib(); renderLib();
-      toastUndo(T("Removed from queue"), function () { lib.queue = snapQ; qPos = snapP; saveLib(); renderLib(); }, T("Queue restored"));
+      toastUndo(T("Removed from queue"), function () { lib.queue = snapQ; qPos = snapP; qAfter = -1; saveLib(); renderLib(); }, T("Queue restored"));
     }, function (item, idx) { playQueueAt(idx); }, [{ label: T("Play next"), fn: function (item) { queuePlayNext(item); } }, favRowAction()], "queue", [
       { label: T("Paste a link"), fn: function () { var lb = $("pasteLinkBtn"); if (lb) lb.click(); var li2 = $("link"); if (li2) li2.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); var inp = $("linkInput"); if (inp) setTimeout(function () { inp.focus(); }, 350); } },
       { label: T("Import playlist"), fn: function () { var pb = $("plImportBtn"); if (pb) pb.click(); } }
