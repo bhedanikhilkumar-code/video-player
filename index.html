@@ -33746,9 +33746,14 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     });
     vid.addEventListener("playing", function () {
       if (!lp.fade) return;
-      var g = outGain285(); if (!g || !window.__lpCtx) return;
       if (vid.currentTime > Math.min(1.5, lp.fade)) return; // only a fresh start fades in
-      try { var t = window.__lpCtx.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(0.0001, t); g.setTargetAtTime(1, t, lp.fade / 3); } catch (e) {}
+      // The chain's own playing handler is registered at first play, after this one, so
+      // without the defer it would set the output to full instantly and skip the rise.
+      setTimeout(function () {
+        var g = outGain285(); if (!g || !window.__lpCtx) return;
+        if (vid.paused || vid.currentTime > Math.min(1.5, lp.fade)) return;
+        try { var t = window.__lpCtx.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(0.0001, t); g.setTargetAtTime(1, t, lp.fade / 3); } catch (e) {}
+      }, 0);
     });
     vid.addEventListener("timeupdate", function () {
       if (!lp.fade) { fadeZone285 = false; return; }
