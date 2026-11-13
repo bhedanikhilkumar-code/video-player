@@ -30731,6 +30731,48 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "This browser cannot copy images. Use Save this frame as image.": ["यह ब्राउज़र इमेज कॉपी नहीं कर सकता. \u201cयह फ़्रेम इमेज के रूप में सेव करें\u201d उपयोग करें.", "આ બ્રાઉઝર ઇમેજ કૉપિ કરી શકતું નથી. \u201cઆ ફ્રેમ ઇમેજ તરીકે સેવ કરો\u201d વાપરો."]
   });
   WNEW.unshift(["Copy frame","#lpShotCopyBtn"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  // Swipe to remove (round 274 new 4): on a phone the only way to drop a video
+  // from the queue was to find its small Remove button. Swiping a queue row to
+  // the left now removes it (a swipe of about 100 px; a shorter one springs back),
+  // through the row's own Remove button so the usual Undo, saved queue and queue
+  // place logic all apply. Touch only (a mouse or pen keeps the button), vertical
+  // scrolling is untouched, and the tap that ends a swipe does not open the video.
+  // Nothing new is saved. Hindi and Gujarati, feature finder and What's new included.
+  Object.assign(TR_MSG, { "Swipe to remove": ["स्वाइप करके हटाएं", "સ્વાઇપ કરીને દૂર કરો"] });
+  (function () {
+    var ql = $("queueList"); if (!ql) return;
+    var st = document.createElement("style");
+    st.textContent = "#queueList .lib-item{touch-action:pan-y;position:relative}#queueList .lib-item.swp274{transition:transform .18s ease,opacity .18s ease}";
+    document.head.appendChild(st);
+    var g = null, swallow = 0;
+    ql.addEventListener("pointerdown", function (e) {
+      if (e.pointerType !== "touch" || e.target.closest("button.chip,input,select,textarea")) return;
+      var li = e.target.closest("li.lib-item"); if (!li) return;
+      g = { li: li, x: e.clientX, y: e.clientY, lock: false, dx: 0, id: e.pointerId };
+    });
+    ql.addEventListener("pointermove", function (e) {
+      if (!g || e.pointerId !== g.id) return;
+      var dx = e.clientX - g.x, dy = e.clientY - g.y;
+      if (!g.lock) { if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) { g = null; return; } if (dx < -14 && Math.abs(dx) > Math.abs(dy) * 1.5) { g.lock = true; g.li.classList.remove("swp274"); } else return; }
+      g.dx = Math.max(-180, Math.min(0, dx));
+      g.li.style.transform = "translateX(" + g.dx + "px)"; g.li.style.opacity = String(1 - Math.min(0.6, Math.abs(g.dx) / 300));
+    });
+    function end(e) {
+      if (!g || (e && e.pointerId !== g.id)) return;
+      var s = g; g = null;
+      if (!s.lock) return;
+      swallow = Date.now() + 450;
+      s.li.classList.add("swp274");
+      var act = s.li.querySelector("button.chip");
+      if (s.dx <= -100 && act && e && e.type === "pointerup") {
+        s.li.style.transform = "translateX(-100%)"; s.li.style.opacity = "0";
+        setTimeout(function () { swallow = 0; act.click(); }, 160);
+      } else { s.li.style.transform = ""; s.li.style.opacity = ""; }
+    }
+    ql.addEventListener("pointerup", end); ql.addEventListener("pointercancel", end);
+    ql.addEventListener("click", function (e) { if (Date.now() < swallow) { e.stopPropagation(); e.preventDefault(); } }, true);
+  })();
+  WNEW.unshift(["Swipe to remove","#queueList"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
 })();
 
 
@@ -33458,6 +33500,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Ambient sounds", "ambient sound white pink brown noise rain ocean sleep focus study relax background masking tinnitus calm", "#ambCard270"],
       ["Blocked channels", "block channel skip hide mute creator never play queue next unwanted", "#blockCard271"],
       ["Mouse wheel seek", "mouse wheel scroll seek bar scrub laptop desktop shift fine step", "#seek"],
+      ["Swipe to remove", "swipe remove queue row left phone touch delete drop gesture undo", "#queueList"],
       ["Copy frame", "copy frame screenshot clipboard image paste chat local video picture still capture", "#lpShotCopyBtn"],
       ["Game controller", "game controller gamepad joystick xbox playstation bluetooth usb tv remote couch play pause seek volume buttons", "#padCard274"],
       ["Open with", "open with default app file handler installed pwa double click video file mp4 mkv mp3 choose program desktop", "#lpPickBtn"],
