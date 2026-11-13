@@ -18115,6 +18115,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Install app": ["ऐप इंस्टॉल करें", "એપ ઇન્સ્ટોલ કરો"]
   });
   var WNEW = [
+    ["Drop Shorts from the queue", "#qDropShortsBtn"],
     ["Play counts on list rows", "#lhHist"],
     ["Compact lists", "#a11yCompact"],
     ["Two-week trend", "#trendCard"],
@@ -18123,8 +18124,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Hour chart as PNG", "#statsPngBtn"],
     ["Skip Shorts in the queue", "#qSkipShortsBtn"],
     ["Hold to rush at 2x", "#hold2xBtn"],
-    ["Bigger tap targets", "#a11yTap"],
-    ["History by date", "#histDateCard"]
+    ["Bigger tap targets", "#a11yTap"]
 ];
   // Round 220 fix: these five What's new names had no Hindi/Gujarati entries, so the card
   // showed them in English on Hindi and Gujarati phones (their chips were translated, the
@@ -25958,6 +25958,36 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   Object.assign(TR_MSG, {
     "Play counts on list rows": ["पंक्तियों पर चलने की गिनती", "પંક્તિઓ પર ચલાવવાની ગણતરી"]
   });
+  // Drop Shorts from the queue (round 252 new 4): Skip Shorts hops over sub-minute videos
+  // while auto-next runs, but they still sit in the list taking rows and the queue total
+  // time stays padded with them. One chip removes every upcoming queue video whose learned
+  // length is under a minute (the playing video and videos with an unknown length stay),
+  // with the usual Undo toast. Mirrors Drop 30+ min at the short end.
+  Object.assign(TR_MSG, {
+    "Drop Shorts from the queue": ["कतार से शॉर्ट्स हटाएं", "કતારમાંથી શૉર્ટ્સ કાઢો"],
+    "🩳 Drop Shorts": ["🩳 शॉर्ट्स हटाएं", "🩳 શૉર્ટ્સ કાઢો"],
+    "No upcoming Short (under a minute) with a learned length.": ["ज्ञात-लंबाई वाला कोई अगला शॉर्ट (एक मिनट से कम) नहीं है.", "જાણીતી લંબાઈનો કોઈ આગળનો શૉર્ટ (એક મિનિટથી ઓછો) નથી."],
+    "Queue trimmed: Shorts removed": ["कतार छोटी की: शॉर्ट्स हटाए", "કતાર ટૂંકી કરી: શૉર્ટ્સ કાઢ્યા"]
+  });
+  (function () {
+    var anchorBtn = $("qSkipShortsBtn") || $("qDropLongBtn"); if (!anchorBtn || !anchorBtn.parentNode) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "qDropShortsBtn";
+    anchorBtn.parentNode.insertBefore(btn, anchorBtn.nextSibling);
+    function paint() { btn.textContent = T("🩳 Drop Shorts"); btn.setAttribute("aria-label", T("Drop Shorts from the queue")); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      var start = qPos + 1, n = 0, snap = lib.queue.slice(), sp = qPos;
+      var keep = lib.queue.filter(function (x, i) {
+        if (i < start) return true;
+        var hi = findIn(lib.hist, x.id), d = (infoCache[x.id] && infoCache[x.id].dur) || (hi >= 0 && lib.hist[hi].dur) || 0;
+        if (typeof d === "number" && d > 0 && d < 61) { n++; return false; }
+        return true;
+      });
+      if (!n) { toast(T("No upcoming Short (under a minute) with a learned length.")); return; }
+      lib.queue = keep; resetShuffle(); saveLib(); renderLib(); showLibErr("");
+      toastUndo(T("Queue trimmed: Shorts removed") + " " + n, function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    });
+  })();
 /*R244-END*/
 
 })();
@@ -28516,6 +28546,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Drop Shorts from the queue", "drop shorts queue remove short videos under a minute reels tidy upcoming clean list", "#qDropShortsBtn"],
       ["Play counts on list rows", "play count rows pill badge times played history favourites watch later queue most rewatched at a glance", "#lhHist"],
       ["Compact lists", "compact lists tighter rows density small phone more on screen tighter spacing accessibility option", "#a11yCompact"],
       ["Two-week trend", "two week trend 14 days bars average line this week vs last week compare watching more less graph chart", "#trendCard"],
