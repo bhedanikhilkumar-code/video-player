@@ -4191,7 +4191,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!lib.later.length) { el.textContent = ""; return; }
     // Round 138: snoozed videos sit out of the total and show as their own count.
     var known = 0, secs = 0, snzN = 0, active = 0;
-    lib.later.forEach(function (x) { if (laterSnoozed(x)) { snzN++; return; } active++; var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { known++; secs += d; } });
+    lib.later.forEach(function (x) {
+      if (laterSnoozed(x)) { snzN++; return; }
+      active++;
+      // Round 232 fix 2: a half-watched video parked in Watch later counted at its FULL
+      // length here, so "Total length" answered "how long to finish the backlog" with more
+      // than is actually left (the queue's own total had this fixed back in round 209).
+      // The length now comes from the same two places the rows use - the session's info
+      // cache, then the history row's learned length - and the part already watched is
+      // taken off (only when the length is known and the video is not marked watched).
+      var hi2 = findIn(lib.hist, x.id);
+      var d = (infoCache[x.id] && infoCache[x.id].dur) || (hi2 >= 0 && lib.hist[hi2].dur) || 0;
+      if (typeof d === "number" && d > 0) {
+        known++;
+        if (hi2 >= 0 && !lib.hist[hi2].done && typeof lib.hist[hi2].t === "number" && lib.hist[hi2].t > 0 && lib.hist[hi2].t < d) secs += d - Math.floor(lib.hist[hi2].t);
+        else secs += d;
+      }
+    });
     if (!known) { el.textContent = snzN ? "😴 " + snzN + " " + T("snoozed") : ""; return; }
     var t = Math.round(secs), h = Math.floor(t / 3600), m = h ? Math.round((t % 3600) / 60) : Math.max(1, Math.round(t / 60));
     // Round 213 fix: 59.6+ minutes used to round to a printed "1 hr 60 min".
