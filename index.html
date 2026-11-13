@@ -6469,6 +6469,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function saveResume(force) {
     var now = Date.now(); if (!curId || prefs.privateView || (!force && now - lastResumeSave < 5000)) return; lastResumeSave = now;
     try {
+      // round 265 fix 2: a video that never played since it loaded has not moved, so there is nothing new to save
+      // (saving it again made every reload step the resume spot back another 10 seconds).
+      if (!playedOnce && Math.abs(curTime - (window.__vpLoadT || 0)) < 1) return;
       var hi = findIn(lib.hist, curId);
       var finished = duration > 0 && curTime >= duration - 5;
       if (hi >= 0) { lib.hist[hi].t = finished ? 0 : Math.floor(curTime); lib.hist[hi].dur = duration; if (finished) lib.hist[hi].done = true; saveLib(); }
@@ -6958,7 +6961,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // Start over (round 128): remember a partway start so the Start over chip can offer one tap back to 0:00. Clip loads (endSec set) stay out.
     window.__vpStartAt = (startSec != null && isFinite(startSec) && startSec >= 1 && endSec == null) ? Math.round(startSec) : 0;
     document.dispatchEvent(new Event("vp-youtube-selected"));
-    curId = id; curTime = startSec || 0; lastResumeSave = 0; clearAB(); mileFired = {}; if (typeof vinylApply === "function") vinylApply(); if (typeof wmapReset === "function") wmapReset(); if (typeof reflApply === "function") reflApply(); if ($("practiceName")) { $("practiceName").value = ""; renderPracticeLoops(); } if (typeof vmemNote === "function") vmemNote("");
+    curId = id; curTime = startSec || 0; window.__vpLoadT = curTime; lastResumeSave = 0; clearAB(); mileFired = {}; if (typeof vinylApply === "function") vinylApply(); if (typeof wmapReset === "function") wmapReset(); if (typeof reflApply === "function") reflApply(); if ($("practiceName")) { $("practiceName").value = ""; renderPracticeLoops(); } if (typeof vmemNote === "function") vmemNote("");
     dsAppliedFor = null; qlAppliedFor = null;
     if (typeof renderMarks === "function") renderMarks();
     if (typeof renderNotes === "function") renderNotes();
