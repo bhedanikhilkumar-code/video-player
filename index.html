@@ -2430,7 +2430,7 @@ setTimeout(done,3000);})();
       <p class="hint" id="histFinLine" role="status" hidden></p>
       <p class="hint">Saved on this device only.</p>
       <div class="lib-head"><h3 id="lhStats">Watch stats</h3><button class="chip" id="weekCardBtn" type="button">My week card</button><button class="chip" id="statsPlaysBtn" type="button" aria-pressed="false">Sort by plays: off</button><button class="chip" id="statsTxtBtn" type="button">Save as text file</button><button class="chip" id="statsCsvBtn" type="button">Save as spreadsheet (.csv)</button><button class="chip" id="statsCopyBtn" type="button">Copy my stats</button><button class="chip" id="statsClear" type="button">Clear</button></div>
-      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsWeek" role="status"></p><p class="hint" id="statsMonth" role="status" hidden></p><p class="hint" id="statsBest" role="status" hidden></p><p class="hint" id="statsAvg" role="status" hidden></p><p class="hint" id="statsWend" role="status" hidden></p><p class="hint" id="statsSince" role="status" hidden></p><p class="hint" id="statsMonthCmp" role="status" hidden></p><p class="hint" id="statsTopChan" role="status" hidden></p><div class="stats-days" id="statsDays"></div><div class="stats-hours-wrap" id="statsHoursWrap" hidden><p class="hint stats-hours-lab" id="statsHoursLab"></p><div class="stats-hours" id="statsHours"></div><p class="hint" id="statsHoursSum" role="status"></p></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><div class="goal-row" id="wgoalRow"><span class="hint" id="wgoalLab">Weekly goal:</span><span class="row" id="wgoalChips"></span></div><p class="hint" id="wgoalStatus" role="status"></p><div class="badges-wrap" id="badgesWrap" hidden><p class="hint badges-lab" id="badgesLab"></p><div class="badges" id="badges"></div></div><ul class="lib-list" id="statsList"></ul>
+      <div id="statsBox"><p class="hint" id="statsTotal" role="status"></p><p class="hint" id="statsToday" role="status"></p><p class="hint" id="statsWeek" role="status"></p><p class="hint" id="statsMonth" role="status" hidden></p><p class="hint" id="statsBest" role="status" hidden></p><p class="hint" id="statsAvg" role="status" hidden></p><p class="hint" id="statsWend" role="status" hidden></p><p class="hint" id="statsSince" role="status" hidden></p><p class="hint" id="statsMonthCmp" role="status" hidden></p><p class="hint" id="statsPerPlay" role="status" hidden></p><p class="hint" id="statsTopChan" role="status" hidden></p><div class="stats-days" id="statsDays"></div><div class="stats-hours-wrap" id="statsHoursWrap" hidden><p class="hint stats-hours-lab" id="statsHoursLab"></p><div class="stats-hours" id="statsHours"></div><p class="hint" id="statsHoursSum" role="status"></p></div><div class="stats-cal-wrap" id="statsCalWrap" hidden><p class="hint stats-cal-lab" id="statsCalLab"></p><div class="stats-cal" id="statsCal"></div></div><div class="goal-row" id="goalRow"><span class="hint" id="goalLab">Daily goal:</span><span class="row" id="goalChips"></span></div><p class="hint" id="goalStatus" role="status"></p><div class="goal-row" id="wgoalRow"><span class="hint" id="wgoalLab">Weekly goal:</span><span class="row" id="wgoalChips"></span></div><p class="hint" id="wgoalStatus" role="status"></p><div class="badges-wrap" id="badgesWrap" hidden><p class="hint badges-lab" id="badgesLab"></p><div class="badges" id="badges"></div></div><ul class="lib-list" id="statsList"></ul>
       <p class="hint">Counts watch time while a video plays. On this device only.</p></div>
       <div class="goal-row" id="storRow"><p class="hint" id="storInfo" role="status"></p><button class="chip" id="storBtn" type="button">Refresh</button><button class="chip" id="storKeepBtn" type="button">Protect my data</button></div>
       <p class="hint" id="storKeepInfo" role="status" hidden></p>
@@ -5120,6 +5120,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // finder included.
   Object.assign(TR_MSG, {
     "Playlists at a glance": ["प्लेलिस्ट एक नज़र में", "પ્લેલિસ્ટ એક નજરમાં"]
+  });
+  Object.assign(TR_MSG, {
+    "Average per play": ["प्रति प्ले औसत", "દર પ્લે સરેરાશ"],
+    "Average watch per play": ["प्रति प्ले औसत देखना", "દર પ્લે સરેરાશ જોવું"]
   });
   var plTotalLine = $("plTotalLine");
   function plTotalRender() {
@@ -13422,6 +13426,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         mcmpEl.textContent = T("Vs last month") + ": " + (pct >= 0 ? "+" : "") + pct + "% \u00b7 " + prevD.toLocaleDateString(mLoc2, { month: "long" }) + " " + fmtWatch(prevS);
       }
     }
+    // Average watch per play (round 230 new 5): the totals say how much you watched and
+    // the plays count how often, but the shape of a sitting - lots of short clips or a
+    // few long watches - needed dividing one by the other. One line divides the total
+    // watch time by the play count and names both, so "Average per play: 12 min · 34
+    // plays" is checkable at a glance; it stays hidden until at least three plays are
+    // tracked, where one or two plays are just their own lengths. Hindi and Gujarati
+    // text, What's new and feature finder included.
+    var ppEl = $("statsPerPlay");
+    if (ppEl) {
+      var ppOk = hasAny && stats.plays >= 3 && stats.total > 0;
+      ppEl.hidden = !ppOk;
+      ppEl.textContent = !ppOk ? "" : T("Average per play") + ": " + fmtWatch(Math.floor(stats.total / stats.plays)) + " \u00b7 " + stats.plays + " " + (stats.plays === 1 ? T("play") : T("plays"));
+    }
     // Best day in Watch stats (round 221 new 5): the week comparison says how this week is
     // going and the calendar shows the shape, but neither answers the simple question - what
     // was my biggest watching day? One line names the date and the time watched, in the
@@ -17401,6 +17418,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "This month in Watch stats": ["\u0935\u0949\u091a \u0938\u094d\u091f\u0948\u091f\u094d\u0938 \u092e\u0947\u0902 \u0907\u0938 \u092e\u0939\u0940\u0928\u0947", "\u0ab5\u0ac9\u0a9a \u0ab8\u0acd\u0a9f\u0ac7\u0a9f\u0acd\u0ab8\u0aae\u0abe\u0a82 \u0a86 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"]
   });
   var WNEW = [
+    ["Average watch per play", "#statsPerPlay"],
     ["Playlists at a glance", "#plTotalLine"],
     ["Average rating in Favourites", "#favRateLine"],
     ["Oldest parked in Watch later", "#laterOldLine"],
@@ -24124,6 +24142,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Average watch per play", "average watch per play typical sitting length each play minutes short clips long videos stats", "#statsPerPlay"],
       ["Playlists at a glance", "playlists at a glance total videos length whole collection organised how much all combined", "#plTotalLine"],
       ["Average rating in Favourites", "average rating favourites stars mean score how good starred pile rated", "#favRateLine"],
       ["Oldest parked in Watch later", "oldest parked watch later longest waiting stale backlog saved date ago forgot", "#laterOldLine"],
