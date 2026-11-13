@@ -6433,6 +6433,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (window.__vpSkipSeenTick) window.__vpSkipSeenTick(t);
       if (typeof usSeekTick === "function") usSeekTick(t);
       introOvTick();
+      if (window.__vpSegTick) window.__vpSegTick(t);
       if (typeof outroTick === "function") outroTick();
       statsTick();
       mileTick();
@@ -27246,6 +27247,99 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   // r258-end
 
+  // Skip parts (round 259 new 1): Skip intro and Skip outro only cover the two ends of a
+  // video, so an ad read, a long recap or a dull middle stretch still had to be scrubbed past
+  // every time. This card keeps up to 10 skip parts per YouTube video: Start here, play to
+  // where the part ends, End here. On every later watch, playing into a part jumps to its end
+  // by itself (scrubbing into a part with the seek bar does not skip, so you can still go
+  // back and watch it). Kept in the per-video memory on this device, so it rides the backup
+  // with speed and intro marks. Hindi and Gujarati text, feature finder included.
+  Object.assign(TR_MSG, {
+    "Skip parts": ["हिस्से छोड़ें", "ભાગ છોડો"],
+    "Mark parts of this video to skip - an ad read, a recap, a slow stretch. They are skipped by themselves every time it plays.": ["इस वीडियो के वो हिस्से चुनें जिन्हें छोड़ना है - विज्ञापन, रीकैप या धीमा हिस्सा. हर बार चलने पर वे अपने आप छूट जाते हैं.", "આ વીડિયોના છોડવાના ભાગ પસંદ કરો - જાહેરાત, રીકેપ કે ધીમો ભાગ. દરેક વખતે ચાલતાં તે આપમેળે છૂટી જાય છે."],
+    "Start skip here": ["यहां से छोड़ना शुरू करें", "અહીંથી છોડવાનું શરૂ કરો"],
+    "End skip here": ["यहां छोड़ना खत्म करें", "અહીં છોડવાનું પૂરું કરો"],
+    "Cancel": ["रद्द करें", "રદ કરો"],
+    "Skip starts at {t} - play to where it ends, then tap End skip here.": ["छोड़ना {t} से शुरू - जहां खत्म करना है वहां तक चलाएं, फिर 'यहां छोड़ना खत्म करें' दबाएं.", "છોડવાનું {t} થી શરૂ - જ્યાં પૂરું કરવું ત્યાં સુધી ચલાવો, પછી 'અહીં છોડવાનું પૂરું કરો' દબાવો."],
+    "Play a YouTube video first, then mark a part to skip.": ["पहले कोई YouTube वीडियो चलाएं, फिर छोड़ने का हिस्सा चुनें.", "પહેલા કોઈ YouTube વીડિયો ચલાવો, પછી છોડવાનો ભાગ પસંદ કરો."],
+    "A skip part must be at least 3 seconds long. Play a little further.": ["छोड़ने का हिस्सा कम से कम 3 सेकंड का होना चाहिए. थोड़ा और चलाएं.", "છોડવાનો ભાગ ઓછામાં ઓછો 3 સેકંડનો હોવો જોઈએ. થોડું વધુ ચલાવો."],
+    "A video keeps up to 10 skip parts.": ["एक वीडियो में 10 तक हिस्से छोड़ सकते हैं.", "એક વીડિયોમાં 10 સુધી ભાગ છોડી શકાય."],
+    "Skip part saved: {a} to {b}": ["छोड़ने का हिस्सा सेव: {a} से {b}", "છોડવાનો ભાગ સેવ: {a} થી {b}"],
+    "Skip part removed": ["छोड़ने का हिस्सा हटा", "છોડવાનો ભાગ હટ્યો"],
+    "Skip part back": ["छोड़ने का हिस्सा वापस", "છોડવાનો ભાગ પાછો"],
+    "Skipped {n} seconds": ["{n} सेकंड छोड़े", "{n} સેકંડ છોડ્યા"],
+    "Skipped 1 second": ["1 सेकंड छोड़ा", "1 સેકંડ છોડ્યો"],
+    "No skip parts for this video yet.": ["इस वीडियो के लिए अभी कोई हिस्सा छोड़ने के लिए नहीं चुना.", "આ વીડિયો માટે હજી કોઈ ભાગ છોડવા પસંદ નથી."],
+    "Remove": ["हटाएं", "કાઢો"],
+    "Skip parts: {n} seconds saved in total": ["छोड़ने वाले हिस्से: कुल {n} सेकंड बचेंगे", "છોડવાના ભાગ: કુલ {n} સેકંડ બચશે"],
+    "Skip parts: 1 second saved in total": ["छोड़ने वाले हिस्से: कुल 1 सेकंड बचेगा", "છોડવાના ભાગ: કુલ 1 સેકંડ બચશે"]
+  });
+  (function () {
+    var card = mkCard("skipPartsCard", "weeklyCard", '<div class="row"><button type="button" class="chip" id="spStart"></button> <button type="button" class="chip" id="spCancel" hidden></button></div><p class="hint" id="spMsg" role="status"></p><ul class="lib-list" id="spList" style="list-style:none;padding:0;margin:6px 0"></ul><p class="hint" id="spTotal"></p>'); if (!card) return;
+    var pending = null, pendId = null, lastJump = 0;
+    function segs() { var v = curId && vmem[curId]; return v && Array.isArray(v.skips) ? v.skips.filter(function (s) { return Array.isArray(s) && s.length === 2 && isFinite(s[0]) && isFinite(s[1]) && s[1] > s[0]; }) : []; }
+    function save(arr) { arr.sort(function (a, b) { return a[0] - b[0]; }); vmemRec({ skips: arr.length ? arr : null }); }
+    function merge(arr, a, b) {
+      var out = [], lo = a, hi = b;
+      arr.forEach(function (s) { if (s[1] < lo || s[0] > hi) out.push(s); else { lo = Math.min(lo, s[0]); hi = Math.max(hi, s[1]); } });
+      out.push([lo, hi]); return out;
+    }
+    function paint() {
+      card.querySelector("summary").textContent = T("Skip parts");
+      card.querySelector(".r239-desc").textContent = T("Mark parts of this video to skip - an ad read, a recap, a slow stretch. They are skipped by themselves every time it plays.");
+      if (pendId !== curId) pending = null;
+      $("spStart").textContent = pending == null ? T("Start skip here") : T("End skip here");
+      $("spCancel").hidden = pending == null; $("spCancel").textContent = T("Cancel");
+      var msg = $("spMsg"); if (pending != null) msg.textContent = T("Skip starts at {t} - play to where it ends, then tap End skip here.").replace("{t}", fmt(pending)); else if (!msg.dataset.keep) msg.textContent = "";
+      var ul = $("spList"); ul.textContent = "";
+      var arr = segs(), total = 0;
+      arr.forEach(function (s, i) {
+        total += s[1] - s[0];
+        var li = document.createElement("li"); li.style.cssText = "display:flex;gap:8px;align-items:center;justify-content:space-between;padding:4px 0";
+        var sp = document.createElement("span"); sp.textContent = fmt(s[0]) + " \u2192 " + fmt(s[1]) + " (" + Math.round(s[1] - s[0]) + " s)";
+        var rm = document.createElement("button"); rm.type = "button"; rm.className = "chip"; rm.textContent = T("Remove");
+        rm.addEventListener("click", function () {
+          var snap = segs(), id0 = curId; var next = snap.filter(function (x, k) { return k !== i; }); save(next); paint();
+          toastUndo(T("Skip part removed"), function () { if (curId === id0) { save(snap); paint(); } }, T("Skip part back"));
+        });
+        li.appendChild(sp); li.appendChild(rm); ul.appendChild(li);
+      });
+      if (!arr.length) { var e = document.createElement("li"); e.className = "hint"; e.textContent = T("No skip parts for this video yet."); ul.appendChild(e); }
+      var tt = Math.round(total); $("spTotal").hidden = !arr.length;
+      $("spTotal").textContent = tt === 1 ? T("Skip parts: 1 second saved in total") : T("Skip parts: {n} seconds saved in total").replace("{n}", tt);
+    }
+    $("spStart").addEventListener("click", function () {
+      var msg = $("spMsg"); msg.dataset.keep = "";
+      if (!curId || !(duration > 0)) { msg.textContent = T("Play a YouTube video first, then mark a part to skip."); msg.dataset.keep = "1"; return; }
+      if (pending == null) { pending = Math.floor(curTime); pendId = curId; paint(); return; }
+      var a = pending, b = Math.floor(curTime);
+      if (b - a < 3) { msg.textContent = T("A skip part must be at least 3 seconds long. Play a little further."); msg.dataset.keep = "1"; return; }
+      var cur = segs();
+      if (cur.length >= 10 && !cur.some(function (s) { return s[1] >= a && s[0] <= b; })) { msg.textContent = T("A video keeps up to 10 skip parts."); msg.dataset.keep = "1"; return; }
+      var snap = cur.slice(), id0 = curId; pending = null; save(merge(cur, a, b)); lastJump = Date.now();
+      msg.textContent = T("Skip part saved: {a} to {b}").replace("{a}", fmt(a)).replace("{b}", fmt(b)); msg.dataset.keep = "1"; paint();
+      toastUndo(msg.textContent, function () { if (curId === id0) { save(snap); paint(); } }, T("Skip part removed"));
+    });
+    $("spCancel").addEventListener("click", function () { pending = null; $("spMsg").dataset.keep = ""; paint(); });
+    // Called on every player tick: only a part crossed by normal play is skipped.
+    window.__vpSegTick = function (t) {
+      if (!curId || !(t >= 0) || Date.now() - lastJump < 1500) return;
+      var arr = segs(); for (var i = 0; i < arr.length; i++) {
+        var s = arr[i];
+        if (t >= s[0] && t < s[0] + 2 && t < s[1] - 0.3) {
+          lastJump = Date.now(); var d = Math.round(s[1] - t);
+          send("seekTo", [s[1], true]); curTime = s[1]; seek.value = s[1]; paintTime(s[1]); if (typeof paintSeekFill === "function") paintSeekFill();
+          toast(d === 1 ? T("Skipped 1 second") : T("Skipped {n} seconds").replace("{n}", d)); return;
+        }
+      }
+    };
+    card.addEventListener("toggle", function () { if (card.open) paint(); });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+
+  // r259-end
+
   // Sort Watch later by most played (round 256 new 1): Watch later could be sorted A to Z
   // and by rating, but not by what you actually replay - so a parked favourite you have
   // watched ten times sat mixed in with videos you opened once and dropped. A chip by
@@ -30072,6 +30166,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Import browser bookmarks", "import browser bookmarks bookmarks.html chrome safari firefox edge export youtube links watch later favourites move switch", "#bmCard"],
       ["Bookmark folders as playlists", "bookmark folders playlists import browser bookmarks make a playlist for each folder organise sorted", "#bmCard"],
       ["Export as browser bookmarks", "export browser bookmarks bookmarks.html chrome safari firefox edge save queue favourites watch later playlists folders backup", "#bmExpCard"],
+      ["Skip parts", "skip parts segments ad read recap middle cut jump over sponsor boring stretch mark start end per video skip intro outro", "#skipPartsCard"],
       ["Open from any page", "open from any page bookmarklet bookmark bar drag youtube tab current time send video here browser", "#bmkCard"],
       ["Channels as OPML", "channels opml rss feed export feedly inoreader netnewswire subscriptions saved channels reader", "#chanOpmlBtn"],
       ["Weekly totals", "weekly totals weeks compare best week bars watch stats last 8 weeks trend heavier lighter", "#weeklyCard"],
