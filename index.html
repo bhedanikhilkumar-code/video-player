@@ -11870,8 +11870,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var i=plFind("Music");
     if(i>=0 && !await vpConfirm(T("Replace your saved Music playlist with the current queue?"),T("Replace")))return;
     if(i<0 && playlists.length>=PL_MAX){plSay(T("Your saved playlists are full. Delete one first."));return;}
+    // Round 225 fix 3: replacing the saved Music playlist with the queue asked once and
+    // the old Music list was gone for good. One Undo toast now restores it (skipped if
+    // Music was replaced or removed again meanwhile).
     var p={name:"Music",items:lib.queue.map(function(x){return {id:x.id,title:x.title||""};})};
-    if(i>=0)playlists[i]=p;else playlists.push(p);savePlaylists();renderPlaylists();plSay(T("Music saved. Tap Play Music any time."));
+    var hadMusic=i>=0, oldMusic=hadMusic?playlists[i]:null;
+    if(hadMusic)playlists[i]=p;else playlists.push(p);savePlaylists();renderPlaylists();plSay(T("Music saved. Tap Play Music any time."));
+    if(hadMusic)toastUndo(T("Music saved. Tap Play Music any time."),function(){
+      var at=plFind("Music");if(at>=0&&playlists[at]===p){playlists[at]=oldMusic;savePlaylists();renderPlaylists();}
+    },T("Playlist restored"));
   });
   renderPlaylists();
 
