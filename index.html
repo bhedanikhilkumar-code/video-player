@@ -43126,6 +43126,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Only rated in Watch later", "#laterRatedBtn333"); }, 0); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Only rated in Recently watched", "#histRatedBtn333"); }, 0); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Add to many playlists", "#lhPlaylists"); }, 0); });
+  Object.assign(TR_MSG, { "Mini player time switch": ["मिनी प्लेयर में समय बदलें", "મિની પ્લેયરમાં સમય બદલો"] });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Mini player time switch", "#playerDock"); }, 0); });
   window.__vpMainOk325 = true;
 
 
@@ -47190,6 +47192,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     }
     var FEATS = [
       ["Add to many playlists", "add video to many several playlists at once keep picker open file song multiple lists batch", "#lhPlaylists"],
+      ["Mini player time switch", "mini player time pill tap switch elapsed time left remaining dock small", "#playerDock"],
       ["Only rated in Recently watched", "only rated recently watched history filter stars rating starred liked best rated hide unrated find loved", "#histRatedBtn333"],
       ["Only rated in Watch later", "only rated watch later filter stars rating starred liked best rated hide unrated backlog", "#laterRatedBtn333"],
       ["Pick many in Continue watching", "continue watching pick many several bulk select queue remove drop unfinished started half watched tidy resume checkbox", "#contManyBtn333"],
@@ -48377,21 +48380,36 @@ if (window.__vpApplyLang) window.__vpApplyLang();
 </script>
 <script id="r61-mini-time-js">
 // Mini player: small "2:05 / 3:34" pill so you can see progress without scrolling back.
+// Round 334 new 1: the pill is tappable now - tap it to switch between elapsed and time left,
+// the same toggle the main time label has (they share the saved choice, so both stay in sync).
 (function () {
   var dock = document.getElementById("playerDock"), seekEl = document.getElementById("seek");
   if (!dock || !seekEl) return;
-  var el = document.createElement("div"); el.id = "miniTime"; el.hidden = true; el.setAttribute("aria-hidden", "true"); dock.appendChild(el);
+  var timeLabel = document.getElementById("timeLabel");
+  var el = document.createElement("button"); el.type = "button"; el.id = "miniTime"; el.hidden = true;
+  el.style.pointerEvents = "auto"; el.style.cursor = "pointer";
+  dock.appendChild(el);
   function f(x) { x = Math.max(0, Math.floor(x || 0)); var h = Math.floor(x / 3600), m = Math.floor(x % 3600 / 60), s = x % 60; return (h ? h + ":" + (m < 10 ? "0" : "") + m : m) + ":" + (s < 10 ? "0" : "") + s; }
+  function leftMode() { return !!(timeLabel && timeLabel.getAttribute("aria-pressed") === "true"); }
   function tick() {
     if (!dock.classList.contains("is-mini")) { el.hidden = true; return; }
     var d = Number(seekEl.max) || 0;
     if (!(d > 0)) { el.hidden = true; return; }
-    var txt = f(Number(seekEl.value)) + " / " + f(d);
+    var T0 = window.T || function (x) { return x; };
+    var lm = leftMode();
+    var txt = lm ? "\u2212" + f(Math.max(0, d - Number(seekEl.value))) + " " + T0("left") : f(Number(seekEl.value)) + " / " + f(d);
     if (el.textContent !== txt) el.textContent = txt;
+    var hint = T0("Tap to switch between elapsed time and time left");
+    el.setAttribute("aria-pressed", lm ? "true" : "false");
+    el.setAttribute("aria-label", txt + " - " + hint);
+    if (el.title !== hint) el.title = hint;
     el.hidden = false;
   }
+  el.addEventListener("click", function () { if (timeLabel) timeLabel.click(); tick(); });
   setInterval(tick, 500);
   new MutationObserver(tick).observe(dock, { attributes: true, attributeFilter: ["class"] });
+  if (timeLabel) new MutationObserver(tick).observe(timeLabel, { attributes: true, attributeFilter: ["aria-pressed"] });
+  (window.__relang = window.__relang || []).push(tick);
 })();
 </script>
 <script id="r36-ab-band-js">
