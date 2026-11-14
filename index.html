@@ -37777,7 +37777,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Opening the link…": ["लिंक खुल रही है…", "લિંક ખુલી રહી છે…"],
     "Playing from the link. The sound and picture tools work on it like a picked file.": ["लिंक से चल रहा है. साउंड और पिक्चर टूल इस पर भी चुनी फ़ाइल जैसे चलते हैं.", "લિંકથી ચાલે છે. સાઉંડ અને પિક્ચર ટૂલ આ પર પણ પસંદ કરેલી ફાઇલ જેવા ચાલે છે."],
     "This link would not play here - the site may not allow playing on other pages. Try the Downloader below instead.": ["यह लिंक यहां नहीं चली - हो सकता है साइट दूसरे पेज पर चलाने न दे. नीचे Downloader आज़माएं.", "આ લિંક અહીં ન ચાલી - કદાચ સાઇટ બીજા પેજ પર ચલાવવા ન દેતી હોય. નીચે Downloader અજમાવો."],
-    "The link player is not ready yet - pick a file once, then try the link.": ["लिंक प्लेयर अभी तैयार नहीं - एक बार फ़ाइल चुनें, फिर लिंक आज़माएं.", "લિંક પ્લેયર અંજી તૈયાર નથી - એક વાર ફાઇલ પસંદ કરો, પછી લિંક અજમાવો."]
+    "The link player is not ready yet - pick a file once, then try the link.": ["लिंक प्लेयर अभी तैयार नहीं - एक बार फ़ाइल चुनें, फिर लिंक आज़माएं.", "લિંક પ્લેયર અંજી તૈયાર નથી - એક વાર ફાઇલ પસંદ કરો, પછી લિંક અજમાવો."],
+    "That is a YouTube link - it is opening in the main player at the top.": ["यह YouTube लिंक है - ऊपर मुख्य प्लेयर में खुल रही है.", "આ YouTube લિંક છે - ઉપર મુખ્ય પ્લેયરમાં ખુલી રહી છે."]
   });
   (function () {
     var row = $("lpLinkRow303"), inp = $("lpLinkIn303"), go = $("lpLinkGo303"), msg = $("lpLinkMsg303"), vid = $("lpVideo");
@@ -37793,6 +37794,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function play() {
       var u = (inp.value || "").trim();
       if (!/^https?:\/\/\S+$/i.test(u)) { msg.textContent = T("Paste a link that starts with http."); inp.focus(); return; }
+      // Round 303 fix 3: a pasted YouTube link used to die here with the cross-site
+      // message, although the main player above plays YouTube links all day. Video-page
+      // links now take the main loader instead of the local player.
+      if (/(^|\.)youtube\.com\/(watch|shorts)|(^|\.)youtu\.be\//i.test(u)) {
+        var li = $("linkInput"), lb = $("loadBtn");
+        if (li && lb) {
+          li.value = u; lb.click(); inp.value = "";
+          msg.textContent = T("That is a YouTube link - it is opening in the main player at the top.");
+          try { window.scrollTo({ top: 0, behavior: window.vpReducedMotion && window.vpReducedMotion() ? "auto" : "smooth" }); } catch (e) {}
+          return;
+        }
+      }
       if (!window.__lpShowUrl303 || !window.__lpShowUrl303(u)) { msg.textContent = T("The link player is not ready yet - pick a file once, then try the link."); return; }
       msg.textContent = T("Opening the link…");
       watching = true;
