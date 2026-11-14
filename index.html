@@ -13983,12 +13983,26 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         cover.addEventListener("click", playPl);
         li.appendChild(cover);
       }
-      var plKnown = 0, plSecs = 0;
-      pl.items.forEach(function (x) { var d = plItemDuration(x); if (d > 0) { plKnown++; plSecs += d; } });
+      var plKnown = 0, plSecs = 0, plUnw326 = 0, plUnwSecs326 = 0, plWatched326 = 0;
+      pl.items.forEach(function (x) {
+        var d = plItemDuration(x); if (d > 0) { plKnown++; plSecs += d; }
+        var hi326 = findIn(lib.hist, x.id);
+        if (hi326 >= 0 && lib.hist[hi326].done) { plWatched326++; } else { plUnw326++; if (d > 0) plUnwSecs326 += d; }
+      });
       if (plKnown) {
         var ln = document.createElement("span"); ln.className = "pl-len";
         var totalMinutes = Math.max(1, Math.round(plSecs / 60)), ph = Math.floor(totalMinutes / 60), pm = totalMinutes % 60;
         ln.textContent = "~ " + (ph ? ph + " " + T("hr") + " " + pm + " " + T("min") : pm + " " + T("min")) + (plKnown < pl.items.length ? " · " + plKnown + "/" + pl.items.length + " " + T("lengths known") : "");
+        // Unwatched time left (round 326 new 2): the total-length line counts watched
+        // videos too, so a half-finished 40-video course still read "~ 6 hr" when only
+        // an hour was actually left. When some videos are watched, the line now adds the
+        // unwatched count and the time those alone need, from the same learned lengths
+        // (unknown lengths are simply left out, like the total). Hindi/Gujarati text,
+        // feature finder and What's new included.
+        if (plWatched326 > 0 && plUnw326 > 0) {
+          var um326 = Math.max(1, Math.round(plUnwSecs326 / 60)), uh326 = Math.floor(um326 / 60), up326 = um326 % 60;
+          ln.textContent += " · " + plUnw326 + " " + T("unwatched") + (plUnwSecs326 > 0 ? " · ~ " + (uh326 ? uh326 + " " + T("hr") + " " + up326 + " " + T("min") : up326 + " " + T("min")) + " " + T("left") : "");
+        }
         top.appendChild(ln);
       }
       var acts = document.createElement("div"); acts.className = "pl-acts";
@@ -41683,6 +41697,12 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // shows a plain banner - "Part of the app did not start" - with a Reload button (one
   // guarded reload per tab, then it points at Help - Report a problem instead of looping).
   // Hindi and Gujarati text, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Queue a playlist's unwatched": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u0947 \u0905\u0928\u0926\u0947\u0916\u0947 \u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0921\u093e\u0932\u0947\u0902", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0abe \u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0aa8\u0abe\u0a96\u0acb"],
+    "unwatched": ["\u0905\u0928\u0926\u0947\u0916\u0947", "\u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe"]
+  });
+  Object.assign(TR_MSG, { "Unwatched time left on a playlist": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u093e \u0905\u0928\u0926\u0947\u0916\u093e \u0938\u092e\u092f", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0acb \u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0acb \u0ab8\u0aae\u0aaf"] });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Unwatched time left on a playlist", "#lhPlaylists"); }, 0); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Queue a playlist's unwatched", "#lhPlaylists"); }, 0); });
   Object.assign(TR_MSG, { "Startup self-check": ["\u0938\u094d\u091f\u093e\u0930\u094d\u091f\u0905\u092a \u0938\u0947\u0932\u094d\u092b-\u091a\u0947\u0915", "\u0ab8\u0acd\u0a9f\u0abe\u0ab0\u0acd\u0a9f\u0a85\u0aaa \u0ab8\u0ac7\u0ab2\u0acd\u0aab-\u0a9a\u0ac7\u0a95"] });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Startup self-check", "#vpBootWarn325"); }, 0); });
@@ -45750,6 +45770,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     }
     var FEATS = [
       ["Queue a playlist's unwatched", "queue unwatched playlist videos left unfinished course append after playing keep watching", "#lhPlaylists"],
+      ["Unwatched time left on a playlist", "unwatched time left playlist length line hours minutes remaining course how much left to watch", "#lhPlaylists"],
       ["Sort Recently watched by rating", "sort history recently watched rating stars best rated order", "#histSortRateBtn323"],
       ["Shuffle play unwatched", "shuffle play unwatched unseen fresh random favourites watch later backlog", "#favShufUnwBtn323"],
       ["Sort a playlist by most played", "sort playlist most played play count order arrange replays", "#lhPlaylists"],
