@@ -12197,7 +12197,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // matched nothing at all. Words, leave-out words, quoted phrases and the operator
       // spellings are all lowercased at parse time now.
       var wl = w.toLowerCase();
-      var om = /^(-?)((?:is|has):(?:fav|favs|favourite|favourites|favorite|favorites|later|queued|queue|new|played|note|notes|short|long))$/.exec(wl);
+      var om = /^(-?)((?:is|has):(?:fav|favs|favourite|favourites|favorite|favorites|later|queued|queue|new|played|note|notes|short|long|moment|moments|rated))$/.exec(wl);
       if (om) { r.ops.push(om[1] + om[2].replace(/(avourites|avorites|avourite|avorite|avs)$/, "av").replace(/s$/, "").replace("queued", "queue")); continue; }
       // Round 286 new 2: channel:word (and -channel:word to leave one out) filters by the
       // channel the app has learned for each video.
@@ -12207,6 +12207,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     sqCache259 = { q: q, r: r }; return r;
   }
+  // Round 301 new 4: has:moment and is:rated join the operators. Ratings live in their
+  // own store (vp-rate.v1) with no live map in this scope, so they are read through a
+  // raw-string cache that re-parses only when the stored value changes.
+  var rateRawCache301 = null, rateMapCache301 = {};
+  function rated301(id) {
+    var raw = "";
+    try { raw = localStorage.getItem("vp-rate.v1") || ""; } catch (e) {}
+    if (raw !== rateRawCache301) { rateRawCache301 = raw; try { rateMapCache301 = JSON.parse(raw || "{}") || {}; } catch (e) { rateMapCache301 = {}; } }
+    var r301 = Number(rateMapCache301[id]);
+    return isFinite(r301) && r301 > 0;
+  }
   function sqOps259(id, ops) {
     for (var i = 0; i < ops.length; i++) {
       var o = ops[i], ok, neg = o.charAt(0) === "-"; if (neg) o = o.slice(1);
@@ -12215,6 +12226,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       else if (o === "is:queue") ok = findIn(lib.queue, id) >= 0;
       else if (o === "is:new" || o === "is:played") { var rec = typeof stats === "object" && stats && stats.videos ? stats.videos[id] : null; var pl = rec && rec.plays > 0; ok = o === "is:new" ? !pl : !!pl; }
       else if (o === "is:short" || o === "is:long") { var sd292 = queueRowDur(id); ok = sd292 > 0 && (o === "is:short" ? sd292 < 60 : sd292 >= 600); }
+      else if (o === "has:moment") ok = typeof marks !== "undefined" && marks && Array.isArray(marks[id]) && marks[id].length > 0;
+      else if (o === "is:rated") ok = rated301(id);
       else ok = typeof notes !== "undefined" && notes && typeof notes[id] === "string" && notes[id].trim() !== "";
       if (neg ? ok : !ok) return false;
     }
@@ -19400,6 +19413,10 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Break over - welcome back!": ["ब्रेक ख़त्म - फिर से स्वागत!", "બ્રેક પૂરો - ફરી સ્વાગત!"],
     "Paused for your break.": ["आपके ब्रेक के लिए रोका गया.", "તમારા બ્રેક માટે રોક્યું."],
     "Nothing is playing to pause - the rest card still counts down.": ["रोकने को कुछ नहीं चल रहा - रेस्ट कार्ड फिर भी गिनती करेगा.", "રોકવા કંઈ ચાલતું નથી - રેસ્ટ કાર્ડ છતાં ગણતરી કરશે."]
+  });
+  // Round 301 new 4: the What's new name for the two new search operators.
+  Object.assign(TR_MSG, {
+    "Search has:moment / is:rated": ["खोज has:moment / is:rated", "શોધ has:moment / is:rated"]
   });
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -28520,13 +28537,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Search operators tip (round 259 new 2): one line under the library search box that lists
   // the operators; Hindi and Gujarati text, feature finder included.
   Object.assign(TR_MSG, {
-    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, channel:name": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, channel:नाम", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, channel:નામ"]
+    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, channel:name": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, channel:नाम", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, channel:નામ"]
   });
   (function () {
     var m = $("libSearchMsg"); if (!m || !m.parentNode) return;
     var tip = document.createElement("span"); tip.className = "hint"; tip.id = "sqTip259"; tip.style.cssText = "display:block;margin-top:4px";
     m.parentNode.insertBefore(tip, m.nextSibling);
-    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, channel:name"); }
+    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, channel:name"); }
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
@@ -41213,7 +41230,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Bookmark folders as playlists", "bookmark folders playlists import browser bookmarks make a playlist for each folder organise sorted", "#bmCard"],
       ["Export as browser bookmarks", "export browser bookmarks bookmarks.html chrome safari firefox edge save queue favourites watch later playlists folders backup", "#bmExpCard"],
       ["Skip parts", "skip parts segments ad read recap middle cut jump over sponsor boring stretch mark start end per video skip intro outro", "#skipPartsCard"],
-      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played is:short is:long short long under a minute over ten minutes duration has:note channel:name by channel from one channel advanced library search narrow", "#sqTip259"],
+      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played is:short is:long short long under a minute over ten minutes duration has:note has:moment moments is:rated rated stars channel:name by channel from one channel advanced library search narrow", "#sqTip259"],
       ["Activity log", "activity log history of changes what was added removed queue watch later favourites where did it go timeline recent changes", "#activityCard"],
       ["Speed ramp", "speed ramp ease up faster gradually raise playback speed every minutes lecture podcast step 1.25 1.5 2x training", "#rampCard"],
       ["Saved searches", "saved searches save search keep pin favourite query operators is:later chips repeat run again library", "#ssRow"],
@@ -44330,6 +44347,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Remember volume per file", "#lpVolMemRow301");
   window.__vpWnew283("My looks", "#myLooksRow301");
   window.__vpWnew283("Take a break", "#takeBreakBtn301");
+  window.__vpWnew283("Search has:moment / is:rated", "#sqTip259");
 })();
 </script>
 </body>
