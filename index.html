@@ -10070,7 +10070,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (findIn(lib.queue, curId) >= 0) inLists.push(T("the queue"));
     if (findIn(lib.favs, curId) >= 0) inLists.push(T("Favourites"));
     if (findIn(lib.later, curId) >= 0) inLists.push(T("Watch later"));
-    playlists.forEach(function (p) { if (findIn(p.items, curId) >= 0) inLists.push(p.name); });
+    // Round 325 fix 1: this block sits before "var playlists = []" is initialised further
+    // down the same script. When the page opens with a video link (?url=/?v=/?text=),
+    // readLinkParams has already set curId synchronously, so the parse-time paint below
+    // reached playlists while it was still undefined - the TypeError aborted the whole
+    // main script at startup, killing named playlists, watch stats, the What's new card
+    // and every feature defined below this line whenever a session started from a link.
+    // Guard like the other early blocks do (typeof check); the playlist names join the
+    // line on the next renderLib / vp-video-loaded, once the script has finished.
+    if (typeof playlists !== "undefined" && Array.isArray(playlists)) playlists.forEach(function (p) { if (findIn(p.items, curId) >= 0) inLists.push(p.name); });
     savedIn324.hidden = false;
     if (!inLists.length) { savedIn324.textContent = T("Not saved in any list yet."); return; }
     var shown = inLists.slice(0, 4), extra = inLists.length - shown.length;
