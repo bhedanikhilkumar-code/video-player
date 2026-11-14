@@ -2070,6 +2070,7 @@ setTimeout(done,3000);})();
           <div class="chips" id="focusChips" role="group" aria-label="Focus length"></div>
           <div class="row" style="margin-top:10px"><button class="chip" id="focusStart" type="button">Start focus</button><button class="chip" id="focusSkip" type="button" hidden>Skip break</button><button class="chip" id="focusStop" type="button" hidden>Stop</button></div>
           <label class="dl-chk"><input type="checkbox" id="focusAuto" checked> <span id="focusAutoT">Resume the video when the break ends</span></label>
+          <label class="dl-chk"><input type="checkbox" id="focusLong312"> <span id="focusLongT312">Long break every 4 rounds (3x longer)</span></label>
           <span class="label" id="focusLabel" role="status">Rounds done today: 0</span>
         </div>
 
@@ -16912,6 +16913,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["#bgMotionT", "Moving background (slow drifting colours)", "चलती पृष्ठभूमि (धीरे बहते रंग)"],
     ["#autoPauseHint", "Handy when a call or another app pulls you away. Off by default; both are remembered on this device.", "जब कॉल या दूसरा ऐप ध्यान खींच ले तो काम आता है. डिफ़ॉल्ट रूप से बंद; दोनों इसी डिवाइस पर याद रहते हैं."],
     ["#warnCloseT312", "Warn before closing while a video plays", "वीडियो चलते समय बंद करने से पहले पूछें"],
+    ["#focusLongT312", "Long break every 4 rounds (3x longer)", "हर 4 राउंड के बाद लंबा ब्रेक (3 गुना लंबा)"],
   ];
   var I18N_PH = [
     ["#libSearch", "Search your videos", "अपने वीडियो खोजें"],
@@ -17115,6 +17117,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
  "#bgMotionT": "ચાલતી પૃષ્ઠભૂમિ (ધીમે વહેતાં રંગો)",
  "#autoPauseHint": "જ્યારે કૉલ કે બીજી એપ ધ્યાન ખેંચી લે ત્યારે ઉપયોગી. ડિફૉલ્ટ બંધ; બંને આ ડિવાઇસ પર યાદ રહે છે.",
 "#warnCloseT312": "વીડિયો ચાલતી હોય ત્યારે બંધ કરતાં પહેલાં પૂછે",
+"#focusLongT312": "દર 4 રાઉન્ડ પછી લાંબો બ્રેક (3 ગણો લાંબો)",
  "#settingsH": "સેટિંગ",
  "#settingsHint": "એપ જે યાદ રાખે છે તે ફક્ત આ ડિવાઇસ પર જ રહે છે: વોલ્યુમ, સ્પીડ, થીમ, ભાષા, કતાર મોડ, સ્લીપ ટાઇમર અને સેવર પસંદગી.",
  "#a11yBigT": "મોટું અક્ષર",
@@ -19745,7 +19748,8 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Copy time": ["समय कॉपी करें", "સમય કૉપી કરો"],
     "Remove played videos in queue": ["कतार से चले हुए वीडियो हटाएं", "કતારમાંથી ચલાવેલા વીડિયો કાઢો"],
     "Queue chip on every list row": ["हर लिस्ट पंक्ति पर कतार चिप", "દરેક યાદી પંક્તિ પર કતાર ચિપ"],
-    "Warn before closing during playback": ["चलते समय बंद करने की चेतावनी", "ચાલતી વખતે બંધ કરવાની ચેતાવણી"]
+    "Warn before closing during playback": ["चलते समय बंद करने की चेतावनी", "ચાલતી વખતે બંધ કરવાની ચેતાવણી"],
+    "Long break in Focus sessions": ["फ़ोकस सेशन में लंबा ब्रेक", "ફોકસ સેશનમાં લાંબો બ્રેક"]
   });
   function wnewRender() {
     var h = $("whatsNewH"), hint = $("whatsNewHint"), ul = $("whatsNewList");
@@ -44723,6 +44727,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Playlist feed", "playlist feed auto play next unwatched from playlist when queue runs out ends empty continuous autoplay", "#qPlFeedBtn311"],
       ["Turn for full screen", "turn rotate phone sideways landscape auto full screen hands free watching tilt", "#fsLandBtn311"],
       ["Warn before closing during playback", "warn confirm close tab window shut accidental playing video protect queue place ask before", "#warnCloseChk312"],
+      ["Long break in Focus sessions", "focus pomodoro long break every four 4 rounds triple longer rest study recovery", "#focusLong312"],
       ["Scan a QR code", "scan qr code camera open shared link from another device phone point reader", "#qrScanBtn311"],
       ["Snooze the alarm", "snooze daily alarm ten more minutes ring again later morning postpone", "#alarmSnoozeBtn311"],
       ["Community chapter previous and next", "community chapter previous next back forward step named parts youtube panel", "#chapPrevBtn309"],
@@ -45495,13 +45500,14 @@ html.low-fx #ctl-focus .fr-fg{transition:none}
   var $ = function (i) { return document.getElementById(i); };
   var T = function (s) { return window.T ? window.T(s) : s; };
   var chips = $("focusChips"), startB = $("focusStart"), skipB = $("focusSkip"), stopB = $("focusStop"), autoB = $("focusAuto");
+  var longB312 = $("focusLong312");
   var timeEl = $("focusTime"), phaseEl = $("focusPhase"), arc = $("focusArc"), label = $("focusLabel");
   var plans = [[25, 5], [50, 10], [15, 3]], pick = 0, phase = "idle", endAt = 0, total = 1, tick = null, rounds = 0, wasPlaying = false;
   // Round 245 fix 2: 'Rounds done today' used the UTC date, so in India (UTC+5:30) it only reset at
   // 5:30 am and yesterday's rounds still showed after midnight. It now uses the local date.
   var dayKey = function () { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
-  try { var st = JSON.parse(localStorage.getItem("vp-focus.v1") || "{}"); if (st.day === dayKey()) rounds = st.rounds | 0; if (typeof st.pick === "number" && plans[st.pick]) pick = st.pick; if (st.auto === false) autoB.checked = false; } catch (e) {}
-  function save() { try { localStorage.setItem("vp-focus.v1", JSON.stringify({ day: dayKey(), rounds: rounds, pick: pick, auto: autoB.checked })); } catch (e) {} }
+  try { var st = JSON.parse(localStorage.getItem("vp-focus.v1") || "{}"); if (st.day === dayKey()) rounds = st.rounds | 0; if (typeof st.pick === "number" && plans[st.pick]) pick = st.pick; if (st.auto === false) autoB.checked = false; if (st.long312 === true && longB312) longB312.checked = true; } catch (e) {}
+  function save() { try { localStorage.setItem("vp-focus.v1", JSON.stringify({ day: dayKey(), rounds: rounds, pick: pick, auto: autoB.checked, long312: !!(longB312 && longB312.checked) })); } catch (e) {} }
   function mmss(sec) { sec = Math.max(0, sec); return String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0"); }
   function drawChips() {
     chips.textContent = "";
@@ -45515,7 +45521,7 @@ html.low-fx #ctl-focus .fr-fg{transition:none}
   function paint() {
     var left = phase === "idle" ? plans[pick][0] * 60 : Math.ceil((endAt - Date.now()) / 1000);
     timeEl.textContent = mmss(left);
-    phaseEl.textContent = phase === "idle" ? T("Ready") : phase === "work" ? T("Focus") : T("Break");
+    phaseEl.textContent = phase === "idle" ? T("Ready") : phase === "work" ? T("Focus") : (longNow312 ? D312[lg312()].lb : T("Break"));
     arc.style.strokeDashoffset = phase === "idle" ? 100 : String(Math.max(0, Math.min(100, 100 - 100 * (1 - Math.max(0, endAt - Date.now()) / total))));
     if (phase === "idle") arc.style.strokeDashoffset = 100;
     else arc.style.strokeDashoffset = String(Math.max(0, Math.min(100, 100 * Math.max(0, endAt - Date.now()) / total)));
@@ -45523,22 +45529,37 @@ html.low-fx #ctl-focus .fr-fg{transition:none}
     startB.hidden = phase !== "idle"; stopB.hidden = phase === "idle"; skipB.hidden = phase !== "break";
     label.textContent = T("Rounds done today: ") + rounds;
   }
-  function begin(p) {
-    phase = p; total = (p === "work" ? plans[pick][0] : plans[pick][1]) * 60000; endAt = Date.now() + total;
+  // Round 312 new 2: a long break every 4 rounds (the classic pomodoro rhythm the
+  // card never had). Opt-in checkbox under "Resume the video"; when it is on and the
+  // fourth round ends, the break runs three times the picked break length and the
+  // ring says so. The choice lives in vp-focus.v1 beside the other focus settings.
+  // These strings sit outside the main closure, so they carry their own small
+  // dictionary (the same pattern the Home Screen card uses).
+  var D312 = {
+    en: { lb: "Long break", toast: "Four rounds done - settle in for a long break. The video is paused." },
+    hi: { lb: "लंबा ब्रेक", toast: "4 राउंड पूरे - अब लंबे ब्रेक का आनंद लें. वीडियो रुका है." },
+    gu: { lb: "લાંબો બ્રેક", toast: "4 રાઉન્ડ પૂરા - હવે લાંબા બ્રેકનો આનંદ લો. વીડિયો અટક્યો છે." }
+  };
+  function lg312() { var l = document.documentElement.lang; return D312[l] ? l : "en"; }
+  var longNow312 = false;
+  function begin(p, mult312) {
+    phase = p; longNow312 = (p === "break" && mult312 > 1);
+    total = (p === "work" ? plans[pick][0] : plans[pick][1]) * 60000 * (mult312 || 1); endAt = Date.now() + total;
     clearInterval(tick); tick = setInterval(step, 500); paint();
   }
   function pauseAll() { var v = $("lpVideo"); wasPlaying = !!(window.__vpIsPlaying && window.__vpIsPlaying()) || !!(v && !v.paused); if (window.__vpPauseForBreak) window.__vpPauseForBreak(); if (v && !v.paused) v.pause(); }
   function resumeAll() { if (!autoB.checked || !wasPlaying) return; var v = $("lpVideo"); if (window.__vpPlayAfterBreak) window.__vpPlayAfterBreak(); if (v && v.paused && v.src && v.offsetParent) v.play().catch(function () {}); }
   function step() {
     if (Date.now() < endAt) { paint(); return; }
-    if (phase === "work") { rounds++; save(); pauseAll(); window.toast && window.toast(T("Focus round done - break time. The video is paused."), 4500); begin("break"); }
+    if (phase === "work") { rounds++; save(); pauseAll(); var isLong312 = !!(longB312 && longB312.checked) && rounds % 4 === 0; window.toast && window.toast(isLong312 ? D312[lg312()].toast : T("Focus round done - break time. The video is paused."), 4500); begin("break", isLong312 ? 3 : 1); }
     else { window.toast && window.toast(T("Break over - back to focus."), 3500); resumeAll(); begin("work"); }
   }
-  function stop() { clearInterval(tick); tick = null; phase = "idle"; paint(); }
+  function stop() { clearInterval(tick); tick = null; phase = "idle"; longNow312 = false; paint(); }
   startB.addEventListener("click", function () { window.toast && window.toast(T("Focus started"), 1500); begin("work"); });
   stopB.addEventListener("click", function () { stop(); window.toast && window.toast(T("Focus stopped"), 1500); });
   skipB.addEventListener("click", function () { resumeAll(); begin("work"); });
   autoB.addEventListener("change", save);
+  if (longB312) longB312.addEventListener("change", save);
   document.addEventListener("visibilitychange", function () { if (!document.hidden && phase !== "idle") step(); });
   window.addEventListener("vp-lang", function () { drawChips(); paint(); });
   new MutationObserver(function () { drawChips(); paint(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["lang"] });
@@ -47267,6 +47288,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Playlist feed", "#qPlFeedBtn311");
   window.__vpWnew283("Undo a skip", "#sponMoreBtn308");
   window.__vpWnew283("Warn before closing during playback", "#warnCloseChk312");
+  window.__vpWnew283("Long break in Focus sessions", "#focusLong312");
 })();
 </script>
 </body>
