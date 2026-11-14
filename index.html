@@ -9726,9 +9726,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (dir > 0) { for (i = 0; i < SPEEDS.length; i++) if (SPEEDS[i] > cur + 0.001) { target = SPEEDS[i]; break; } }
     else { for (i = SPEEDS.length - 1; i >= 0; i--) if (SPEEDS[i] < cur - 0.001) { target = SPEEDS[i]; break; } }
     if (target == null) { toast(T(dir > 0 ? "Already at the fastest speed" : "Already at the slowest speed") + " (" + cur + "x)"); return; }
+    // Round 298 fix 4: the cap disables the chips above it, and clicking a disabled chip
+    // does nothing, so one key press past the ceiling only toasted "Speed 2x" while the
+    // video kept its old speed. Cap the target first and skip the dead chip.
+    target = vpCapSpeed294(target);
+    if (Math.abs(target - cur) < 0.001) { toast(T(dir > 0 ? "Already at the fastest speed" : "Already at the slowest speed") + " (" + cur + "x)"); return; }
     var chip = null;
     [].forEach.call(speedChips.children, function (c) { if (Number(c.dataset.value) === target) chip = c; });
-    if (chip) chip.click(); else { target = vpCapSpeed294(target); prefs.speed = target; savePrefs(); send("setPlaybackRate", [target]); markActive(speedChips, String(target)); }
+    if (chip && !chip.disabled) chip.click(); else { prefs.speed = target; savePrefs(); send("setPlaybackRate", [target]); markActive(speedChips, String(target)); }
     toast(T("Speed ") + target + "x");
   }
 
