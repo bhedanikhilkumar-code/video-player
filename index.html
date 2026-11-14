@@ -39028,6 +39028,62 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
 
+
+  // Loop the highlight (round 308 new 2): round 306's Highlight chip jumps to the
+  // video's most-rewatched second, but drilling that hook - the guitar solo, the
+  // wicket - meant setting A-B marks around it by hand. A chip beside it now loops
+  // the highlight: it reads the same community mark, sets the A-B loop to twenty
+  // seconds on either side (clamped to the video's real bounds) and starts it,
+  // through the same assignment and updateAB the A-B card's own chips use, so
+  // fine-tune, the repeat count, the rest pause and Clear all behave as usual.
+  // Videos with no mark and videos whose length is not known yet say so plainly.
+  // Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Loop the highlight": ["हाइलाइट लूप करें", "હાઇલાઇટ લૂપ કરો"],
+    "🔁 Loop highlight": ["🔁 हाइलाइट लूप", "🔁 હાઇલાઇટ લૂપ"],
+    "Loop the video's most-liked moment, twenty seconds each way": ["वीडियो का सबसे पसंद किया गया पल लूप करें, दोनों ओर बीस सेकंड", "વીડિયોની સૌથી ગમેલી ક્ષણ લૂપ કરો, બંને બાજુ વીસ સેકંડ"],
+    "Looping the highlight: ": ["हाइलाइट लूप हो रहा है: ", "હાઇલાઇટ લૂપ થઈ રહ્યું છે: "],
+    "This video is too short to loop around a highlight.": ["यह वीडियो हाइलाइट के इर्द-गिर्द लूप करने के लिए बहुत छोटा है.", "આ વીડિયો હાઇલાઇટની આસપાસ લૂપ કરવા માટે બહુ ટૂંકો છે."]
+  });
+  (function () {
+    var hi308 = $("hiBtn306"); if (!hi308 || !hi308.parentNode) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "hiLoopBtn308"; btn.disabled = true;
+    hi308.parentNode.insertBefore(btn, hi308.nextSibling);
+    var busy = false, lastVid = "";
+    function paint() {
+      btn.textContent = T("🔁 Loop highlight");
+      btn.setAttribute("aria-label", T("Loop the video's most-liked moment, twenty seconds each way"));
+    }
+    btn.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a YouTube video first - highlights come from the community database.")); return; }
+      if (busy) return; busy = true; btn.disabled = true;
+      var vid = curId;
+      toast(T("Looking for the highlight..."));
+      fetch("https://sponsor.ajay.app/api/skipSegments?videoID=" + encodeURIComponent(vid) + '&categories=["poi_highlight"]')
+        .then(function (r) { if (r.status === 404) return []; if (!r.ok) throw new Error("http"); return r.json(); })
+        .then(function (rows) {
+          if (curId !== vid) return;
+          var row = (rows || []).filter(function (x) { return x && x.category === "poi_highlight" && Array.isArray(x.segment) && x.segment.length >= 1; })[0];
+          if (!row) { toast(T("No highlight is marked for this video yet.")); return; }
+          if (!(duration > 40)) { toast(T("Wait for the video length first.")); return; }
+          var t = Math.max(0, Number(row.segment[0]) || 0);
+          var a = Math.max(0, Math.floor(t - 20));
+          var b = Math.min(Math.floor(duration), Math.ceil(t + 20));
+          if (b <= a + 4) { toast(T("This video is too short to loop around a highlight.")); return; }
+          abA = a; abB = b; abEnabled = true; abLoopCount = 0; updateAB();
+          manualSeek(abA, "hiLoop308"); send("playVideo");
+          toast(T("Looping the highlight: ") + fmt(abA) + " - " + fmt(abB));
+        })
+        .catch(function () { toast(T("The highlight could not be checked right now - try again in a moment.")); })
+        .finally(function () { busy = false; btn.disabled = !(curId && curId.length === 11); });
+    });
+    setInterval(function () {
+      if (curId !== lastVid) { lastVid = curId || ""; busy = false; }
+      btn.disabled = busy || !(curId && curId.length === 11);
+    }, 1500);
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+
 })();
 
 
