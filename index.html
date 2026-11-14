@@ -44833,6 +44833,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Undo a skip", "undo skip back sponsor intro outro reminder wrong mark restore toast", "#sponMoreBtn308"],
       ["Note dots on the seek bar", "note dots seek bar times written note amber jump notes timestamps", "#noteSeekBtn315"],
       ["Share a pack", "share pack link moments note loops together one link send friend import video collection", "#packBtn315"],
+      ["Queue data estimate", "queue data estimate mb gb mobile data cost plan current quality rough how much internet", "#queueData315"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
@@ -47354,6 +47355,43 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
       toast(T("Pack imported."));
     })();
   })();
+  // Round 315 new 3: queue data estimate. Data saver can cut quality, but nothing said what the
+  // queue would actually cost on a mobile plan, so a long queue on Auto could quietly eat a
+  // day's data. A small line under the queue total now estimates the data the queued videos
+  // will use at the current quality (Auto counts as a mid guess), from the lengths the app
+  // knows, honestly marked rough and updated as the queue, quality or speed changes. Videos
+  // with unknown lengths are said so. Hindi and Gujarati text, feature finder and What's new
+  // included.
+  Object.assign(TR_MSG, {
+    "About {d} of data for the queue at {q} - a rough guess.": ["{q} \u092a\u0930 \u0915\u0924\u093e\u0930 \u0915\u0947 \u0932\u093f\u090f \u0932\u0917\u092d\u0917 {d} \u0921\u0947\u091f\u093e - \u090f\u0915 \u0905\u0928\u0941\u092e\u093e\u0928.", "{q} \u0aaa\u0ab0 \u0a95\u0aa4\u0abe\u0ab0 \u0aae\u0abe\u0a9f\u0ac7 \u0a86\u0aafa\u0ac1\u0a82\u0a9a\u0abf\u0aa4 {d} \u0aa1\u0ac7\u0a9f\u0abe - \u0a8f\u0a95 \u0a85\u0aa8\u0ac1\u0aae\u0abe\u0aa8."],
+    "Queue data estimate": ["\u0915\u0924\u093e\u0930 \u0921\u0947\u091f\u093e \u0905\u0928\u0941\u092e\u093e\u0928", "\u0a95\u0aa4\u0abe\u0ab0 \u0aa1\u0ac7\u0a9f\u0abe \u0a85\u0aa8\u0ac1\u0aae\u0abe\u0aa8"]
+  });
+  (function () {
+    var qt = $("queueTime"); if (!qt || !qt.parentNode) return;
+    var line = document.createElement("p"); line.className = "hint"; line.id = "queueData315"; line.setAttribute("role", "status");
+    qt.parentNode.insertBefore(line, qt.nextSibling);
+    var RATES = { highres: 7000, hd1080: 2600, hd720: 1400, large: 700, medium: 400, small: 250, tiny: 150, auto: 1000 };
+    function qlabel315() { return prefs.dataSaver ? "480p" : (QUALITIES.filter(function (x) { return x.value === prefs.quality; })[0] || QUALITIES[0]).label; }
+    function qrate315() { return RATES[prefs.dataSaver ? "large" : prefs.quality] || 1000; }
+    function paint315c() {
+      if (!lib.queue.length) { line.textContent = ""; return; }
+      var known = 0, secs = 0;
+      lib.queue.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { known++; secs += d; } });
+      if (qPos >= 0 && qPos < lib.queue.length && curId && lib.queue[qPos] && lib.queue[qPos].id === curId && curTime > 0) {
+        var dCur = infoCache[curId] && infoCache[curId].dur;
+        if (typeof dCur === "number" && dCur > 0) secs = Math.max(0, secs - Math.min(Math.floor(curTime), dCur));
+      }
+      if (!known) { line.textContent = ""; return; }
+      var mb = Math.round(secs / 3600 * qrate315());
+      var d = mb >= 1000 ? (Math.round(mb / 100) / 10) + " GB" : mb + " MB";
+      var txt = T("About {d} of data for the queue at {q} - a rough guess.").replace("{d}", d).replace("{q}", qlabel315());
+      if (known < lib.queue.length) txt += " " + known + "/" + lib.queue.length + " " + T("lengths known");
+      line.textContent = txt;
+    }
+    setInterval(paint315c, 8000);
+    (window.__relang = window.__relang || []).push(paint315c);
+    setTimeout(paint315c, 1200);
+  })();
 </script>
 <script>
 /* Round 314 new 1: own subtitle file for YouTube videos. YouTube's own CC only works when the
@@ -47615,6 +47653,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Speed suggestion for long videos", "#ctl-speed");
   window.__vpWnew283("Note dots on the seek bar", "#noteSeekBtn315");
   window.__vpWnew283("Share a pack", "#packBtn315");
+  window.__vpWnew283("Queue data estimate", "#queueData315");
 })();
 </script>
 </body>
