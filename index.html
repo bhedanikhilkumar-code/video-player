@@ -2513,6 +2513,7 @@ setTimeout(done,3000);})();
           <button class="chip" id="qPickFavBtn" type="button">Favourite picked</button>
           <button class="chip" id="qPickPlBtn" type="button">Add picked to playlist</button>
           <button class="chip" id="qPickRemoveBtn" type="button">Remove</button>
+          <button class="chip" id="qPickKeepBtn292" type="button">Keep only picked</button>
           <button class="chip" id="qPickDoneBtn" type="button">Done</button>
         </span>
       </div>
@@ -11634,7 +11635,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       qPickCount.textContent = qPicked.length ? qPicked.length + " " + T("picked") : T("Tap videos to pick them.");
     }
     renderQPickTime();
-    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickWatchedBtn", "Pick watched"], ["qPickUnwatchedBtn", "Pick unwatched"], ["qPickInvertBtn", "Invert picks"], ["qPickCopyBtn", "Copy picked"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickNextBtn", "Play next"], ["qPickLaterBtn", "Watch later"], ["qPickFavBtn", "Favourite picked"], ["qPickPlBtn", "Add picked to playlist"], ["qPickRemoveBtn", "Remove"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
+    [["qPickAllBtn", "All"], ["qPickNoneBtn", "None"], ["qPickWatchedBtn", "Pick watched"], ["qPickUnwatchedBtn", "Pick unwatched"], ["qPickInvertBtn", "Invert picks"], ["qPickCopyBtn", "Copy picked"], ["qPickTopBtn", "Move to top"], ["qPickEndBtn", "Move to end"], ["qPickNextBtn", "Play next"], ["qPickLaterBtn", "Watch later"], ["qPickFavBtn", "Favourite picked"], ["qPickPlBtn", "Add picked to playlist"], ["qPickRemoveBtn", "Remove"], ["qPickKeepBtn292", "Keep only picked"], ["qPickDoneBtn", "Done"]].forEach(function (pr) { var b = $(pr[0]); if (b) b.textContent = T(pr[1]); });
   }
   // Round 180: count only the selected rows, not the entire queue. Reuse the
   // learned lengths shown on rows, including history after a fresh load. This is
@@ -11824,6 +11825,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     qPos = cur ? lib.queue.indexOf(cur) : -1;
     qPicked = []; resetShuffle(); saveLib(); renderLib();
     toastUndo(T("Removed from queue"), function () { lib.queue = snapQ; qPos = snapP; qPicked = snapSel; saveLib(); renderLib(); }, T("Queue restored"));
+  });
+  // Keep only picked (round 292 new 2): the pick bar could drop the picked rows, but
+  // cleaning a long queue down to the few videos you actually chose meant picking
+  // everything else first (Invert picks, then Remove). One chip does it directly:
+  // every unpicked row leaves, the picked ones stay in their order, and the playing
+  // video always stays, picked or not, so the sound never cuts out mid-clean. The
+  // usual Undo toast brings the whole queue back. Hindi and Gujarati text, What's
+  // new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Keep only picked": ["\u0938\u093f\u0930\u094d\u092b\u093c \u091a\u0941\u0928\u0947 \u0939\u0941\u090f \u0930\u0916\u0947\u0902", "\u0aab\u0a95\u0acd\u0aa4 \u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0ab0\u0ac7\u0ab2\u0abe \u0ab0\u0abe\u0a96\u0acb"],
+    "Kept only the picked videos": ["\u0938\u093f\u0930\u094d\u092b\u093c \u091a\u0941\u0928\u0947 \u0939\u0941\u090f \u0935\u0940\u0921\u093f\u092f\u094b \u0930\u0916\u0947 \u0917\u090f", "\u0aab\u0a95\u0acd\u0aa4 \u0aaa\u0ab8\u0a82\u0aa6 \u0a95\u0ab0\u0ac7\u0ab2\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0ab0\u0abe\u0a96\u0acd\u0aaf\u0abe"]
+  });
+  if ($("qPickKeepBtn292")) $("qPickKeepBtn292").addEventListener("click", function () {
+    if (!qPickNeed()) return;
+    var snapQ = lib.queue.slice(), snapP = qPos, snapSel = qPicked.slice();
+    var cur = qPos >= 0 ? lib.queue[qPos] : null;
+    lib.queue = lib.queue.filter(function (it) { return qPicked.indexOf(it) >= 0 || it === cur; });
+    qPos = cur ? lib.queue.indexOf(cur) : -1;
+    qPicked = []; resetShuffle(); saveLib(); renderLib();
+    toastUndo(T("Kept only the picked videos"), function () { lib.queue = snapQ; qPos = snapP; qPicked = snapSel; saveLib(); renderLib(); }, T("Queue restored"));
   });
   function updateQProg() {
     if (!qProg) return;
@@ -39325,6 +39346,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Auto-save moments", "auto save moments every 5 10 15 minutes long video lecture match automatic bookmarks timestamps spaced", "#autoMomBtn291"],
       ["Queue QR code", "queue qr code share scan phone camera another device move queue link picture", "#qrQueueBtn291"],
       ["Up next on the mini player", "up next mini player docked floating what plays after this queue title tap to play", "#miniUpNext291"],
+      ["Keep only picked", "keep only picked queue pick many drop unpicked clear rest clean down chosen few tidy", "#qPickKeepBtn292"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
