@@ -7,4 +7,5 @@ vm.runInContext(h.slice(i,end),c);vid.pause();assert.equal(vid.paused,false);ass
 vid.play();assert.equal(timers.size,0);assert.equal(vid._vpSoftPaused346,false);assert.equal(restored,1);assert.equal(vid.paused,false);
 vid.pause();[...timers.values()][0]();assert.equal(vid.paused,true);assert.equal(vid._vpSoftPaused346,false);vid.play();
 covered=true;vid.pause();assert.equal(vid.paused,true);assert.equal(timers.size,0);covered=false;vid.play();vid.pause();events.emptied();assert.equal(timers.size,0);assert.equal(vid._vpSoftPaused346,false);
+assert.match(h,/if \(lpv319\.paused \|\| lpv319\._vpSoftPaused346\)/);
 console.log('Round 346 rapid soft-pause resume, natural pause, source replacement and privacy bypass checks pass.');
