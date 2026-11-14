@@ -13142,8 +13142,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // matched nothing at all. Words, leave-out words, quoted phrases and the operator
       // spellings are all lowercased at parse time now.
       var wl = w.toLowerCase();
-      var om = /^(-?)((?:is|has):(?:fav|favs|favourite|favourites|favorite|favorites|later|queued|queue|new|played|note|notes|short|long|moment|moments|rated))$/.exec(wl);
-      if (om) { r.ops.push(om[1] + om[2].replace(/(avourites|avorites|avourite|avorite|avs)$/, "av").replace(/s$/, "").replace("queued", "queue")); continue; }
+      var om = /^(-?)((?:is|has):(?:fav|favs|favourite|favourites|favorite|favorites|later|queued|queue|new|played|note|notes|short|long|moment|moments|rated|snoozed|snooze|pinned|pin|reason|reasons))$/.exec(wl);
+      if (om) { r.ops.push(om[1] + om[2].replace(/(avourites|avorites|avourite|avorite|avs)$/, "av").replace(/s$/, "").replace("queued", "queue").replace(/^is:snooze$/, "is:snoozed").replace(/^is:pin$/, "is:pinned")); continue; }
       // Round 286 new 2: channel:word (and -channel:word to leave one out) filters by the
       // channel the app has learned for each video.
       var cm286 = /^(-?)channel:(\S+)$/.exec(wl);
@@ -13173,6 +13173,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       else if (o === "is:short" || o === "is:long") { var sd292 = queueRowDur(id); ok = sd292 > 0 && (o === "is:short" ? sd292 < 60 : sd292 >= 600); }
       else if (o === "has:moment") ok = typeof marks !== "undefined" && marks && Array.isArray(marks[id]) && marks[id].length > 0;
       else if (o === "is:rated") ok = rated301(id);
+      else if (o === "is:snoozed") { var li364 = findIn(lib.later, id); ok = li364 >= 0 && laterSnoozed(lib.later[li364]); }
+      else if (o === "is:pinned") { var pf364 = findIn(lib.favs, id), pl364 = findIn(lib.later, id); ok = (pf364 >= 0 && lib.favs[pf364].pin === true) || (pl364 >= 0 && lib.later[pl364].pin === true); }
+      else if (o === "has:reason") { var rf364 = findIn(lib.favs, id), rl364 = findIn(lib.later, id); ok = (rf364 >= 0 && typeof lib.favs[rf364].why === "string" && lib.favs[rf364].why.trim() !== "") || (rl364 >= 0 && typeof lib.later[rl364].why === "string" && lib.later[rl364].why.trim() !== ""); }
       else ok = typeof notes !== "undefined" && notes && typeof notes[id] === "string" && notes[id].trim() !== "";
       if (neg ? ok : !ok) return false;
     }
@@ -30208,16 +30211,30 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
   })();
 
+  // Search is:snoozed / is:pinned / has:reason (round 364 new 1): Watch later rows can be
+  // snoozed, rows can be pinned and both Watch later and Favourites can carry a saved reason,
+  // but the library search had no way to find them - the operators it knew stopped at
+  // is:rated. Three operators join the list: is:snoozed (sleeping Watch later rows),
+  // is:pinned (pinned rows in either list) and has:reason (a saved "why" note on the row).
+  // Each works with the leading minus too (-is:pinned leaves pinned rows out), and the
+  // everyday spellings is:snooze, is:pin and has:reasons are recognised. The tips line
+  // under the search box lists them. Checked first: the operator list ended at is:rated
+  // and channel:; no snooze, pin or reason filter existed. Hindi and Gujarati text,
+  // What's new and feature finder keywords included.
+  Object.assign(TR_MSG, {
+    "Search is:snoozed / is:pinned / has:reason": ["\u0916\u094b\u091c is:snoozed / is:pinned / has:reason", "\u0ab6\u0acb\u0aa7 is:snoozed / is:pinned / has:reason"]
+  });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search is:snoozed / is:pinned / has:reason", "#sqTip259"); }, 1450); });
   // Search operators tip (round 259 new 2): one line under the library search box that lists
   // the operators; Hindi and Gujarati text, feature finder included.
   Object.assign(TR_MSG, {
-    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, channel:name": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, channel:नाम", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, channel:નામ"]
+    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, channel:name": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, channel:नाम", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, channel:નામ"]
   });
   (function () {
     var m = $("libSearchMsg"); if (!m || !m.parentNode) return;
     var tip = document.createElement("span"); tip.className = "hint"; tip.id = "sqTip259"; tip.style.cssText = "display:block;margin-top:4px";
     m.parentNode.insertBefore(tip, m.nextSibling);
-    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, channel:name"); }
+    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, channel:name"); }
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
@@ -49201,7 +49218,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Bookmark folders as playlists", "bookmark folders playlists import browser bookmarks make a playlist for each folder organise sorted", "#bmCard"],
       ["Export as browser bookmarks", "export browser bookmarks bookmarks.html chrome safari firefox edge save queue favourites watch later playlists folders backup", "#bmExpCard"],
       ["Skip parts", "skip parts segments ad read recap middle cut jump over sponsor boring stretch mark start end per video skip intro outro", "#skipPartsCard"],
-      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played is:short is:long short long under a minute over ten minutes duration has:note has:moment moments is:rated rated stars channel:name by channel from one channel advanced library search narrow", "#sqTip259"],
+      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played is:short is:long short long under a minute over ten minutes duration has:note has:moment moments is:rated rated stars is:snoozed snoozed sleeping is:pinned pinned pin has:reason reason why saved channel:name by channel from one channel advanced library search narrow", "#sqTip259"],
       ["Activity log", "activity log history of changes what was added removed queue watch later favourites where did it go timeline recent changes", "#activityCard"],
       ["Speed ramp", "speed ramp ease up faster gradually raise playback speed every minutes lecture podcast step 1.25 1.5 2x training", "#rampCard"],
       ["Saved searches", "saved searches save search keep pin favourite query operators is:later chips repeat run again library", "#ssRow"],
