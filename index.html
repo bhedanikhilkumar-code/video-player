@@ -2033,7 +2033,7 @@ setTimeout(done,3000);})();
           <div class="row">
             <button class="chip" id="aBtn">Set A</button>
             <button class="chip" id="bBtn">Set B</button>
-            <button class="chip" id="abClearBtn">Clear</button><button class="chip" id="abLast10Btn" type="button">⏪ Last 10s</button><button class="chip" id="abBEndBtn" type="button">B = end</button><button class="chip" id="abMarkBtn" type="button">🔖 Loop to moment</button>
+            <button class="chip" id="abClearBtn">Clear</button><button class="chip" id="abLast10Btn" type="button">⏪ Last 10s</button><button class="chip" id="abBEndBtn" type="button">B = end</button><button class="chip" id="abMarkBtn" type="button">🔖 Loop to moment</button><button class="chip" id="abLinkBtn298" type="button">🔗 Copy loop link</button>
           </div>
           <div class="row" id="abNudgeRow" style="margin-top:8px"><span class="label" id="abNudgeLab">Fine-tune:</span><button class="chip" id="abAmBtn" type="button">A -1s</button><button class="chip" id="abApBtn" type="button">A +1s</button><button class="chip" id="abBmBtn" type="button">B -1s</button><button class="chip" id="abBpBtn" type="button">B +1s</button><span class="label" id="abShiftLab" style="margin-left:6px">Shift loop:</span><button class="chip" id="abShiftMBtn" type="button">-1s</button><button class="chip" id="abShiftPBtn" type="button">+1s</button><span class="label" id="abScaleLab" style="margin-left:6px">Loop length:</span><button class="chip" id="abHalfBtn" type="button">&frac12;</button><button class="chip" id="abDoubleBtn" type="button">2&times;</button></div>
           <span class="label" id="abLabel" role="status">Off</span>
@@ -7343,6 +7343,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       return isFinite(n) && n >= 0 ? Math.floor(n) : null;
     }
     var from = secs("from"), to = secs("to");
+    // Copy loop link (round 298 new 4): a copied loop link carries ?loop=A-B (seconds, .5
+    // allowed). It wins over from/to: the video starts at A and the same A-B loop arms below.
+    var loop298 = null, loopRaw298 = q.get("loop");
+    if (loopRaw298) { var lm298 = /^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/.exec(loopRaw298); if (lm298) { var la298 = Number(lm298[1]), lb298 = Number(lm298[2]); if (isFinite(la298) && isFinite(lb298) && la298 >= 0 && lb298 > la298) loop298 = { a: la298, b: lb298 }; } }
+    if (loop298) { from = Math.floor(loop298.a); to = null; window.__vpLoopLink298 = loop298; }
     // Round 268 fix 1: a time inside the link itself (youtu.be/ID?t=90) was dropped when the link
     // came in through ?url= or ?text= - which is what the phone Share sheet and the installed app's
     // share target use - so shared moments started at 0:00. ?from= still wins when both are given.
@@ -36250,6 +36255,39 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     saveLib(); renderLib();
     toast(lib.queue[i].pin ? T("Pinned in the queue - clean-up chips keep it.") : T("Unpinned."));
   }
+  // Copy loop link (round 298 new 4): the A-B card could fine-tune, count and share a
+  // timestamp, but sending a practice loop to a friend meant two messages - the link, then
+  // "set A to 1:05 and B to 1:40". One chip on the A-B row copies a link that opens this
+  // video with the same loop already armed (?v=ID&loop=A-B, read by the link-param reader
+  // beside ?from=/?to=). Needs A and B set; the copied time keeps half seconds. Nothing is
+  // saved. Checked first: the timestamp share link (?from=) only starts the video and the
+  // ?to= clip stops it - neither arms a repeating loop. Hindi/Gujarati in the main
+  // closure; What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Copy loop link": ["\u0932\u0942\u092a \u0932\u093f\u0902\u0915 \u0915\u0949\u092a\u0940 \u0915\u0930\u0947\u0902", "\u0ab2\u0ac2\u0aaa \u0ab2\u0abf\u0a82\u0a95 \u0a95\u0a89\u0aaa\u0ac0 \u0a95\u0ab0\u0acb"],
+    "Set A and B first, then copy the loop link.": ["\u092a\u0939\u0932\u0947 A \u0914\u0930 B \u0938\u0947\u091f \u0915\u0930\u0947\u0902, \u092b\u093f\u0930 \u0932\u0942\u092a \u0932\u093f\u0902\u0915 \u0915\u0949\u092a\u0940 \u0915\u0930\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe A \u0a85\u0aa8\u0ac7 B \u0ab8\u0ac7\u0a9f \u0a95\u0ab0\u0acb, \u0aaa\u0a9b\u0ac0 \u0ab2\u0ac2\u0aaa \u0ab2\u0abf\u0a82\u0a95 \u0a95\u0a89\u0aaa\u0ac0 \u0a95\u0ab0\u0acb."],
+    "Loop link copied - it opens this video with the same A-B loop.": ["\u0932\u0942\u092a \u0932\u093f\u0902\u0915 \u0915\u0949\u092a\u0940 \u0939\u0941\u0908 - \u092f\u0939 \u0907\u0938\u0940 \u0935\u0940\u0921\u093f\u092f\u094b \u0915\u094b \u0935\u0939\u0940 A-B \u0932\u0942\u092a \u0932\u0917\u093e\u0915\u0930 \u0916\u094b\u0932\u0924\u0940 \u0939\u0948.", "\u0ab2\u0ac2\u0aaa \u0ab2\u0abf\u0a82\u0a95 \u0a95\u0a89\u0aaa\u0ac0 \u0aa5\u0a88 - \u0a86 \u0ab5\u0abf\u0aa1\u0abf\u0a93 \u0aa4\u0ac7 \u0a9c A-B \u0ab2\u0ac2\u0aaa \u0ab8\u0abe\u0aa5\u0ac7 \u0a96\u0acb\u0ab2\u0ac7 \u0a9b\u0ac7."],
+    "Load a video first, then copy the loop link.": ["\u092a\u0939\u0932\u0947 \u0915\u094b\u0908 \u0935\u0940\u0921\u093f\u092f\u094b \u091a\u0932\u093e\u090f\u0902, \u092b\u093f\u0930 \u0932\u0942\u092a \u0932\u093f\u0902\u0915 \u0915\u0949\u092a\u0940 \u0915\u0930\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0a95\u0acb\u0a88 \u0ab5\u0abf\u0aa1\u0abf\u0a93 \u0a9a\u0abe\u0ab2\u0ac1 \u0a95\u0ab0\u0acb, \u0aaa\u0a9b\u0ac0 \u0ab2\u0ac2\u0aaa \u0ab2\u0abf\u0a82\u0a95 \u0a95\u0a89\u0aaa\u0ac0 \u0a95\u0ab0\u0acb."]
+  });
+  (function () {
+    var btn = $("abLinkBtn298"); if (!btn) return;
+    function paint298l() { btn.textContent = "\uD83D\uDD17 " + T("Copy loop link"); }
+    btn.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first, then copy the loop link.")); return; }
+      if (abA == null || abB == null) { toast(T("Set A and B first, then copy the loop link.")); return; }
+      var link = location.origin + location.pathname + "?v=" + curId + "&loop=" + abA + "-" + abB;
+      vpCopySafe(link, function (ok) { if (ok) toast(T("Loop link copied - it opens this video with the same A-B loop.")); });
+    });
+    (window.__relang = window.__relang || []).push(paint298l); paint298l();
+    // Arm a loop that arrived in the page link (?loop=A-B): the reader above stashed it
+    // and started the video at A; now that every script has run, set the same state the
+    // Apply button sets.
+    if (window.__vpLoopLink298) {
+      var pl298 = window.__vpLoopLink298; window.__vpLoopLink298 = null;
+      // Only arm when the link really loaded a video - an invalid link leaves curId null.
+      if (curId && (!duration || pl298.b <= duration)) { abA = pl298.a; abB = pl298.b; abEnabled = true; abLoopCount = 0; updateAB(); }
+    }
+  })();
   // Volume steps (round 297 new 4): one press of the arrow keys, one swipe on the
   // gestures pad, one wheel scroll or a spoken louder/softer always moved the volume by a
   // fixed five - coarse when a night listener wants 12% not 15%, and fiddly when a
@@ -40708,6 +40746,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Filter the queue", "filter queue find row title thin hide rows long queue search within up next list", "#qFilterRow297"],
       ["Pin queue rows", "pin queue rows protect keep clean up chips clear upcoming trim drop shorts long dedupe safe guard", "#queueList"],
       ["Volume steps", "volume steps step size arrow keys swipe wheel voice louder softer fine coarse one five ten twenty", "#volStepRow297"],
+      ["Copy loop link", "copy loop link share a-b repeat section friend send url from to armed", "#abLinkBtn298"],
       ["Alarm fade-in", "alarm fade in gentle wake soft start rising volume gradual morning light sleeper", "#alarmFadeRow297"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
@@ -43242,6 +43281,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Pin queue rows", "#queueList");
   window.__vpWnew283("Volume steps", "#volStepRow297");
   window.__vpWnew283("Alarm fade-in", "#alarmFadeRow297");
+  window.__vpWnew283("Copy loop link", "#abLinkBtn298");
 })();
 </script>
 </body>
