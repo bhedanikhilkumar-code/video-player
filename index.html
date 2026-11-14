@@ -6892,6 +6892,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (f.contentWindow) f.contentWindow.postMessage(JSON.stringify({ event: "command", func: "pauseVideo", args: [] }), YT_ORIGIN);
     });
   }
+  // Privacy covers also stop native media resumes (headset / Media Session / timers).
+  document.addEventListener("play", function (e) {
+    if (e.target !== $("lpVideo") || !playbackCovered345()) return;
+    HTMLMediaElement.prototype.pause.call(e.target);
+    e.stopImmediatePropagation();
+  }, true);
   function send(func, args) {
     if (func === "playVideo" && playbackCovered345()) return;
     if (iframe && iframe.contentWindow) {
@@ -36413,6 +36419,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       document.body.appendChild(ov);
       ov.addEventListener("cancel", function (e) { e.preventDefault(); });
       ov.showModal(); pauseCoveredYouTube345();
+      var local346 = $("lpVideo"); if (local346 && !local346.paused) local346.pause();
       window.addEventListener("keydown", lockKeys345, true);
       $("vpLockT288").textContent = T("This app is locked.");
       var li = $("vpLockIn288"), go = $("vpLockGo288");
@@ -36450,7 +36457,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       setBtn.textContent = "\uD83D\uDD12 " + T("App lock") + ": " + T(has ? "Change PIN" : "Set a PIN");
       nowBtn.textContent = T("Lock now"); nowBtn.hidden = !has;
       rmBtn.textContent = T("Remove PIN"); rmBtn.hidden = !has;
-      hint.textContent = T("Keeps casual glances out. It is not a safe - clearing this site's data removes it.") + " " + T("Locking pauses YouTube. Unlock, then press Play to continue.");
+      hint.textContent = T("Keeps casual glances out. It is not a safe - clearing this site's data removes it.") + " " + T("Locking pauses playback. Unlock, then press Play to continue.");
       in1.placeholder = T("New PIN (4-6 digits)"); in2.placeholder = T("Repeat the PIN"); in1.setAttribute("aria-label", T("New PIN (4-6 digits)")); in2.setAttribute("aria-label", T("Repeat the PIN"));
       okBtn.textContent = T("Save PIN"); noBtn.textContent = T("Cancel");
     }
@@ -36492,6 +36499,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       "Set a PIN above to use automatic locking.": ["अपने आप लॉक करने के लिए ऊपर PIN सेट करें.", "આપમેળે લૉક કરવા ઉપર PIN સેટ કરો."],
       "The lock stays on this device. Clearing site data removes it.": ["लॉक इसी डिवाइस पर रहता है. साइट डेटा मिटाने से यह हट जाता है.", "લૉક આ ડિવાઇસ પર રહે છે. સાઇટ ડેટા કાઢવાથી તે દૂર થાય છે."]
     });
+    TR_MSG["Locking pauses playback. Unlock, then press Play to continue."] = ["लॉक करने पर प्लेबैक रुकता है. अनलॉक करके जारी रखने के लिए Play दबाएँ.", "લૉક કરતાં પ્લેબેક અટકે છે. અનલૉક કર્યા પછી ચાલુ રાખવા Play દબાવો."];
+    TR_MSG["App lock pauses local playback"] = ["ऐप लॉक लोकल प्लेबैक भी रोकता है", "એપ લૉક લોકલ પ્લેબેક પણ અટકાવે છે"];
+    window.addEventListener("load", function () { setTimeout(function () { window.__vpWnew283("App lock pauses local playback", "#lockRow288"); }, 800); });
     TR_MSG["Locking pauses YouTube. Unlock, then press Play to continue."] = ["लॉक करने पर YouTube रुकता है. अनलॉक करके जारी रखने के लिए Play दबाएँ.", "લૉક કરતાં YouTube અટકે છે. અનલૉક કર્યા પછી ચાલુ રાખવા Play દબાવો."];
     TR_MSG["Search stays above the mini player"] = ["खोज मिनी प्लेयर के ऊपर रहती है", "શોધ મિની પ્લેયર ઉપર રહે છે"];
     TR_MSG["No YouTube playback behind privacy covers"] = ["प्राइवेसी स्क्रीन के पीछे YouTube नहीं चलता", "પ્રાઇવસી સ્ક્રીન પાછળ YouTube ચાલતું નથી"];
@@ -44313,6 +44323,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // pause on local files.
   var origPause283 = vid.pause.bind(vid), softPend283 = 0;
   vid.pause = function () {
+    if (document.querySelector("#vpLock288[open],#privOv269[open]")) { clearTimeout(softPend283); return origPause283(); }
     if (!lp.soft || !ctx || vid.paused) return origPause283();
     try { if (window.__lpOutput276) { var g = window.__lpOutput276.gain; g.cancelScheduledValues(ctx.currentTime); g.setValueAtTime(Math.max(0.0001, g.value), ctx.currentTime); g.setTargetAtTime(0, ctx.currentTime, 0.09); } } catch (e) {}
     clearTimeout(softPend283); softPend283 = setTimeout(origPause283, 300);
@@ -48631,7 +48642,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Offline thumbnails", "offline thumbnails pictures library rows images saved on device no internet network queue watch later history pwa cache", "#lhQueue"],
       ["Save just the sound", "save just the sound audio only wav extract music song file ringtone keep voice local download", "#lpWavBtn288"],
       ["Hot spots", "hot spots replay heat most replayed part warm strip seek bar favourite moment local file jump", "#lpHotBtn288"],
-      ["App lock", "app lock pin code privacy lock screen password protect open history queue casual glances keyboard focus modal mini player protection", "#lockRow288"],
+      ["App lock", "app lock pin code privacy lock screen password protect open history queue casual glances keyboard focus modal mini player protection pauses local playback headset media session", "#lockRow288"],
       ["Lock after switching apps", "auto automatic app lock relock pin return tab away background privacy timeout", "#autoLock345"],
       ["Lock an idle paused session", "idle inactivity auto lock paused session abandoned pin privacy watching listening excluded", "#autoLock345"],
       ["Double view", "double view two videos at once second screen side by side compare watch together sync keep in step", "#dvBtn288"],
