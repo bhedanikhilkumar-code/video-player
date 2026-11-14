@@ -9624,7 +9624,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   miniPrevB.addEventListener("click", function () { var b = $("prevQueueBtn"); if (b) b.click(); });
   miniNextB.addEventListener("click", function () { var b = $("nextBtn"); if (b) b.click(); });
   function miniQueueBtns() {
-    var show = lib.queue.length > 1 && qPos >= 0;
+    // Round 325 fix 4 (continued): the mini player's Previous/Next stayed hidden in the
+    // same case - the playing video sits in the queue but was not started from it, so
+    // qPos is still -1 until something adopts the row. Count an adoptable row as a place
+    // in the queue; the click itself adopts it (Next always did, Previous does now too).
+    var show = lib.queue.length > 1 && (qPos >= 0 || !!(curId && findIn(lib.queue, curId) >= 0));
     miniPrevB.hidden = !show; miniNextB.hidden = !show;
   }
   var baseRenderLibQ = renderLib;
@@ -13570,6 +13574,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
 
   $("prevQueueBtn").addEventListener("click",function(){
+    // Round 325 fix 4: Next adopts the playing video's queue row before moving on
+    // (round 292 fix 1), but Previous never did - a video opened from the link box,
+    // a share link or the Continue banner while sitting in the queue played with
+    // qPos = -1, so Previous just said "No previous video in queue order." even
+    // though the row before it was right there. Adopt first, like Next does.
+    if (typeof qAdoptPlaying292 === "function") qAdoptPlaying292();
     if (queueModes.shuffle) {
       while (qHistory.length) {
         var h = qHistory.pop(), idx = -1;
