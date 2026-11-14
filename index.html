@@ -24739,6 +24739,42 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Sort favourites by rating", "#favSortRateBtn323"); }, 0); });
   })();
 
+  // Shuffle play unwatched (round 323 new 4): Favourites and Watch later each have Shuffle
+  // play (everything, watched included) and Queue unwatched (in saved order), but nothing
+  // shuffled just the videos you have not seen - a freshen-up of the backlog kept replaying
+  // finished favourites. A chip beside each Shuffle play queues only the unwatched videos in
+  // a fresh shuffled order and starts playing; snoozed Watch later rows stay skipped, the
+  // saved order is untouched, and it says plainly when everything is watched. Hindi and
+  // Gujarati text, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Shuffle play unwatched": ["\u0905\u0928\u0926\u0947\u0916\u0947 \u0936\u092b\u093c\u0932 \u091a\u0932\u093e\u090f\u0902", "\u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0ab6\u0aab\u0ab2 \u0a9a\u0ab2\u0abe\u0ab5\u0acb"],
+    "Shuffle play the unwatched videos": ["\u0905\u0928\u0926\u0947\u0916\u0947 \u0935\u0940\u0921\u093f\u092f\u094b \u0936\u092b\u093c\u0932 \u091a\u0932\u093e\u090f\u0902", "\u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0ab6\u0aab\u0ab2 \u0a9a\u0ab2\u0abe\u0ab5\u0acb"],
+    "No unwatched videos to shuffle.": ["\u0936\u092b\u093c\u0932 \u0915\u0947 \u0932\u093f\u090f \u0915\u094b\u0908 \u0905\u0928\u0926\u0947\u0916\u093e \u0935\u0940\u0921\u093f\u092f\u094b \u0928\u0939\u0940\u0902.", "\u0ab6\u0aab\u0ab2 \u0aae\u0abe\u0a9f\u0ac7 \u0a95\u0acb\u0a88 \u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0acb \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aa8\u0aa5\u0ac0."],
+    "Playing unwatched in shuffled order: ": ["\u0905\u0928\u0926\u0947\u0916\u0947 \u0936\u092b\u093c\u0932 \u0915\u094d\u0930\u092e \u092e\u0947\u0902 \u091a\u0932 \u0930\u0939\u0947 \u0939\u0948\u0902: ", "\u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0ab6\u0aab\u0ab2 \u0a95\u0acd\u0ab0\u0aae\u0aae\u0abe\u0a82 \u0a9a\u0abe\u0ab2\u0ac7 \u0a9b\u0ac7: "]
+  });
+  (function () {
+    function watched323(x) { if (!x || !x.id) return false; var hi = findIn(lib.hist, x.id); return x.done === true || (hi >= 0 && lib.hist[hi].done === true); }
+    function wire323(hostId, src, btnId) {
+      var host = $(hostId); if (!host || !host.parentNode) return;
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = btnId;
+      host.parentNode.insertBefore(b, host.nextSibling);
+      function paint() { b.textContent = "\u{1F3B2} " + T("Shuffle play unwatched"); b.setAttribute("aria-label", T("Shuffle play the unwatched videos")); }
+      (window.__relang = window.__relang || []).push(paint); paint();
+      b.addEventListener("click", function () {
+        var pool = src().filter(function (it) { return it && it.id && !watched323(it); });
+        if (!pool.length) { showLibErr(T("No unwatched videos to shuffle.")); return; }
+        lib.queue = plShuffled(pool.map(function (it) { return { id: it.id, title: it.title || "" }; }));
+        qPos = -1; resetShuffle(); saveLib(); renderLib(); showLibErr("");
+        toast(T("Playing unwatched in shuffled order: ") + lib.queue.length + " " + (lib.queue.length === 1 ? T("video") : T("videos")) + ".");
+        playQueueAt(0);
+        if (frameBox && frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+      });
+    }
+    wire323("favShufBtn", function () { return lib.favs; }, "favShufUnwBtn323");
+    wire323("laterShufBtn", function () { return lib.later.filter(function (it) { return !laterSnoozed(it); }); }, "laterShufUnwBtn323");
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Shuffle play unwatched", "#favShufUnwBtn323"); }, 0); });
+  })();
+
   // Surprise playlist (round 232 new 5): Watch later, favourites and Recently watched
   // each have a one-tap Surprise me, but the collections you organised on purpose did
   // not - landing on tonight's playlist still meant reading your own list. One chip in
@@ -45282,6 +45318,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Shuffle play unwatched", "shuffle play unwatched unseen fresh random favourites watch later backlog", "#favShufUnwBtn323"],
       ["Sort a playlist by most played", "sort playlist most played play count order arrange replays", "#lhPlaylists"],
       ["Mark a playlist as unwatched", "mark playlist unwatched reset watched fresh rewatch course again start over", "#lhPlaylists"],
       ["Sort favourites by rating", "sort favourites rating stars best rated first order arrange liked", "#favSortRateBtn323"],
