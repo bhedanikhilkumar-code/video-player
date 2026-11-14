@@ -23,9 +23,14 @@ console.log('round272 fix3 ok');
 // New 1: Favourites feed pick rule (least recently played favourite, never-played first, not queued, not playing).
 {
   const vm = require('node:vm'); const a = html.indexOf('function qFavPeek272()'); const b = html.indexOf('function qFeedPull()', a);
-  const ctx = vm.createContext({ prefs: { r271: { favFeed: true } }, curId: 'cccccccccc1', lib: { favs: [{ id: 'aaaaaaaaaa1' }, { id: 'bbbbbbbbbb1' }, { id: 'cccccccccc1' }, { id: 'dddddddddd1' }], hist: [{ id: 'bbbbbbbbbb1' }, { id: 'aaaaaaaaaa1' }], queue: [] }, findIn(l, id) { return l.findIndex(x => x.id === id); } });
+  // Round 318 fix 2: round 316 made the feed skip never-suggest videos via neverHas316,
+  // which this context never defined, so the test died with ReferenceError before
+  // asserting anything. Mirror the app's helper and cover the skip itself.
+  const ctx = vm.createContext({ prefs: { r271: { favFeed: true }, never316: [] }, curId: 'cccccccccc1', lib: { favs: [{ id: 'aaaaaaaaaa1' }, { id: 'bbbbbbbbbb1' }, { id: 'cccccccccc1' }, { id: 'dddddddddd1' }], hist: [{ id: 'bbbbbbbbbb1' }, { id: 'aaaaaaaaaa1' }], queue: [] }, findIn(l, id) { return l.findIndex(x => x.id === id); }, neverHas316(id) { return ctx.prefs.never316.indexOf(id) >= 0; } });
   vm.runInContext(html.slice(a, b), ctx);
   assert.equal(ctx.qFavPeek272(), 100003); // d: never played
+  ctx.prefs.never316.push('dddddddddd1'); assert.equal(ctx.qFavPeek272(), 100000); // d flagged: a is oldest in history
+  ctx.prefs.never316.length = 0;
   ctx.lib.queue.push({ id: 'dddddddddd1' }); assert.equal(ctx.qFavPeek272(), 100000); // a: oldest in history (index 1)
   ctx.prefs.r271.favFeed = false; assert.equal(ctx.qFavPeek272(), -1);
 }
@@ -38,7 +43,7 @@ console.log('round272 fix4 ok');
   const vm = require('node:vm'); const a = html.indexOf('var feedCount272 = 0'); const b = html.indexOf('// Speed keys (round 148)', a);
   assert.ok(a > 0 && b > a);
   const toasts = []; let listener = null;
-  const ctx = vm.createContext({ prefs: { r271: { favFeed: true, feedMax: 3 }, laterFeed: false }, curId: 'x', lib: { favs: Array.from({ length: 8 }, (_, i) => ({ id: 'fav' + i + 'aaaaaaa'.slice(0, 7), title: 't' + i })), hist: [], queue: [], later: [] }, findIn(l, id) { return l.findIndex(x => x.id === id); }, saveLib() {}, renderLib() {}, toast(m) { toasts.push(m); }, T: x => x, laterSnoozed: () => false, setTimeout: f => f(), document: { addEventListener(n, f) { listener = f; } } });
+  const ctx = vm.createContext({ prefs: { r271: { favFeed: true, feedMax: 3 }, laterFeed: false, never316: [] }, neverHas316(id) { return ctx.prefs.never316.indexOf(id) >= 0; }, curId: 'x', lib: { favs: Array.from({ length: 8 }, (_, i) => ({ id: 'fav' + i + 'aaaaaaa'.slice(0, 7), title: 't' + i })), hist: [], queue: [], later: [] }, findIn(l, id) { return l.findIndex(x => x.id === id); }, saveLib() {}, renderLib() {}, toast(m) { toasts.push(m); }, T: x => x, laterSnoozed: () => false, setTimeout: f => f(), document: { addEventListener(n, f) { listener = f; } } });
   vm.runInContext(html.slice(a, b), ctx);
   for (let i = 0; i < 3; i++) { assert.equal(ctx.qFeedPull(), true); ctx.curId = ctx.lib.queue[ctx.lib.queue.length - 1].id; listener(); }
   assert.equal(ctx.qFeedPull(), false); assert.ok(toasts.some(t => t === 'Feed stopped after {n} videos.'.replace('{n}', 3)));
