@@ -23400,9 +23400,16 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     btn.addEventListener("click", function () {
       var start = qPos + 1, extra = lib.queue.length - start - KEEP;
       if (extra <= 0) { toast(T("The queue already has 10 or fewer upcoming videos.")); return; }
-      var snap = lib.queue.slice(), sp = qPos;
-      lib.queue = lib.queue.slice(0, start + KEEP); resetShuffle(); saveLib(); renderLib(); showLibErr("");
-      toastUndo(T("Queue trimmed: kept the next 10, removed") + " " + extra, function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+      var snap = lib.queue.slice(), sp = qPos, sa = qAfter;
+      // Round 296 fix 4: same qAfter hole as Drop 30+ min (fix 3) - when the playing video
+      // is outside the queue, trimming rows past the kept ten could cut the row the qAfter
+      // removal pointer remembered, leaving it aimed past the end of the shorter queue, so
+      // Next then played nothing. The pointer now moves with its row (and clears when that
+      // row is trimmed away), and Undo restores it.
+      var cut = lib.queue.slice(start + KEEP), qAfterNew = qAfter;
+      if (sa >= start + KEEP) qAfterNew = -1;
+      lib.queue = lib.queue.slice(0, start + KEEP); qAfter = qAfterNew; resetShuffle(); saveLib(); renderLib(); showLibErr("");
+      toastUndo(T("Queue trimmed: kept the next 10, removed") + " " + extra, function () { lib.queue = snap; qPos = sp; qAfter = sa; saveLib(); renderLib(); }, T("Queue restored"));
     });
   })();
 
