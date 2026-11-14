@@ -2469,6 +2469,7 @@ setTimeout(done,3000);})();
         <input id="plImportFile" type="file" accept="application/json,.json,.m3u,.m3u8,audio/x-mpegurl" hidden>
         <button class="chip" id="plPasteBtn" type="button" aria-expanded="false">Paste a list of links</button>
         <button class="chip" id="queueTxtBtn" type="button">Save queue as text file</button>
+        <button class="chip" id="queueM3uBtn300" type="button">Save queue as .m3u</button>
         <button class="chip" id="queueTxtImportBtn" type="button">Add links from a text file</button>
         <button class="chip" id="hxBtn" type="button" aria-expanded="false">Import a history file</button>
         <button class="chip" id="calBtn" type="button" aria-expanded="false">Add to calendar</button>
@@ -5962,6 +5963,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       a.href = URL.createObjectURL(blob); a.download = "video-player-queue.txt"; document.body.appendChild(a); a.click(); a.remove();
       setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
       toast(T("Queue saved as a text file"));
+    } catch (e) { toast(T("Could not copy. Try again.")); }
+  });
+  // Save queue as .m3u (round 300): the queue could leave as a readable text file but
+  // not in the one format VLC, Kodi and music apps import. Extended M3U - titles ride
+  // as #EXTINF lines and links point at youtube.com watch pages. Hindi/Gujarati in the
+  // main closure, in the feature finder and the What's new card.
+  var queueM3uBtn300 = $("queueM3uBtn300");
+  if (queueM3uBtn300) queueM3uBtn300.addEventListener("click", function () {
+    if (!lib.queue.length) { showLibErr(T("Queue is empty. Add links with Add to queue.")); return; }
+    var text = "#EXTM3U\n" + lib.queue.map(function (x) {
+      return "#EXTINF:-1," + String(x.title || x.id).replace(/[\r\n,]+/g, " ").trim() + "\nhttps://www.youtube.com/watch?v=" + x.id;
+    }).join("\n") + "\n";
+    try {
+      var blob = new Blob([text], { type: "audio/x-mpegurl" }), a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = "video-player-queue.m3u"; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+      toast(T("Queue saved as an .m3u file."));
     } catch (e) { toast(T("Could not copy. Try again.")); }
   });
   // Copy list for Watch later, Favourites and Recently watched (round 116): one tap puts the
@@ -16465,6 +16483,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["#noteTxtBtn", "Save all notes as text file", "सभी नोट्स टेक्स्ट फ़ाइल में सेव करें"],
     ["#notesCopyAllBtn", "📋 Copy all notes", "📋 सभी नोट्स कॉपी करें"],
     ["#queueTxtBtn", "Save queue as text file", "कतार को टेक्स्ट फ़ाइल में सेव करें"],
+    ["#queueM3uBtn300", "Save queue as .m3u", "कतार को .m3u में सेव करें"],
     ["#queueTxtImportBtn", "Add links from a text file", "टेक्स्ट फ़ाइल से लिंक जोड़ें"],
     ["#plPasteAdd", "Add to queue", "कतार में जोड़ें"],
     ["#plPasteCancel", "Close", "बंद करें"],
@@ -16661,6 +16680,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
  "#noteTxtBtn": "બધી નોંધો ટેક્સ્ટ ફાઇલમાં સાચવો",
  "#notesCopyAllBtn": "📋 બધી નોંધો કોપી કરો",
  "#queueTxtBtn": "કતારને ટેક્સ્ટ ફાઇલમાં સાચવો",
+ "#queueM3uBtn300": "કતારને .m3uમાં સાચવો",
  "#queueTxtImportBtn": "ટેક્સ્ટ ફાઇલમાંથી લિંક ઉમેરો",
  "#plPasteAdd": "કતારમાં ઉમેરો",
  "#plPasteCancel": "બંધ કરો",
@@ -36884,6 +36904,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Nightcore: 1.25x speed with the fast voice.": ["Nightcore: 1.25x स्पीड, तेज़ आवाज़ के साथ.", "Nightcore: 1.25x સ્પીડ, ઝડપી અવાજ સાથે."],
     "Slowed + reverb: 0.75x speed in a hall.": ["स्लोड + रीवर्ब: 0.75x स्पीड, हॉल की गूँज के साथ.", "સ્લોડ + રીવર્બ: 0.75x સ્પીડ, હોલની પડઘા સાથે."],
     "Back to normal: 1x speed, natural pitch, hall off.": ["वापस सामान्य: 1x स्पीड, कुदरती पिच, हॉल बंद.", "ફરી સામાન્ય: 1x સ્પીડ, કુદરતી પિચ, હોલ બંધ."],
+    "Queue saved as an .m3u file.": ["कतार .m3u फ़ाइल में सेव हुई.", "કતાર .m3u ફાઇલમાં સેવ થઈ."],
     "-10 seconds": ["-10 सेकंड", "-10 સેકન્ડ"],
     "+10 seconds": ["+10 सेकंड", "+10 સેકન્ડ"],
     "Double-tap the video: the left or right side jumps 10 seconds, the middle plays or pauses.": ["वीडियो पर डबल-टैप करें: बाईं या दाईं ओर 10 सेकंड आगे-पीछे, बीच में चलाएँ या रोकें।", "વીડિયો પર ડબલ-ટૅપ કરો: ડાબી કે જમણી બાજુ 10 સેકન્ડ આગળ-પાછળ, વચ્ચે ચલાવો કે રોકો."],
@@ -41502,6 +41523,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
       ["Vibe presets", "vibe presets nightcore slowed reverb mood one tap speed pitch hall local files", "#lpVibeRow300"],
       ["Double-tap seek", "double tap seek local video jump 10 seconds left right middle play pause touch phone", "#lpDtapHint300"],
+      ["Save queue as .m3u", "save queue m3u export download playlist file vlc kodi import other player", "#queueM3uBtn300"],
       ["Alarm fade-in", "alarm fade in gentle wake soft start rising volume gradual morning light sleeper", "#alarmFadeRow297"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
@@ -44049,6 +44071,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Voice cut", "#lpVcutBtn300");
   window.__vpWnew283("Vibe presets", "#lpVibeRow300");
   window.__vpWnew283("Double-tap seek", "#lpDtapHint300");
+  window.__vpWnew283("Save queue as .m3u", "#queueM3uBtn300");
 })();
 </script>
 </body>
