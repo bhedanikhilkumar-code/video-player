@@ -43296,6 +43296,17 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "use strict";
     var btn = $("guestBtn339"); if (!btn) return;
     var on = false, prevPrivate = false, bar = null, fillEl = null, holdRAF = 0, holdT0 = 0, hid = [];
+    // Round 340 fix 2: during a guest session Private viewing is in-memory only, but any
+    // prefs save (a volume change is enough) persisted privateView: true - so after the
+    // next reload private viewing was silently stuck ON with no guest bar to explain it
+    // (seen live: reload after a volume change -> privateView true, no guest bar). While
+    // the session is on, saves go out with the pre-session privateView instead.
+    var realSavePrefs = savePrefs;
+    function savePrefsGuestSafe() {
+      if (!on) return realSavePrefs.apply(this, arguments);
+      var cur = prefs.privateView; prefs.privateView = prevPrivate;
+      try { return realSavePrefs.apply(this, arguments); } finally { prefs.privateView = cur; }
+    }
     Object.assign(TR_MSG, {
       "Guest session": ["गेस्ट सेशन", "ગેસ્ટ સેશન"],
       "Start guest session": ["गेस्ट सेशन शुरू करें", "ગેસ્ટ સેશન શરૂ કરો"],
@@ -43334,6 +43345,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function guestStart() {
       if (on) return;
       on = true; prevPrivate = !!prefs.privateView;
+      savePrefs = savePrefsGuestSafe;
       if (!prevPrivate) applyPrivate(true);
       hid = [];
       ["library", "study261"].forEach(function (id) { var el = $(id); if (el && el.style.display !== "none") { el.style.display = "none"; hid.push(el); } });
@@ -43355,6 +43367,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function guestEnd() {
       if (!on) return;
       on = false; holdStop();
+      savePrefs = realSavePrefs;
       applyPrivate(prevPrivate);
       hid.forEach(function (el) { el.style.display = ""; }); hid = [];
       if (bar) { bar.remove(); bar = null; fillEl = null; }
