@@ -35580,6 +35580,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         else { toast(T("Nothing to play - load a video or fill the queue first.")); return; }
         try { $("player").scrollIntoView({ block: "start" }); } catch (e) {}
         toast(T("Your daily alarm is playing."));
+        if (window.__vpAlarmJustRang311) { try { window.__vpAlarmJustRang311(); } catch (e311) {} }
       } catch (e) {}
     }, 15000);
     (window.__relang = window.__relang || []).push(paint); paint();
@@ -39678,6 +39679,63 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     bar310.addEventListener("pointerup", end310);
     bar310.addEventListener("pointercancel", function () { drag310 = null; sel310.hidden = true; });
     if (window.__vpWnew283) window.__vpWnew283("Shift-drag a loop on the waveform", "#lpLoopBox");
+  })();
+
+  // Snooze the daily alarm (round 311 new 4): the alarm (round 290) can be skipped
+  // the night before (round 293), but when it actually rings and you want ten more
+  // minutes there was only pausing the video yourself and losing the ring. For ten
+  // minutes after a ring, a Snooze chip sits in the alarm row: one tap pauses
+  // playback and rings again ten minutes later (same playlist or video the alarm
+  // plays, quiet hours still respected), then the chip hides until the next ring.
+  // The wait lives in this tab, so the toast says to keep it open - like the alarm
+  // itself, it cannot wake a closed app. Nothing new is saved. Hindi and Gujarati
+  // text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Snooze the alarm": ["अलार्म स्नूज़ करें", "અલાર્મ સ્નૂઝ કરો"],
+    "Snooze 10 min": ["10 मिनट स्नूज़", "10 મિનિટ સ્નૂઝ"],
+    "Snoozed for 10 minutes - keep this tab open, the ring needs it.": ["10 मिनट के लिए स्नूज़ हुआ - यह टैब खुली रखें, इसी में बजेगा.", "10 મિનિટ માટે સ્નૂઝ થયું - આ ટૅબ ખુલ્લી રાખો, એમાં જ વાગશે."],
+    "The snoozed alarm is playing.": ["स्नूज़ किया अलार्म बज रहा है.", "સ્નૂઝ કરેલો અલાર્મ વાગી રહ્યો છે."]
+  });
+  (function () {
+    var row311 = $("alarmRow290"); if (!row311) return;
+    var btn311 = document.createElement("button"); btn311.type = "button"; btn311.className = "chip"; btn311.id = "alarmSnoozeBtn311"; btn311.hidden = true;
+    row311.appendChild(btn311);
+    var snzT311 = null, showT311 = null;
+    function paint311() { btn311.textContent = "😴 " + T("Snooze 10 min"); }
+    function ringShow311() {
+      paint311(); btn311.hidden = false;
+      if (showT311) clearTimeout(showT311);
+      showT311 = setTimeout(function () { btn311.hidden = true; }, 10 * 60 * 1000);
+    }
+    window.__vpAlarmJustRang311 = ringShow311;
+    btn311.addEventListener("click", function () {
+      btn311.hidden = true;
+      try { send("pauseVideo"); } catch (e) {}
+      var lpv311 = $("lpVideo"); if (lpv311 && !lpv311.hidden && !lpv311.paused) { try { lpv311.pause(); } catch (e) {} }
+      if (snzT311) clearTimeout(snzT311);
+      snzT311 = setTimeout(function () {
+        snzT311 = null;
+        if (window.__vpQuiet293 && window.__vpQuiet293()) return;
+        if (window.__vpAlarmRing295) { try { window.__vpAlarmRing295(); } catch (e) {} }
+        var al311 = prefs.alarm290 || {}, alPl311 = null;
+        if (al311.src && Array.isArray(playlists)) {
+          for (var pi = 0; pi < playlists.length; pi++) { if (playlists[pi].name === al311.src) { alPl311 = playlists[pi]; break; } }
+        }
+        if (alPl311 && alPl311.items && alPl311.items.length) {
+          var items311 = alPl311.items.slice(0, 50).map(function (x) { return { id: x.id, title: x.title }; });
+          var at311 = (qPos >= 0 && qPos < lib.queue.length) ? qPos + 1 : 0;
+          for (var ai = 0; ai < items311.length; ai++) lib.queue.splice(at311 + ai, 0, items311[ai]);
+          qAfter = -1; saveLib(); renderLib(); playQueueAt(at311);
+        }
+        else if (curId) send("playVideo");
+        else if (lib.queue.length) playQueueAt(qPos >= 0 && qPos < lib.queue.length ? qPos : 0);
+        else { toast(T("Nothing to play - load a video or fill the queue first.")); return; }
+        toast(T("The snoozed alarm is playing."));
+        ringShow311();
+      }, 10 * 60 * 1000);
+      toast(T("Snoozed for 10 minutes - keep this tab open, the ring needs it."));
+    });
+    (window.__relang = window.__relang || []).push(paint311); paint311();
   })();
 
   // Scan a QR code (round 311 new 3): the app makes QR codes everywhere - Share at
@@ -44606,6 +44664,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Playlist feed", "playlist feed auto play next unwatched from playlist when queue runs out ends empty continuous autoplay", "#qPlFeedBtn311"],
       ["Turn for full screen", "turn rotate phone sideways landscape auto full screen hands free watching tilt", "#fsLandBtn311"],
       ["Scan a QR code", "scan qr code camera open shared link from another device phone point reader", "#qrScanBtn311"],
+      ["Snooze the alarm", "snooze daily alarm ten more minutes ring again later morning postpone", "#alarmSnoozeBtn311"],
       ["Community chapter previous and next", "community chapter previous next back forward step named parts youtube panel", "#chapPrevBtn309"],
       ["Sound reset", "sound reset normal effects off eq flat balance centre night hall wide mono voice cut dialogue boost undo", "#lpSndResetBtn309"],
       ["Loop the highlight", "loop highlight most liked moment replay hook chorus solo a-b repeat", "#hiLoopBtn308"],
@@ -47135,6 +47194,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Loop the highlight", "#hiLoopBtn308");
   window.__vpWnew283("Triple-tap for Cinema mode", "#gesturePad");
   window.__vpWnew283("Chapter ticks on the seek bar", "#chapTicks308");
+  window.__vpWnew283("Snooze the alarm", "#alarmSnoozeBtn311");
   window.__vpWnew283("Scan a QR code", "#qrScanBtn311");
   window.__vpWnew283("Turn for full screen", "#fsLandBtn311");
   window.__vpWnew283("Playlist feed", "#qPlFeedBtn311");
