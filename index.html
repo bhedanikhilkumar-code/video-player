@@ -4562,7 +4562,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (idx < qPos) qPos--; else if (idx === qPos) { qPos = -1; qAfter = idx; }
       saveLib(); renderLib();
       toastUndo(T("Removed from queue"), function () { lib.queue = snapQ; qPos = snapP; qAfter = -1; saveLib(); renderLib(); }, T("Queue restored"));
-    }, function (item, idx) { playQueueAt(idx); }, [{ label: T("Play next"), fn: function (item) { queuePlayNext(item); } }, favRowAction()], "queue", [
+    }, function (item, idx) { playQueueAt(idx); }, [{ label: "\uD83D\uDCCC", aria: function (item) { return item.pin ? T("Pinned - clean-up chips keep it") : T("Pin in the queue"); }, cls: "pin-chip", on: function (item) { return !!item.pin; }, fn: function (item) { togglePinQueue297(item.id); } }, { label: T("Play next"), fn: function (item) { queuePlayNext(item); } }, favRowAction()], "queue", [
       { label: T("Paste a link"), fn: function () { var lb = $("pasteLinkBtn"); if (lb) lb.click(); var li2 = $("link"); if (li2) li2.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); var inp = $("linkInput"); if (inp) setTimeout(function () { inp.focus(); }, 350); } },
       { label: T("Import playlist"), fn: function () { var pb = $("plImportBtn"); if (pb) pb.click(); } }
     ]);
@@ -5992,8 +5992,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (clearUpcomingBtn) clearUpcomingBtn.addEventListener("click", function () {
     if (qPos < 0 || qPos >= lib.queue.length - 1) { toast(T("Nothing upcoming in the queue")); return; }
     var snap = lib.queue.slice(), sp = qPos;
-    var dropped = lib.queue.length - qPos - 1;
-    lib.queue = lib.queue.slice(0, qPos + 1);
+    // Round 297 new 3: pinned queue rows survive clean-up chips.
+    var tail = lib.queue.slice(qPos + 1), kept = tail.filter(function (x) { return x.pin; });
+    var dropped = tail.length - kept.length;
+    if (dropped <= 0) { toast(T("Only pinned videos upcoming - pinned rows stay.")); return; }
+    lib.queue = lib.queue.slice(0, qPos + 1).concat(kept);
     saveLib(); renderLib();
     toastUndo(T("Upcoming queue cleared") + " (" + dropped + ")", function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
   });
@@ -6011,7 +6014,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // follows the row it remembered, and Undo restores it.
     var seen = {}, nq = [], nqPos = -1, removed = 0, snap = lib.queue.slice(), sp = qPos, sa = qAfter, qAfterNew = qAfter;
     lib.queue.forEach(function (it, i) {
-      if (seen[it.id]) { removed++; if (i < sa) qAfterNew--; return; }
+      if (seen[it.id] && !it.pin) { removed++; if (i < sa) qAfterNew--; return; }
       seen[it.id] = true;
       if (i === qPos) nqPos = nq.length;
       nq.push(it);
@@ -6024,8 +6027,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if (clearPlayedBtn) clearPlayedBtn.addEventListener("click", function () {
     // Watched = everything before the queue position of the video playing now.
     if (!(qPos > 0)) { showLibErr(T("No watched videos before the current one.")); return; }
-    var snap = lib.queue.slice(), sp = qPos, n = qPos;
-    lib.queue = lib.queue.slice(qPos); qPos = 0; saveLib(); renderLib(); showLibErr("");
+    var snap = lib.queue.slice(), sp = qPos;
+    // Round 297 new 3: pinned queue rows survive clean-up chips.
+    var keptPin = lib.queue.slice(0, qPos).filter(function (x) { return x.pin; });
+    var n = qPos - keptPin.length;
+    if (n <= 0) { showLibErr(T("No watched videos before the current one.")); return; }
+    lib.queue = keptPin.concat(lib.queue.slice(qPos)); qPos = keptPin.length; saveLib(); renderLib(); showLibErr("");
     toastUndo(n === 1 ? T("1 watched video removed") : n + " " + T("watched videos removed"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
   });
   (window.__relang = window.__relang || []).push(function () { if (clearPlayedBtn) clearPlayedBtn.textContent = T("Clear watched"); });
@@ -13691,7 +13698,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     if (typeof noteFlush === "function") noteFlush();
     if (typeof lyricsFlush === "function") lyricsFlush();
     var data = { app: "hd-video-player", version: 2, exportedAt: new Date().toISOString(),
-      queue: lib.queue.map(function (x) { return { id: x.id, title: x.title || "" }; }),
+      queue: lib.queue.map(function (x) { var o = { id: x.id, title: x.title || "" }; if (x.pin === true) o.pin = true; return o; }),
       queuePos: (qPos >= 0 && qPos < lib.queue.length && lib.queue[qPos]) ? lib.queue[qPos].id : null,
       favourites: lib.favs.map(function (x) { var o = { id: x.id, title: x.title || "", pin: x.pin === true }; if (typeof x.why === "string" && x.why.trim()) o.why = x.why.slice(0, 200); return o; }),
       later: lib.later.map(function (x) { var o = { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (laterSnoozed(x)) o.snoozeUntil = x.snoozeUntil; if (typeof x.why === "string" && x.why.trim()) o.why = x.why.slice(0, 200); return o; }),
@@ -13831,7 +13838,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         var fv = Array.isArray(d.favourites) ? d.favourites : (Array.isArray(d.favs) ? d.favs : []);
         if (mergePracticeLoops(d.practiceLoops)) { savePracticeLoops(); renderPracticeLoops(); }
         var qn = 0, fn = 0, capN = 0;
-        q.forEach(function (x) { if (validItem(x) && findIn(lib.queue, x.id) < 0 && lib.queue.length >= 50) capN++; if (validItem(x) && findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: typeof x.title === "string" ? x.title : "" }); qn++; } });
+        q.forEach(function (x) { if (validItem(x) && findIn(lib.queue, x.id) < 0 && lib.queue.length >= 50) capN++; if (validItem(x) && findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { var qi297 = { id: x.id, title: typeof x.title === "string" ? x.title : "" }; if (x.pin === true) qi297.pin = true; lib.queue.push(qi297); qn++; } });
         if (typeof d.queuePos === "string") { var iqPos = findIn(lib.queue, d.queuePos); if (iqPos >= 0) qPos = iqPos; }
         fv.forEach(function (x) { if (validItem(x) && findIn(lib.favs, x.id) < 0) { var fo284 = { id: x.id, title: typeof x.title === "string" ? x.title : "", pin: x.pin === true }; if (typeof x.why === "string" && x.why.trim()) fo284.why = x.why.slice(0, 200); lib.favs.push(fo284); fn++; } });
         var pn = 0;
@@ -23415,10 +23422,14 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       // removal pointer remembered, leaving it aimed past the end of the shorter queue, so
       // Next then played nothing. The pointer now moves with its row (and clears when that
       // row is trimmed away), and Undo restores it.
-      var cut = lib.queue.slice(start + KEEP), qAfterNew = qAfter;
-      if (sa >= start + KEEP) qAfterNew = -1;
-      lib.queue = lib.queue.slice(0, start + KEEP); qAfter = qAfterNew; resetShuffle(); saveLib(); renderLib(); showLibErr("");
-      toastUndo(T("Queue trimmed: kept the next 10, removed") + " " + extra, function () { lib.queue = snap; qPos = sp; qAfter = sa; saveLib(); renderLib(); }, T("Queue restored"));
+      var cut = lib.queue.slice(start + KEEP), qAfterNew = qAfter, keptPin = [];
+      // Round 297 new 3: pinned queue rows survive clean-up chips, and the qAfter pointer
+      // follows a pinned row that stays.
+      cut.forEach(function (x, ci) { if (x && x.pin) { if (sa === start + KEEP + ci) qAfterNew = start + KEEP + keptPin.length; keptPin.push(x); } });
+      if (sa >= start + KEEP && qAfterNew === qAfter) qAfterNew = -1;
+      if (extra - keptPin.length <= 0) { toast(T("Only pinned videos past the kept ten - pinned rows stay.")); return; }
+      lib.queue = lib.queue.slice(0, start + KEEP).concat(keptPin); qAfter = qAfterNew; resetShuffle(); saveLib(); renderLib(); showLibErr("");
+      toastUndo(T("Queue trimmed: kept the next 10, removed") + " " + (extra - keptPin.length), function () { lib.queue = snap; qPos = sp; qAfter = sa; saveLib(); renderLib(); }, T("Queue restored"));
     });
   })();
 
@@ -23904,7 +23915,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       var keep = lib.queue.filter(function (x, i) {
         if (i < start) return true;
         var hi = findIn(lib.hist, x.id), d = (infoCache[x.id] && infoCache[x.id].dur) || (hi >= 0 && lib.hist[hi].dur) || 0;
-        if (typeof d === "number" && d > 1800) { n++; if (i < sa) qAfterNew--; return false; }
+        if (typeof d === "number" && d > 1800 && !x.pin) { n++; if (i < sa) qAfterNew--; return false; }
         return true;
       });
       if (!n) { toast(T("No upcoming video with a learned length over 30 minutes.")); return; }
@@ -26908,7 +26919,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       var keep = lib.queue.filter(function (x, i) {
         if (i < start) return true;
         var hi = findIn(lib.hist, x.id), d = (infoCache[x.id] && infoCache[x.id].dur) || (hi >= 0 && lib.hist[hi].dur) || 0;
-        if (typeof d === "number" && d > 0 && d < 61) { n++; return false; }
+        if (typeof d === "number" && d > 0 && d < 61 && !x.pin) { n++; return false; }
         return true;
       });
       if (!n) { toast(T("No upcoming Short (under a minute) with a learned length.")); return; }
@@ -36160,6 +36171,31 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(function () { inp.placeholder = T("Filter the queue"); inp.setAttribute("aria-label", T("Filter the queue")); applyQFilter297(); });
     renderLib = (function (orig) { return function () { var r = orig.apply(this, arguments); applyQFilter297(); return r; }; })(renderLib);
   })();
+  // Pin queue rows (round 297 new 3): Watch later rows have a pin, but the queue had
+  // none, so tidying a long evening queue - Clear upcoming, Keep next 10, Drop 30+ min,
+  // Drop Shorts, Clear watched, Remove duplicates - swept away the one video the whole
+  // queue was built around. Every queue row grows a pin chip (like the Watch later one):
+  // a pinned row stays through every clean-up chip, and a chip that would remove nothing
+  // but pins says so instead of pretending there was nothing to do. Pins ride the queue
+  // save on this device and the backup export/import. Reorder chips (sorts, mix, reverse)
+  // still move pinned rows - pin promises survival, not position - and Clear still empties
+  // everything on purpose. Checked first: pins existed only for Watch later and playlists.
+  // Hindi and Gujarati text in the main closure; What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Pin queue rows": ["\u0915\u0924\u093e\u0930 \u092a\u0902\u0915\u094d\u0924\u093f\u092f\u093e\u0901 \u092a\u093f\u0928 \u0915\u0930\u0947\u0902", "\u0a95\u0aa4\u0abe\u0ab0 \u0aaa\u0a82\u0a95\u0acd\u0aa4\u0abf\u0a93 \u0aaa\u0abf\u0aa8 \u0a95\u0ab0\u0acb"],
+    "Pin in the queue": ["\u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u092a\u093f\u0928 \u0915\u0930\u0947\u0902", "\u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0aaa\u0abf\u0aa8 \u0a95\u0ab0\u0acb"],
+    "Pinned - clean-up chips keep it": ["\u092a\u093f\u0928 \u0915\u093f\u092f\u093e - \u0938\u092b\u093c\u093e\u0908 \u091a\u093f\u092a\u094d\u0938 \u0907\u0938\u0947 \u0930\u0916\u0924\u0940 \u0939\u0948\u0902", "\u0aaa\u0abf\u0aa8 \u0a95\u0ab0\u0ac7\u0ab2\u0ac1\u0a82 - \u0ab8\u0aab\u0abe\u0a88 \u0a9a\u0abf\u0aaa\u0acd\u0ab8 \u0aa4\u0ac7\u0aa8\u0ac7 \u0ab0\u0abe\u0a96\u0ac7"],
+    "Pinned in the queue - clean-up chips keep it.": ["\u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u092a\u093f\u0928 \u0915\u093f\u092f\u093e - \u0938\u092b\u093c\u093e\u0908 \u091a\u093f\u092a\u094d\u0938 \u0907\u0938\u0947 \u0930\u0916\u0924\u0940 \u0939\u0948\u0902.", "\u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0aaa\u0abf\u0aa8 \u0a95\u0ab0\u0acd\u0aaf\u0ac1\u0a82 - \u0ab8\u0aab\u0abe\u0a88 \u0a9a\u0abf\u0aaa\u0acd\u0ab8 \u0aa4\u0ac7\u0aa8\u0ac7 \u0ab0\u0abe\u0a96\u0ac7."],
+    "Unpinned.": ["\u092a\u093f\u0928 \u0939\u091f\u093e\u0908.", "\u0aaa\u0abf\u0aa8 \u0ab9\u0a9f\u0abe\u0ab5\u0ac0."],
+    "Only pinned videos upcoming - pinned rows stay.": ["\u0906\u0917\u0947 \u0938\u093f\u0930\u094d\u092b\u093c \u092a\u093f\u0928 \u0915\u093f\u090f \u0935\u0940\u0921\u093f\u092f\u094b \u0939\u0948\u0902 - \u092a\u093f\u0928 \u092a\u0902\u0915\u094d\u0924\u093f\u092f\u093e\u0901 \u0930\u0939\u0924\u0940 \u0939\u0948\u0902.", "\u0a86\u0a97\u0ab3 \u0aab\u0a95\u0acd\u0aa4 \u0aaa\u0abf\u0aa8 \u0a95\u0ab0\u0ac7\u0ab2\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb - \u0aaa\u0abf\u0aa8 \u0aaa\u0a82\u0a95\u0acd\u0aa4\u0abf\u0a93 \u0ab0\u0ab9\u0ac7."],
+    "Only pinned videos past the kept ten - pinned rows stay.": ["\u0930\u0916\u0947 \u0917\u090f \u0926\u0938 \u0915\u0947 \u0906\u0917\u0947 \u0938\u093f\u0930\u094d\u092b\u093c \u092a\u093f\u0928 \u0915\u093f\u090f \u0935\u0940\u0921\u093f\u092f\u094b \u0939\u0948\u0902 - \u092a\u093f\u0928 \u092a\u0902\u0915\u094d\u0924\u093f\u092f\u093e\u0901 \u0930\u0939\u0924\u0940 \u0939\u0948\u0902.", "\u0ab0\u0abe\u0a96\u0ac7\u0ab2\u0abe \u0aa6\u0ab8 \u0aaa\u0abe\u0a9b\u0ac0 \u0aab\u0a95\u0acd\u0aa4 \u0aaa\u0abf\u0aa8 \u0a95\u0ab0\u0ac7\u0ab2\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb - \u0aaa\u0abf\u0aa8 \u0aaa\u0a82\u0a95\u0acd\u0aa4\u0abf\u0a93 \u0ab0\u0ab9\u0ac7."]
+  });
+  function togglePinQueue297(id) {
+    var i = findIn(lib.queue, id); if (i < 0) return;
+    if (lib.queue[i].pin) delete lib.queue[i].pin; else lib.queue[i].pin = true;
+    saveLib(); renderLib();
+    toast(lib.queue[i].pin ? T("Pinned in the queue - clean-up chips keep it.") : T("Unpinned."));
+  }
   window.__vpPrefs = prefs;
   window.__vpSavePrefs = savePrefs;
   Object.assign(TR_MSG, {
@@ -40523,6 +40559,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Automatic backup", "automatic backup auto download export weekly monthly schedule save file protect data", "#autoBkRow296"],
       ["Tempo trainer", "tempo trainer ab loop faster slower each loop pass practice speed steps ladder music dance language drill", "#tempoRow297"],
       ["Filter the queue", "filter queue find row title thin hide rows long queue search within up next list", "#qFilterRow297"],
+      ["Pin queue rows", "pin queue rows protect keep clean up chips clear upcoming trim drop shorts long dedupe safe guard", "#queueList"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
       ["Top channels", "top channels most watched creators ranking watch time stats favourite channel who watch most", "#lhStats"],
@@ -43053,6 +43090,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Automatic backup", "#autoBkRow296");
   window.__vpWnew283("Tempo trainer", "#tempoRow297");
   window.__vpWnew283("Filter the queue", "#qFilterRow297");
+  window.__vpWnew283("Pin queue rows", "#queueList");
 })();
 </script>
 </body>
