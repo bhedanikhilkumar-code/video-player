@@ -6593,6 +6593,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     if (data.event === "onError") {
       var ec = data.info;
+      try { if (window.__vpErrLog295) window.__vpErrLog295(ec); } catch (elogErr295) {}
       clearTimeout(loadWatchdog);
       // Auto-retry once (round 293 new 1): a network wobble ends an embed with error 5 (or
       // another transient code) and the video was simply skipped or left dead behind a Retry
@@ -35772,6 +35773,64 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     (window.__relang = window.__relang || []).push(paint295w); paint295w();
   })();
+  // Playback error log (round 295 new 5): when a video fails the red message says why
+  // once, then it is gone - so a morning of "the queue skipped three videos" leaves
+  // nothing to report, and Report a problem can only describe the last thing on screen.
+  // Every player error is now kept in a small log on this device (the last ten, with the
+  // time, the video id and what the code means), shown in a Playback error log card in
+  // Help. One tap copies the history so it can be pasted into a problem report; another
+  // clears it. Nothing is uploaded anywhere. Checked first: Report a problem captures app
+  // state and Playback help walks live checks - no record of past errors existed.
+  // Hindi and Gujarati text in the main closure; What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Playback error log": ["प्लेबैक त्रुटि लॉग", "પ્લેબૅક ભૂલ લૉગ"],
+    "Recent playback errors on this device, newest first. Nothing is uploaded; Copy adds them to a problem report.": ["इस डिवाइस की हाल की प्लेबैक त्रुटियाँ, नई पहले. कुछ भी अपलोड नहीं होता; Copy से वे समस्या रिपोर्ट में जुड़ जाती हैं.", "આ ડિવાઇસની તાજેતરની પ્લેબૅક ભૂલો, નવી પહેલા. કંઈ પણ અપલોડ થતું નથી; Copy થી તેઓ સમસ્યા રિપોર્ટમાં ઉમેરાય છે."],
+    "No playback errors recorded yet.": ["अभी कोई प्लेबैक त्रुटि दर्ज नहीं.", "હજી કોઈ પ્લેબૅક ભૂલ નોંધાઈ નથી."],
+    "Copy error history": ["त्रुटि इतिहास कॉपी करें", "ભૂલ ઇતિહાસ કોપી કરો"],
+    "Clear error history": ["त्रुटि इतिहास मिटाएं", "ભૂલ ઇતિહાસ સાફ કરો"],
+    "Error history copied": ["त्रुटि इतिहास कॉपी हुआ", "ભૂલ ઇતિહાસ કોપી થયો"],
+    "private or deleted video": ["निजी या हटाया गया वीडियो", "ખાનગી કે કાઢેલો વીડિયો"],
+    "embedding disabled by the owner": ["मालिक ने एम्बेड बंद किया", "માલિકે એમ્બેડ બંધ કર્યું"],
+    "browser decode error": ["ब्राउज़र डिकोड त्रुटि", "બ્રાઉઝર ડિકોડ ભૂલ"],
+    "broken link": ["टूटा लिंक", "તૂટેલી લિંક"],
+    "playback error": ["प्लेबैक त्रुटि", "પ્લેબૅક ભૂલ"]
+  });
+  (function () {
+    var host = $("help"); if (!host) return;
+    var card = document.createElement("details"); card.className = "r239-card"; card.id = "errCard295";
+    card.innerHTML = "<summary></summary><p class='hint r239-desc'></p><ul class='r239-list hint' id='errList295'></ul><div class='row'><button class='chip' type='button' id='errCopy295'></button><button class='chip' type='button' id='errClear295'></button></div><p class='hint' id='errMsg295' role='status'></p>";
+    host.appendChild(card);
+    var KEY295 = "vp-errlog.v1";
+    function errGet295() { try { var v = JSON.parse(localStorage.getItem(KEY295) || "[]"); return Array.isArray(v) ? v.filter(function (x) { return x && typeof x === "object"; }).slice(0, 10) : []; } catch (e) { return []; } }
+    function mean295(c) { return c === 100 ? T("private or deleted video") : (c === 101 || c === 150) ? T("embedding disabled by the owner") : c === 5 ? T("browser decode error") : c === 2 ? T("broken link") : T("playback error"); }
+    function two295(n) { return (n < 10 ? "0" : "") + n; }
+    function line295(x) { var d = new Date(x.ts || 0); return d.getDate() + "/" + (d.getMonth() + 1) + " " + two295(d.getHours()) + ":" + two295(d.getMinutes()) + " - " + (x.id || "?") + " - " + mean295(x.code) + " (" + x.code + ")"; }
+    window.__vpErrLog295 = function (ec) {
+      var h = errGet295();
+      h.unshift({ ts: Date.now(), id: typeof curId === "string" ? curId : "", code: ec });
+      try { localStorage.setItem(KEY295, JSON.stringify(h.slice(0, 10))); } catch (e) {}
+      paint295e();
+    };
+    function paint295e() {
+      card.querySelector("summary").textContent = T("Playback error log");
+      card.querySelector(".r239-desc").textContent = T("Recent playback errors on this device, newest first. Nothing is uploaded; Copy adds them to a problem report.");
+      var ul = $("errList295"), h = errGet295(); ul.textContent = "";
+      if (!h.length) { var li = document.createElement("li"); li.textContent = T("No playback errors recorded yet."); ul.appendChild(li); }
+      h.forEach(function (x) { var li = document.createElement("li"); li.textContent = line295(x); ul.appendChild(li); });
+      $("errCopy295").textContent = T("Copy error history"); $("errCopy295").disabled = !h.length;
+      $("errClear295").textContent = T("Clear error history"); $("errClear295").disabled = !h.length;
+      $("errMsg295").textContent = "";
+    }
+    $("errCopy295").addEventListener("click", function () {
+      var h = errGet295(); if (!h.length) return;
+      vpCopySafe(h.map(line295).join("\n"), function (ok) {
+        $("errMsg295").textContent = T(ok ? "Error history copied" : "Could not copy. Try again.");
+        if (ok) toast(T("Error history copied"));
+      });
+    });
+    $("errClear295").addEventListener("click", function () { try { localStorage.removeItem(KEY295); } catch (e) {} paint295e(); });
+    (window.__relang = window.__relang || []).push(paint295e); paint295e();
+  })();
   window.__vpPrefs = prefs;
   window.__vpSavePrefs = savePrefs;
   Object.assign(TR_MSG, {
@@ -40127,6 +40186,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Alarm volume", "alarm volume louder ring wake hear loud restore quiet evening volume back", "#alarmVolRow295"],
       ["Alarm backup tone", "alarm backup tone beep silent fail video did not start wake fallback sound test network down", "#alarmToneRow295"],
       ["Stall watch", "stall watch buffering stuck frozen spinner loading hang reload auto recover video not moving", "#wdBtn295"],
+      ["Playback error log", "playback error log history recent errors code copy report problem diagnose failed videos record", "#errCard295"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
       ["Top channels", "top channels most watched creators ranking watch time stats favourite channel who watch most", "#lhStats"],
@@ -42649,6 +42709,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Alarm volume", "#alarmVolRow295");
   window.__vpWnew283("Alarm backup tone", "#alarmToneRow295");
   window.__vpWnew283("Stall watch", "#wdBtn295");
+  window.__vpWnew283("Playback error log", "#errCard295");
 })();
 </script>
 </body>
