@@ -44496,6 +44496,21 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Rounded": ["गोलाकार", "ગોળાકાર"],
     "Monospace": ["मोनोस्पेस", "મોનોસ્પેસ"]
   });
+  // Round 356 new 2: Subtitle position for local files. Own subtitles always render at the
+  // bottom of the video, where they sit under the mini player's progress line and the
+  // gesture pad's hint bubbles. Default / Raised / High chips lift the caption line by
+  // setting cue.line on the loaded track (own uploaded files carry no line settings, so a
+  // fixed line is safe), reapplied whenever a track finishes loading - including the shifted
+  // file the sync nudge rebuilds - and on every chip tap. Remembered on this device in
+  // lp.ccPos (vp-lp.v1, rides the backup). Checked first: size, background, sync and font
+  // exist; nothing moves the caption line. Hindi and Gujarati, feature finder, What's new.
+  Object.assign(TR_MSG, {
+    "Subtitle position": ["सबटाइटल की जगह", "સબટાઇટલની જગ્યા"],
+    "Default position": ["डिफ़ॉल्ट जगह", "ડિફૉલ્ટ જગ્યા"],
+    "Raised": ["थोड़े ऊपर", "થોડું ઉપર"],
+    "High": ["ऊपर", "ઉપર"]
+  });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Subtitle position", "#lpSubPos356"); }, 1450); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Subtitle font", "#lpSubFont356"); }, 1420); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Playback ended alert", "#qEndAlertBtn355"); }, 1390); });
 })();
@@ -46136,6 +46151,51 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     });
     subSizes.parentNode.insertBefore(row, subSizes.nextSibling); subSizes.parentNode.insertBefore(lab, row);
     (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+  // Round 356 new 2: Subtitle position - see the note in the main script. The cue.line write
+  // runs on track load (captured from <track> elements, which also covers the sync nudge's
+  // rebuilt source), on chip taps, and once more shortly after a tap for late-arriving cues.
+  (function () {
+    if (!subSizes || !subSizes.parentNode || !vid) return;
+    var POS = [["", "Default position", 0], ["up", "Raised", -4], ["top", "High", -8]];
+    var cur = (lp.ccPos === "up" || lp.ccPos === "top") ? lp.ccPos : "";
+    var lab = document.createElement("div"); lab.className = "label"; lab.id = "lpSubPosLab356";
+    var row = document.createElement("div"); row.id = "lpSubPos356"; row.className = "row";
+    function applyCues() {
+      var tr = subTrack && subTrack.track;
+      if (!tr) return;
+      var cues = tr.cues;
+      if (!cues) return;
+      for (var i = 0; i < cues.length; i++) {
+        try {
+          cues[i].snapToLines = true;
+          cues[i].line = cur === "up" ? -4 : cur === "top" ? -8 : "auto";
+        } catch (e) {}
+      }
+    }
+    function paint() {
+      lab.textContent = T("Subtitle position");
+      [].forEach.call(row.children, function (c, i) {
+        c.textContent = T(POS[i][1]);
+        var on = c.dataset.value === cur;
+        c.classList.toggle("active", on); c.setAttribute("aria-pressed", String(on));
+      });
+    }
+    POS.forEach(function (o) {
+      var b = document.createElement("button"); b.className = "chip"; b.type = "button"; b.dataset.value = o[0];
+      b.addEventListener("click", function () {
+        cur = o[0]; if (cur) lp.ccPos = cur; else delete lp.ccPos; saveLp(); paint();
+        applyCues(); setTimeout(applyCues, 800);
+      });
+      row.appendChild(b);
+    });
+    // <track> load events do not bubble, but a capture listener on the video still sees them.
+    vid.addEventListener("load", function (e) {
+      if (e.target && e.target.tagName === "TRACK") setTimeout(applyCues, 60);
+    }, true);
+    subSizes.parentNode.insertBefore(row, subSizes.nextSibling); subSizes.parentNode.insertBefore(lab, row);
+    (window.__relang = window.__relang || []).push(paint); paint();
+    setTimeout(applyCues, 1200);
   })();
   if (subBtn) subBtn.addEventListener("click", function () { subFile.click(); });
   if (subOff) subOff.addEventListener("click", function () { clearSub(); subMsg.textContent = T("Subtitles turned off."); });
@@ -49094,6 +49154,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Data and battery saver", "saver data battery low", "#ctl-saver"],
       ["Subtitles (CC)", "subtitle cc captions", "#ctl-subs"],
       ["Subtitle font", "subtitle font captions style serif rounded mono monospace letters local file look reading", "#lpSubFont356"],
+      ["Subtitle position", "subtitle position captions move raise higher lift place bottom screen local file", "#lpSubPos356"],
       ["A-B repeat loop", "loop ab repeat practice", "#ctl-repeat"],
       ["Sleep timer", "sleep timer auto stop night", "#ctl-sleep"],
       ["Auto sleep timer", "auto sleep timer arm every night schedule bedtime forget automatic night", "#sleepArm318Btn"],
