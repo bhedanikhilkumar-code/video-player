@@ -9962,7 +9962,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var nm = (prefs.r311 && typeof prefs.r311.plFeed === "string") ? prefs.r311.plFeed : "";
       var names = playlists.map(function (x) { return x && x.name; }).filter(function (x) { return typeof x === "string" && x; });
       var idx = names.indexOf(nm);
-      var next = (idx < 0 || idx + 1 >= names.length) ? "" : names[idx + 1];
+      // Round 311 fix 3: the first tap from off landed back on off (the off case was
+      // folded into the wrap-around), so the feed could never turn on. Off now steps
+      // to the first playlist, each tap steps on, and the last one wraps back to off.
+      var next;
+      if (!names.length) next = "";
+      else if (idx < 0) next = names[0];
+      else next = (idx + 1 < names.length) ? names[idx + 1] : "";
       if (!prefs.r311 || typeof prefs.r311 !== "object") prefs.r311 = { plFeed: "" };
       prefs.r311.plFeed = next; savePrefs(); plFeedPaint311();
       toast(T("Playlist feed") + ": " + (next ? next : T("off")));
