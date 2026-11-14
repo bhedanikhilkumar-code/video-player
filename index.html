@@ -9527,7 +9527,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (window.__vpChVolNote) window.__vpChVolNote(v);
   }
   document.addEventListener("keydown", function (e) {
-    if (e.ctrlKey || e.metaKey || e.altKey || !iframe || controls.hidden) return;
+    // Round 319 fix 1: with a local file open, the playback keys were dead when no
+    // YouTube video was loaded, and when one was, they aimed at the paused YouTube
+    // player behind the local one - Space resumed YouTube instead of pausing the file
+    // actually playing. The gamepad already routes by which player is in use
+    // (round 274); the keyboard now follows the same rule.
+    var lpv319 = $("lpVideo");
+    var lpActive319 = !!(lpv319 && !lpv319.hidden && lpv319.src && !(playing && ready));
+    if (e.ctrlKey || e.metaKey || e.altKey || (!lpActive319 && (!iframe || controls.hidden))) return;
     var tag = e.target && e.target.tagName, type = e.target && e.target.type, k = e.key;
     // Round 235 fix: on a Hindi or Gujarati keyboard layout e.key is the native letter (म, ક...) so
     // M, F, K, J, L and every other letter shortcut did nothing; the physical key (e.code) is used then.
@@ -9542,6 +9549,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // Round 203 fix: a held key repeats keydown; only seek, volume and speed keys may repeat.
     // Toggles (H, W, M, C, R...) used to flip on and off again and Z or N skipped several videos.
     if (e.repeat && !/^(Arrow(Left|Right|Up|Down)|[jlJL<>])$/.test(k)) { if (k === " ") e.preventDefault(); return; }
+    if (lpActive319) {
+      var lpH = true, lpD = lpv319.duration > 0 && isFinite(lpv319.duration);
+      if (k === " " || k === "k" || k === "K") { if (lpv319.paused) { var lpP319 = lpv319.play(); if (lpP319 && lpP319.catch) lpP319.catch(function () {}); } else lpv319.pause(); }
+      else if (k === "ArrowLeft") { if (lpD) lpv319.currentTime = Math.max(0, lpv319.currentTime - (e.shiftKey ? 1 : (typeof dtStep === "function" ? dtStep() : 5))); }
+      else if (k === "ArrowRight") { if (lpD) lpv319.currentTime = Math.min(lpv319.duration, lpv319.currentTime + (e.shiftKey ? 1 : (typeof dtStep === "function" ? dtStep() : 5))); }
+      else if (k === "j" || k === "J") { if (lpD) lpv319.currentTime = Math.max(0, lpv319.currentTime - 10); }
+      else if (k === "l" || k === "L") { if (lpD) lpv319.currentTime = Math.min(lpv319.duration, lpv319.currentTime + 10); }
+      else if (k === "ArrowUp") { lpv319.muted = false; lpv319.volume = Math.min(1, Math.round((lpv319.volume + volStep297() / 100) * 100) / 100); }
+      else if (k === "ArrowDown") { lpv319.muted = false; lpv319.volume = Math.max(0, Math.round((lpv319.volume - volStep297() / 100) * 100) / 100); }
+      else if (k === "m" || k === "M") lpv319.muted = !lpv319.muted;
+      else if (/^[0-9]$/.test(k)) { if (lpD) lpv319.currentTime = lpv319.duration * Number(k) / 10; }
+      else if (k === "Home") { if (lpD) lpv319.currentTime = 0; }
+      else if (k === "End") { if (lpD) lpv319.currentTime = Math.max(0, lpv319.duration - 1); }
+      else if (k === "f" || k === "F") { if (document.fullscreenElement) document.exitFullscreen(); else if (lpv319.requestFullscreen) lpv319.requestFullscreen().catch(function () {}); }
+      else if (k === "n" || k === "N") { var lpN319 = $("lpNext"); if (lpN319 && !lpN319.disabled) lpN319.click(); else lpH = false; }
+      else if (k === "p" || k === "P") { var lpPv319 = $("lpPrev"); if (lpPv319 && !lpPv319.disabled) lpPv319.click(); else lpH = false; }
+      else lpH = false;
+      if (lpH) { e.preventDefault(); return; }
+      if (!iframe || controls.hidden) return;
+    }
     var handled = true;
     if (k === " " || k === "k" || k === "K") playBtn.click();
     else if (k === "ArrowLeft") seekBy(-(e.shiftKey ? 1 : (typeof dtStep === "function" ? dtStep() : 5)));
