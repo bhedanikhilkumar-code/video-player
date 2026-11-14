@@ -2032,6 +2032,7 @@ setTimeout(done,3000);})();
             <button class="chip" id="subBack314" type="button" hidden>−0.5s</button>
             <button class="chip" id="subFwd314" type="button" hidden>+0.5s</button>
             <button class="chip" id="subOff314" type="button" hidden>Own subtitles: on</button>
+            <button class="chip" id="subSaveBtn316" type="button" hidden>💾 Save as .srt</button>
             <input id="subFile314" type="file" accept=".srt,.vtt,text/plain" hidden>
           </div>
           <p class="hint" id="subMsg314" role="status"></p>
@@ -39798,6 +39799,17 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint316); paint316();
   })();
 
+  // Round 316 new 4 + new 5 translations (the chips live in the own-subtitles script
+  // below; their strings live here in the main closure so Hindi and Gujarati phones see
+  // them translated, the rule round 314 fix 1 settled).
+  Object.assign(TR_MSG, {
+    "💾 Save as .srt": ["💾 .srt सेव करें", "💾 .srt સેવ કરો"],
+    "Save corrected subtitles as .srt": ["ठीक की हुई सबटाइटल .srt सेव करें", "ઠીક કરેલી સબટાઇટલ .srt સેવ કરો"],
+    "Downloads this video's subtitle file with your timing shifts applied.": ["इस वीडियो की सबटाइटल फ़ाइल आपके टाइमिंग बदलावों के साथ डाउनलोड करता है.", "આ વીડિયોની સબટાઇટલ ફાઇલ તમારા ટાઇમિંગ ફેરફારો સાથે ડાઉનલોડ કરે છે."],
+    "Corrected subtitles saved.": ["ठीक की हुई सबटाइटल सेव हुई.", "ઠીક કરેલી સબટાઇટલ સેવ થઈ."],
+    "Save corrected subtitles": ["ठीक की हुई सबटाइटल सेव करें", "ઠીક કરેલી સબટાઇટલ સેવ કરો"]
+  });
+
   // Shift+drag a practice loop on the waveform (round 310 new 2): the local seek
   // bar draws the sound's shape, so the loud chorus and the quiet verse are right
   // there - but turning what you SEE into an A-B loop still meant scrubbing to
@@ -45184,6 +45196,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Never suggest this video", "never suggest this video hide from surprise block auto pick feeds not interested stop suggesting skip", "#neverBtn316"],
       ["Clear the watch map", "clear watch map reset seen parts rewatch fresh start over forget watched stretches skip seen", "#wmapClearBtn316"],
       ["Quality drop on a repeat stall", "quality drop repeat stall buffering weak connection lower resolution keep playing auto hd 480 slow internet", "#wdBtn295"],
+      ["Save corrected subtitles", "save corrected subtitles srt download fixed sync shifted timing own subtitle file keep corrected", "#subSaveBtn316"],
       ["Speed suggestion for long videos", "speed suggestion long video hour lecture movie watch faster 1.25x 1.5x 2x offer prompt save time", "#ctl-speed"],
       ["Scan a QR code", "scan qr code camera open shared link from another device phone point reader", "#qrScanBtn311"],
       ["Snooze the alarm", "snooze daily alarm ten more minutes ring again later morning postpone", "#alarmSnoozeBtn311"],
@@ -47627,7 +47640,8 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
 
   var up = document.getElementById("subUpBtn314"), back = document.getElementById("subBack314"),
     fwd = document.getElementById("subFwd314"), offBtn = document.getElementById("subOff314"),
-    fileIn = document.getElementById("subFile314"), msg = document.getElementById("subMsg314");
+    fileIn = document.getElementById("subFile314"), msg = document.getElementById("subMsg314"),
+    saveBtn316 = document.getElementById("subSaveBtn316");
   var wrap = document.querySelector(".frame-wrap");
   if (!up || !wrap) return;
   var st = document.createElement("style");
@@ -47671,6 +47685,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
     up.textContent = T("📄 Own subtitle file");
     var en = entry();
     back.hidden = fwd.hidden = offBtn.hidden = !en;
+    if (saveBtn316) saveBtn316.hidden = !en;
     offBtn.textContent = T(shown ? "Own subtitles: on" : "Own subtitles: off");
     offBtn.setAttribute("aria-pressed", shown ? "true" : "false");
     if (!en) { msg.textContent = T("Subtitles file stays in this tab only - nothing is uploaded."); ov.hidden = true; lastLine = ""; }
@@ -47710,10 +47725,32 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
     rd.onerror = function () { toast(T("File could not be read.")); };
     rd.readAsText(f);
   });
+  // Round 316 new 4: save corrected subtitles - the -0.5s/+0.5s nudges fixed a file that
+  // ran early or late, but the fix lived only in this tab; the next visit needed the same
+  // nudging again. The 💾 Save as .srt chip downloads the loaded file with every line
+  // shifted by the chosen offset, so the corrected file itself can stay on the device.
+  function stamp316(sec) {
+    if (sec < 0) sec = 0;
+    var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), se = Math.floor(sec % 60), ms = Math.round((sec - Math.floor(sec)) * 1000);
+    function pad(n, w) { var t = String(n); while (t.length < w) t = "0" + t; return t; }
+    return pad(h, 2) + ":" + pad(m, 2) + ":" + pad(se, 2) + "," + pad(ms, 3);
+  }
+  if (saveBtn316) saveBtn316.addEventListener("click", function () {
+    var en = entry(); if (!en) return;
+    var out = en.cues.map(function (c, i) { return (i + 1) + "\n" + stamp316(c.s + en.off) + " --> " + stamp316(c.e + en.off) + "\n" + c.t; }).join("\n\n") + "\n";
+    var blob = new Blob([out], { type: "text/srt" });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = "subtitles-corrected.srt"; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    toast(T("Corrected subtitles saved."));
+  });
   back.addEventListener("click", function () { var en = entry(); if (!en) return; en.off = Math.max(-60, en.off - 0.5); toast(T("Timing shifted by {n}s").replace("{n}", en.off.toFixed(1))); });
   fwd.addEventListener("click", function () { var en = entry(); if (!en) return; en.off = Math.min(60, en.off + 0.5); toast(T("Timing shifted by {n}s").replace("{n}", en.off.toFixed(1))); });
   offBtn.addEventListener("click", function () { shown = !shown; if (!shown) { ov.hidden = true; lastLine = ""; } paint(); toast(T(shown ? "Own subtitles: on" : "Own subtitles: off")); });
   (window.__relang = window.__relang || []).push(function () { msg.dataset.for = ""; msg.textContent = ""; paint(); });
+  (window.__relang = window.__relang || []).push(function () {
+    if (saveBtn316) { saveBtn316.textContent = T("💾 Save as .srt"); saveBtn316.setAttribute("aria-label", T("Downloads this video's subtitle file with your timing shifts applied.")); saveBtn316.title = T("Downloads this video's subtitle file with your timing shifts applied."); }
+  });
   paint();
 })();
 </script>
@@ -47874,6 +47911,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Never suggest this video", "#neverBtn316");
   window.__vpWnew283("Clear the watch map", "#wmapClearBtn316");
   window.__vpWnew283("Quality drop on a repeat stall", "#wdBtn295");
+  window.__vpWnew283("Save corrected subtitles", "#subSaveBtn316");
 })();
 </script>
 </body>
