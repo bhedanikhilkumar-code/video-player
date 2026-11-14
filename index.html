@@ -14211,6 +14211,36 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         toastUndo(T("Added ") + nQ326 + " " + (nQ326 === 1 ? T("video") : T("videos")) + T(" to the queue."), function () { lib.queue = snapQ326; qPos = spQ326; saveLib(); renderLib(); }, T("Queue restored"));
       });
       qUnwBtn326.setAttribute("aria-label", T("Queue the unwatched videos of this playlist after the playing queue") + ": " + pl.name);
+      // Queue a playlist's top rated (round 326 new 5): favourites and Watch later can
+      // both turn their 4- and 5-star videos into an evening with one chip, but a rated
+      // playlist - a course you scored as you went, a music list you starred - still
+      // meant picking its best rows by eye. One chip queues this playlist's videos rated
+      // 4 or 5 stars, five-star first (ties keep list order), skips ones already queued,
+      // stops at the 50-video queue limit and offers the same Undo. Hindi/Gujarati text,
+      // feature finder and What's new included.
+      Object.assign(TR_MSG, {
+        "\u2b50 Queue playlist top rated": ["\u2b50 \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u0947 \u091f\u0949\u092a \u0930\u0947\u091f\u0947\u0921 \u0915\u0924\u093e\u0930 \u092e\u0947\u0902", "\u2b50 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0abe \u0a9f\u0acb\u0aaa \u0ab0\u0ac7\u0a9f\u0ac7\u0aa1 \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82"],
+        "Queue this playlist's videos rated 4 or 5 stars, best first": ["\u0907\u0938 \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u0947 4 \u092f\u093e 5 \u0938\u094d\u091f\u093e\u0930 \u0935\u093e\u0932\u0947 \u0935\u0940\u0921\u093f\u092f\u094b \u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0921\u093e\u0932\u0947\u0902, \u0938\u092c\u0938\u0947 \u0905\u091a\u094d\u091b\u0947 \u092a\u0939\u0932\u0947", "\u0a86 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0abe 4 \u0a95\u0ac7 5 \u0ab8\u0acd\u0a9f\u0abe\u0ab0\u0ab5\u0abe\u0ab3\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0aa8\u0abe\u0a96\u0acb, \u0ab6\u0acd\u0ab0\u0ac7\u0ab7\u0acd\u0aa0 \u0aaa\u0ab9\u0ac7\u0ab2\u0abe"],
+        "No videos in this playlist rated 4 or 5 stars to add.": ["\u0907\u0938 \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u092e\u0947\u0902 \u091c\u094b\u0921\u093c\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f 4 \u092f\u093e 5 \u0938\u094d\u091f\u093e\u0930 \u0935\u093e\u0932\u093e \u0915\u094b\u0908 \u0935\u0940\u0921\u093f\u092f\u094b \u0928\u0939\u0940\u0902.", "\u0a86 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aae\u0abe\u0a82 \u0a89\u0aae\u0ac7\u0ab0\u0ab5\u0abe \u0aae\u0abe\u0a9f\u0ac7 4 \u0a95\u0ac7 5 \u0ab8\u0acd\u0a9f\u0abe\u0ab0\u0ab5\u0abe\u0ab3\u0acb \u0a95\u0acb\u0a88 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aa8\u0aa5\u0ac0."]
+      });
+      var qTopBtn326 = btn(T("\u2b50 Queue playlist top rated"), "", function () {
+        var rateM326 = {};
+        try { rateM326 = JSON.parse(localStorage.getItem("vp-rate.v1") || "{}") || {}; } catch (e) {}
+        function r326(id) { var r = rateM326[id] | 0; return r >= 1 && r <= 5 ? r : 0; }
+        var snapQT = lib.queue.slice(), spQT = qPos, addQT = [];
+        pl.items.map(function (it, i) { return { it: it, r: r326(it.id), i: i }; })
+          .filter(function (x) { return x.r >= 4; })
+          .sort(function (a, b) { return (b.r - a.r) || (a.i - b.i); })
+          .forEach(function (x) {
+            if (findIn(lib.queue, x.it.id) >= 0 || lib.queue.length + addQT.length >= 50) return;
+            addQT.push({ id: x.it.id, title: x.it.title || "" });
+          });
+        if (!addQT.length) { plSay(T("No videos in this playlist rated 4 or 5 stars to add.")); return; }
+        addQT.forEach(function (x) { lib.queue.push(x); });
+        saveLib(); renderLib();
+        toastUndo(addQT.length === 1 ? T("1 video added to the queue") : addQT.length + " " + T("videos added to the queue"), function () { lib.queue = snapQT; qPos = spQT; saveLib(); renderLib(); }, T("Queue restored"));
+      });
+      qTopBtn326.setAttribute("aria-label", T("Queue this playlist's videos rated 4 or 5 stars, best first") + ": " + pl.name);
       // Round 233 new 2: Save a playlist to Watch later - the queue could be parked whole
       // ("Save all to Watch later"), but a saved playlist could not; parking tonight's list
       // meant queuing it first or filing every row by hand. One tap in the playlist's More
@@ -41767,13 +41797,15 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "unwatched": ["\u0905\u0928\u0926\u0947\u0916\u0947", "\u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe"]
   });
   Object.assign(TR_MSG, { "Unwatched time left on a playlist": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u093e \u0905\u0928\u0926\u0947\u0916\u093e \u0938\u092e\u092f", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0acb \u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0acb \u0ab8\u0aae\u0aaf"] });
+  Object.assign(TR_MSG, { "Queue top rated from a playlist": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0938\u0947 \u091f\u0949\u092a \u0930\u0947\u091f\u0947\u0921 \u0915\u0924\u093e\u0930 \u092e\u0947\u0902", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aae\u0abe\u0a82\u0aa5\u0ac0 \u0a9f\u0acb\u0aaa \u0ab0\u0ac7\u0a9f\u0ac7\u0aa1 \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82"] });
   Object.assign(TR_MSG, { "Queue top rated from Watch later": ["Watch later \u0938\u0947 \u091f\u0949\u092a \u0930\u0947\u091f\u0947\u0921 \u0915\u0924\u093e\u0930 \u092e\u0947\u0902", "\u0aaa\u0a9b\u0ac0 \u0a9c\u0acb\u0aa5\u0ac0 \u0a9f\u0949\u0aaa \u0ab0\u0ac7\u0a9f\u0ac7\u0aa1 \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82"] });
-  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Sleep timer from the mini player", "#miniSleep326"); }, 0); });
-  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Queue top rated from Watch later", "#laterQueueTopBtn"); }, 0); });
-  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Unwatched time left on a playlist", "#lhPlaylists"); }, 0); });
-  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Queue a playlist's unwatched", "#lhPlaylists"); }, 0); });
   Object.assign(TR_MSG, { "Startup self-check": ["\u0938\u094d\u091f\u093e\u0930\u094d\u091f\u0905\u092a \u0938\u0947\u0932\u094d\u092b-\u091a\u0947\u0915", "\u0ab8\u0acd\u0a9f\u0abe\u0ab0\u0acd\u0a9f\u0a85\u0aaa \u0ab8\u0ac7\u0ab2\u0acd\u0aab-\u0a9a\u0ac7\u0a95"] });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Startup self-check", "#vpBootWarn325"); }, 0); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Queue a playlist's unwatched", "#lhPlaylists"); }, 0); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Unwatched time left on a playlist", "#lhPlaylists"); }, 0); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Queue top rated from Watch later", "#laterQueueTopBtn"); }, 0); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Sleep timer from the mini player", "#miniSleep326"); }, 0); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Queue top rated from a playlist", "#plEditMenu"); }, 0); });
   window.__vpMainOk325 = true;
 
 
@@ -45838,6 +45870,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     }
     var FEATS = [
       ["Queue a playlist's unwatched", "queue unwatched playlist videos left unfinished course append after playing keep watching", "#lhPlaylists"],
+      ["Queue top rated from a playlist", "queue top rated playlist 4 5 star stars best first course music evening rated", "#plEditMenu"],
       ["Sleep timer from the mini player", "sleep timer mini player docked floating bedtime arm cancel countdown moon minutes left", "#miniSleep326"],
       ["Queue top rated from Watch later", "queue top rated watch later stars best rated backlog evening pick four five star", "#laterQueueTopBtn"],
       ["Unwatched time left on a playlist", "unwatched time left playlist length line hours minutes remaining course how much left to watch", "#lhPlaylists"],
