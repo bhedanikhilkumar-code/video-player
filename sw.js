@@ -73,3 +73,52 @@ self.addEventListener("fetch", function(e) {
     });
   }));
 });
+
+// Round 342: inspect/repair only this worker's six app-shell files. Lists and notes
+// live elsewhere and are never read or changed. Install is still the normal route;
+// this explicit repair is for a copy the browser partly evicted or a failed refresh.
+self.addEventListener("message", function(e) {
+  if (!e.data || ["VP_OFFLINE_STATUS342", "VP_OFFLINE_REPAIR342"].indexOf(e.data.type) < 0 || !e.ports || !e.ports[0]) return;
+  var port = e.ports[0];
+  function answer(x) { try { port.postMessage(x); } catch(ignore) {} }
+  async function status() {
+    var cache = await caches.open(CACHE), files = [];
+    for (var path of SHELL) {
+      var r = await cache.match(path);
+      files.push({path:path, saved:!!(r && r.ok)});
+    }
+    return {ok:true, cache:CACHE, files:files};
+  }
+  e.waitUntil((async function() {
+    if (e.data.type === "VP_OFFLINE_STATUS342") return answer(await status());
+    var entries;
+    try {
+      entries = await Promise.all(SHELL.map(async function(path) {
+        var ac = new AbortController(), timer = setTimeout(function() { ac.abort(); }, 10000);
+        try {
+          var r = await fetch(new Request(new URL(path, location.origin), {cache:"no-store", credentials:"same-origin", signal:ac.signal}));
+          if (!r.ok) throw Error("http");
+          var mime = r.headers.get("content-type") || "";
+          if (path === "/") {
+            var text = await r.clone().text();
+            if (!/text\/html/i.test(mime) || text.indexOf("window.__vpMainOk325 = true") < 0) throw Error("not-app");
+          } else if (path.endsWith(".webmanifest")) {
+            var manifest = await r.clone().json(); if (!manifest.name || !manifest.icons) throw Error("not-manifest");
+          } else if (!/^image\//i.test(mime)) throw Error("not-image");
+          return {path:path, response:r};
+        } finally { clearTimeout(timer); }
+      }));
+    } catch(err) { return answer({ok:false,error:"network"}); }
+    try {
+      var cache = await caches.open(CACHE), done = 0;
+      // Write the page LAST. A failed download or quota failure keeps the old usable
+      // page rather than deleting it first and leaving the device with no offline app.
+      var ordered = entries.filter(function(x) { return x.path !== "/"; }).concat(entries.filter(function(x) { return x.path === "/"; }));
+      for (var item of ordered) {
+        await cache.put(item.path, item.response);
+        answer({progress:++done,total:SHELL.length});
+      }
+      answer(await status());
+    } catch(err) { answer({ok:false,error:"storage"}); }
+  })().catch(function() { answer({ok:false,error:"storage"}); }));
+});
