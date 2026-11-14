@@ -38751,6 +38751,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "\u23f8 Pause at chapter end: on": ["\u23f8 अध्याय के अंत में रुकें: चालू", "\u23f8 પ્રકરણના અંતે રોકો: ચાલુ"],
     "Will pause when this chapter ends.": ["इस अध्याय के खत्म होते ही वीडियो रुक जाएगा.", "આ પ્રકરણ પૂરું થતાં વીડિયો રોકાશે."],
     "Paused at the chapter end.": ["अध्याय के अंत पर रोका गया.", "પ્રકરણના અંતે રોકાયું."],
+    "\ud83d\udcbe Save chapters as moments": ["\ud83d\udcbe अध्यायों को पलों में सेव करें", "\ud83d\udcbe પ્રકરણોને ક્ષણોમાં સાચવો"],
+    "No chapters to save - this video has no community chapters.": ["सेव करने को कोई अध्याय नहीं - इस वीडियो के कोई कम्युनिटी अध्याय नहीं हैं.", "સાચવવા માટે કોઈ પ્રકરણ નથી - આ વીડિયોના કોઈ કમ્યુનિટી પ્રકરણો નથી."],
+    " chapters saved as moments.": [" अध्याय पलों में सेव हुए.", " પ્રકરણો ક્ષણોમાં સાચવાયા."],
+    "All chapters are already saved as moments.": ["सभी अध्याय पहले से पलों में सेव हैं.", "બધા પ્રકરણો પહેલેથી ક્ષણોમાં સાચવેલા છે."],
     "Now playing: ": ["\u0905\u092d\u0940 \u091a\u0932 \u0930\u0939\u093e \u0939\u0948: ", "\u0ab9\u0ab5\u0ac7 \u0a9a\u0abe\u0ab2\u0ac0 \u0ab0\u0ab9\u0acd\u0aaf\u0ac1\u0a82 \u0a9b\u0ac7: "]
   });
   (function () {
@@ -38772,6 +38776,32 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var pauseBtn307 = document.createElement("button"); pauseBtn307.type = "button"; pauseBtn307.className = "chip"; pauseBtn307.id = "chapPauseBtn307";
     pauseBtn307.style.cssText = "align-self:flex-start;margin-top:2px";
     panel.appendChild(pauseBtn307);
+    // Round 307 new 5: save chapters as moments. Community chapters vanish with the
+    // video - they are not in the backup, they mark no dots on the seek bar, and a video
+    // the community later un-marks loses them. One chip writes the fetched chapters
+    // into the video's own saved moments with their names, through the same marks store
+    // and caps (30 per video, times within two seconds of an existing moment are
+    // skipped, so nothing duplicates and nothing is overwritten). The moments then show
+    // as seek-bar dots, ride the backup and survive offline. Hindi and Gujarati included.
+    var momBtn307 = document.createElement("button"); momBtn307.type = "button"; momBtn307.className = "chip"; momBtn307.id = "chapMomentsBtn307";
+    momBtn307.style.cssText = "align-self:flex-start;margin-top:2px";
+    panel.appendChild(momBtn307);
+    function paintMom307() { momBtn307.textContent = T("\ud83d\udcbe Save chapters as moments"); }
+    momBtn307.addEventListener("click", function () {
+      if (!curId || state !== "ok" || !rows.length) { toast(T("No chapters to save - this video has no community chapters.")); return; }
+      var arr = marks[curId] = marks[curId] || [];
+      var added = 0;
+      rows.forEach(function (r) {
+        var t = Math.max(0, Math.floor(r.a));
+        if (arr.length >= 30) return;
+        if (arr.some(function (x) { return Math.abs(x.t - t) < 2; })) return;
+        arr.push({ t: t, name: (r.name || "").slice(0, 40) }); added++;
+      });
+      if (!arr.length) delete marks[curId];
+      if (added) { marksSave(); renderMarks(); toast(added + T(" chapters saved as moments.")); }
+      else toast(T("All chapters are already saved as moments."));
+    });
+    (window.__relang = window.__relang || []).push(paintMom307); paintMom307();
     var pauseArmed307 = false;
     function paintPause307() {
       pauseBtn307.textContent = T(pauseArmed307 ? "\u23f8 Pause at chapter end: on" : "\u23f8 Pause at chapter end: off");
