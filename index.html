@@ -9519,6 +9519,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       "A set at {t} - tap again where the loop should end.": ["A {t} पर लगा - लूप खत्म जहाँ करना है वहाँ फिर टैप करें.", "A {t} પર લાગ્યું - લૂપ પૂરો ક્યાં કરવો છે ત્યાં ફરી ટૅપ કરો."],
       "Looping {a} - {b}": ["लूप {a} - {b}", "લૂપ {a} - {b}"],
       "Loop cleared.": ["लूप हटाया गया.", "લૂપ કાઢી નાખ્યો."],
+      "A cleared.": ["A हटाया गया.", "A કાઢ્યું."],
       "Set B after A - play a little more first.": ["B, A के बाद लगाएं - पहले थोड़ा और चलाएं.", "B, A પછી લગાવો - પહેલા થોડું વધુ ચલાવો."],
       "A-B loop from the mini player": ["मिनी प्लेयर से A-B लूप", "મિની પ્લેયરથી A-B લૂપ"]
     });
@@ -9539,7 +9540,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           abA = t; abB = null; updateAB();
           toast(T("A set at {t} - tap again where the loop should end.").replace("{t}", fmt(abA)));
         } else {
-          if (t <= abA) { toast(T("Set B after A - play a little more first.")); return; }
+          // Round 324 fix 2: an armed A (set, B not yet) could never be cancelled from the
+          // mini player - every later tap only tried to set B, and on a paused video (the
+          // clock frozen at A) that meant an endless "play a little more first" nag with
+          // no way out but undocking to the full player's Clear. A tap at or before A now
+          // drops the armed point instead; setting B is unchanged (B is always after A).
+          if (t <= abA) { abA = null; updateAB(); toast(T("A cleared.")); miniAbPaint324(); return; }
           abB = t; abEnabled = true; abLoopCount = 0; updateAB();
           send("seekTo", [abA, true]);
           toast(T("Looping {a} - {b}").replace("{a}", fmt(abA)).replace("{b}", fmt(abB)));
