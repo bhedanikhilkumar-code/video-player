@@ -24660,6 +24660,41 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     window.addEventListener("load", function () { if (window.__vpWnew283) window.__vpWnew283("Similar saved videos", "#infoSimBtn320"); });
   })();
 
+  // Sort favourites by rating (round 323 new 1): Watch later, the queue and every saved
+  // playlist can be ordered by the stars you gave, but favourites - the list those stars
+  // mostly live in - could only be sorted by title, length, play count or the cycle order.
+  // A chip by Sort by most played orders favourites best-rated first (ties keep their
+  // order, unrated stay at the end); tap again for lowest first. Undo restores the old
+  // order, like the other sorts. No setting, nothing new saved. Hindi and Gujarati text,
+  // feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Sort favourites by rating": ["\u092a\u0938\u0902\u0926\u0940\u0926\u093e \u0915\u094b \u0930\u0947\u091f\u093f\u0902\u0917 \u0938\u0947 \u0915\u094d\u0930\u092e\u093f\u0924 \u0915\u0930\u0947\u0902", "\u0aaa\u0ab8\u0a82\u0aa6\u0ac0\u0aa6\u0abe\u0aa8\u0ac7 \u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97\u0aa5\u0ac0 \u0a97\u0acb\u0aa5\u0ab5\u0acb"],
+    "Sort favourites by rating, best first": ["\u092a\u0938\u0902\u0926\u0940\u0926\u093e \u0915\u094b \u0930\u0947\u091f\u093f\u0902\u0917 \u0938\u0947 \u0915\u094d\u0930\u092e\u093f\u0924 \u0915\u0930\u0947\u0902, \u0938\u092c\u0938\u0947 \u0905\u091a\u094d\u091b\u093e \u092a\u0939\u0932\u0947", "\u0aaa\u0ab8\u0a82\u0aa6\u0ac0\u0aa6\u0abe\u0aa8\u0ac7 \u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97\u0aa5\u0ac0 \u0a97\u0acb\u0aa5\u0ab5\u0acb, \u0ab8\u0acc\u0aa5\u0ac0 \u0ab8\u0abe\u0ab0\u0abe \u0aaa\u0ab9\u0ac7\u0ab2\u0abe"],
+    "Need at least 2 rated favourites to sort.": ["\u0915\u094d\u0930\u092e \u0915\u0947 \u0932\u093f\u090f \u0915\u092e \u0938\u0947 \u0915\u092e 2 \u0930\u0947\u091f\u0947\u0921 \u092a\u0938\u0902\u0926\u0940\u0926\u093e \u091a\u093e\u0939\u093f\u090f.", "\u0a95\u0acd\u0ab0\u0aae \u0aae\u0abe\u0a9f\u0ac7 \u0a93\u0a9b\u0abe\u0aae\u0abe\u0a82 \u0a93\u0a9b\u0abe 2 \u0ab0\u0ac7\u0a9f\u0ac7\u0aa1 \u0aae\u0aa8\u0aaa\u0ab8\u0a82\u0aa6 \u0a9c\u0acb\u0a88\u0a8f."],
+    "Favourites sorted: best rated first": ["\u092a\u0938\u0902\u0926\u0940\u0926\u093e \u0915\u094d\u0930\u092e\u093f\u0924: \u0938\u092c\u0938\u0947 \u0905\u091a\u094d\u091b\u0947 \u0930\u0947\u091f\u0947\u0921 \u092a\u0939\u0932\u0947", "\u0aaa\u0ab8\u0a82\u0aa6\u0ac0\u0aa6\u0abe \u0a97\u0acb\u0aa5\u0ab5\u0abe\u0aaf\u0abe: \u0ab8\u0acc\u0aa5\u0ac0 \u0ab8\u0abe\u0ab0\u0abe \u0ab0\u0ac7\u0a9f\u0ac7\u0aa1 \u0aaa\u0ab9\u0ac7\u0ab2\u0abe"],
+    "Favourites sorted: lowest rated first": ["\u092a\u0938\u0902\u0926\u0940\u0926\u093e \u0915\u094d\u0930\u092e\u093f\u0924: \u0915\u092e \u0930\u0947\u091f\u0947\u0921 \u092a\u0939\u0932\u0947", "\u0aaa\u0ab8\u0a82\u0aa6\u0ac0\u0aa6\u0abe \u0a97\u0acb\u0aa5\u0ab5\u0abe\u0aaf\u0abe: \u0a93\u0a9b\u0abe \u0ab0\u0ac7\u0a9f\u0ac7\u0aa1 \u0aaa\u0ab9\u0ac7\u0ab2\u0abe"]
+  });
+  (function () {
+    var anchor = $("favSortPlaysBtn") || $("favSortAzBtn"); if (!anchor || !anchor.parentNode) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "favSortRateBtn323";
+    anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+    var nextBest = true;
+    function paint() { btn.textContent = nextBest ? T("Sort by rating") : T("Sort: lowest rated first"); btn.setAttribute("aria-label", T("Sort favourites by rating, best first")); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      var rated = [], unrated = [];
+      lib.favs.forEach(function (x) { if (vpRateOf(x.id) > 0) rated.push(x); else unrated.push(x); });
+      if (rated.length < 2) { toast(T("Need at least 2 rated favourites to sort.")); return; }
+      var snap = lib.favs.slice(), dir = nextBest ? -1 : 1;
+      rated.sort(function (a, b) { return dir * (vpRateOf(a.id) - vpRateOf(b.id)); });
+      if (typeof favSortMode !== "undefined" && favSortMode !== "new") { favSortMode = "new"; try { localStorage.setItem("vp-favsort.v1", "new"); } catch (e) {} }
+      lib.favs = rated.concat(unrated); saveLib(); renderLib();
+      toastUndo(dir === -1 ? T("Favourites sorted: best rated first") : T("Favourites sorted: lowest rated first"), function () { lib.favs = snap; saveLib(); renderLib(); }, T("Favourites restored"));
+      nextBest = !nextBest; paint();
+    });
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Sort favourites by rating", "#favSortRateBtn323"); }, 0); });
+  })();
+
   // Surprise playlist (round 232 new 5): Watch later, favourites and Recently watched
   // each have a one-tap Surprise me, but the collections you organised on purpose did
   // not - landing on tonight's playlist still meant reading your own list. One chip in
@@ -45203,6 +45238,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Sort favourites by rating", "sort favourites rating stars best rated first order arrange liked", "#favSortRateBtn323"],
       ["Lock a backup with a passphrase", "lock backup passphrase encrypt protect private file unlock safe share", "#lockCard322"],
       ["Channel feed", "channel feed same channel creator auto next when queue runs out keep playing unwatched more from", "#qChanFeedBtn320"],
       ["Similar saved videos", "similar saved videos titles like this one related same topic words queue unwatched more like this", "#infoSimBtn320"],
