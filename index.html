@@ -42588,6 +42588,116 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint332();
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Pick many in Watch later", "#laterManyBtn332"); }, 400); });
   })();
+
+  // Round 332 new 2: Pick many in Recently watched. History grew the same one-tap problem
+  // Watch later had: trimming a finished series or queueing three videos you half-watched
+  // meant opening each row's own actions one by one. A Pick many chip in the Recently
+  // watched head row turns every row's tap into a pick (the same round check boxes the
+  // queue, favourites and Watch later use, on the channel-grouped view too since rows
+  // carry data-vid), with a glass bar offering All, None, Queue picked, Add to playlist,
+  // Remove and Done. Queueing respects the 50-cap and skips videos already queued; Remove
+  // restores everything with the usual Undo. The on/off choice is remembered on this
+  // device (loader-whitelisted, rides the backup); the picks are session-only, like the
+  // other lists'. Hindi and Gujarati text, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Pick many in Recently watched": ["हाल में देखे गए में कई चुनें", "તાજેતરમાં જોયેલામાં ઘણાં પસંદ કરો"],
+    "Removed from history": ["इतिहास से हटाए गए", "ઇતિહાસમાંથી કાઢ્યા"]
+  });
+  var histPicked332 = [];
+  (function () {
+    var histHeadBtn = $("histShufBtn");
+    if (!histHeadBtn || !histHeadBtn.parentNode) return;
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "chip"; btn.id = "histManyBtn332"; btn.setAttribute("aria-pressed", "false");
+    histHeadBtn.parentNode.insertBefore(btn, histHeadBtn);
+    var bar = document.createElement("div");
+    bar.className = "q-pick-bar"; bar.id = "histManyBar332"; bar.hidden = true;
+    var count = document.createElement("span"); count.className = "q-pick-count"; count.id = "histManyCount332";
+    bar.appendChild(count);
+    function mkB(id) { var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = id; bar.appendChild(b); return b; }
+    var bAll = mkB("histManyAll332"), bNone = mkB("histManyNone332"), bQueue = mkB("histManyQueue332"), bPl = mkB("histManyPl332"), bRm = mkB("histManyRm332"), bDone = mkB("histManyDone332");
+    var histUl = $("histList");
+    if (histUl && histUl.parentNode) histUl.parentNode.insertBefore(bar, histUl);
+    function on332() { return prefs.histMany332 === true; }
+    function prune332() { histPicked332 = histPicked332.filter(function (id) { return findIn(lib.hist, id) >= 0; }); }
+    function paint332() {
+      btn.textContent = "\u2611 " + T("Pick many") + ": " + T(on332() ? "on" : "off");
+      btn.setAttribute("aria-pressed", String(on332()));
+      btn.setAttribute("aria-label", T("Pick many in Recently watched") + ": " + T(on332() ? "on" : "off"));
+      btn.classList.toggle("active", on332());
+      bAll.textContent = T("All"); bNone.textContent = T("None"); bQueue.textContent = T("Queue picked");
+      bPl.textContent = T("Add to playlist"); bRm.textContent = T("Remove"); bDone.textContent = T("Done");
+      bar.hidden = !on332();
+      if (on332()) { prune332(); count.textContent = histPicked332.length ? histPicked332.length + " " + T("picked") : T("Tap videos to pick them."); }
+    }
+    function toggle332(id) {
+      var i = histPicked332.indexOf(id);
+      if (i >= 0) histPicked332.splice(i, 1); else histPicked332.push(id);
+      decorate332(); paint332();
+    }
+    function decorate332() {
+      if (!histUl) return;
+      Array.prototype.forEach.call(histUl.querySelectorAll("li[data-vid]"), function (li) {
+        var id = li.getAttribute("data-vid");
+        var old = li.querySelector(".hist-pick-box332"); if (old) old.remove();
+        li.classList.remove("q-picked");
+        if (!on332()) return;
+        var on = histPicked332.indexOf(id) >= 0;
+        var box = document.createElement("button");
+        box.type = "button"; box.className = "q-pick-box hist-pick-box332";
+        box.classList.toggle("on", on); box.textContent = on ? "\u2713" : "";
+        box.setAttribute("aria-pressed", String(on));
+        box.setAttribute("aria-label", T("Pick") + ": " + id);
+        box.addEventListener("click", function (e) { e.stopPropagation(); toggle332(id); });
+        li.insertBefore(box, li.firstChild);
+        li.classList.toggle("q-picked", on);
+        var open = li.querySelector(".lib-open");
+        if (open && !open.dataset.hm332) {
+          open.dataset.hm332 = "1";
+          open.addEventListener("click", function (e) {
+            if (!on332()) return;
+            e.preventDefault(); e.stopPropagation();
+            toggle332(id);
+          }, true);
+        }
+      });
+    }
+    btn.addEventListener("click", function () {
+      prefs.histMany332 = !on332(); savePrefs();
+      if (!on332()) histPicked332 = [];
+      renderLib();
+    });
+    bAll.addEventListener("click", function () { histPicked332 = histView().map(function (x) { return x.id; }); decorate332(); paint332(); });
+    bNone.addEventListener("click", function () { histPicked332 = []; decorate332(); paint332(); });
+    bDone.addEventListener("click", function () { prefs.histMany332 = false; histPicked332 = []; savePrefs(); renderLib(); });
+    bQueue.addEventListener("click", function () {
+      if (!histPicked332.length) { toast(T("Tap videos to pick them.")); return; }
+      var snapQ = lib.queue.slice(), added = 0, skipped = 0;
+      histPicked332.forEach(function (id) {
+        if (findIn(lib.queue, id) >= 0 || lib.queue.length >= 50) { skipped++; return; }
+        lib.queue.push({ id: id, title: titleFor(id) }); added++;
+      });
+      saveLib(); renderLib();
+      if (added) toastUndo(T("Added to the queue") + " (" + added + ")", function () { lib.queue = snapQ; saveLib(); renderLib(); }, T("Queue restored"));
+      else toast(T("Already in the queue, or the queue is full at 50."));
+    });
+    bPl.addEventListener("click", function () {
+      if (!histPicked332.length) { toast(T("Tap videos to pick them.")); return; }
+      var items = lib.hist.filter(function (x) { return histPicked332.indexOf(x.id) >= 0; });
+      plRowOpen({ multi: items }, bPl);
+    });
+    bRm.addEventListener("click", function () {
+      if (!histPicked332.length) { toast(T("Tap videos to pick them.")); return; }
+      var snapH = lib.hist.slice();
+      lib.hist = lib.hist.filter(function (x) { return histPicked332.indexOf(x.id) < 0; });
+      histPicked332 = []; saveLib(); renderLib();
+      toastUndo(T("Removed from history"), function () { lib.hist = snapH; saveLib(); renderLib(); }, T("History restored"));
+    });
+    renderLib = (function (prev) { return function () { var r = prev.apply(this, arguments); decorate332(); paint332(); return r; }; })(renderLib);
+    (window.__relang = window.__relang || []).push(function () { paint332(); });
+    paint332();
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Pick many in Recently watched", "#histManyBtn332"); }, 400); });
+  })();
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -46700,6 +46810,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later grouped by channel", "watch later group by channel creator folders sections tidy backlog organised", "#laterGroupBtn281"],
       ["Watch later fold", "watch later show all less fold long list 30 rows scroll heavy phone collapse expand", "#laterFoldBtn324"],
       ["Pick many in Watch later", "watch later pick many several bulk select queue playlist remove tidy backlog clean up", "#laterManyBtn332"],
+      ["Pick many in Recently watched", "recently watched history pick many several bulk select queue playlist remove tidy clean up", "#histManyBtn332"],
       ["Favourites grouped by channel", "favourites group by channel creator folders sections tidy organise songs lectures", "#favGroupBtn324"],
       ["Hold a row for quick actions", "hold press long press right click row quick actions play now play next add queue watch later favourite remove action sheet", "#library"],
       ["Channel intro skip", "channel intro skip theme song opening every episode podcast auto first seconds creator remember", "#chIntroRow280"],
