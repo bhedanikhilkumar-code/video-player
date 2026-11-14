@@ -44531,6 +44531,62 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Subtitle position", "#lpSubPos356"); }, 1450); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Subtitle font", "#lpSubFont356"); }, 1420); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Playback ended alert", "#qEndAlertBtn355"); }, 1390); });
+  // Round 357 new 1: Remember the zoom per video. Rotation (279), picture look (279),
+  // speed (299) and EQ per video all have memory chips, but Picture zoom kept one
+  // device-wide setting - reopening a vertical phone clip or a cropped lecture meant
+  // tapping 130% again every single time. A chip under Picture zoom now saves the playing
+  // video's zoom (100 / 115 / 130) and brings it back the next time that video loads, by
+  // tapping the matching zoom chip, so the chip memory, zoom framing pan and every theme
+  // behave exactly as on a hand tap. Up to 25 videos are kept; the oldest drop off.
+  // Works on YouTube videos. Checked first: feature finder lists rotation, picture look,
+  // speed, volume and EQ memory - no zoom memory anywhere. Hindi and Gujarati text,
+  // feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Remember this zoom": ["यह ज़ूम याद रखें", "આ ઝૂમ યાદ રાખો"],
+    "Zoom memory removed for this video.": ["इस वीडियो की ज़ूम याद हटा दी.", "આ વીડિયોની ઝૂમ યાદ કાઢી નાખી."],
+    "Zoom remembered for this video: ": ["इस वीडियो के लिए ज़ूम याद रखा: ", "આ વીડિયો માટે ઝૂમ યાદ રાખ્યું: "],
+    "Remember the zoom per video": ["हर वीडियो का ज़ूम याद रखें", "દરેક વીડિયોનું ઝૂમ યાદ રાખો"]
+  });
+  (function () {
+    var KEY = "vp-zoommem.v1";
+    var mem = {}, order = [];
+    try { var raw = JSON.parse(localStorage.getItem(KEY) || "null"); if (raw && typeof raw === "object") mem = raw; } catch (e) {}
+    try { var rawO = JSON.parse(localStorage.getItem(KEY + ".o") || "[]"); if (Array.isArray(rawO)) order = rawO; } catch (e) {}
+    function persist() { try { localStorage.setItem(KEY, JSON.stringify(mem)); localStorage.setItem(KEY + ".o", JSON.stringify(order)); return true; } catch (e) { return false; } }
+    function touch(id) { order = order.filter(function (x) { return x !== id; }); order.push(id); while (order.length > 25) { delete mem[order.shift()]; } }
+    var zoomRow357 = $("zoomRow"); if (!zoomRow357 || !zoomRow357.parentNode) return;
+    function zoomNow() { try { var n = parseFloat(localStorage.getItem("vp-zoom.v1")); return (n === 1 || n === 1.15 || n === 1.3) ? n : 1; } catch (e) { return 1; } }
+    function zoomChip(z) { var cs = zoomRow357.querySelectorAll(".zoom-chip"); for (var i = 0; i < cs.length; i++) if (parseFloat(cs[i].dataset.z) === z) return cs[i]; return null; }
+    var row = document.createElement("div"); row.className = "row"; row.style.marginTop = "6px";
+    var chip = document.createElement("button"); chip.type = "button"; chip.className = "chip"; chip.id = "zoomMemBtn357"; chip.setAttribute("aria-pressed", "false");
+    row.appendChild(chip); zoomRow357.parentNode.insertBefore(row, zoomRow357.nextSibling);
+    function on() { return !!(curId && mem[curId] != null); }
+    function paint() {
+      chip.textContent = "\uD83D\uDD0D " + T("Remember this zoom") + ": " + (on() ? T("on") : T("off"));
+      chip.setAttribute("aria-pressed", String(on()));
+    }
+    chip.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first.")); return; }
+      if (on()) { delete mem[curId]; order = order.filter(function (x) { return x !== curId; }); persist(); toast(T("Zoom memory removed for this video.")); paint(); return; }
+      mem[curId] = zoomNow(); touch(curId);
+      if (!persist()) toast(T("Could not save: browser storage is full or blocked. Your latest changes may be lost - export a backup."));
+      else toast(T("Zoom remembered for this video: ") + Math.round(mem[curId] * 100) + "%");
+      paint();
+    });
+    var lastId = null, appliedFor = null;
+    setInterval(function () {
+      if (curId !== lastId) { lastId = curId; appliedFor = null; paint(); }
+      if (!curId) return;
+      var m = mem[curId];
+      if (m == null || appliedFor === curId) return;
+      if (typeof playerReady !== "undefined" && !playerReady) return;
+      var c = zoomChip(m);
+      if (c && zoomNow() !== m) c.click();
+      appliedFor = curId;
+    }, 1000);
+    (window.__relang = window.__relang || []).push(paint); paint();
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Remember the zoom per video", "#zoomMemBtn357"); }, 1510); });
+  })();
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -48796,6 +48852,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Remember the A-B loop", "remember ab loop per video save practice points restore pinned", "#abMemBtn278"],
       ["Remember the speed per video", "remember speed per video pin playback rate lecture music", "#speedMemBtn278"],
       ["Remember the rotation per video", "remember rotation per video sideways phone clip turned picture rotate memory", "#rotMemBtn279"],
+      ["Remember the zoom per video", "remember zoom per video crop picture edges vertical clip phone memory", "#zoomMemBtn357"],
       ["Remember the picture look per video", "remember picture look per video brightness contrast colour tuning memory", "#picMemBtn279"],
       ["Rewind on resume choice", "rewind on resume choice seconds back half watched continue recap", "#rewBackRow279"],
       ["Sleep timer session recap", "sleep timer session recap summary minutes videos watched tonight good night", "#sleepVidsRow"],
