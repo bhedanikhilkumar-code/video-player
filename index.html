@@ -2386,6 +2386,8 @@ setTimeout(done,3000);})();
         <div class="row" id="startViewRow318" style="margin:6px 0"><span class="label" id="startViewLab318">When the app opens:</span><span class="chips" id="startViewChips318"></span></div>
         <label class="dl-chk"><input type="checkbox" id="privChk"> <span id="privT">Private viewing (do not record what I watch)</span></label>
         <p class="hint" id="privHint" hidden>Private viewing is on: videos you open are not added to Recently watched, Continue watching or Watch stats until you turn it off. Favourites, queue and Watch later still work.</p>
+        <div class="row" id="guestRow339" style="margin-top:6px"><span class="label" id="guestLab339">Guest session</span><button class="chip" id="guestBtn339" type="button" aria-pressed="false">👤 Start guest session</button></div>
+        <p class="hint" id="guestHint339" hidden>Guest session is on: history and stats pause (like Private viewing) and your lists stay hidden until you end it. Reloading the page also ends it.</p>
         <label class="dl-chk"><input type="checkbox" id="autoResumeChk"> <span id="autoResumeT">Resume when I come back</span></label>
         <label class="dl-chk"><input type="checkbox" id="bgMotionChk"> <span id="bgMotionT">Moving background (slow drifting colours)</span></label>
         <label class="dl-chk"><input type="checkbox" id="starsChk"> <span id="starsT">Starlight (twinkling stars behind the page)</span></label>
@@ -43308,6 +43310,93 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Mini player time switch", "#playerDock"); }, 0); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Auto-favourite after N plays", "#favAutoBtn338"); }, 0); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Loop count-in", "#abCountInRow338"); }, 0); });
+  // ================= Round 339 =================
+  // Round 339 new 1: Guest session - handing the phone to a friend or a child meant your
+  // Recently watched, Watch later and stats were one tap away and every video they opened
+  // landed in your history. One chip in Settings starts a guest session: Private viewing
+  // turns on in memory (the saved setting is untouched, so a plain reload ends the session
+  // cleanly), the Library and Study sections hide, and a glass bar at the bottom says what
+  // is on and ends the session only after a 1.5 s hold - a stray tap cannot end it, like
+  // the Touch lock pill. The Settings chip ends it right away for the owner. Nothing is
+  // saved, so there is no state to clean up. Hindi/Gujarati text, re-translated on every
+  // language change, feature finder and What's new included.
+  (function () {
+    "use strict";
+    var btn = $("guestBtn339"); if (!btn) return;
+    var on = false, prevPrivate = false, bar = null, fillEl = null, holdRAF = 0, holdT0 = 0, hid = [];
+    Object.assign(TR_MSG, {
+      "Guest session": ["गेस्ट सेशन", "ગેસ્ટ સેશન"],
+      "Start guest session": ["गेस्ट सेशन शुरू करें", "ગેસ્ટ સેશન શરૂ કરો"],
+      "End guest session": ["गेस्ट सेशन खत्म करें", "ગેસ્ટ સેશન પૂરું કરો"],
+      "Guest session is on: history and stats pause (like Private viewing) and your lists stay hidden until you end it. Reloading the page also ends it.": ["गेस्ट सेशन चालू है: हिस्ट्री और स्टैट्स रुकते हैं (प्राइवेट व्यूइंग जैसे) और सेशन खत्म करने तक आपकी लिस्ट छिपी रहती हैं. पेज रीलोड करने से भी यह खत्म हो जाता है.", "ગેસ્ટ સેશન ચાલુ છે: હિસ્ટ્રી અને સ્ટૅટ્સ રોકાય છે (પ્રાઇવેટ વ્યૂઇંગ જેવું) અને સેશન પૂરું ન કરો ત્યાં સુધી તમારી યાદીઓ છુપાયેલી રહે છે. પેજ રીલોડ કરવાથી પણ તે પૂરું થઈ જાય છે."],
+      "Guest session on": ["गेस्ट सेशन चालू", "ગેસ્ટ સેશન ચાલુ"],
+      "history paused, lists hidden": ["हिस्ट्री रुकी, लिस्ट छिपी", "હિસ્ટ્રી રોકાઈ, યાદીઓ છુપાયેલી"],
+      "hold to end": ["खत्म करने के लिए दबाकर रखें", "પૂરું કરવા દબાવી રાખો"],
+      "Guest session on - history paused and lists hidden": ["गेस्ट सेशन चालू - हिस्ट्री रुकी और लिस्ट छिपी गई", "ગેસ્ટ સેશન ચાલુ - હિસ્ટ્રી રોકાઈ અને યાદીઓ છુપાઈ ગઈ"],
+      "Guest session off": ["गेस्ट सेशन बंद", "ગેસ્ટ સેશન બંધ"]
+    });
+    var st = document.createElement("style"); st.id = "guestCss339";
+    st.textContent = ".guestbar339{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:99980;display:flex;align-items:center;gap:12px;max-width:min(460px,calc(100vw - 20px));padding:10px 14px;border-radius:18px;background:rgba(255,255,255,.78);color:#14202b;border:1px solid rgba(255,255,255,.7);box-shadow:0 16px 44px rgba(0,0,0,.24);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4);font-size:13px}.guestbar339 .gb-txt{flex:1}.guestbar339 .gb-pill{position:relative;overflow:hidden;white-space:nowrap;cursor:pointer;border-radius:999px;padding:8px 14px;border:1px solid rgba(0,0,0,.14);font-weight:600}.guestbar339 .gb-fill{position:absolute;inset:0;width:0;background:rgba(15,157,143,.28)}.guestbar339 .gb-pill span{position:relative}[data-theme=dark] .guestbar339,[data-theme=midnight] .guestbar339{background:rgba(30,36,46,.85);color:#eef2f6;border-color:rgba(255,255,255,.18)}[data-theme=dark] .guestbar339 .gb-pill,[data-theme=midnight] .guestbar339 .gb-pill{border-color:rgba(255,255,255,.22)}@media (prefers-color-scheme:dark){html[data-theme=auto] .guestbar339{background:rgba(30,36,46,.85);color:#eef2f6}}";
+    document.head.appendChild(st);
+    function paintBtn() {
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.classList.toggle("active", on);
+      btn.textContent = "\uD83D\uDC64 " + T(on ? "End guest session" : "Start guest session");
+      var lab = $("guestLab339"); if (lab) lab.textContent = T("Guest session");
+      var h = $("guestHint339");
+      if (h) { h.hidden = !on; h.textContent = T("Guest session is on: history and stats pause (like Private viewing) and your lists stay hidden until you end it. Reloading the page also ends it."); }
+    }
+    function holdStop() { if (holdRAF) { cancelAnimationFrame(holdRAF); holdRAF = 0; } if (fillEl) fillEl.style.width = "0"; }
+    function holdTick() {
+      var pct = Math.min(100, (Date.now() - holdT0) / 1500 * 100);
+      if (fillEl) fillEl.style.width = pct + "%";
+      if (pct >= 100) { holdRAF = 0; guestEnd(); return; }
+      holdRAF = requestAnimationFrame(holdTick);
+    }
+    function applyPrivate(v) {
+      prefs.privateView = v;
+      var pc = $("privChk"); if (pc) pc.checked = v;
+      var ph = $("privHint"); if (ph) ph.hidden = !v;
+      document.documentElement.classList.toggle("vp-private", v);
+    }
+    function guestStart() {
+      if (on) return;
+      on = true; prevPrivate = !!prefs.privateView;
+      if (!prevPrivate) applyPrivate(true);
+      hid = [];
+      ["library", "study261"].forEach(function (id) { var el = $(id); if (el && el.style.display !== "none") { el.style.display = "none"; hid.push(el); } });
+      bar = document.createElement("div"); bar.className = "guestbar339"; bar.setAttribute("role", "status");
+      var txt = document.createElement("span"); txt.className = "gb-txt";
+      txt.textContent = "\uD83D\uDC64 " + T("Guest session on") + " - " + T("history paused, lists hidden") + " \u00b7 " + T("hold to end");
+      var pill = document.createElement("span"); pill.className = "gb-pill"; pill.setAttribute("role", "button"); pill.tabIndex = 0;
+      pill.setAttribute("aria-label", T("hold to end"));
+      fillEl = document.createElement("i"); fillEl.className = "gb-fill";
+      var ptxt = document.createElement("span"); ptxt.textContent = T("hold to end");
+      pill.appendChild(fillEl); pill.appendChild(ptxt); bar.appendChild(txt); bar.appendChild(pill);
+      pill.addEventListener("pointerdown", function (e) { e.preventDefault(); holdStop(); holdT0 = Date.now(); holdRAF = requestAnimationFrame(holdTick); });
+      ["pointerup", "pointercancel", "pointerleave"].forEach(function (ev) { pill.addEventListener(ev, holdStop); });
+      pill.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); guestEnd(); } });
+      document.body.appendChild(bar);
+      paintBtn();
+      toast(T("Guest session on - history paused and lists hidden"), 4000);
+    }
+    function guestEnd() {
+      if (!on) return;
+      on = false; holdStop();
+      applyPrivate(prevPrivate);
+      hid.forEach(function (el) { el.style.display = ""; }); hid = [];
+      if (bar) { bar.remove(); bar = null; fillEl = null; }
+      paintBtn();
+      toast(T("Guest session off"));
+    }
+    btn.addEventListener("click", function () { if (on) guestEnd(); else guestStart(); });
+    (window.__relang = window.__relang || []).push(function () {
+      paintBtn();
+      if (bar) { var t = bar.querySelector(".gb-txt"); if (t) t.textContent = "\uD83D\uDC64 " + T("Guest session on") + " - " + T("history paused, lists hidden") + " \u00b7 " + T("hold to end"); }
+    });
+    paintBtn();
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Guest session", "#guestBtn339"); }, 0); });
   window.__vpMainOk325 = true;
 
 
@@ -47371,6 +47460,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Guest session", "guest session hand phone friend child borrow private history paused lists hidden protect library lend", "#guestBtn339"],
       ["Loop count-in", "count in clicks beats before loop restarts a-b practice metronome get ready musician restart on beat drummer", "#abCountInRow338"],
       ["Auto-favourite after N plays", "auto favourite star automatically after plays replays loved often played mark repeated song", "#favAutoBtn338"],
       ["Add to many playlists", "add video to many several playlists at once keep picker open file song multiple lists batch", "#lhPlaylists"],
