@@ -4625,7 +4625,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
     var fvSearchOn219 = !!(libSearch && libSearch.value && libSearch.value.trim());
     var fvAll206 = favView(), fvShow206 = (favFoldOpen || fvSearchOn219 || fvAll206.length <= 30) ? fvAll206 : fvAll206.slice(0, 30);
-    fillList(favList, fvShow206, (prefs.favRated === true && lib.favs.length) ? T("No favourite has a star rating yet. Turn the filter off to see the full list.") : (prefs.favUnwatched === true && lib.favs.length) ? T("Every favourite is watched. Turn the filter off to see the full list.") : T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) {
+    fillList(favList, fvShow206, (typeof window.__favLenActive304 === "function" && window.__favLenActive304() && lib.favs.length) ? T("No favourite is in this length range - turn the length filter off to see the full list.") : (prefs.favRated === true && lib.favs.length) ? T("No favourite has a star rating yet. Turn the filter off to see the full list.") : (prefs.favUnwatched === true && lib.favs.length) ? T("Every favourite is watched. Turn the filter off to see the full list.") : T("No favourites yet. Load a video and tap Add to favourites."), T("Remove"), function (item) {
       // Round 118: removing a favourite row offers Undo too - the pin flag rides along in the snapshot.
       var fIdx = findIn(lib.favs, item.id); if (fIdx < 0) return;
       var snapFv = lib.favs.slice();
@@ -6280,6 +6280,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (prefs.favUnwatched === true) v = v.filter(function (it) { var hi = findIn(lib.hist, it.id); return !(it.done === true || (hi >= 0 && lib.hist[hi].done === true)); });
     // Round 238 new 1: Only rated filter - keep favourites that carry a star rating.
     if (prefs.favRated === true) v = v.filter(function (it) { return vpRateOf(it.id) > 0; });
+    if (typeof window.__favLenOk304 === "function") v = v.filter(window.__favLenOk304);
     // Round 94: pinned favourites float to the top, keeping their order within each group.
     return v.sort(function (a, b) { return (b.pin ? 1 : 0) - (a.pin ? 1 : 0); });
   }
@@ -6414,6 +6415,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     laterSortBtn.refresh(); histSortBtn.refresh();
     if (laterLenBtn && laterLenBtn.refresh) laterLenBtn.refresh();
     if (typeof window.__histLenRefresh304 === "function") window.__histLenRefresh304();
+    if (typeof window.__favLenRefresh304 === "function") window.__favLenRefresh304();
   }
   function renderListTools() {
     renderCounts();
@@ -14023,7 +14025,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // rotate and the Stats on video overlay - so a restore on a new phone silently reset them
   // while every other setting moved over. They export and import as validated one-word values
   // like the rest of this list.
-  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;  VP_RAW_KEYS["vp-eqcust.v1"] = /^\[[\s\S]{0,2000}\]$/;  VP_RAW_KEYS["vp-mini-size.v1"] = /^(std|lg)$/;  VP_RAW_KEYS["vp-histlen.v1"] = /^(all|u10|m30|o30)$/;
+  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;  VP_RAW_KEYS["vp-eqcust.v1"] = /^\[[\s\S]{0,2000}\]$/;  VP_RAW_KEYS["vp-mini-size.v1"] = /^(std|lg)$/;  VP_RAW_KEYS["vp-histlen.v1"] = /^(all|u10|m30|o30)$/;  VP_RAW_KEYS["vp-favlen.v1"] = /^(all|u10|m30|o30)$/;
 
 
   // Round 282 fix 1: the Rewind on resume choice (vp-rewback.v1: jump back 5, 10 or 30
@@ -38011,6 +38013,51 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (window.__vpWnew283) window.__vpWnew283("History length filter", "#histLenBtn304");
   })();
 
+  // Favourites length filter (round 304 new 4): favourites can be sorted shortest or
+  // longest, but when you want "something short from my favourites" sorting still makes
+  // you scan past everything else. A chip beside Favourites filters the list by length,
+  // stepping All, under 10 minutes, 10-30 and over 30 - the same ranges Watch later and
+  // Recently watched use, so all three lists behave the same way. Like Hide shorts it
+  // uses learned lengths (falling back to the history entry) and keeps favourites whose
+  // length is not known yet, so nothing vanishes before the app has seen it. The choice
+  // persists, survives a backup, resets with Reset all, and an emptied list explains
+  // itself. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Favourites length filter": ["पसंदीदा लंबाई फ़िल्टर", "મનપસંદ લંબાઈ ફિલ્ટર"],
+    "Filter Favourites by length": ["पसंदीदा को लंबाई से छांटें", "મનપસંદ લંબાઈ પ્રમાણે ગાળો"],
+    "No favourite is in this length range - turn the length filter off to see the full list.": ["इस लंबाई में कोई पसंदीदा नहीं है - पूरी सूची देखने के लिए लंबाई फ़िल्टर बंद करें.", "આ લંબાઈમાં કોઈ મનપસંદ નથી - આખી યાદી જોવા લંબાઈ ફિલ્ટર બંધ કરો."]
+  });
+  (function () {
+    var mode = "all";
+    try { var m = localStorage.getItem("vp-favlen.v1"); if (m === "u10" || m === "m30" || m === "o30") mode = m; } catch (e) {}
+    window.__favLenActive304 = function () { return mode !== "all"; };
+    window.__favLenOk304 = function (a) {
+      if (mode === "all") return true;
+      var d = infoCache[a.id] && infoCache[a.id].dur;
+      if (!(typeof d === "number" && d > 0)) { var hi = findIn(lib.hist, a.id); d = hi >= 0 ? lib.hist[hi].dur : 0; }
+      if (!(typeof d === "number" && d > 0)) return true;
+      if (mode === "u10") return d < 600;
+      if (mode === "m30") return d >= 600 && d <= 1800;
+      return d > 1800;
+    };
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = "favLenBtn304";
+    b.addEventListener("click", function () {
+      mode = mode === "all" ? "u10" : (mode === "u10" ? "m30" : (mode === "m30" ? "o30" : "all"));
+      try { localStorage.setItem("vp-favlen.v1", mode); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
+      renderLib();
+    });
+    var row = document.querySelector('.lib-listtools[data-for="lhFavs"]'); if (row) row.appendChild(b);
+    window.__favLenRefresh304 = function () {
+      b.textContent = T(mode === "u10" ? "Length: under 10 min" : (mode === "m30" ? "Length: 10-30 min" : (mode === "o30" ? "Length: over 30 min" : "Length: All")));
+      b.setAttribute("aria-label", T("Filter Favourites by length"));
+      b.setAttribute("aria-pressed", String(mode !== "all"));
+      b.classList.toggle("active", mode !== "all");
+      b.hidden = lib.favs.length < 2;
+    };
+    window.__favLenRefresh304();
+    if (window.__vpWnew283) window.__vpWnew283("Favourites length filter", "#favLenBtn304");
+  })();
+
 })();
 
 
@@ -40457,7 +40504,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     // Round 300 fix: the automatic backup toggle (vp-autobk.v1) and the per-file speed
     // memory (vp-lpspeeds.v1) are settings the backup carries but Reset all settings left
     // behind - they are cleared with the rest now.
-    "vp-autobk.v1", "vp-lpspeeds.v1", "vp-lpvols.v1", "vp-lpeqs.v1", "vp-eqcust.v1", "vp-mini-size.v1", "vp-histlen.v1"];
+    "vp-autobk.v1", "vp-lpspeeds.v1", "vp-lpvols.v1", "vp-lpeqs.v1", "vp-eqcust.v1", "vp-mini-size.v1", "vp-histlen.v1", "vp-favlen.v1"];
   btn.addEventListener("click", async function () {
     if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices, downloader choices, list sort orders, fade, focus and mini player choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
@@ -42592,7 +42639,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Per-video quality memory", "per video quality remember this video 1080 720 480 one blurry upload exception", "#pvQualBtn299"],
       ["Remember speed per file", "remember speed per file local files lecture song own rate each file", "#lpSpdMemRow299"],
       ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
-      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],      ["Left-handed layout", "left handed lefty swap gesture pad sides double tap seek left hand thumb", "#leftHandRow303"],      ["My EQ presets", "my eq presets save custom equalizer bass middle treble own named preset local files sound", "#lpEqCustRow303"],      ["Mini player size", "mini player size large bigger floating docked video enlarge small corner standard", "#miniSizeBtn304"],      ["Sleep timer in the mini player", "sleep timer mini player floating bedtime moon chip 15 30 60 minutes off small screen", "#miniSleepBtn304"],      ["History length filter", "history length filter recently watched short long videos under 10 10-30 over 30 minutes find", "#histLenBtn304"],
+      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],      ["Left-handed layout", "left handed lefty swap gesture pad sides double tap seek left hand thumb", "#leftHandRow303"],      ["My EQ presets", "my eq presets save custom equalizer bass middle treble own named preset local files sound", "#lpEqCustRow303"],      ["Mini player size", "mini player size large bigger floating docked video enlarge small corner standard", "#miniSizeBtn304"],      ["Sleep timer in the mini player", "sleep timer mini player floating bedtime moon chip 15 30 60 minutes off small screen", "#miniSleepBtn304"],      ["History length filter", "history length filter recently watched short long videos under 10 10-30 over 30 minutes find", "#histLenBtn304"],      ["Favourites length filter", "favourites length filter saved short long videos under 10 10-30 over 30 minutes find", "#favLenBtn304"],
 
 
 
