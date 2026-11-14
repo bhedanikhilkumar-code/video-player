@@ -17124,10 +17124,23 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   }
   if (sleepEndBtn) sleepEndBtn.addEventListener("click", function () {
     sleepAtEnd = !sleepAtEnd;
-    var needVideo = sleepAtEnd && !curId;
+    var lpLoad300 = $("lpVideo");
+    var needVideo = sleepAtEnd && !curId && !(lpLoad300 && !lpLoad300.hidden);
     if (needVideo) sleepAtEnd = false;
     sleepEndRender();
     if (needVideo) sleepLabel.textContent = T("Load a video first, then set this.");
+  });
+
+  // Round 300 fix: "Stop at end of video" only watched the YouTube player - a local file
+  // simply stopped or advanced the local queue, and music mode jumped past it. A local
+  // file ending now stops the same way; the flag lets the local queue handler stand down.
+  var lpSleepEnd300 = $("lpVideo");
+  if (lpSleepEnd300) lpSleepEnd300.addEventListener("ended", function () {
+    if (!sleepAtEnd) return;
+    sleepAtEnd = false; sleepEndRender();
+    sleepPaused = true;
+    window.__vpSleepStopped300 = true;
+    sleepLabel.textContent = T("Stopped at the end of the video (sleep timer).");
   });
 
   // Sleep timer: stop after N more videos (counts each video that finishes).
@@ -37912,7 +37925,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   vid.addEventListener("timeupdate", function () { updatePosState(false); });
   ["seeked", "ratechange", "durationchange", "play", "pause"].forEach(function (ev) { vid.addEventListener(ev, function () { updatePosState(true); }); });
   vid.addEventListener("pause",function(){if(session)session.playbackState="paused";});
-  vid.addEventListener("ended",function(){if(typeof loopB!=="undefined" && loopB!==null)return;if(lp.lrepeat===2&&localFiles.length&&localIndex>=0){vid.currentTime=0;localPlay();}else if(lp.lshuffle&&localFiles.length>1)localStep(1);else if(localIndex>=0&&localIndex<localFiles.length-1)localStep(1);else if(lp.lrepeat&&localFiles.length)playLocalAt(0,true);else if(session)session.playbackState="none";});
+  vid.addEventListener("ended",function(){if(window.__vpSleepStopped300){window.__vpSleepStopped300=false;if(session)session.playbackState="none";return;}if(typeof loopB!=="undefined" && loopB!==null)return;if(lp.lrepeat===2&&localFiles.length&&localIndex>=0){vid.currentTime=0;localPlay();}else if(lp.lshuffle&&localFiles.length>1)localStep(1);else if(localIndex>=0&&localIndex<localFiles.length-1)localStep(1);else if(lp.lrepeat&&localFiles.length)playLocalAt(0,true);else if(session)session.playbackState="none";});
   vid.addEventListener("error",function(){sessionMsg.textContent=T("This file could not be played. Try a format your browser supports or choose Next file.");});
   document.addEventListener("vp-youtube-selected",function(){vid.pause(); if(session) {session.metadata=null;session.playbackState="none";["play","pause","previoustrack","nexttrack","seekbackward","seekforward","seekto"].forEach(function(n){mediaAction(n,null);});}});
   vid.addEventListener("loadedmetadata", function () {
