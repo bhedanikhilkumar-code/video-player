@@ -38747,6 +38747,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Loop chapter": ["अध्याय लूप करें", "પ્રકરણ લૂપ કરો"],
     "Looping: ": ["लूप चल रहा है: ", "લૂપ ચાલુ: "],
     "Wait for the video length first.": ["पहले वीडियो की लंबाई का इंतज़ार करें.", "પહેલા વીડિયોની લંબાઈની રાહ જુઓ."],
+    "\u23f8 Pause at chapter end: off": ["\u23f8 अध्याय के अंत में रुकें: बंद", "\u23f8 પ્રકરણના અંતે રોકો: બંધ"],
+    "\u23f8 Pause at chapter end: on": ["\u23f8 अध्याय के अंत में रुकें: चालू", "\u23f8 પ્રકરણના અંતે રોકો: ચાલુ"],
+    "Will pause when this chapter ends.": ["इस अध्याय के खत्म होते ही वीडियो रुक जाएगा.", "આ પ્રકરણ પૂરું થતાં વીડિયો રોકાશે."],
+    "Paused at the chapter end.": ["अध्याय के अंत पर रोका गया.", "પ્રકરણના અંતે રોકાયું."],
     "Now playing: ": ["\u0905\u092d\u0940 \u091a\u0932 \u0930\u0939\u093e \u0939\u0948: ", "\u0ab9\u0ab5\u0ac7 \u0a9a\u0abe\u0ab2\u0ac0 \u0ab0\u0ab9\u0acd\u0aaf\u0ac1\u0a82 \u0a9b\u0ac7: "]
   });
   (function () {
@@ -38759,6 +38763,27 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (card && card.parentNode) card.parentNode.insertBefore(panel, card.nextSibling); else anchor.parentNode.appendChild(panel);
     var ph = document.createElement("p"); ph.className = "hint"; ph.style.margin = "2px 0"; panel.appendChild(ph);
     var list = document.createElement("div"); list.style.cssText = "display:flex;flex-direction:column;gap:4px"; panel.appendChild(list);
+    // Round 307 new 4: pause at the chapter end. Watching a long lecture one chapter a
+    // night meant hovering over the pause button as the part wound down. One chip arms a
+    // one-shot pause: when the playing chapter's end arrives the video pauses, the chip
+    // disarms itself and says so - like Pause at each saved moment, but on the chapter
+    // bounds the community named. Arming again or changing the video resets it; nothing
+    // is saved. Hindi and Gujarati included.
+    var pauseBtn307 = document.createElement("button"); pauseBtn307.type = "button"; pauseBtn307.className = "chip"; pauseBtn307.id = "chapPauseBtn307";
+    pauseBtn307.style.cssText = "align-self:flex-start;margin-top:2px";
+    panel.appendChild(pauseBtn307);
+    var pauseArmed307 = false;
+    function paintPause307() {
+      pauseBtn307.textContent = T(pauseArmed307 ? "\u23f8 Pause at chapter end: on" : "\u23f8 Pause at chapter end: off");
+      pauseBtn307.setAttribute("aria-pressed", pauseArmed307 ? "true" : "false");
+      pauseBtn307.classList.toggle("active", pauseArmed307);
+    }
+    pauseBtn307.addEventListener("click", function () {
+      if (!curId || state !== "ok" || !rows.length) { toast(T("No community chapters for this video.")); return; }
+      pauseArmed307 = !pauseArmed307; paintPause307();
+      if (pauseArmed307) toast(T("Will pause when this chapter ends."));
+    });
+    (window.__relang = window.__relang || []).push(paintPause307); paintPause307();
     var open = false, rows = [], rowsFor = "", state = "", lastVid = "";
     function paint306() {
       btn.textContent = T("\ud83d\udcd1 Chapters");
@@ -38827,12 +38852,17 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     setInterval(function () {
       if (curId !== lastVid) {
         lastVid = curId || ""; rows = []; rowsFor = ""; state = "";
+        pauseArmed307 = false; paintPause307();
         btn.disabled = !(curId && curId.length === 11);
         if (open && curId) fetchRows(); else paint306();
       }
       if (!open || state !== "ok") return;
       var t = curTime, cur = -1;
       for (var i = 0; i < rows.length; i++) { if (t >= rows[i].a && t < rows[i].b) { cur = i; break; } if (t >= rows[i].a && (i + 1 >= rows.length || t < rows[i + 1].a)) cur = i; }
+      if (pauseArmed307 && cur >= 0) {
+        var endT = isFinite(rows[cur].b) ? rows[cur].b : (duration > 0 ? duration : Infinity);
+        if (curTime >= endT - 0.3) { pauseArmed307 = false; paintPause307(); send("pauseVideo"); toast(T("Paused at the chapter end.")); }
+      }
       var kids = list.children;
       for (var j = 0; j < kids.length; j++) {
         var kb = kids[j].querySelector ? (kids[j].querySelector("button") || kids[j]) : kids[j];
