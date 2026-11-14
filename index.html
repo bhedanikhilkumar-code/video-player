@@ -5989,7 +5989,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     saveLib(); renderLib();
     toastUndo(T("Upcoming queue cleared") + " (" + dropped + ")", function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
   });
-  clearQueueBtn.addEventListener("click", function () { var snap = lib.queue.slice(), sp = qPos; lib.queue = []; qPos = -1; showLibErr(""); saveLib(); renderLib(); if (snap.length) toastUndo(T("Queue cleared"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored")); });
+  // Round 292 fix 4: clearing the queue forgot to clear qAfter, the "removed row took
+  // this place" pointer. Remove the video that is playing (qAfter = its old row), clear
+  // the queue, add a fresh video or two, and Next jumped to that stale row number -
+  // past the end of the short new queue, so nothing played and the Up next strips went
+  // blank. Clear now resets the pointer and Undo restores it.
+  clearQueueBtn.addEventListener("click", function () { var snap = lib.queue.slice(), sp = qPos, sa = qAfter; lib.queue = []; qPos = -1; qAfter = -1; showLibErr(""); saveLib(); renderLib(); if (snap.length) toastUndo(T("Queue cleared"), function () { lib.queue = snap; qPos = sp; qAfter = sa; saveLib(); renderLib(); }, T("Queue restored")); });
   var dedupeQueueBtn = $("dedupeQueueBtn");
   if (dedupeQueueBtn) dedupeQueueBtn.addEventListener("click", function () {
     var seen = {}, nq = [], nqPos = -1, removed = 0, snap = lib.queue.slice(), sp = qPos;
