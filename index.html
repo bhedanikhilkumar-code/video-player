@@ -41925,6 +41925,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Every saved video is still there.": ["हर सेव किया वीडियो मौजूद है.", "દરેક સાચવેલો વીડિયો હજી છે."],
     "Not found on YouTube - removed or made private?": ["YouTube पर नहीं मिला - मिटाया गया या निजी किया गया?", "YouTube પર મળ્યો નહીં - ડિલીટ થયો કે પ્રાઇવેટ કરાયો?"],
     "Remove everywhere": ["हर जगह से हटाएं", "બધ્ધેથી કાઢો"],
+    "Clear results": ["नतीजे हटाएं", "પરિણામો કાઢો"],
     "Removed everywhere": ["हर जगह से हटाए गए", "બધ્ધેથી કાઢ્યા"],
     "Stopped.": ["रोका गया.", "રોકાયું."]
   });
@@ -41940,12 +41941,20 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var msg328 = document.createElement("p"); msg328.className = "hint"; msg328.id = "deadChkMsg328"; msg328.setAttribute("role", "status"); msg328.style.margin = "0";
     var cancel328 = document.createElement("button"); cancel328.type = "button"; cancel328.className = "chip"; cancel328.id = "deadChkCancel328"; cancel328.hidden = true;
     var list328 = document.createElement("ul"); list328.className = "lib-list"; list328.id = "deadChkList328"; list328.style.flexBasis = "100%"; list328.style.margin = "4px 0 0";
-    box328.appendChild(msg328); box328.appendChild(cancel328); box328.appendChild(list328);
+    // Round 337 fix 5: once a check finished, its box stayed open under the backup row until
+    // the next reload - the Cancel chip hides with the run and nothing else dismissed the
+    // result (seen live: "Check done" and the all-clear row still sitting there a language
+    // switch and several minutes later). A Clear results chip now shows with every finished
+    // result and puts the box away.
+    var clear328 = document.createElement("button"); clear328.type = "button"; clear328.className = "chip"; clear328.id = "deadChkClear337"; clear328.hidden = true;
+    clear328.addEventListener("click", function () { last328 = null; list328.textContent = ""; box328.hidden = true; clear328.hidden = true; });
+    box328.appendChild(msg328); box328.appendChild(cancel328); box328.appendChild(clear328); box328.appendChild(list328);
     libChk.parentNode.parentNode.insertBefore(box328, libChk.parentNode.nextSibling);
     var run = null, last328 = null;
     function paint328() {
       btn328.textContent = "\uD83E\uDE7A " + T("Find dead videos");
       cancel328.textContent = T("Cancel");
+      clear328.textContent = T("Clear results");
     }
     // Round 337 fix: the result line, the dead rows and the all-clear row were written once with
     // T() at the moment the check finished, so after a language switch they stayed in the old
@@ -41971,6 +41980,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         var okLi = document.createElement("li"); okLi.className = "lib-empty";
         okLi.textContent = T("Every saved video is still there."); list328.appendChild(okLi);
       }
+      clear328.hidden = false;
     }
     (window.__relang = window.__relang || []).push(function () { paint328(); if (last328 && !run) renderRes328(); });
     paint328();
@@ -41999,7 +42009,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       playlists.forEach(function (p) { p.items.forEach(function (x) { if (x && /^[A-Za-z0-9_-]{11}$/.test(x.id) && !seen[x.id]) { seen[x.id] = 1; ids.push(x.id); } }); });
       if (!ids.length) { toast(T("Nothing saved to check yet - save a video first.")); return; }
       if (navigator.onLine === false) { toast(T("You are offline - the check needs internet.")); return; }
-      box328.hidden = false; cancel328.hidden = false; list328.textContent = "";
+      box328.hidden = false; cancel328.hidden = false; clear328.hidden = true; list328.textContent = "";
       run = { stop: false };
       var fine = 0, dead = [], unk = 0;
       try {
