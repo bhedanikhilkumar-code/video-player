@@ -24705,18 +24705,16 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     oBtn.addEventListener("click", function () {
       if (!window.caches || !caches.keys) { last = function () { oMsg.textContent = T("Offline saving is not available here (private window or a page that is not secure)."); }; last(); return; }
       oMsg.textContent = T("Checking...");
-      caches.keys().then(function (keys) {
-        var mine = keys.filter(function (k) { return k.indexOf("vp-shell-") === 0; });
-        if (!mine.length) return 0;
-        return caches.open(mine[0]).then(function (c) { return c.keys(); }).then(function (reqs) {
-          var hasPage = reqs.some(function (r) { return new URL(r.url).pathname === "/"; });
-          return hasPage ? reqs.length : 0;
-        });
-      }).then(function (n) {
-        last = n ? function () { oMsg.textContent = T("Ready offline: the app page and icons are saved on this device (files: ") + n + T("). Videos still need internet."); }
-          : function () { oMsg.textContent = T("Not saved for offline yet. Open the app once with internet and check again."); };
+      // Ask the active worker about every required file in ITS cache, not the first
+      // old cache containing a page. A page alone does not mean all icons are saved.
+      offlineRequest342("VP_OFFLINE_STATUS342").then(function (r) {
+        if (!r || !r.ok || !Array.isArray(r.files)) throw Error("update");
+        var total = r.files.length, n = r.files.filter(function (f) { return f.saved; }).length;
+        last = function () { oMsg.textContent = T(n === total ? "Offline copy ready: {n}/{total} app files saved. Videos need internet." : "Offline copy incomplete: {n}/{total} files saved. Connect and tap Repair offline app.").replace("{n}", n).replace("{total}", total); };
         last();
-      }).catch(function () { last = function () { oMsg.textContent = T("Offline saving is not available here (private window or a page that is not secure)."); }; last(); });
+      }).catch(function (err) {
+        last = function () { oMsg.textContent = T(err.message === "unsupported" ? "Offline saving is not available here (private window or a page that is not secure)." : "Reload the app to activate the updated offline tools, then try again."); }; last();
+      });
     });
   })();
 
