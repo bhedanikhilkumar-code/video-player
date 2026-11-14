@@ -38887,7 +38887,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     setInterval(function () {
       if (curId !== lastVid) {
         lastVid = curId || ""; rows = []; rowsFor = ""; state = "";
-        pauseArmed307 = false; paintPause307();
+        pauseArmed307 = false; prevTick307 = 0; paintPause307();
         btn.disabled = !(curId && curId.length === 11);
         if (open && curId) fetchRows(); else paint306();
       }
@@ -38895,10 +38895,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       var t = curTime, cur = -1;
       for (var i = 0; i < rows.length; i++) { if (t >= rows[i].a && t < rows[i].b) { cur = i; break; } if (t >= rows[i].a && (i + 1 >= rows.length || t < rows[i + 1].a)) cur = i; }
       if (pauseArmed307) {
+        // Round 308 fix 3: the crossing check compared this tick's time with the
+        // last tick's, so a manual scrub forward through a chapter end counted as a
+        // crossing and paused the video the moment you landed - and the very first
+        // tick after a video change compared against the old video's last time.
+        // Only a small, forward step counts as playback crossing a chapter end.
+        var step307 = curTime - prevTick307;
         var crossed = false;
-        for (var ci = 0; ci < rows.length; ci++) {
-          var endT = isFinite(rows[ci].b) ? rows[ci].b : (duration > 0 ? duration : Infinity);
-          if (prevTick307 < endT - 0.3 && curTime >= endT - 0.3) { crossed = true; break; }
+        if (prevTick307 > 0 && step307 > 0 && step307 <= 1.5) {
+          for (var ci = 0; ci < rows.length; ci++) {
+            var endT = isFinite(rows[ci].b) ? rows[ci].b : (duration > 0 ? duration : Infinity);
+            if (prevTick307 < endT - 0.3 && curTime >= endT - 0.3) { crossed = true; break; }
+          }
         }
         if (crossed) { pauseArmed307 = false; paintPause307(); send("pauseVideo"); toast(T("Paused at the chapter end.")); }
       }
