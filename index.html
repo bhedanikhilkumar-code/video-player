@@ -10038,6 +10038,44 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function infoYtPaint() { infoYtBtn.textContent = T("Open on YouTube"); }
   (window.__relang = window.__relang || []).push(infoYtPaint);
   infoYtPaint();
+
+  // Round 324 new 5: Saved lists on Now playing. "Where is this video?" (round 248) can
+  // hunt one video across every list, but at playback time the plain question "have I
+  // already saved this, and where?" meant leaving the player for that card. A small
+  // line in the Now playing card now names the lists holding the playing video -
+  // the queue, Favourites, Watch later and every playlist by name - and says plainly
+  // when it is nowhere yet. It follows loads, saves, removals and imports live,
+  // retranslates on language change, and stays hidden for local files. Nothing new is
+  // saved. Hindi/Gujarati, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Saved in: ": ["सेव है: ", "સેવ છે: "],
+    "Not saved in any list yet.": ["अभी किसी लिस्ट में सेव नहीं है.", "હજી કોઈ યાદીમાં સેવ નથી."],
+    "the queue": ["कतार", "કતાર"],
+    "Saved lists on Now playing": ["चल रहे वीडियो की सेव्ड लिस्ट", "ચાલતા વીડિયોની સેવ્ડ યાદીઓ"]
+  });
+  var savedIn324 = document.createElement("span");
+  savedIn324.className = "vmem-note"; savedIn324.id = "savedIn324"; savedIn324.hidden = true;
+  var npWatched324 = $("npWatched");
+  if (npWatched324 && npWatched324.parentNode) npWatched324.parentNode.insertBefore(savedIn324, npWatched324.nextSibling);
+  function savedInPaint324() {
+    if (!savedIn324) return;
+    if (!curId || !/^[A-Za-z0-9_-]{11}$/.test(curId)) { savedIn324.hidden = true; return; }
+    var inLists = [];
+    if (findIn(lib.queue, curId) >= 0) inLists.push(T("the queue"));
+    if (findIn(lib.favs, curId) >= 0) inLists.push(T("Favourites"));
+    if (findIn(lib.later, curId) >= 0) inLists.push(T("Watch later"));
+    playlists.forEach(function (p) { if (findIn(p.items, curId) >= 0) inLists.push(p.name); });
+    savedIn324.hidden = false;
+    if (!inLists.length) { savedIn324.textContent = T("Not saved in any list yet."); return; }
+    var shown = inLists.slice(0, 4), extra = inLists.length - shown.length;
+    savedIn324.textContent = T("Saved in: ") + shown.join(" · ") + (extra > 0 ? " +" + extra : "");
+  }
+  (window.__relang = window.__relang || []).push(savedInPaint324);
+  document.addEventListener("vp-video-loaded", function () { setTimeout(savedInPaint324, 300); });
+  var renderLib324 = renderLib;
+  renderLib = function () { renderLib324(); savedInPaint324(); };
+  savedInPaint324();
+  if (window.__vpWnew283) window.__vpWnew283("Saved lists on Now playing", "#savedIn324");
   function zSkipRemove() {
     var item = (qPos >= 0 && qPos < lib.queue.length) ? lib.queue[qPos] : null;
     if (!item || !curId || item.id !== curId) { toast(T("Not playing from the queue - nothing to remove.")); return; }
@@ -46311,6 +46349,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Playlist to top", "playlist to top first move up favourite everyday pin order priority reorder saved list undo", "#plList"],
       ["Keep first N in a playlist", "keep first trim playlist cut shorten long course mix top N only opening part remove rest undo", "#plList"],
       ["Open on YouTube", "open youtube website app watch page new tab like comment subscribe description share original official", "#infoYtBtn"],
+      ["Saved lists on Now playing", "saved in which lists now playing card favourites watch later queue playlist already saved where", "#savedIn324"],
       ["Shuffle a playlist's saved order", "shuffle order playlist mix saved random jumble reorder different start course songs undo permanent", "#plList"],
       ["Glass rest cards", "glass rest cards break reminder daily watch limit pause eyes tired card frosted sheet bottom popup spring sleep", "#vpBreak"],
       ["Merge playlists", "merge playlists combine join two lists together add one playlist into another same topic courses songs undo", "#plList"],
