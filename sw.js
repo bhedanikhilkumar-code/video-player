@@ -17,7 +17,7 @@ self.addEventListener("activate", function(e) {
 var THUMBS = "vp-thumbs-v1", THUMB_MAX = 400;
 self.addEventListener("fetch", function(e) {
   var req = e.request, url = new URL(req.url);
-  if (req.method === "GET" && /^(i\d*\.ytimg\.com|img\.youtube\.com)$/.test(url.hostname)) {
+  if (req.method === "GET" && req.cache !== "reload" && /^(i\d*\.ytimg\.com|img\.youtube\.com)$/.test(url.hostname)) {
     e.respondWith(caches.open(THUMBS).then(function(cache) {
       return cache.match(req).then(function(hit) {
         var net = fetch(req).then(function(res) {
