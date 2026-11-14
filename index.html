@@ -45867,7 +45867,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Re-render the open tour when the language changes: the tour itself tells
   // new users about the language button, so it may still be open when they tap it.
   (window.__relang = window.__relang || []).push(function () { if (ov.parentNode) render(); });
-  if (!seen) {
+  // Round 341 fix 4: a first-time visitor opening a SHARED video link (?v=, ?url=, ?text= and
+  // the other link tricks) got the welcome tour on top of the very video they came to watch
+  // (seen live: fresh profile + ?v= link opened the tour over the loading player). The video
+  // link wins now: the tour stays closed for that visit. The seen flag is not written, so the
+  // tour still greets them on a later plain visit, and Replay in Help is untouched.
+  var hasVideoLink341 = /[?&](v|url|text|list|playlist|from|to)=/.test(location.search || "");
+  if (!seen && !hasVideoLink341) {
     if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", function () { setTimeout(open, 700); });
     else setTimeout(open, 700);
   }
