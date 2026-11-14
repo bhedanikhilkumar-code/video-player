@@ -7758,6 +7758,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Went back {n} seconds after the break.": ["विराम के बाद {n} सेकंड पीछे गए.", "વિરામ પછી {n} સેકન્ડ પાછળ ગયા."]
   });
   var rwPausedAt = 0, rwChips = $("rwPauseChips");
+  // Round 306 fix 3: "After a break, go back a few seconds on play" only listened to
+  // the YouTube player's state changes - the local player has its own pause/play
+  // events, so a paused local file resumed exactly where you left it even after a
+  // long break, while the setting's wording promises the rewind for everything. The
+  // same 30-second-break rule now runs on the local element: pause stamps the time,
+  // play after 30+ seconds seeks back the picked seconds (only when far enough in)
+  // and the same toast says what happened.
+  (function () {
+    var rwLp306 = $("lpVideo"); if (!rwLp306) return;
+    var rwLpAt306 = 0;
+    rwLp306.addEventListener("pause", function () { rwLpAt306 = Date.now(); });
+    rwLp306.addEventListener("play", function () {
+      var gap306 = rwLpAt306 ? Date.now() - rwLpAt306 : 0; rwLpAt306 = 0;
+      if (prefs.rwPause > 0 && gap306 >= 30000 && rwLp306.currentTime > prefs.rwPause + 2) {
+        try { rwLp306.currentTime = Math.max(0, rwLp306.currentTime - prefs.rwPause); } catch (e) {}
+        toast(T("Went back {n} seconds after the break.").replace("{n}", prefs.rwPause));
+      }
+    });
+    rwLp306.addEventListener("ended", function () { rwLpAt306 = 0; });
+  })();
   function rwPauseRender() {
     if (!rwChips) return;
     rwChips.innerHTML = "";
