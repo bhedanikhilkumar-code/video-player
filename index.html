@@ -19416,7 +19416,8 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   });
   // Round 301 new 4: the What's new name for the two new search operators.
   Object.assign(TR_MSG, {
-    "Search has:moment / is:rated": ["खोज has:moment / is:rated", "શોધ has:moment / is:rated"]
+    "Search has:moment / is:rated": ["खोज has:moment / is:rated", "શોધ has:moment / is:rated"],
+    "Playlist default quality": ["प्लेलिस्ट डिफ़ॉल्ट क्वालिटी", "પ્લેલિસ્ટ ડિફૉલ્ટ ક્વૉલિટી"]
   });
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
@@ -25990,6 +25991,58 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       });
     }
     renderPlaylists = (function (orig) { return function () { var r = orig.apply(this, arguments); try { addVol299(); } catch (e) {} return r; }; })(renderPlaylists);
+  })();
+  // Playlist default quality (round 301 new 5): a music playlist is happy on Auto
+  // (data saver), a cinema playlist wants 1080p every time. The per-video memory
+  // (round 300) pins one video and the channel memory pins one creator; this pins one
+  // playlist. A Quality chip in the playlist's More menu cycles off, Auto, 1080p HD,
+  // 720p HD; the next Play, Shuffle play, Play unwatched or play-from-a-video of that
+  // playlist sets the quality exactly like a tap on the quality chips, so Quality
+  // lock keeps holding it and Data saver still wins on slow networks. The choice
+  // rides the playlist, so backups and shared devices keep it.
+  Object.assign(TR_MSG, {
+    "Playlist default quality": ["प्लेलिस्ट डिफ़ॉल्ट क्वालिटी", "પ્લેલિસ્ટ ડિફૉલ્ટ ક્વૉલિટી"],
+    "Quality: off": ["क्वालिटी: बंद", "ક્વૉલિટી: બંધ"],
+    "Playlist quality: {q}": ["प्लेलिस्ट क्वालिटी: {q}", "પ્લેલિસ્ટ ક્વૉલિટી: {q}"],
+    "Quality {q} for this playlist.": ["इस प्लेलिस्ट के लिए क्वालिटी {q}.", "આ પ્લેલિસ્ટ માટે ક્વૉલિટી {q}."],
+    "Playlist quality off.": ["प्लेलिस्ट क्वालिटी बंद.", "પ્લેલિસ્ટ ક્વૉલિટી બંધ."]
+  });
+  var PL_QUALS301 = ["auto", "hd1080", "hd720"];
+  function plQualLabel301(v) { return v === "auto" ? T("Auto") : v === "hd1080" ? "1080p HD" : "720p HD"; }
+  plHookPlay246 = (function (orig) {
+    return function (pl) {
+      var r = orig.apply(this, arguments);
+      if (pl && typeof pl.qual === "string" && PL_QUALS301.indexOf(pl.qual) >= 0) {
+        send("setPlaybackQuality", [pl.qual]); prefs.quality = pl.qual; savePrefs(); markActive(qualityChips, pl.qual);
+        toast(T("Quality {q} for this playlist.").replace("{q}", plQualLabel301(pl.qual)));
+      }
+      return r;
+    };
+  })(plHookPlay246);
+  (function () {
+    function addQual301() {
+      var lis = plList.querySelectorAll(":scope > li.pl-item");
+      Array.prototype.forEach.call(lis, function (li) {
+        var idx = li.dataset && li.dataset.playlistIndex != null ? +li.dataset.playlistIndex : -1;
+        if (!(idx >= 0) || !playlists[idx]) return;
+        var menu = li.querySelector(".pl-more-menu"); if (!menu) return;
+        var old = menu.querySelector(".pl-qual301"); if (old) old.remove();
+        var pl = playlists[idx];
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip pl-qual301"; b.setAttribute("role", "menuitem");
+        var cur = typeof pl.qual === "string" && PL_QUALS301.indexOf(pl.qual) >= 0 ? pl.qual : "";
+        b.textContent = cur ? T("Playlist quality: {q}").replace("{q}", plQualLabel301(cur)) : T("Quality: off");
+        b.setAttribute("aria-label", T("Playlist default quality") + ": " + pl.name);
+        b.addEventListener("click", function () {
+          var i = PL_QUALS301.indexOf(cur), nv = i < 0 ? PL_QUALS301[0] : (i + 1 < PL_QUALS301.length ? PL_QUALS301[i + 1] : "");
+          if (nv) pl.qual = nv; else delete pl.qual;
+          savePlaylists();
+          plSay(nv ? T("Playlist quality: {q}").replace("{q}", plQualLabel301(nv)) + " - \"" + pl.name + "\"." : T("Playlist quality off.") + " \"" + pl.name + "\".");
+          addQual301();
+        });
+        menu.appendChild(b);
+      });
+    }
+    renderPlaylists = (function (orig) { return function () { var r = orig.apply(this, arguments); try { addQual301(); } catch (e) {} return r; }; })(renderPlaylists);
   })();
   // Playlist groups (round 246 new 1): thirty saved playlists are one long list - courses, music
   // and mom's songs all mixed. A Group chip in the playlist's More menu files it under one word
@@ -41731,6 +41784,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Remember volume per file", "remember volume per file boost level loud quiet each file local music lecture song gain", "#lpVolMemRow301"],
       ["My looks", "my looks saved theme accent colour preset night day mood one tap switch look outfit style", "#myLooksRow301"],
       ["Take a break", "take a break now manual rest card pause eyes tired countdown one two five minutes resume", "#takeBreakBtn301"],
+      ["Playlist default quality", "playlist default quality per playlist 1080p 720p auto cinema music data saver hd", "#plList"],
       ["Alarm fade-in", "alarm fade in gentle wake soft start rising volume gradual morning light sleeper", "#alarmFadeRow297"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
@@ -44348,6 +44402,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("My looks", "#myLooksRow301");
   window.__vpWnew283("Take a break", "#takeBreakBtn301");
   window.__vpWnew283("Search has:moment / is:rated", "#sqTip259");
+  window.__vpWnew283("Playlist default quality", "#plList");
 })();
 </script>
 </body>
