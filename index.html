@@ -6886,7 +6886,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     return (h > 0 ? h + ":" : "") + mm + ":" + String(sec).padStart(2, "0");
   }
 
+  function playbackCovered345() { return !!document.querySelector("#vpLock288[open],#privOv269[open]"); }
+  function pauseCoveredYouTube345() {
+    document.querySelectorAll("#frameBox iframe,#dvFrame288 iframe").forEach(function (f) {
+      if (f.contentWindow) f.contentWindow.postMessage(JSON.stringify({ event: "command", func: "pauseVideo", args: [] }), YT_ORIGIN);
+    });
+  }
   function send(func, args) {
+    if (func === "playVideo" && playbackCovered345()) return;
     if (iframe && iframe.contentWindow) {
       iframe.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: args || [] }), YT_ORIGIN);
     }
@@ -6901,6 +6908,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!data || typeof data !== "object") return;
     if (data.event === "onReady") {
       ready = true; playBtn.disabled = false;
+      if (playbackCovered345()) send("pauseVideo");
       skelShow(false);
       clearTimeout(loadWatchdog); showPlayerRetry(false); playerError.hidden = true;
       send("setVolume", [effVol()]);
@@ -6911,7 +6919,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       vmemApply();
     }
     if (data.event === "onStateChange" && typeof data.info === "number") {
-      if (sleepPaused && data.info === 1) { send("pauseVideo"); return; }
+      if ((sleepPaused || playbackCovered345()) && data.info === 1) { send("pauseVideo"); return; }
       if (data.info === 5) rateHudSkipUntil = Date.now() + 2500;
       playing = data.info === 1; if (data.info === 1) playedOnce = true; document.documentElement.classList.toggle("vp-playing", playing); if (playing) failedQueueCount = 0; if (playing && typeof tabAutoPaused !== "undefined") tabAutoPaused = false;
       if (window.__vpStateFx) window.__vpStateFx(data.info);
@@ -7540,6 +7548,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     return t;
   }
   function loadVideo(startSec, endSec, queueIndex, autoplay) {
+    if (playbackCovered345()) return;
     if (typeof picCompareReset266 === "function" && typeof compare266 !== "undefined" && compare266) picCompareReset266();
     if (vidRepN !== 0) { vidRepN = 0; renderVidRep(); }
     if (typeof upnextCancel === "function") upnextCancel(true);
@@ -32458,6 +32467,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     ov.showModal(); window.addEventListener("keydown", privKeys345, true); ov.focus();
     privPaused269 = false;
     try { var pb = $("playBtn"); if (playing && pb) { pb.click(); privPaused269 = true; } } catch (e) {}
+    pauseCoveredYouTube345();
   }
   function privShow269() {
     window.removeEventListener("keydown", privKeys345, true);
@@ -36370,7 +36380,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ov.innerHTML = '<div class="vp-lock-card"><div class="vp-lock-ico" aria-hidden="true">\uD83D\uDD12</div><p class="vp-lock-t" id="vpLockT288"></p><input id="vpLockIn288" type="password" inputmode="numeric" maxlength="6" autocomplete="off"><button type="button" class="chip" id="vpLockGo288"></button><p class="hint" id="vpLockMsg288" role="alert"></p></div>';
       document.body.appendChild(ov);
       ov.addEventListener("cancel", function (e) { e.preventDefault(); });
-      ov.showModal();
+      ov.showModal(); pauseCoveredYouTube345();
       window.addEventListener("keydown", lockKeys345, true);
       $("vpLockT288").textContent = T("This app is locked.");
       var li = $("vpLockIn288"), go = $("vpLockGo288");
@@ -36398,7 +36408,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       setBtn.textContent = "\uD83D\uDD12 " + T("App lock") + ": " + T(has ? "Change PIN" : "Set a PIN");
       nowBtn.textContent = T("Lock now"); nowBtn.hidden = !has;
       rmBtn.textContent = T("Remove PIN"); rmBtn.hidden = !has;
-      hint.textContent = T("Keeps casual glances out. It is not a safe - clearing this site's data removes it.");
+      hint.textContent = T("Keeps casual glances out. It is not a safe - clearing this site's data removes it.") + " " + T("Locking pauses YouTube. Unlock, then press Play to continue.");
       in1.placeholder = T("New PIN (4-6 digits)"); in2.placeholder = T("Repeat the PIN"); in1.setAttribute("aria-label", T("New PIN (4-6 digits)")); in2.setAttribute("aria-label", T("Repeat the PIN"));
       okBtn.textContent = T("Save PIN"); noBtn.textContent = T("Cancel");
     }
@@ -36424,6 +36434,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       + "@keyframes vpLockShake{25%{transform:translateX(-7px)}50%{transform:translateX(6px)}75%{transform:translateX(-4px)}}"
       + "html.calm-motion .vp-lock-no .vp-lock-card,html.low-fx .vp-lock-no .vp-lock-card{animation:none}";
     document.head.appendChild(stl);
+    TR_MSG["Locking pauses YouTube. Unlock, then press Play to continue."] = ["लॉक करने पर YouTube रुकता है. अनलॉक करके जारी रखने के लिए Play दबाएँ.", "લૉક કરતાં YouTube અટકે છે. અનલૉક કર્યા પછી ચાલુ રાખવા Play દબાવો."];
+    TR_MSG["No YouTube playback behind privacy covers"] = ["प्राइवेसी स्क्रीन के पीछे YouTube नहीं चलता", "પ્રાઇવસી સ્ક્રીન પાછળ YouTube ચાલતું નથી"];
     TR_MSG["App lock keyboard and mini-player protection"] = ["ऐप लॉक में कीबोर्ड और मिनी प्लेयर की सुरक्षा", "એપ લૉકમાં કીબોર્ડ અને મિની પ્લેયર સુરક્ષા"];
     paint();
     if (readLock()) lockNow();
@@ -36461,7 +36473,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "dvBtn288"; btn.setAttribute("aria-pressed", "false");
     spon.parentNode.insertBefore(btn, spon.nextSibling);
     var pane = null, pframe = null, inStep = false, muted = false, openedId = "", msgErr289 = false;
-    function cmd(func, args) { if (pframe && pframe.contentWindow) try { pframe.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: args || [] }), YT_ORIGIN); } catch (e) {} }
+    function cmd(func, args) { if (func === "playVideo" && playbackCovered345()) return; if (pframe && pframe.contentWindow) try { pframe.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: args || [] }), YT_ORIGIN); } catch (e) {} }
     function paint() {
       btn.textContent = "\uD83C\uDFAC\uD83C\uDFAC " + T(pane ? "Double view: on" : "Double view: off");
       btn.setAttribute("aria-pressed", pane ? "true" : "false");
@@ -36512,7 +36524,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       paint();
       pane.querySelector("#dvIn288").focus();
     }
+    window.addEventListener("message", function (e) {
+      if (!pframe || e.source !== pframe.contentWindow || (e.origin !== YT_ORIGIN && e.origin !== "https://www.youtube.com") || !playbackCovered345()) return;
+      var data; try { data = typeof e.data === "string" ? JSON.parse(e.data) : e.data; } catch (err) { return; }
+      if (data && (data.event === "onReady" || (data.event === "onStateChange" && data.info === 1))) cmd("pauseVideo");
+    });
     function loadSecond() {
+      if (playbackCovered345()) return;
       var raw = pane.querySelector("#dvIn288").value.trim();
       var id = /^[a-zA-Z0-9_-]{11}$/.test(raw) ? raw : (window.__vpParseId ? window.__vpParseId(raw) : null);
       if (!id) { msgErr289 = true; paint(); return; }
@@ -51385,6 +51403,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
     window.__vpWnew283("Tuner", "#tunerCard331");
   window.__vpWnew283("App lock keyboard and mini-player protection", "#lockRow288");
   window.__vpWnew283("Privacy cover above the mini player", "#privCard269");
+  window.__vpWnew283("No YouTube playback behind privacy covers", "#lockRow288");
   }, 400); });
 })();
 </script>
