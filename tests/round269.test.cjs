@@ -32,14 +32,17 @@ function slice(from, to) { const a = html.indexOf(from); assert.ok(a >= 0, from 
   assert.equal(p('playlist'), ''); // whole words only
 }
 // Privacy screen setting is cleaned on load and import.
+// Round 304 fix 3: these fixtures were left behind when the second ambient sound
+// (ambMix) joined cleanR269 in a later round, so this file failed although the app was
+// right - the expected objects now carry the ambMix default, matching the loader.
 {
   const ctx = vm.createContext({});
   vm.runInContext(slice('function cleanR269(', '  Object.assign(TR_MSG'), ctx);
-  assert.equal(JSON.stringify(ctx.cleanR269(null)), '{"escHide":0,"shake":0,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1}}');
-  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 1, junk: 5 })), '{"escHide":1,"shake":0,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1}}');
-  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 'yes', shake: 2 })), '{"escHide":0,"shake":2,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1}}');
-  assert.equal(JSON.stringify(ctx.cleanR269({ shake: 7 })), '{"escHide":0,"shake":0,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1}}');
-  assert.equal(JSON.stringify(ctx.cleanR269([1])), '{"escHide":0,"shake":0,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1}}');
+  assert.equal(JSON.stringify(ctx.cleanR269(null)), '{"escHide":0,"shake":0,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1},"ambMix":{"k":"off","v":40}}');
+  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 1, junk: 5 })), '{"escHide":1,"shake":0,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1},"ambMix":{"k":"off","v":40}}');
+  assert.equal(JSON.stringify(ctx.cleanR269({ escHide: 'yes', shake: 2 })), '{"escHide":0,"shake":2,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1},"ambMix":{"k":"off","v":40}}');
+  assert.equal(JSON.stringify(ctx.cleanR269({ shake: 7 })), '{"escHide":0,"shake":0,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1},"ambMix":{"k":"off","v":40}}');
+  assert.equal(JSON.stringify(ctx.cleanR269([1])), '{"escHide":0,"shake":0,"snaps":[],"amb":{"k":"rain","v":50,"m":0,"duck":1},"ambMix":{"k":"off","v":40}}');
 }
 // Shake to control: four sharp jolts in a second count, walking and repeats within 2.5 s do not.
 {
