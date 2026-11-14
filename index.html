@@ -1181,6 +1181,9 @@ video::cue { background: rgba(0,0,0,.55); color: #fff; text-shadow: 0 1px 2px rg
 .seek-marks { position: relative; height: 12px; margin: 0 10px; }
 .seek-mark { position: absolute; top: 2px; width: 8px; height: 8px; margin-left: -4px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; background: var(--teal); box-shadow: 0 0 0 2px var(--page), 0 1px 4px rgba(0,0,0,.35); transition: transform .15s ease; }
 .seek-mark:hover, .seek-mark:focus-visible { transform: scale(1.6); }
+.spon-bands305 { position: relative; height: 4px; margin: 3px 12px 0; }
+.spon-band305 { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: rgba(224,82,82,.6); box-shadow: 0 0 4px rgba(224,82,82,.35); }
+html.high-contrast .spon-band305 { background: #e05252; box-shadow: none; }
 input[type="range"]::-webkit-slider-thumb { transition: transform .15s cubic-bezier(.34,1.56,.5,1); }
 input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.25); }
 input[type="range"]::-moz-range-thumb { transition: transform .15s cubic-bezier(.34,1.56,.5,1); }
@@ -1915,6 +1918,7 @@ setTimeout(done,3000);})();
           <div class="ab-strip" id="abStrip" hidden aria-hidden="true"></div>
           <div class="seek-tip" id="seekTip" hidden></div>
           <div class="seek-marks" id="seekMarks" hidden></div>
+          <div class="spon-bands305" id="sponBands305" hidden aria-hidden="true"></div>
           <form class="row" id="jumpForm" style="margin-top:8px">
             <label class="label" for="jumpInput" id="jumpLab">Jump to time</label>
             <input id="jumpInput" placeholder="1:23 or 90s" inputmode="text" autocomplete="off" maxlength="12" style="width:110px">
@@ -34500,16 +34504,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
           if (list === "fail") { segsFor = ""; nextTry = Date.now() + 20000; return; }
           if (list === "none" || !Array.isArray(list)) return;
           segs = list.map(function (s) { return s && s.segment; }).filter(function (s) { return Array.isArray(s) && s.length === 2 && isFinite(s[0]) && isFinite(s[1]) && s[1] > s[0] + 0.5; });
+          if (window.__vpSponPaint305) window.__vpSponPaint305(segs);
         })
         .catch(function () { if (segsFor === want) { segsFor = ""; nextTry = Date.now() + 20000; } });
     }
     setInterval(function () {
-      if (curId !== lastId) { lastId = curId; segs = []; segsFor = ""; if (curId) fetchSegs(); }
+      if (curId !== lastId) { lastId = curId; segs = []; segsFor = ""; if (window.__vpSponPaint305) window.__vpSponPaint305(segs); if (curId) fetchSegs(); }
       // Round 289 fix 3: the 20-second retry after a failed SponsorBlock fetch never fired -
       // this interval only refetched when the video CHANGED, so after a failure segsFor stayed
       // "" for the rest of the video and sponsor skipping stayed silently off. Retry here for
       // the same video; fetchSegs still enforces the nextTry cooldown.
       else if (prefs.sponsor287 && curId && !segsFor && !segs.length) fetchSegs();
+      if (window.__vpSponTick305) window.__vpSponTick305(segs);
       if (!prefs.sponsor287 || !curId || !ready || !segs.length || document.hidden) return;
       var t = curTime;
       for (var i = 0; i < segs.length; i++) {
@@ -34525,6 +34531,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }, 500);
     btn.addEventListener("click", function () {
       prefs.sponsor287 = !prefs.sponsor287; savePrefs(); paint();
+      if (window.__vpSponPaint305) window.__vpSponPaint305(segs);
       if (prefs.sponsor287) { fetchSegs(); toast(T("Sponsor skip on. Segments come from the free SponsorBlock community database.")); }
     });
     (window.__relang = window.__relang || []).push(paint);
@@ -38109,6 +38116,40 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       return b;
     };
     if (window.__vpWnew283) window.__vpWnew283("Playlist length filter", "#plLenBtn304");
+  })();
+  // Sponsor parts on the seek bar (round 305 new 1): Skip sponsors could step over a
+  // sponsored stretch, but nothing showed WHERE those stretches sit, so the jump always
+  // came as a surprise and there was no way to tell a video with one sponsor block from
+  // one with four. While Skip sponsors is on and the community database knows segments
+  // for the video, a thin strip under the seek bar now paints each sponsored or
+  // self-promo stretch as a red band, lined up with the bar like the saved-moment dots
+  // below it. The bands are a picture only - skipping is still the chip's own job, and
+  // nothing is blocked or downloaded. Bands clear when the chip is off, when the video
+  // changes, or when the database has nothing for the video. Hindi and Gujarati text,
+  // What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Sponsor parts on the seek bar": ["सीक बार पर स्पॉन्सर भाग", "સીક બાર પર સ્પોન્સર ભાગ"],
+    "Red bands under the seek bar mark the sponsored parts that will be skipped.": ["सीक बार के नीचे लाल पट्टियाँ वे स्पॉन्सर भाग दिखाती हैं जो छोड़े जाएंगे.", "સીક બાર નીચે લાલ પટ્ટીઓ સ્કિપ થનારા સ્પોન્સર ભાગ બતાવે છે."]
+  });
+  (function () {
+    var lastDur = -1, lastSegs = null;
+    function paint305(segs) {
+      var box = $("sponBands305"); if (!box) return;
+      box.innerHTML = "";
+      lastDur = duration; lastSegs = segs;
+      if (!prefs.sponsor287 || !Array.isArray(segs) || !segs.length || !(duration > 0)) { box.hidden = true; return; }
+      box.setAttribute("aria-label", T("Red bands under the seek bar mark the sponsored parts that will be skipped."));
+      segs.forEach(function (sg) {
+        if (!(sg[1] > sg[0]) || sg[0] >= duration) return;
+        var b = document.createElement("i"); b.className = "spon-band305";
+        var l = sg[0] / duration * 100, r = Math.min(sg[1], duration) / duration * 100;
+        b.style.left = l.toFixed(2) + "%"; b.style.width = Math.max(0.4, r - l).toFixed(2) + "%";
+        box.appendChild(b);
+      });
+      box.hidden = !box.children.length;
+    }
+    window.__vpSponPaint305 = paint305;
+    window.__vpSponTick305 = function (segs) { if (segs !== lastSegs || duration !== lastDur) paint305(segs); };
   })();
 
 })();
