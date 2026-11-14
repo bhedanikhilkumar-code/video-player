@@ -36360,6 +36360,72 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function paint() { btn.textContent = T("Export settings only"); }
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
+  // Round 324 new 2: Export just one list. A full backup carries everything and Export
+  // settings only carries nothing but settings - neither answers "move only my music
+  // playlist (or only Watch later) to the other phone" or "send a friend the list, not my
+  // history and notes". A picker beside Export backup now saves ONE list (Favourites,
+  // Watch later, the queue, or any saved playlist) as a small backup file with just that
+  // section filled. The existing import already merges a partial file: it adds what is
+  // missing and never wipes other lists, and Undo last import still covers the merge.
+  // An empty list says so instead of saving a useless file. Hindi/Gujarati, feature
+  // finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Export just one list": ["सिर्फ़ एक लिस्ट एक्सपोर्ट करें", "ફક્ત એક યાદી એક્સપોર્ટ કરો"],
+    "Pick a list, then save it as a small backup file. Importing it on another device adds these videos - nothing there is removed.": ["एक लिस्ट चुनें, फिर उसे छोटी बैकअप फ़ाइल में सेव करें. दूसरे डिवाइस पर इम्पोर्ट करने से ये वीडियो जुड़ जाते हैं - वहाँ कुछ भी नहीं मिटता.", "એક યાદી પસંદ કરો, પછી તેને નાની બેકઅપ ફાઇલમાં સાચવો. બીજા ડિવાઇસ પર ઇમ્પોર્ટ કરવાથી આ વીડિયો ઉમેરાય છે - ત્યાં કંઈ પણ કઢાતું નથી."],
+    "The queue": ["कतार", "કતાર"],
+    "Playlist: {name}": ["प्लेलिस्ट: {name}", "પ્લેલિસ્ટ: {name}"],
+    "Export this list": ["यह लिस्ट एक्सपोर्ट करें", "આ યાદી એક્સપોર્ટ કરો"],
+    "That list is empty - nothing to export.": ["वह लिस्ट खाली है - एक्सपोर्ट करने जैसा कुछ नहीं.", "તે યાદી ખાલી છે - એક્સપોર્ટ કરવા જેવું કંઈ નથી."],
+    "videos saved - import this file on another device to add them there.": ["वीडियो सेव हुए - उन्हें वहाँ जोड़ने के लिए यह फ़ाइल दूसरे डिवाइस पर इम्पोर्ट करें.", "વીડિયો સાચવ્યા - તેને ત્યાં ઉમેરવા આ ફાઇલ બીજા ડિવાઇસ પર ઇમ્પોર્ટ કરો."]
+  });
+  (function () {
+    var anchorBtn = $("libExpSet289") || $("libExport"); if (!anchorBtn || typeof vpBuildBackup282 !== "function") return;
+    var sel = document.createElement("select"); sel.id = "libExpOneSel324"; sel.className = "chip"; sel.style.maxWidth = "180px";
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "libExpOne324";
+    anchorBtn.parentNode.insertBefore(sel, anchorBtn.nextSibling);
+    anchorBtn.parentNode.insertBefore(btn, sel.nextSibling);
+    function lists() {
+      var out = [{ k: "favs", label: T("Favourites") }, { k: "later", label: T("Watch later") }, { k: "queue", label: T("The queue") }];
+      playlists.forEach(function (p, i) { out.push({ k: "pl" + i, label: T("Playlist: {name}").replace("{name}", p.name) }); });
+      return out;
+    }
+    function paint() {
+      var keep = sel.value;
+      sel.textContent = "";
+      lists().forEach(function (l) { var o = document.createElement("option"); o.value = l.k; o.textContent = l.label; sel.appendChild(o); });
+      if (keep && sel.querySelector('option[value="' + keep + '"]')) sel.value = keep;
+      btn.textContent = T("Export this list");
+      sel.setAttribute("aria-label", T("Export just one list"));
+    }
+    btn.addEventListener("click", function () {
+      var full = vpBuildBackup282();
+      var data = { app: full.app, version: full.version, exportedAt: full.exportedAt };
+      var n = 0, name = "";
+      if (sel.value === "favs") { data.favourites = full.favourites; n = full.favourites.length; name = "favourites"; }
+      else if (sel.value === "later") { data.later = full.later; n = full.later.length; name = "watch-later"; }
+      else if (sel.value === "queue") { data.queue = full.queue; data.queuePos = full.queuePos; n = full.queue.length; name = "queue"; }
+      else {
+        var pi = Number(sel.value.slice(2));
+        if (!isFinite(pi) || pi < 0 || pi >= full.playlists.length) { toast(T("That list is empty - nothing to export.")); return; }
+        data.playlists = [full.playlists[pi]]; n = full.playlists[pi].items.length; name = "playlist";
+      }
+      if (!n) { toast(T("That list is empty - nothing to export.")); return; }
+      var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+      var d = new Date(), day = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      a.download = "video-player-" + name + "-" + day + ".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      var msg = $("libBackupMsg"); if (msg) msg.textContent = n + " " + T("videos saved - import this file on another device to add them there.");
+    });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+    // The playlist list can change without a language pass; refresh the picker whenever
+    // the playlist card repaints.
+    var plBox = $("plList");
+    if (plBox) { var mo = new MutationObserver(function () { paint(); }); mo.observe(plBox, { childList: true }); }
+    if (window.__vpWnew283) window.__vpWnew283("Export just one list", "#libExpOne324");
+  })();
   // Only these channels (round 290 new 1): Blocked channels (round 271) keeps a handful of
   // channels out, but a kid's phone or a strict study session wants the opposite rule -
   // NOTHING plays except a few trusted channels. The Only these channels card (next to
@@ -46217,6 +46283,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Jump to live", "jump to live edge live stream behind catch up dvr skip to now realtime broadcast", "#liveBtn289"],
       ["Full screen on play", "full screen when video starts auto fullscreen on play every new video opens fullscreen automatic", "#autoFsChk289"],
       ["Export settings only", "export settings only small backup file no lists move settings another device preferences file carry over", "#libExpSet289"],
+      ["Export just one list", "export only one list favourites watch later queue playlist small backup file move share partial", "#libExpOne324"],
       ["Only these channels", "only these channels allow whitelist trusted approved kids safe study channels block everything else skip queue rule", "#allowCard290"],
       ["Daily play alarm", "daily play alarm every day same time wake up morning bhajan recurring repeat schedule play at clock time remembered", "#alarmRow290"],
       ["Tidy the player row", "tidy player row hide chips too many buttons clean simple customise choose which controls show declutter", "#tidyCard290"],
