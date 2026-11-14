@@ -22044,6 +22044,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       box.className = "plv-box";
       box.setAttribute("role", "list");
       if (typeof window.__plLenChip304 === "function") { var plc304 = window.__plLenChip304(); if (plc304) box.appendChild(plc304); }
+      if (typeof window.__plTxtChip305 === "function") { var ptc305 = window.__plTxtChip305(); if (ptc305) box.appendChild(ptc305); }
       if (!pl.items.length) {
         var em = document.createElement("div"); em.className = "plv-empty"; em.textContent = T("No videos in this playlist yet.");
         box.appendChild(em);
@@ -22051,6 +22052,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       var plShown304 = 0;
       pl.items.forEach(function (x, i) {
         if (typeof window.__plLenOk304 === "function" && !window.__plLenOk304(x)) return;
+        if (typeof window.__plTxtOk305 === "function" && !window.__plTxtOk305(x)) return;
         plShown304++;
         var row = document.createElement("div"); row.className = "plv-row"; row.setAttribute("role", "listitem");
         var num = document.createElement("span"); num.className = "plv-num"; num.textContent = (i + 1) + ".";
@@ -22106,9 +22108,10 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         row.appendChild(num); row.appendChild(open); row.appendChild(ac);
         box.appendChild(row);
       });
-      if (typeof window.__plLenActive304 === "function" && window.__plLenActive304() && pl.items.length && !plShown304) {
+      if (pl.items.length && !plShown304 && ((typeof window.__plLenActive304 === "function" && window.__plLenActive304()) || (typeof window.__plTxtActive305 === "function" && window.__plTxtActive305()))) {
         var emL304 = document.createElement("div"); emL304.className = "plv-empty";
-        emL304.textContent = T("No videos in this playlist are in this length range - turn the length filter off to see them all.");
+        if (typeof window.__plTxtActive305 === "function" && window.__plTxtActive305()) emL304.textContent = T("No video in this playlist matches the search - clear the search to see them all.");
+        else emL304.textContent = T("No videos in this playlist are in this length range - turn the length filter off to see them all.");
         box.appendChild(emL304);
       }
       li.appendChild(box);
@@ -38258,6 +38261,64 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     setInterval(function () { var d = $("playerDock"); if (d && d.classList.contains("is-mini")) paint(); }, 5000);
     (window.__relang = window.__relang || []).push(paint);
     paint();
+  })();
+  // Search within a playlist's videos (round 305 new 4): a 60-video playlist's Videos
+  // box could be cut down by length (round 304), but finding one video by name still
+  // meant reading every row - the library search searches whole lists, not inside an
+  // open playlist. A search box at the top of the open Videos box now narrows the rows
+  // as you type: every word must appear in the title, so "kumar live" finds the live
+  // version in one go. Rows keep their real playlist numbers and Move, Remove and
+  // play-from-here still act on the true position, exactly like the length filter
+  // beside it, and the two combine; an emptied box says so honestly. The query covers
+  // every open playlist, stays while the page lives, and is never saved. Hindi and
+  // Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Search this playlist": ["इस प्लेलिस्ट में खोजें", "આ પ્લેલિસ્ટમાં શોધો"],
+    "Search the videos in this playlist": ["इस प्लेलिस्ट के वीडियो खोजें", "આ પ્લેલિસ્ટના વિડિયો શોધો"],
+    "Search within a playlist": ["प्लेलिस्ट के अंदर खोजें", "પ્લેલિસ્ટની અંદર શોધો"],
+    "No video in this playlist matches the search - clear the search to see them all.": ["इस प्लेलिस्ट का कोई वीडियो खोज से मेल नहीं खाता - सभी देखने के लिए खोज साफ़ करें.", "આ પ્લેલિસ્ટનો કોઈ વિડિયો શોધ સાથે મેળ ખાતો નથી - બધા જોવા શોધ સાફ કરો."]
+  });
+  (function () {
+    var q305 = "";
+    var st = document.createElement("style");
+    st.textContent = ".plv-search305{width:100%;margin:2px 0 8px;box-sizing:border-box}";
+    document.head.appendChild(st);
+    function norm(x) { return (x || "").toLowerCase(); }
+    function matches(title) {
+      if (!q305) return true;
+      var t = norm(title), ws = q305.split(/\s+/);
+      for (var i = 0; i < ws.length; i++) { if (ws[i] && t.indexOf(ws[i]) < 0) return false; }
+      return true;
+    }
+    window.__plTxtOk305 = function (x) { return matches(x && (x.title || x.id)); };
+    window.__plTxtActive305 = function () { return q305 !== ""; };
+    window.__plTxtChip305 = function () {
+      var inp = document.createElement("input");
+      inp.type = "search"; inp.className = "plv-search305"; inp.id = "plTxtIn305";
+      inp.maxLength = 80; inp.autocomplete = "off"; inp.spellcheck = false;
+      inp.value = q305;
+      function paint() { inp.placeholder = T("Search this playlist"); inp.setAttribute("aria-label", T("Search the videos in this playlist")); }
+      paint();
+      (window.__relang = window.__relang || []).push(paint);
+      inp.addEventListener("input", function () {
+        q305 = norm(inp.value).trim();
+        var box = inp.closest(".plv-box"); if (!box) return;
+        var shown = 0, any = false;
+        Array.prototype.forEach.call(box.querySelectorAll(".plv-row"), function (row) {
+          any = true;
+          var tt = row.querySelector(".plv-title");
+          var ok = matches(tt ? tt.textContent : row.textContent);
+          row.style.display = ok ? "" : "none";
+          if (ok) shown++;
+        });
+        var note = box.querySelector(".plv-txtnote305");
+        if (any && !shown && q305) {
+          if (!note) { note = document.createElement("div"); note.className = "plv-empty plv-txtnote305"; box.appendChild(note); }
+          note.textContent = T("No video in this playlist matches the search - clear the search to see them all.");
+        } else if (note) note.remove();
+      });
+      return inp;
+    };
   })();
 
 })();
