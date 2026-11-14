@@ -13380,6 +13380,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         plSay(nv ? T("Note saved.") : T("Note removed."));
       });
       btn(T("Update"), "", async function () {
+        // Round 304 fix 5: the lock guarded Rename, Delete and row-remove only, so one
+        // stray tap here still rewrote a locked list - the exact accident the lock exists for.
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         if (!lib.queue.length) { plSay(T("The queue is empty, so there is nothing to save.")); return; }
         if (!await vpConfirm(T("Replace the videos in") + " \"" + pl.name + "\"" + T(" with the current queue?"), T("Replace"))) return;
         // Round 225 fix 2: Update replaced every video of the playlist with the queue after
@@ -13390,11 +13393,17 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         toastUndo(T("Updated") + " " + pl.name, function () { pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
       });
       btn(T("Add queue"), "", function () {
+        // Round 304 fix 5: the lock guarded Rename, Delete and row-remove only, so one
+        // stray tap here still rewrote a locked list - the exact accident the lock exists for.
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         var n = 0; lib.queue.forEach(function (x) { if (findIn(pl.items, x.id) < 0 && pl.items.length < 50) { pl.items.push({ id: x.id, title: x.title || "" }); n++; } });
         if (!n) { plSay(T("Nothing new to add. The queue is empty, or those videos are already in this playlist, or it is full at 50.")); return; }
         savePlaylists(); renderPlaylists(); plSay(T("Added from the queue to") + " \"" + pl.name + "\": " + n + " " + T("videos added."));
       });
       btn(T("Remove watched"), "", function () {
+        // Round 304 fix 5: the lock guarded Rename, Delete and row-remove only, so one
+        // stray tap here still rewrote a locked list - the exact accident the lock exists for.
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         var isDone = function (x) { var hi = findIn(lib.hist, x.id); return hi >= 0 && lib.hist[hi].done; };
         var snap = pl.items.slice(), gone = snap.filter(isDone).length;
         if (!gone) { plSay(T("No watched videos in this playlist.")); return; }
@@ -13405,6 +13414,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         toastUndo(T("Removed watched videos:") + " " + gone, function () { pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
       });
       btn(T("Remove duplicates"), "", function () {
+        // Round 304 fix 5: the lock guarded Rename, Delete and row-remove only, so one
+        // stray tap here still rewrote a locked list - the exact accident the lock exists for.
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         var seen = {}, snap = pl.items.slice(), keep = [];
         snap.forEach(function (x) { if (!seen[x.id]) { seen[x.id] = true; keep.push(x); } });
         var gone = snap.length - keep.length;
@@ -13415,6 +13427,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         toastUndo(T("Duplicates removed:") + " " + gone, function () { pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
       });
       btn(T("Reverse order"), "", function () {
+        // Round 304 fix 5: the lock guarded Rename, Delete and row-remove only, so one
+        // stray tap here still rewrote a locked list - the exact accident the lock exists for.
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         if (pl.items.length < 2) { plSay(T("A playlist with one video has no order to reverse.")); return; }
         var snap = pl.items.slice();
         pl.items = snap.slice().reverse();
@@ -13423,6 +13438,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         toastUndo(T("Playlist order reversed:") + " " + pl.name, function () { pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
       });
       btn(T("Shuffle order"), "", function () {
+        // Round 304 fix 5: the lock guarded Rename, Delete and row-remove only, so one
+        // stray tap here still rewrote a locked list - the exact accident the lock exists for.
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         if (pl.items.length < 2) { plSay(T("A playlist needs at least two videos to shuffle.")); return; }
         var snap = pl.items.slice(), mix = snap.slice(), tries = 0;
         do {
@@ -13441,7 +13459,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         var ti = plFind(nv);
         if (ti < 0) { plSay(T("No playlist with that name:") + " \"" + nv + "\"."); return; }
         if (ti === idx) { plSay(T("Pick a different playlist to merge into.")); return; }
-        var tgt = playlists[ti], snap = tgt.items.slice(), n = 0;
+        var tgt = playlists[ti];
+        if (tgt.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.") + " (\"" + tgt.name + "\")"); return; }
+        var snap = tgt.items.slice(), n = 0;
         pl.items.forEach(function (x) { if (findIn(tgt.items, x.id) < 0 && tgt.items.length < 50) { tgt.items.push({ id: x.id, title: x.title || "" }); n++; } });
         if (!n) { plSay(T("Nothing new to merge. Those videos are already there, or the playlist is full at 50.")); return; }
         savePlaylists(); renderPlaylists();
@@ -13449,6 +13469,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         toastUndo(T("Videos merged:") + " " + n + " > " + tgt.name, function () { tgt.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
       });
       btn(T("Split"), "", async function () {
+        // Round 304 fix 5: the lock guarded Rename, Delete and row-remove only, so one
+        // stray tap here still rewrote a locked list - the exact accident the lock exists for.
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         if (pl.items.length < 2) { plSay(T("A playlist needs at least two videos to split.")); return; }
         if (playlists.length >= PL_MAX) { plSay(T("You can keep up to ") + PL_MAX + T(" playlists. Delete one first.")); return; }
         var raw = await vpAsk(T("How many videos stay in the first part? The rest go to a new playlist"), String(Math.ceil(pl.items.length / 2)));
@@ -13466,6 +13489,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         toastUndo(T("Playlist split:") + " " + pl.name, function () { var at = playlists.indexOf(np); if (at >= 0) playlists.splice(at, 1); pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
       });
       btn(T("Keep first"), "", async function () {
+        // Round 304 fix 5: the lock guarded Rename, Delete and row-remove only, so one
+        // stray tap here still rewrote a locked list - the exact accident the lock exists for.
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         if (pl.items.length < 2) { plSay(T("A playlist needs at least two videos to trim.")); return; }
         var raw = await vpAsk(T("How many videos to keep from the start? The rest are removed from this playlist"), String(Math.ceil(pl.items.length / 2)));
         if (raw === null || raw === undefined || String(raw).trim() === "") return;
@@ -13478,6 +13504,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         toastUndo(T("Kept the first videos:") + " " + keepN + " (" + pl.name + ")", function () { pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
       });
       btn(T("By length"), "", function () {
+        // Round 304 fix 5: the lock guarded Rename, Delete and row-remove only, so one
+        // stray tap here still rewrote a locked list - the exact accident the lock exists for.
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         // Round 225 fix 5: this guard repeated Reverse order's message, so a one-video
         // playlist answered "has no order to reverse" to a sort tap - confusing when you
         // never asked to reverse anything. It now names what was actually asked.
@@ -13501,6 +13530,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         toastUndo(T(dir === 1 ? "Playlist sorted, shortest first:" : "Playlist sorted, longest first:") + " " + pl.name, function () { pl.items = snap; savePlaylists(); renderPlaylists(); }, T("Playlist restored"));
       });
       btn(T("Sort A-Z"), "", function () {
+        // Round 304 fix 5: the lock guarded Rename, Delete and row-remove only, so one
+        // stray tap here still rewrote a locked list - the exact accident the lock exists for.
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         // Round 225 fix 5: this guard repeated Reverse order's message, so a one-video
         // playlist answered "has no order to reverse" to a sort tap - confusing when you
         // never asked to reverse anything. It now names what was actually asked.
@@ -13582,6 +13614,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         "Add at least 2 videos to this playlist first.": ["\u092a\u0939\u0932\u0947 \u0907\u0938 \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u092e\u0947\u0902 \u0915\u092e \u0938\u0947 \u0915\u092e 2 \u0935\u0940\u0921\u093f\u092f\u094b \u091c\u094b\u0921\u093c\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0a86 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aae\u0abe\u0a82 \u0a93\u0a9b\u0abe\u0aae\u0abe\u0a82 \u0a93\u0a9b\u0abe 2 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a89\u0aae\u0ac7\u0ab0\u0acb."]
       });
       btn(T("By rating"), "", function () {
+        // Round 304 fix 5: the lock guarded Rename, Delete and row-remove only, so one
+        // stray tap here still rewrote a locked list - the exact accident the lock exists for.
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         if (pl.items.length < 2) { plSay(T("Add at least 2 videos to this playlist first.")); return; }
         var rated254 = [], unrated254 = [];
         pl.items.forEach(function (x) { if (vpRateOf(x.id) > 0) rated254.push(x); else unrated254.push(x); });
@@ -22035,6 +22070,8 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
           mv.setAttribute("aria-label", T(o[1] < 0 ? "Move up" : "Move down") + ": " + (x.title || x.id));
           mv.addEventListener("click", function () {
             if (tgt < 0 || tgt >= pl.items.length) return;
+            // Round 304 fix 5: moving a row rewrites the saved order, so the lock covers it too.
+            if (pl.lock === true) { toast(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist."), 2200); return; }
             var tmp = pl.items[i]; pl.items[i] = pl.items[tgt]; pl.items[tgt] = tmp;
             savePlaylists(); renderPlaylists();
           });
