@@ -14018,7 +14018,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // like the rest) was in the Reset-all settings list but rode no backup either, so a
   // restore on a new phone silently turned the on-video clock back off. It now exports
   // and restores with the same 0/1 validation.
-  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short|long)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new|recent)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-mini-corner.v1": /^(br|bl|tr|tl)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-last.v1": /^\d{1,3}$/, "vp-sleep-playonly.v1": /^[01]$/, "vp-dl-mp3": /^[01]$/, "vp-clock-ov.v1": /^[01]$/, "vp-latergroup.v1": /^[01]$/ };
+  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short|long)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new|recent)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-mini-corner.v1": /^(br|bl|tr|tl)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-last.v1": /^\d{1,3}$/, "vp-sleep-playonly.v1": /^[01]$/, "vp-dl-mp3": /^[01]$/, "vp-clock-ov.v1": /^[01]$/, "vp-latergroup.v1": /^[01]$/, "vp-plwat306.v1": /^[01]$/ };
   // Round 232 fix 1: the Still watching? choice (vp-stillwatch.v1: off, or ask after 2, 3
   // or 5 auto-plays) rode no backup - Reset all settings counts it, but it was missing
   // here (the same class round 230 fix 1 closed for the on-video clock), so a restore on
@@ -22046,6 +22046,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       if (typeof window.__plLenChip304 === "function") { var plc304 = window.__plLenChip304(); if (plc304) box.appendChild(plc304); }
       if (typeof window.__plTxtChip305 === "function") { var ptc305 = window.__plTxtChip305(); if (ptc305) box.appendChild(ptc305); }
       if (typeof window.__plPlayChip305 === "function") { var ppc305 = window.__plPlayChip305(); if (ppc305) box.appendChild(ppc305); }
+      if (typeof window.__plWatChip306 === "function") { var pwc306 = window.__plWatChip306(); if (pwc306) box.appendChild(pwc306); }
       if (!pl.items.length) {
         var em = document.createElement("div"); em.className = "plv-empty"; em.textContent = T("No videos in this playlist yet.");
         box.appendChild(em);
@@ -22054,6 +22055,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       pl.items.forEach(function (x, i) {
         if (typeof window.__plLenOk304 === "function" && !window.__plLenOk304(x)) return;
         if (typeof window.__plTxtOk305 === "function" && !window.__plTxtOk305(x)) return;
+        if (typeof window.__plWatOk306 === "function" && !window.__plWatOk306(x)) return;
         plShown304++;
         var row = document.createElement("div"); row.className = "plv-row"; row.setAttribute("role", "listitem");
         row.dataset.vid = x.id; // round 305 new 5: Go to playing finds the row by id
@@ -22110,10 +22112,11 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         row.appendChild(num); row.appendChild(open); row.appendChild(ac);
         box.appendChild(row);
       });
-      if (pl.items.length && !plShown304 && ((typeof window.__plLenActive304 === "function" && window.__plLenActive304()) || (typeof window.__plTxtActive305 === "function" && window.__plTxtActive305()))) {
+      if (pl.items.length && !plShown304 && ((typeof window.__plLenActive304 === "function" && window.__plLenActive304()) || (typeof window.__plTxtActive305 === "function" && window.__plTxtActive305()) || (typeof window.__plWatActive306 === "function" && window.__plWatActive306()))) {
         var emL304 = document.createElement("div"); emL304.className = "plv-empty";
         if (typeof window.__plTxtActive305 === "function" && window.__plTxtActive305()) emL304.textContent = T("No video in this playlist matches the search - clear the search to see them all.");
-        else emL304.textContent = T("No videos in this playlist are in this length range - turn the length filter off to see them all.");
+        else if (typeof window.__plLenActive304 === "function" && window.__plLenActive304()) emL304.textContent = T("No videos in this playlist are in this length range - turn the length filter off to see them all.");
+        else emL304.textContent = T("Everything here is watched. Turn the filter off to see the full list.");
         box.appendChild(emL304);
       }
       li.appendChild(box);
@@ -38576,6 +38579,46 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint306); paint306();
   })();
 
+  // Hide watched in a playlist (round 306 new 3): a long playlist - a course, a season
+  // of lectures - fills with videos you already finished, and finding where you left
+  // off means scrolling past everything done. Watch later, Favourites and Recently
+  // watched all have unwatched filters; playlists were the one list without one. This
+  // chip sits beside the length filter in every open playlist box and hides the videos
+  // your history marks watched (finished here or marked watched), so what is left to
+  // see rises to the top. The choice is remembered in vp-plwat306.v1 (raw-key backup
+  // and Reset all included), applies to every playlist's listing, and nothing is
+  // removed - tapping the chip again brings the finished videos back. Hindi and
+  // Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Hide watched in a playlist": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u092e\u0947\u0902 \u0926\u0947\u0916\u0947 \u0939\u0941\u090f \u091b\u093f\u092a\u093e\u090f\u0902", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aae\u0abe\u0a82 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0a9b\u0ac1\u0aaa\u0abe\u0ab5\u0acb"],
+    "Hide watched: on": ["\u0926\u0947\u0916\u0947 \u0939\u0941\u090f \u091b\u093f\u092a\u093e\u090f\u0902: \u091a\u093e\u0932\u0942", "\u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0a9b\u0ac1\u0aaa\u0abe\u0ab5\u0acb: \u0a9a\u0abe\u0ab2\u0ac1"],
+    "Hide watched: off": ["\u0926\u0947\u0916\u0947 \u0939\u0941\u090f \u091b\u093f\u092a\u093e\u090f\u0902: \u092c\u0902\u0926", "\u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0a9b\u0ac1\u0aaa\u0abe\u0ab5\u0acb: \u0aac\u0a82\u0aa7"],
+    "Hide the videos you already finished from playlist lists": ["\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u0940 \u0938\u0942\u091a\u0940 \u0938\u0947 \u0926\u0947\u0916\u0947 \u0939\u0941\u090f \u0935\u0940\u0921\u093f\u092f\u094b \u091b\u093f\u092a\u093e\u090f\u0902", "\u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0ac0 \u0aaf\u0abe\u0aa6\u0ac0\u0aae\u0abe\u0a82\u0aa5\u0ac0 \u0a9c\u0acb\u0a88 \u0ab2\u0ac0\u0aa7\u0ac7\u0ab2\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a9b\u0ac1\u0aaa\u0abe\u0ab5\u0acb"]
+  });
+  (function () {
+    var on = false;
+    try { on = localStorage.getItem("vp-plwat306.v1") === "1"; } catch (e) {}
+    window.__plWatActive306 = function () { return on; };
+    window.__plWatOk306 = function (x) {
+      if (!on) return true;
+      var hi = findIn(lib.hist, x.id);
+      return !(hi >= 0 && lib.hist[hi].done === true);
+    };
+    window.__plWatChip306 = function () {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = "plWatBtn306";
+      b.textContent = on ? T("Hide watched: on") : T("Hide watched: off");
+      b.setAttribute("aria-label", T("Hide the videos you already finished from playlist lists"));
+      b.setAttribute("aria-pressed", String(on));
+      b.classList.toggle("active", on);
+      b.addEventListener("click", function () {
+        on = !on;
+        try { localStorage.setItem("vp-plwat306.v1", on ? "1" : "0"); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
+        plvPaint();
+      });
+      return b;
+    };
+  })();
+
 })();
 
 
@@ -41022,7 +41065,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     // Round 300 fix: the automatic backup toggle (vp-autobk.v1) and the per-file speed
     // memory (vp-lpspeeds.v1) are settings the backup carries but Reset all settings left
     // behind - they are cleared with the rest now.
-    "vp-autobk.v1", "vp-lpspeeds.v1", "vp-lpvols.v1", "vp-lpeqs.v1", "vp-eqcust.v1", "vp-mini-size.v1", "vp-histlen.v1", "vp-favlen.v1", "vp-pllen.v1", "vp-tnotes306.v1"];
+    "vp-autobk.v1", "vp-lpspeeds.v1", "vp-lpvols.v1", "vp-lpeqs.v1", "vp-eqcust.v1", "vp-mini-size.v1", "vp-histlen.v1", "vp-favlen.v1", "vp-pllen.v1", "vp-tnotes306.v1", "vp-plwat306.v1"];
   btn.addEventListener("click", async function () {
     if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices, downloader choices, list sort orders, fade, focus and mini player choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
@@ -43331,6 +43374,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Go to the playing video", "go to playing video playlist scroll where am i current row highlight pulse find", "#plPlayBtn305"],
       ["Text note on a video", "text note typed written note timestamp jump moment remember formula words memo per video", "#tnoteRow306"],
       ["Jump to the highlight", "highlight best moment most watched point of interest community jump skip to good part", "#hiBtn306"],
+      ["Hide watched in a playlist", "hide watched finished seen playlist filter unwatched left to watch remaining", "#plWatBtn306"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
@@ -45834,6 +45878,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Go to the playing video", "#plPlayBtn305");
   window.__vpWnew283("Text note on a video", "#tnoteRow306");
   window.__vpWnew283("Jump to the highlight", "#hiBtn306");
+  window.__vpWnew283("Hide watched in a playlist", "#plWatBtn306");
 })();
 </script>
 </body>
