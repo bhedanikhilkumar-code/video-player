@@ -18,17 +18,22 @@ var THUMBS = "vp-thumbs-v1", THUMB_MAX = 400;
 self.addEventListener("fetch", function(e) {
   var req = e.request, url = new URL(req.url);
   if (req.method === "GET" && req.cache !== "reload" && /^(i\d*\.ytimg\.com|img\.youtube\.com)$/.test(url.hostname)) {
-    e.respondWith(caches.open(THUMBS).then(function(cache) {
+    e.respondWith(caches.open(THUMBS).catch(function() { return null; }).then(function(cache) {
+      if (!cache) return fetch(req).catch(function() { return Response.error(); });
       return cache.match(req).then(function(hit) {
         var net = fetch(req).then(function(res) {
-          if (res && (res.ok || res.type === "opaque")) {
-            cache.put(req, res.clone()).then(function() {
-              cache.keys().then(function(keys) { if (keys.length > THUMB_MAX) cache.delete(keys[0]); });
+          if (!res || !(res.ok || res.type === "opaque")) return res;
+          // A cache write is an optimisation, never a reason to hide a good image.
+          return cache.put(req, res.clone()).then(function() {
+            return cache.keys().then(function(keys) {
+              return Promise.all(keys.slice(0, Math.max(0, keys.length - THUMB_MAX)).map(function(key) { return cache.delete(key); }));
             });
-          }
-          return res;
+          }).then(function() { return res; }, function() { return res; });
         });
-        return hit || net;
+        // On a cache hit respondWith resolves immediately. Keep the refresh alive and
+        // consume a failed offline fetch instead of leaking an unhandled rejection.
+        e.waitUntil(net.then(function() {}, function() {}));
+        return hit || net.catch(function() { return Response.error(); });
       });
     }));
     return;
