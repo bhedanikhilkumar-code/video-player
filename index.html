@@ -2108,7 +2108,7 @@ setTimeout(done,3000);})();
 
         <div class="ctl-card wide" id="ctl-marks">
           <h3 id="marksH">Saved moments</h3>
-          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button> <button class="chip" id="markPrevBtn" type="button" disabled>⏮ Previous</button> <button class="chip" id="markNextBtn" type="button" disabled>Next ⏭</button> <button class="chip" id="markCopyBtn" type="button" disabled>📋 Copy list</button> <button class="chip" id="markChapBtn" type="button" disabled>🎬 Copy as chapters</button> <button class="chip" id="markTxtBtn" type="button">Save all as text file</button> <button class="chip" id="markPauseBtn" type="button" aria-pressed="false">⏸ Pause at moments: off</button> <button class="chip" id="markClearBtn" type="button" disabled>🗑 Clear moments</button> <button class="chip" id="markShiftBackBtn" type="button" disabled>⏪ Moments -5s</button> <button class="chip" id="markShiftFwdBtn" type="button" disabled>Moments +5s ⏩</button> <button class="chip" id="markRandBtn" type="button" disabled>🎲 Random moment</button> <button class="chip" id="markLinkBtn299" type="button" disabled>🔗 Copy moments link</button></div>
+          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button> <button class="chip" id="markPrevBtn" type="button" disabled>⏮ Previous</button> <button class="chip" id="markNextBtn" type="button" disabled>Next ⏭</button> <button class="chip" id="markCopyBtn" type="button" disabled>📋 Copy list</button> <button class="chip" id="markChapBtn" type="button" disabled>🎬 Copy as chapters</button> <button class="chip" id="markTxtBtn" type="button">Save all as text file</button> <button class="chip" id="markPauseBtn" type="button" aria-pressed="false">⏸ Pause at moments: off</button> <button class="chip" id="markClearBtn" type="button" disabled>🗑 Clear moments</button> <button class="chip" id="markShiftBackBtn" type="button" disabled>⏪ Moments -5s</button> <button class="chip" id="markShiftFwdBtn" type="button" disabled>Moments +5s ⏩</button> <button class="chip" id="markRandBtn" type="button" disabled>🎲 Random moment</button> <button class="chip" id="markLinkBtn299" type="button" disabled>🔗 Copy moments link</button> <button class="chip" id="markNoteBtn339" type="button" disabled>📝 Moments to note</button></div>
           <details class="mark-paste" id="markPasteBox">
             <summary id="markPasteSum">Add chapters from a typed list</summary>
             <textarea class="note-box" id="markPasteText" rows="4" maxlength="2000" placeholder="0:00 Intro&#10;1:23 Chorus" aria-label="Chapter list"></textarea>
@@ -19029,7 +19029,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       if (full) msg.textContent += " " + full + " " + T("skipped: a video keeps up to 30 moments.");
     });
   })();
-  function setMarkBtns(n) { ["markCopyBtn", "markChapBtn", "markPrevBtn", "markNextBtn"].forEach(function (id) { var b = $(id); if (b) b.disabled = !n; }); renderSeekMarks(); }
+  function setMarkBtns(n) { ["markCopyBtn", "markChapBtn", "markPrevBtn", "markNextBtn", "markNoteBtn339"].forEach(function (id) { var b = $(id); if (b) b.disabled = !n; }); renderSeekMarks(); }
   // Save every saved moment (all videos) as a plain .txt file made on this device: title, link, then time + name lines.
   (function () {
     var b = $("markTxtBtn"); if (!b) return;
@@ -43397,6 +43397,41 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paintBtn();
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Guest session", "#guestBtn339"); }, 0); });
+  // Round 339 new 2: Moments to note - saved moments could be copied out as a link, a
+  // chapters list or a text file, but there was no way to keep them with the video's own
+  // note, where study points live. A Moments-to-note chip in the moments row appends every
+  // saved moment of the playing video to its note as [m:ss] name lines - the note's own
+  // time buttons then jump to each one. It writes through the note box's normal input
+  // event, so the existing debounced save, the 600-character cap and the library's Note
+  // pill all behave as if the lines were typed; when the note is nearly full the extra
+  // lines that do not fit are dropped with a plain message. Hindi/Gujarati text, feature
+  // finder and What's new included.
+  (function () {
+    "use strict";
+    var b = $("markNoteBtn339"); if (!b) return;
+    Object.assign(TR_MSG, {
+      "Moments to note": ["मोमेंट्स नोट में", "મોમેન્ટ્સ નોટમાં"],
+      "Moments:": ["मोमेंट्स:", "મોમેન્ટ્સ:"],
+      "Moments added to the note": ["मोमेंट्स नोट में जुड़ गए", "મોમેન્ટ્સ નોટમાં ઉમેરાયા"],
+      "The note is full - not every moment fit.": ["नोट भर गया - हर मोमेंट नहीं आ पाया.", "નોટ ભરાઈ ગઈ - દરેક મોમેન્ટ ન બંધબેઠું."]
+    });
+    b.addEventListener("click", function () {
+      var nb = $("noteBox");
+      if (!curId || !nb || nb.disabled) { toast(T("Load a video first, then write a note.")); return; }
+      var items = sortedMarks();
+      if (!items.length) { toast(T("No moments saved yet.")); return; }
+      var lines = [T("Moments:")];
+      items.forEach(function (m) { lines.push("[" + fmt(m.t) + "]" + (m.name ? " " + m.name : "")); });
+      var add = lines.join("\n"), cur = nb.value || "";
+      var next = cur.trim() ? cur.replace(/\s+$/, "") + "\n" + add : add;
+      var over = next.length > 600;
+      if (over) next = next.slice(0, 600);
+      nb.value = next;
+      nb.dispatchEvent(new Event("input"));
+      toast(over ? T("The note is full - not every moment fit.") : T("Moments added to the note"));
+    });
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Moments to note", "#markNoteBtn339"); }, 0); });
   window.__vpMainOk325 = true;
 
 
@@ -47461,6 +47496,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     }
     var FEATS = [
       ["Guest session", "guest session hand phone friend child borrow private history paused lists hidden protect library lend", "#guestBtn339"],
+      ["Moments to note", "moments to note save moments list into note copy markers bookmarks write study revision lines", "#markNoteBtn339"],
       ["Loop count-in", "count in clicks beats before loop restarts a-b practice metronome get ready musician restart on beat drummer", "#abCountInRow338"],
       ["Auto-favourite after N plays", "auto favourite star automatically after plays replays loved often played mark repeated song", "#favAutoBtn338"],
       ["Add to many playlists", "add video to many several playlists at once keep picker open file song multiple lists batch", "#lhPlaylists"],
