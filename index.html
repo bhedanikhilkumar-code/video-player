@@ -33901,7 +33901,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var frameBox = $("frameBox"); if (!frameBox || !frameBox.parentNode) return;
     var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "dvBtn288"; btn.setAttribute("aria-pressed", "false");
     spon.parentNode.insertBefore(btn, spon.nextSibling);
-    var pane = null, pframe = null, inStep = false, muted = false, openedId = "";
+    var pane = null, pframe = null, inStep = false, muted = false, openedId = "", msgErr289 = false;
     function cmd(func, args) { if (pframe && pframe.contentWindow) try { pframe.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: args || [] }), YT_ORIGIN); } catch (e) {} }
     function paint() {
       btn.textContent = "\uD83C\uDFAC\uD83C\uDFAC " + T(pane ? "Double view: on" : "Double view: off");
@@ -33912,7 +33912,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       pane.querySelector("#dvIn288").placeholder = T("Second video link");
       pane.querySelector("#dvIn288").setAttribute("aria-label", T("Second video link"));
       pane.querySelector("#dvOpen288").textContent = T("Open");
-      pane.querySelector("#dvMsg288").textContent = T("Paste a YouTube link for the second screen.");
+      // Round 289 fix 5: every repaint (tapping Mute or Keep in step, switching language)
+      // overwrote the "link did not work" message with the placeholder, so the error vanished
+      // a second after it appeared. Keep it until a new link opens or the pane closes.
+      pane.querySelector("#dvMsg288").textContent = msgErr289 ? T("That link did not work - paste a YouTube video link.") : T("Paste a YouTube link for the second screen.");
       pane.querySelector("#dvPlay288").textContent = "\u25B6\uFE0E " + T("Play or pause the second video");
       pane.querySelector("#dvMute288").textContent = "\uD83D\uDD07 " + T(muted ? "Mute: on" : "Mute: off");
       pane.querySelector("#dvMute288").setAttribute("aria-pressed", muted ? "true" : "false");
@@ -33953,9 +33956,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function loadSecond() {
       var raw = pane.querySelector("#dvIn288").value.trim();
       var id = /^[a-zA-Z0-9_-]{11}$/.test(raw) ? raw : (window.__vpParseId ? window.__vpParseId(raw) : null);
-      if (!id) { pane.querySelector("#dvMsg288").textContent = T("That link did not work - paste a YouTube video link."); return; }
+      if (!id) { msgErr289 = true; paint(); return; }
       if (id === openedId && pframe) { cmd("playVideo"); pane._playing = true; return; }
-      openedId = id; muted = false;
+      openedId = id; muted = false; msgErr289 = false;
       var host = pane.querySelector("#dvFrame288");
       host.innerHTML = ""; host.hidden = false;
       pframe = document.createElement("iframe");
@@ -33973,6 +33976,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       paint();
     }
     function closePane() {
+      msgErr289 = false;
       if (pframe) { try { pframe.remove(); } catch (e) {} pframe = null; }
       if (pane) { pane.remove(); pane = null; }
       openedId = ""; inStep = false; muted = false;
