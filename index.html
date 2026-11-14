@@ -4878,12 +4878,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var hi = findIn(lib.hist, curId);
     if (hi >= 0 && lib.hist[hi].done) {
       lib.hist[hi].done = false; saveLib(); renderLib(); updateWatchedBtn();
+      // Round 316 fix 3: undoing the mark also forgets the seen stretches, so the map and
+      // Skip seen parts stop treating an unwatched video as seen.
+      try { if (typeof wmapSeen === "string" && wmapSeen.indexOf("1") >= 0) { wmapSeen = new Array(101).join("0"); vmemRec({ seen: null }); if (typeof wmapPaint === "function") wmapPaint(); } } catch (e) {}
       toast(T("Marked as not watched"));
       return;
     }
     if (hi < 0) { lib.hist.unshift({ id: curId, title: titleFor(curId), ts: Date.now(), t: 0, dur: duration || 0, done: true }); if (lib.hist.length > HIST_MAX) lib.hist.length = HIST_MAX; hi = 0; }
     lib.hist[hi].done = true; lib.hist[hi].t = 0; if (duration > 0) lib.hist[hi].dur = duration;
     saveLib(); renderLib(); updateWatchedBtn(); vpPop(watchedBtn);
+    // Round 316 fix 3: a hand-marked video counts as fully seen - the map fills and Skip
+    // seen parts treats every stretch as watched, matching the pill.
+    try { if (typeof wmapSeen === "string" && duration > 0) { wmapSeen = new Array(101).join("1"); vmemRec({ seen: wmapSeen }); if (typeof wmapPaint === "function") wmapPaint(); } } catch (e) {}
     try { var rk = JSON.parse(localStorage.getItem(RK) || "null"); if (rk && rk.id === curId) localStorage.removeItem(RK); } catch (e) {}
     if (typeof resumeRender === "function") resumeRender();
     toast(T("Marked as watched"));
