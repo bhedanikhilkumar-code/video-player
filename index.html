@@ -14111,6 +14111,27 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         var n = 0; pl.items.forEach(function (x) { if (findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: x.title }); n++; } });
         saveLib(); renderLib(); plSay(n ? T("Added ") + n + " " + (n === 1 ? T("video") : T("videos")) + T(" to the queue.") : T("Those videos are already in the queue (or the queue is full at 50)."));
       });
+      // Queue a playlist's unwatched (round 326 new 1): Play unwatched starts the list over
+      // the queue, and Add to queue appends everything, watched included - but the common
+      // move with a half-finished course is "put what is left after what I am watching".
+      // One chip appends only the playlist's unwatched videos to the playing queue
+      // (duplicates skipped, the 50-video cap respected, both named honestly), the queue
+      // keeps playing, and the usual Undo toast takes the batch back. Hindi/Gujarati text,
+      // feature finder and What's new included.
+      Object.assign(TR_MSG, {
+        "\u2795 Queue playlist unwatched": ["\u2795 \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u0947 \u0905\u0928\u0926\u0947\u0916\u0947 \u0915\u0924\u093e\u0930 \u092e\u0947\u0902", "\u2795 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0abe \u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82"],
+        "Queue the unwatched videos of this playlist after the playing queue": ["\u0907\u0938 \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u0947 \u0905\u0928\u0926\u0947\u0916\u0947 \u0935\u0940\u0921\u093f\u092f\u094b \u091a\u0932 \u0930\u0939\u0940 \u0915\u0924\u093e\u0930 \u0915\u0947 \u092c\u093e\u0926 \u0921\u093e\u0932\u0947\u0902", "\u0a86 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0abe \u0aa8 \u0a9c\u0acb\u0aaf\u0ac7\u0ab2\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a9a\u0abe\u0ab2\u0aa4\u0ac0 \u0a95\u0aa4\u0abe\u0ab0 \u0aaa\u0a9b\u0ac0 \u0aa8\u0abe\u0a96\u0acb"],
+        "Everything in this playlist is watched or already queued.": ["\u0907\u0938 \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0915\u093e \u0938\u092c \u0915\u0941\u091b \u0926\u0947\u0916\u093e \u0939\u0941\u0906 \u092f\u093e \u092a\u0939\u0932\u0947 \u0938\u0947 \u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0939\u0948.", "\u0a86 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0ac1\u0a82 \u0aac\u0aa7\u0ac1\u0a82 \u0a9c\u0acb\u0a88 \u0a97\u0aaf\u0ac1\u0a82 \u0a9b\u0ac7 \u0a95\u0ac7 \u0aaa\u0ab9\u0ac7\u0ab2\u0ac7\u0aa5\u0ac0 \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0a9b\u0ac7."]
+      });
+      var qUnwBtn326 = btn(T("\u2795 Queue playlist unwatched"), "", function () {
+        var un = pl.items.filter(function (x) { var hi = findIn(lib.hist, x.id); return !(hi >= 0 && lib.hist[hi].done); });
+        var snapQ326 = lib.queue.slice(), spQ326 = qPos, nQ326 = 0;
+        un.forEach(function (x) { if (findIn(lib.queue, x.id) < 0 && lib.queue.length < 50) { lib.queue.push({ id: x.id, title: x.title }); nQ326++; } });
+        if (!nQ326) { plSay(T("Everything in this playlist is watched or already queued.")); return; }
+        saveLib(); renderLib();
+        toastUndo(T("Added ") + nQ326 + " " + (nQ326 === 1 ? T("video") : T("videos")) + T(" to the queue."), function () { lib.queue = snapQ326; qPos = spQ326; saveLib(); renderLib(); }, T("Queue restored"));
+      });
+      qUnwBtn326.setAttribute("aria-label", T("Queue the unwatched videos of this playlist after the playing queue") + ": " + pl.name);
       // Round 233 new 2: Save a playlist to Watch later - the queue could be parked whole
       // ("Save all to Watch later"), but a saved playlist could not; parking tonight's list
       // meant queuing it first or filing every row by hand. One tap in the playlist's More
@@ -41662,6 +41683,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // shows a plain banner - "Part of the app did not start" - with a Reload button (one
   // guarded reload per tab, then it points at Help - Report a problem instead of looping).
   // Hindi and Gujarati text, feature finder and What's new included.
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Queue a playlist's unwatched", "#lhPlaylists"); }, 0); });
   Object.assign(TR_MSG, { "Startup self-check": ["\u0938\u094d\u091f\u093e\u0930\u094d\u091f\u0905\u092a \u0938\u0947\u0932\u094d\u092b-\u091a\u0947\u0915", "\u0ab8\u0acd\u0a9f\u0abe\u0ab0\u0acd\u0a9f\u0a85\u0aaa \u0ab8\u0ac7\u0ab2\u0acd\u0aab-\u0a9a\u0ac7\u0a95"] });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Startup self-check", "#vpBootWarn325"); }, 0); });
   window.__vpMainOk325 = true;
@@ -45727,6 +45749,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Queue a playlist's unwatched", "queue unwatched playlist videos left unfinished course append after playing keep watching", "#lhPlaylists"],
       ["Sort Recently watched by rating", "sort history recently watched rating stars best rated order", "#histSortRateBtn323"],
       ["Shuffle play unwatched", "shuffle play unwatched unseen fresh random favourites watch later backlog", "#favShufUnwBtn323"],
       ["Sort a playlist by most played", "sort playlist most played play count order arrange replays", "#lhPlaylists"],
