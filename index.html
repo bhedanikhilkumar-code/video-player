@@ -22045,6 +22045,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       box.setAttribute("role", "list");
       if (typeof window.__plLenChip304 === "function") { var plc304 = window.__plLenChip304(); if (plc304) box.appendChild(plc304); }
       if (typeof window.__plTxtChip305 === "function") { var ptc305 = window.__plTxtChip305(); if (ptc305) box.appendChild(ptc305); }
+      if (typeof window.__plPlayChip305 === "function") { var ppc305 = window.__plPlayChip305(); if (ppc305) box.appendChild(ppc305); }
       if (!pl.items.length) {
         var em = document.createElement("div"); em.className = "plv-empty"; em.textContent = T("No videos in this playlist yet.");
         box.appendChild(em);
@@ -22055,6 +22056,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         if (typeof window.__plTxtOk305 === "function" && !window.__plTxtOk305(x)) return;
         plShown304++;
         var row = document.createElement("div"); row.className = "plv-row"; row.setAttribute("role", "listitem");
+        row.dataset.vid = x.id; // round 305 new 5: Go to playing finds the row by id
         var num = document.createElement("span"); num.className = "plv-num"; num.textContent = (i + 1) + ".";
         var open = document.createElement("button");
         open.type = "button"; open.className = "plv-open";
@@ -38318,6 +38320,45 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         } else if (note) note.remove();
       });
       return inp;
+    };
+  })();
+  // Go to the playing video (round 305 new 5): open a long playlist's Videos box while
+  // one of its videos plays and the playing row is somewhere off-screen - the box shows
+  // no highlight for it, so finding "where am I in this list" meant scrolling and
+  // reading. A chip at the top of the box jumps straight to the playing row and pulses
+  // it, and says plainly when nothing is playing or the playing video is not in this
+  // list (including when the length filter or search hid it). Nothing is saved. Hindi
+  // and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Go to the playing video": ["चल रहे वीडियो पर जाएं", "ચાલતા વીડિયો પર જાઓ"],
+    "▶ Playing": ["▶ चल रहा", "▶ ચાલતું"],
+    "Scroll this list to the video that is playing.": ["इस सूची को चल रहे वीडियो तक ले जाएं.", "આ યાદીને ચાલતા વીડિયો સુધી લઈ જાઓ."],
+    "Nothing is playing right now.": ["अभी कुछ नहीं चल रहा.", "હમણાં કંઈ ચાલતું નથી."],
+    "The playing video is not in this list - clear the search or length filter if it should be.": ["चल रहा वीडियो इस सूची में नहीं है - अगर होना चाहिए तो खोज या लंबाई फ़िल्टर हटाएं.", "ચાલતો વીડિયો આ યાદીમાં નથી - જો હોવો જોઈએ તો શોધ કે લંબાઈ ફિલ્ટર હટાવો."]
+  });
+  (function () {
+    var st = document.createElement("style");
+    st.textContent = ".plv-row.plv-pulse305{outline:2px solid var(--teal,#0a8);outline-offset:1px;border-radius:10px;transition:outline-color .3s ease}"
+      + "html.calm-motion .plv-row.plv-pulse305,html.low-fx .plv-row.plv-pulse305{transition:none}";
+    document.head.appendChild(st);
+    window.__plPlayChip305 = function () {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = "plPlayBtn305";
+      function paint() {
+        b.textContent = T("▶ Playing");
+        b.setAttribute("aria-label", T("Go to the playing video") + ". " + T("Scroll this list to the video that is playing."));
+      }
+      paint();
+      (window.__relang = window.__relang || []).push(paint);
+      b.addEventListener("click", function () {
+        if (!curId) { toast(T("Nothing is playing right now.")); return; }
+        var box = b.closest(".plv-box");
+        var row = box && box.querySelector('[data-vid="' + curId + '"]');
+        if (!row) { toast(T("The playing video is not in this list - clear the search or length filter if it should be.")); return; }
+        if (row.scrollIntoView) row.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+        row.classList.add("plv-pulse305");
+        setTimeout(function () { row.classList.remove("plv-pulse305"); }, 2400);
+      });
+      return b;
     };
   })();
 
