@@ -39123,6 +39123,77 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     });
   })();
 
+
+  // Chapter ticks on the seek bar (round 308 new 4): community chapters (306) list a
+  // video's named parts in a panel, but while scrubbing there was no sign of where
+  // one part ends and the next begins. Like the red sponsor bands above it, a thin
+  // strip under the seek bar now paints a tick at every community chapter start;
+  // the chapter under the playhead glows, and tapping a tick jumps straight to that
+  // part. Ticks appear only for videos the community has named, clear when the
+  // video changes, and ask nothing - no chip, no setting. The list is fetched once
+  // per video, the same free SponsorBlock database the Chapters panel reads. Hindi
+  // and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Chapter ticks on the seek bar": ["सीक बार पर अध्याय निशान", "સીક બાર પર પ્રકરણ નિશાન"],
+    "Chapter marks under the seek bar - tap one to jump to that part.": ["सीक बार के नीचे अध्याय निशान - किसी पर टैप करें और उस हिस्से पर जाएं.", "સીક બાર નીચે પ્રકરણ નિશાન - કોઈ પર ટૅપ કરો અને એ ભાગ પર જાઓ."],
+    "Jump to chapter ": ["अध्याय पर जाएं ", "પ્રકરણ પર જાઓ "]
+  });
+  (function () {
+    var anchor = $("sponBands305"); if (!anchor || !anchor.parentNode) return;
+    var st = document.createElement("style");
+    st.textContent = ".chap-ticks308{pointer-events:auto;height:8px;margin-top:2px}"
+      + ".chap-ticks308 button{position:absolute;top:0;bottom:0;width:5px;margin-left:-2px;border-radius:2px;background:var(--teal);opacity:.55;cursor:pointer;padding:0;border:0;min-width:0;min-height:0;-webkit-appearance:none;appearance:none}"
+      + ".chap-ticks308 button.cur308{opacity:1;box-shadow:0 0 6px var(--teal)}"
+      + "html.high-contrast .chap-ticks308 button{opacity:1;width:6px}"
+      + ".chap-ticks308 button:focus-visible{outline:2px solid var(--teal);outline-offset:1px}";
+    document.head.appendChild(st);
+    var box = document.createElement("div"); box.id = "chapTicks308"; box.className = "spon-bands305 chap-ticks308"; box.hidden = true;
+    anchor.parentNode.insertBefore(box, anchor.nextSibling);
+    var rows = [], rowsFor = "", lastDur = -1, lastId = "";
+    function paint308() {
+      box.innerHTML = "";
+      if (!rows.length || !(duration > 0)) { box.hidden = true; lastDur = duration; return; }
+      box.setAttribute("role", "group");
+      box.setAttribute("aria-label", T("Chapter marks under the seek bar - tap one to jump to that part."));
+      rows.forEach(function (r, i) {
+        if (r.a >= duration) return;
+        var b = document.createElement("button"); b.type = "button";
+        b.style.left = (r.a / duration * 100).toFixed(2) + "%";
+        b.title = fmt(r.a) + " " + r.name;
+        b.setAttribute("aria-label", T("Jump to chapter ") + fmt(r.a) + (r.name ? " " + r.name : ""));
+        b.dataset.chapI = String(i);
+        b.addEventListener("click", function () { if (!ready) return; manualSeek(Math.max(0, r.a), "chapTick308"); send("playVideo"); });
+        box.appendChild(b);
+      });
+      box.hidden = !box.children.length;
+      lastDur = duration;
+    }
+    function fetchRows() {
+      if (!curId || rowsFor === curId) return;
+      var want = curId; rowsFor = curId; rows = [];
+      fetch("https://sponsor.ajay.app/api/skipSegments?videoID=" + encodeURIComponent(want) + '&categories=["chapter"]')
+        .then(function (r) { if (r.status === 404) return []; if (!r.ok) throw new Error("http"); return r.json(); })
+        .then(function (list2) {
+          if (rowsFor !== want || curId !== want) return;
+          rows = (list2 || []).filter(function (s) { return s && Array.isArray(s.segment) && isFinite(s.segment[0]); })
+            .map(function (s) { return { a: Math.max(0, Number(s.segment[0]) || 0), name: (typeof s.description === "string" && s.description.trim()) ? s.description.trim().slice(0, 80) : "" }; })
+            .sort(function (x, y) { return x.a - y.a; });
+          paint308();
+        })
+        .catch(function () { if (rowsFor === want) { rows = []; rowsFor = ""; } });
+    }
+    setInterval(function () {
+      if (curId !== lastId) { lastId = curId || ""; rows = []; rowsFor = ""; paint308(); if (curId) fetchRows(); }
+      else if (duration > 0 && duration !== lastDur) paint308();
+      if (box.hidden) return;
+      var cur = -1;
+      for (var i = 0; i < rows.length; i++) { if (curTime >= rows[i].a) cur = i; else break; }
+      var kids = box.children;
+      for (var j = 0; j < kids.length; j++) { kids[j].classList.toggle("cur308", Number(kids[j].dataset.chapI) === cur); }
+    }, 1000);
+    (window.__relang = window.__relang || []).push(function () { if (!box.hidden) paint308(); });
+  })();
+
 })();
 
 
