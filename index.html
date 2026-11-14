@@ -40025,6 +40025,228 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     };
   })();
 
+  // Round 315 new 1: note dots on the seek bar. Times written in a video's note (1:23) already
+  // became chips under the box, but while watching you had to open the Notes card to use them;
+  // saved moments showed as dots on the seek bar, note times did not. The Note dots chip in the
+  // marks row paints every time written in the note as an amber dot on the seek bar - one tap
+  // jumps there and plays. Dots repaint with the note and on language change, follow the video's
+  // length and leave moment dots untouched. Off by default; the choice is remembered on this
+  // device (prefs.noteSeek315, rides the backup). Hindi and Gujarati text, feature finder and
+  // What's new included.
+  Object.assign(TR_MSG, {
+    "\ud83d\udcdd Note dots": ["\ud83d\udcdd \u0928\u094b\u091f \u092c\u093f\u0902\u0926\u0941", "\ud83d\udcdd \u0aa8\u0acb\u0a82\u0aa7 \u0aac\u0abf\u0a82\u0aa6\u0ac1"],
+    "Note dots on the seek bar": ["\u0938\u0940\u0915 \u092c\u093e\u0930 \u092a\u0930 \u0928\u094b\u091f \u092c\u093f\u0902\u0926\u0941", "\u0ab8\u0ac0\u0a95 \u0aac\u0abe\u0ab0 \u0aaa\u0ab0 \u0aa8\u0acb\u0a82\u0aa7 \u0aac\u0abf\u0a82\u0aa6\u0ac1"],
+    "Note dots show the times written in your note on the seek bar.": ["\u0928\u094b\u091f \u092c\u093f\u0902\u0926\u0941 \u0906\u092a\u0915\u0947 \u0928\u094b\u091f \u092e\u0947\u0902 \u0932\u093f\u0916\u0947 \u0938\u092e\u092f \u0938\u0940\u0915 \u092c\u093e\u0930 \u092a\u0930 \u0926\u093f\u0916\u093e\u0924\u0947 \u0939\u0948\u0902.", "\u0aa8\u0acb\u0a82\u0aa7 \u0aac\u0abf\u0a82\u0aa6\u0ac1 \u0aa4\u0aae\u0abe\u0ab0\u0ac0 \u0aa8\u0acb\u0a82\u0aa7\u0aae\u0abe\u0a82 \u0ab2\u0a96\u0ac7\u0ab2\u0acb \u0ab8\u0aae\u0aaf \u0ab8\u0ac0\u0a95 \u0aac\u0abe\u0ab0 \u0aaa\u0ab0 \u0aac\u0aa4\u0abe\u0ab5\u0ac7 \u0a9b\u0ac7."],
+    "Jump to the note time": ["\u0928\u094b\u091f \u0915\u0947 \u0938\u092e\u092f \u092a\u0930 \u091c\u093e\u090f\u0902", "\u0aa8\u0acb\u0a82\u0aa7\u0aa8\u0abe \u0ab8\u0aae\u0aaf \u0aaa\u0ab0 \u0a9c\u0abe\u0a93"]
+  });
+  (function () {
+    var st315 = document.createElement("style");
+    st315.textContent = ".seek-note315{background:#f5a623 !important}";
+    document.head.appendChild(st315);
+    var row = $("markAddBtn") && $("markAddBtn").closest(".row"); if (!row) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "noteSeekBtn315"; btn.setAttribute("aria-pressed", "false");
+    row.appendChild(btn);
+    function noteSecs315() {
+      var b = $("noteBox"), out = [], seen = {}, m, re = /(?:^|[^0-9:])((?:\d+:)?\d+:[0-5]\d)(?![0-9:])/g;
+      if (!b) return out;
+      while ((m = re.exec(b.value)) && out.length < 12) {
+        var pp = m[1].split(":").map(Number), sec = pp.length === 3 ? pp[0] * 3600 + pp[1] * 60 + pp[2] : pp[0] * 60 + pp[1];
+        if ((pp.length === 3 && pp[1] > 59) || !Number.isSafeInteger(sec) || sec < 0 || seen[sec]) continue;
+        seen[sec] = 1; out.push(sec);
+      }
+      return out;
+    }
+    function paint315() {
+      btn.textContent = T("\ud83d\udcdd Note dots") + ": " + T(prefs.noteSeek315 ? "on" : "off");
+      btn.setAttribute("aria-pressed", prefs.noteSeek315 ? "true" : "false");
+      btn.classList.toggle("active", !!prefs.noteSeek315);
+      var box = $("seekMarks"); if (!box) return;
+      Array.prototype.forEach.call(box.querySelectorAll(".seek-note315"), function (d) { d.remove(); });
+      if (prefs.noteSeek315 && curId && duration > 0) {
+        noteSecs315().forEach(function (sec) {
+          if (sec > duration) return;
+          var d = document.createElement("button"); d.type = "button"; d.className = "seek-mark seek-note315";
+          d.style.left = (sec / duration * 100).toFixed(2) + "%";
+          d.title = T("Note") + " " + fmt(sec);
+          d.setAttribute("aria-label", T("Jump to the note time") + " " + fmt(sec));
+          d.addEventListener("click", function () { manualSeek(sec); send("playVideo"); });
+          box.appendChild(d);
+        });
+      }
+      box.hidden = !box.children.length;
+    }
+    btn.addEventListener("click", function () {
+      prefs.noteSeek315 = !prefs.noteSeek315; savePrefs(); paint315();
+      if (prefs.noteSeek315) toast(T("Note dots show the times written in your note on the seek bar."));
+      else toast(T("Note dots on the seek bar") + ": " + T("off"));
+    });
+    setInterval(paint315, 3000);
+    (window.__relang = window.__relang || []).push(paint315);
+    paint315();
+  })();
+  // Round 315 new 2: share a pack. A video's moments, its note and its practice loops each had
+  // their own copy chips, so sending everything about a song or lecture to a friend meant three
+  // separate messages. The Copy pack link chip in the marks row copies one link that carries the
+  // video's moments, its note and its saved loops together; opening it asks once and adds them
+  // on that device (existing entries are kept, duplicates skipped). The pack rides inside the
+  // link itself - nothing uploads anywhere. Hindi and Gujarati text, feature finder and What's
+  // new included.
+  Object.assign(TR_MSG, {
+    "\ud83c\udff1 Copy pack link": ["\ud83c\udff1 \u092a\u0948\u0915 \u0932\u093f\u0902\u0915 \u0915\u0949\u092a\u0940 \u0915\u0930\u0947\u0902", "\ud83c\udff1 \u0aaa\u0ac7\u0a95 \u0ab2\u0abf\u0a82\u0a95 \u0a95\u0acb\u0aaa\u0ac0 \u0a95\u0ab0\u0acb"],
+    "Share a pack": ["\u092a\u0948\u0915 \u0936\u0947\u092f\u0930 \u0915\u0930\u0947\u0902", "\u0aaa\u0ac7\u0a95 \u0ab6\u0ac7\u0af0 \u0a95\u0ab0\u0acb"],
+    "Pack link copied - it carries your moments, note and loops for this video.": ["\u092a\u0948\u0915 \u0932\u093f\u0902\u0915 \u0915\u0949\u092a\u0940 \u0939\u0941\u0908 - \u0907\u0938\u092e\u0947\u0902 \u0907\u0938 \u0935\u0940\u0921\u093f\u092f\u094b \u0915\u0947 \u092a\u0932, \u0928\u094b\u091f \u0914\u0930 \u0932\u0942\u092a \u0939\u0948\u0902.", "\u0aaa\u0ac7\u0a95 \u0ab2\u0abf\u0a82\u0a95 \u0a95\u0acb\u0aaa\u0ac0 \u0aa5\u0a88 - \u0a86\u0aae\u0abe\u0a82 \u0a86 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb\u0aa8\u0abe \u0a95\u0acd\u0ab7\u0aa3\u0acb, \u0aa8\u0acb\u0a82\u0aa7 \u0a85\u0aa8\u0ac7 \u0ab2\u0ac2\u0aaa \u0a9b\u0ac7."],
+    "Save a moment, note or loop first - the pack carries them.": ["\u092a\u0939\u0932\u0947 \u0915\u094b\u0908 \u092a\u0932, \u0928\u094b\u091f \u092f\u093e \u0932\u0942\u092a \u0938\u0947\u0935 \u0915\u0930\u0947\u0902 - \u092a\u0948\u0915 \u092f\u0939\u0940 \u0932\u0947 \u091c\u093e\u0924\u093e \u0939\u0948.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0a95\u0acb\u0a88 \u0a95\u0acd\u0ab7\u0aa3, \u0aa8\u0acb\u0a82\u0aa7 \u0a95\u0ac7 \u0ab2\u0ac2\u0aaa \u0ab8\u0abe\u0a9a\u0ab5\u0acb - \u0aaa\u0ac7\u0a95 \u0a8f\u0a9c \u0ab2\u0a88 \u0a9c\u0abe\u0aaf \u0a9b\u0ac7."],
+    "Import this pack? It adds the moments, note and loops saved in it to this video on this device.": ["\u0a2f\u0ab9 \u092a\u0948\u0915 \u0906\u092f\u093e\u0924 \u0915\u0930\u0947\u0902? \u0907\u0938\u092e\u0947\u0902 \u0938\u0947\u0935 \u092a\u0932, \u0928\u094b\u091f \u0914\u0930 \u0932\u0942\u092a \u0907\u0938 \u0921\u093f\u0935\u093e\u0907\u0938 \u092a\u0930 \u0907\u0938 \u0935\u0940\u0921\u093f\u092f\u094b \u092e\u0947\u0902 \u091c\u0941\u0921\u093c\u0947\u0902\u0917\u0947.", "\u0a86 \u0aaa\u0ac7\u0a95 \u0a86\u0aaf\u0abe\u0aa4 \u0a95\u0ab0\u0ab6\u0acb? \u0a86\u0aae\u0abe\u0a82 \u0ab8\u0abe\u0a9a\u0ab5\u0ac7\u0ab2\u0abe \u0a95\u0acd\u0ab7\u0aa3\u0acb, \u0aa8\u0acb\u0a82\u0aa7 \u0a85\u0aa8\u0ac7 \u0ab2\u0ac2\u0aaa \u0a86 \u0aa1\u0abf\u0ab5\u0abe\u0a87\u0ab8 \u0aaa\u0ab0 \u0a86 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb\u0aae\u0abe\u0a82 \u0a89\u0aae\u0ac7\u0ab0\u0ab6\u0ac7."],
+    "Import": ["\u0906\u092f\u093e\u0924 \u0915\u0930\u0947\u0902", "\u0a86\u0aaf\u0abe\u0aa4 \u0a95\u0ab0\u0acb"],
+    "Pack imported.": ["\u092a\u0948\u0915 \u0906\u092f\u093e\u0924 \u0939\u0941\u0906.", "\u0aaa\u0ac7\u0a95 \u0a86\u0aaf\u0abe\u0aa4 \u0aa5\u0aaf\u0ac1\u0a82."],
+    "That pack link could not be read.": ["\u0a35\u0ab9 \u092a\u0948\u0915 \u0932\u093f\u0902\u0915 \u0928\u0939\u0940\u0902 \u092a\u0922\u093c\u0940 \u091c\u093e \u0938\u0915\u0940.", "\u0a8f \u0aaa\u0ac7\u0a95 \u0ab2\u0abf\u0a82\u0a95 \u0ab5\u0abe\u0a82\u0a9a\u0ac0 \u0ab6\u0a95\u0abe\u0aaf \u0aa8\u0aa5\u0ac0."]
+  });
+  (function () {
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "packBtn315";
+    var row = $("markAddBtn") && $("markAddBtn").closest(".row"); if (!row) return;
+    row.appendChild(btn);
+    function enc315(o) { try { return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+|-/g, function (c) { return c === "+" ? "-" : "_"; }).replace(/=+$/, ""); } catch (e) { return ""; } }
+    function dec315(t) { try { var b = t.replace(/-/g, "+").replace(/_/g, "/"); return JSON.parse(decodeURIComponent(escape(atob(b)))); } catch (e) { return null; } }
+    function paint315b() { btn.textContent = T("\ud83c\udff1 Copy pack link"); }
+    btn.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first, then save a moment.")); return; }
+      var mm = (marks && marks[curId]) || [], nt = (typeof notes === "object" && notes && notes[curId]) || "", lp = (typeof practiceLoops === "object" && practiceLoops && practiceLoops[curId]) || [];
+      if (!mm.length && !nt.trim() && !lp.length) { toast(T("Save a moment, note or loop first - the pack carries them.")); return; }
+      var link = location.origin + location.pathname + "?v=" + curId + "&pack=" + enc315({ m: mm, n: nt, l: lp });
+      function ok() { toast(T("Pack link copied - it carries your moments, note and loops for this video.")); }
+      function fb() { try { var ta = document.createElement("textarea"); ta.value = link; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var done = document.execCommand("copy"); ta.remove(); toast(done ? T("Pack link copied - it carries your moments, note and loops for this video.") : T("Could not copy. Try again.")); } catch (e) { toast(T("Could not copy. Try again.")); } }
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok, fb); else fb();
+    });
+    (window.__relang = window.__relang || []).push(paint315b); paint315b();
+    // Import side: opening a pack link adds its moments, note and loops to the video on this device.
+    (async function () {
+      var q = /[?&]pack=([^&]+)/.exec(location.search || ""); if (!q) return;
+      var vq = /[?&]v=([a-zA-Z0-9_-]{11})/.exec(location.search || ""); if (!vq) return;
+      var data = dec315(q[1]);
+      if (!data || typeof data !== "object") { toast(T("That pack link could not be read.")); return; }
+      var id = vq[1];
+      var mm = Array.isArray(data.m) ? data.m.filter(function (x) { return x && typeof x.t === "number" && isFinite(x.t) && x.t >= 0 && x.t <= 604800; }).slice(0, 30).map(function (x) { return { t: Math.floor(x.t), name: typeof x.name === "string" ? x.name.slice(0, 40) : "" }; }) : [];
+      var nt = typeof data.n === "string" ? data.n.slice(0, 600) : "";
+      var lp = Array.isArray(data.l) ? data.l.filter(function (x) { return typeof validPracticeLoop === "function" ? validPracticeLoop(x) : false; }).slice(0, 12) : [];
+      if (!mm.length && !nt.trim() && !lp.length) { toast(T("That pack link could not be read.")); return; }
+      if (!(await window.vpConfirm(T("Import this pack? It adds the moments, note and loops saved in it to this video on this device."), T("Import")))) return;
+      if (mm.length) { var cur = marks[id] || []; mm.forEach(function (x) { if (cur.length < 30 && !cur.some(function (y) { return y.t === x.t; })) cur.push(x); }); if (cur.length) marks[id] = cur; marksSave(); if (curId === id && typeof renderMarks === "function") renderMarks(); }
+      if (nt.trim()) { notes[id] = nt; notesSave(); if (curId === id && typeof renderNotes === "function") renderNotes(); }
+      if (lp.length) { var pl = {}; pl[id] = lp; if (typeof mergePracticeLoops === "function") mergePracticeLoops(pl); savePracticeLoops(); if (typeof lpPaint === "function") lpPaint(); }
+      try { history.replaceState(null, "", location.pathname + "?v=" + id); } catch (e) {}
+      toast(T("Pack imported."));
+    })();
+  })();
+  // Round 315 new 3: queue data estimate. Data saver can cut quality, but nothing said what the
+  // queue would actually cost on a mobile plan, so a long queue on Auto could quietly eat a
+  // day's data. A small line under the queue total now estimates the data the queued videos
+  // will use at the current quality (Auto counts as a mid guess), from the lengths the app
+  // knows, honestly marked rough and updated as the queue, quality or speed changes. Videos
+  // with unknown lengths are said so. Hindi and Gujarati text, feature finder and What's new
+  // included.
+  Object.assign(TR_MSG, {
+    "About {d} of data for the queue at {q} - a rough guess.": ["{q} \u092a\u0930 \u0915\u0924\u093e\u0930 \u0915\u0947 \u0932\u093f\u090f \u0932\u0917\u092d\u0917 {d} \u0921\u0947\u091f\u093e - \u090f\u0915 \u0905\u0928\u0941\u092e\u093e\u0928.", "{q} \u0aaa\u0ab0 \u0a95\u0aa4\u0abe\u0ab0 \u0aae\u0abe\u0a9f\u0ac7 \u0a86\u0aafa\u0ac1\u0a82\u0a9a\u0abf\u0aa4 {d} \u0aa1\u0ac7\u0a9f\u0abe - \u0a8f\u0a95 \u0a85\u0aa8\u0ac1\u0aae\u0abe\u0aa8."],
+    "Queue data estimate": ["\u0915\u0924\u093e\u0930 \u0921\u0947\u091f\u093e \u0905\u0928\u0941\u092e\u093e\u0928", "\u0a95\u0aa4\u0abe\u0ab0 \u0aa1\u0ac7\u0a9f\u0abe \u0a85\u0aa8\u0ac1\u0aae\u0abe\u0aa8"]
+  });
+  (function () {
+    var qt = $("queueTime"); if (!qt || !qt.parentNode) return;
+    var line = document.createElement("p"); line.className = "hint"; line.id = "queueData315"; line.setAttribute("role", "status");
+    qt.parentNode.insertBefore(line, qt.nextSibling);
+    var RATES = { highres: 7000, hd1080: 2600, hd720: 1400, large: 700, medium: 400, small: 250, tiny: 150, auto: 1000 };
+    function qlabel315() { return prefs.dataSaver ? "480p" : (QUALITIES.filter(function (x) { return x.value === prefs.quality; })[0] || QUALITIES[0]).label; }
+    function qrate315() { return RATES[prefs.dataSaver ? "large" : prefs.quality] || 1000; }
+    function paint315c() {
+      if (!lib.queue.length) { line.textContent = ""; return; }
+      var known = 0, secs = 0;
+      lib.queue.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { known++; secs += d; } });
+      if (qPos >= 0 && qPos < lib.queue.length && curId && lib.queue[qPos] && lib.queue[qPos].id === curId && curTime > 0) {
+        var dCur = infoCache[curId] && infoCache[curId].dur;
+        if (typeof dCur === "number" && dCur > 0) secs = Math.max(0, secs - Math.min(Math.floor(curTime), dCur));
+      }
+      if (!known) { line.textContent = ""; return; }
+      var mb = Math.round(secs / 3600 * qrate315());
+      var d = mb >= 1000 ? (Math.round(mb / 100) / 10) + " GB" : mb + " MB";
+      var txt = T("About {d} of data for the queue at {q} - a rough guess.").replace("{d}", d).replace("{q}", qlabel315());
+      if (known < lib.queue.length) txt += " " + known + "/" + lib.queue.length + " " + T("lengths known");
+      line.textContent = txt;
+    }
+    setInterval(paint315c, 8000);
+    (window.__relang = window.__relang || []).push(paint315c);
+    setTimeout(paint315c, 1200);
+  })();
+  // Round 315 new 4: back to what I was watching. Tapping another queue row or a shared link
+  // swapped the video on the spot, and finding the way back meant hunting the old video in
+  // history or the queue. When a video switch interrupts something that was playing, a small
+  // chip beside the player controls now offers one tap back: it plays the interrupted video
+  // and seeks to where it stopped. The offer clears itself after the jump or when the queue
+  // moves on. Nothing is saved - it is a this-visit helper. Hindi and Gujarati text, feature
+  // finder and What's new included.
+  Object.assign(TR_MSG, {
+    "\u23ea Back to what I was watching": ["\u23ea \u091c\u094b \u0926\u0947\u0916 \u0930\u0939\u093e \u0925\u093e \u0909\u0938 \u092a\u0930 \u0935\u093e\u092a\u0938", "\u23ea \u0a9c\u0ac7 \u0a9c\u0acb\u0aa4\u0acb \u0aa4\u0acb \u0aa4\u0ac7\u0aa8\u0ac0 \u0aaa\u0abe\u0a9a\u0ac0"],
+    "Back to what I was watching": ["\u091c\u094b \u0926\u0947\u0916 \u0930\u0939\u093e \u0925\u093e \u0909\u0938 \u092a\u0930 \u0935\u093e\u092a\u0938", "\u0a9c\u0ac7 \u0a9c\u0acb\u0aa4\u0acb \u0aa4\u0acb \u0aa4\u0ac7\u0aa8\u0ac0 \u0aaa\u0abe\u0a9a\u0ac0"],
+    "Back to the last video from {t}.": ["\u092a\u093f\u091b\u0932\u0947 \u0935\u0940\u0921\u093f\u092f\u094b \u092a\u0930 {t} \u0938\u0947 \u0935\u093e\u092a\u0938.", "\u0aaa\u0abe\u0a9b\u0ab2\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aaa\u0ab0 {t} \u0aa5\u0ac0 \u0aaa\u0abe\u0a9a\u0ac0."]
+  });
+  (function () {
+    var row = $("fsBtn") && $("fsBtn").closest(".row"); if (!row) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "back315Btn"; btn.hidden = true;
+    row.appendChild(btn);
+    var lastId = null, lastT = 0, prevId = null, prevT = 0;
+    setInterval(function () {
+      if (curId !== prevId) {
+        if (prevId && prevT > 10) { lastId = prevId; lastT = prevT; }
+        prevId = curId; prevT = 0;
+      } else if (curId) { prevT = curTime || 0; }
+      var show = !!(lastId && curId && curId !== lastId);
+      btn.hidden = !show;
+      if (show) btn.textContent = T("\u23ea Back to what I was watching");
+    }, 1000);
+    btn.addEventListener("click", function () {
+      if (!lastId) return;
+      var t = lastT, id = lastId; lastId = null; btn.hidden = true;
+      toast(T("Back to the last video from {t}.").replace("{t}", fmt(t)));
+      playId(id);
+      var tries = 0, iv = setInterval(function () {
+        tries++;
+        if (curId === id && curTime > 0.5) { manualSeek(t); send("playVideo"); clearInterval(iv); }
+        else if (tries > 12) clearInterval(iv);
+      }, 500);
+    });
+    (window.__relang = window.__relang || []).push(function () { if (!btn.hidden) btn.textContent = T("\u23ea Back to what I was watching"); });
+  })();
+  // Round 315 new 5: moments that name themselves. Saving a moment always asked for a name,
+  // and thinking one up mid-film meant pausing; with subtitles on, the line being spoken is
+  // usually the name you want. The Moment with the spoken line chip in the marks row saves a
+  // moment at the current second named with the subtitle line on screen (your own subtitle
+  // file), no typing. With no line on screen it says so instead of guessing. The moment is a
+  // normal one - it joins the list, the seek-bar dots and the backup, and renames later as
+  // usual. Hindi and Gujarati text, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "\ud83d\udd16 Moment with the spoken line": ["\ud83d\udd16 \u092c\u094b\u0932\u0940 \u0917\u0908 \u0932\u093e\u0907\u0928 \u0935\u093e\u0932\u093e \u092a\u0932", "\ud83d\udd16 \u0aac\u0acb\u0ab2\u0abe\u0af2 \u0ab2\u0abe\u0a87\u0aa8 \u0ab5\u0abe\u0ab3\u0acb \u0a95\u0acd\u0ab7\u0aa3"],
+    "Moments that name themselves": ["\u0905\u092a\u0928\u093e \u0928\u093e\u092e \u0932\u0947\u0928\u0947 \u0935\u093e\u0932\u0947 \u092a\u0932", "\u0a85\u0aaa\u0aa8\u0ac1\u0a82 \u0aa8\u0abe\u0aae \u0ab2\u0ac7\u0aa8\u0abe\u0ab0 \u0a95\u0acd\u0ab7\u0aa3\u0acb"],
+    "Moment saved with the spoken line.": ["\u092c\u094b\u0932\u0940 \u0917\u0908 \u0932\u093e\u0907\u0928 \u0938\u0939\u093f\u0924 \u092a\u0932 \u0938\u0947\u0935 \u0939\u0941\u0906.", "\u0aac\u0acb\u0ab2\u0abe\u0af2 \u0ab2\u0abe\u0a87\u0aa8 \u0ab8\u0abe\u0aa5\u0ac7 \u0a95\u0acd\u0ab7\u0aa3 \u0ab8\u0abe\u0a9a\u0ab5\u0abe\u0af2\u0acb."],
+    "No subtitle line on screen - use Save this moment instead.": ["\u0938\u094d\u0915\u094d\u0930\u0940\u0928 \u092a\u0930 \u0915\u094b\u0908 \u0938\u092c\u091f\u093e\u0907\u091f\u0932 \u0932\u093e\u0907\u0928 \u0928\u0939\u0940\u0902 - \u0907\u0938 \u092a\u0932 \u0915\u094b \u0938\u0947\u0935 \u0915\u0930\u0947\u0902 \u0935\u093e\u0932\u093e \u091a\u093f\u092a \u0907\u0938\u094d\u0924\u0947\u092e\u093e\u0932 \u0915\u0930\u0947\u0902.", "\u0ab8\u0acd\u0a95\u0acd\u0ab0\u0ac0\u0aa8 \u0aaa\u0ab0 \u0a95\u0acb\u0a88 \u0ab8\u0aac\u0a9f\u0abe\u0a87\u0a9f\u0ab2 \u0ab2\u0abe\u0a87\u0aa8 \u0aa8\u0aa5\u0ac0 - \u0a86 \u0a95\u0acd\u0ab7\u0aa3 \u0ab8\u0ac7\u0ab5 \u0a95\u0ab0\u0acb \u0a9a\u0abf\u0aaa \u0ab5\u0abe\u0aaa\u0ab0\u0acb."]
+  });
+  (function () {
+    var row = $("markAddBtn") && $("markAddBtn").closest(".row"); if (!row) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "capMomBtn315";
+    row.appendChild(btn);
+    function paint315d() { btn.textContent = T("\ud83d\udd16 Moment with the spoken line"); }
+    btn.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first, then save a moment.")); return; }
+      var ov = $("subOv314");
+      var line = ov && !ov.hidden ? (ov.textContent || "").replace(/\s+/g, " ").trim() : "";
+      if (!line) { toast(T("No subtitle line on screen - use Save this moment instead.")); return; }
+      var t = Math.floor(curTime || 0);
+      var arr = marks[curId] = marks[curId] || [];
+      if (arr.some(function (x) { return x.t === t; })) { toast(T("This video already has that moment.")); return; }
+      if (arr.length >= 30) { toast(T("Moment list is full (30).")); return; }
+      arr.push({ t: t, name: line.slice(0, 40) });
+      marksSave(); renderMarks(); toast(T("Moment saved with the spoken line."));
+      if (window.__vpMarkComet) setTimeout(function () { window.__vpMarkComet(t); }, 60);
+    });
+    (window.__relang = window.__relang || []).push(paint315d); paint315d();
+  })();
+
 })();
 
 
@@ -47245,227 +47467,6 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   });
   (window.__relang = window.__relang || []).push(paint301); paint301();
 })();
-  // Round 315 new 1: note dots on the seek bar. Times written in a video's note (1:23) already
-  // became chips under the box, but while watching you had to open the Notes card to use them;
-  // saved moments showed as dots on the seek bar, note times did not. The Note dots chip in the
-  // marks row paints every time written in the note as an amber dot on the seek bar - one tap
-  // jumps there and plays. Dots repaint with the note and on language change, follow the video's
-  // length and leave moment dots untouched. Off by default; the choice is remembered on this
-  // device (prefs.noteSeek315, rides the backup). Hindi and Gujarati text, feature finder and
-  // What's new included.
-  Object.assign(TR_MSG, {
-    "\ud83d\udcdd Note dots": ["\ud83d\udcdd \u0928\u094b\u091f \u092c\u093f\u0902\u0926\u0941", "\ud83d\udcdd \u0aa8\u0acb\u0a82\u0aa7 \u0aac\u0abf\u0a82\u0aa6\u0ac1"],
-    "Note dots on the seek bar": ["\u0938\u0940\u0915 \u092c\u093e\u0930 \u092a\u0930 \u0928\u094b\u091f \u092c\u093f\u0902\u0926\u0941", "\u0ab8\u0ac0\u0a95 \u0aac\u0abe\u0ab0 \u0aaa\u0ab0 \u0aa8\u0acb\u0a82\u0aa7 \u0aac\u0abf\u0a82\u0aa6\u0ac1"],
-    "Note dots show the times written in your note on the seek bar.": ["\u0928\u094b\u091f \u092c\u093f\u0902\u0926\u0941 \u0906\u092a\u0915\u0947 \u0928\u094b\u091f \u092e\u0947\u0902 \u0932\u093f\u0916\u0947 \u0938\u092e\u092f \u0938\u0940\u0915 \u092c\u093e\u0930 \u092a\u0930 \u0926\u093f\u0916\u093e\u0924\u0947 \u0939\u0948\u0902.", "\u0aa8\u0acb\u0a82\u0aa7 \u0aac\u0abf\u0a82\u0aa6\u0ac1 \u0aa4\u0aae\u0abe\u0ab0\u0ac0 \u0aa8\u0acb\u0a82\u0aa7\u0aae\u0abe\u0a82 \u0ab2\u0a96\u0ac7\u0ab2\u0acb \u0ab8\u0aae\u0aaf \u0ab8\u0ac0\u0a95 \u0aac\u0abe\u0ab0 \u0aaa\u0ab0 \u0aac\u0aa4\u0abe\u0ab5\u0ac7 \u0a9b\u0ac7."],
-    "Jump to the note time": ["\u0928\u094b\u091f \u0915\u0947 \u0938\u092e\u092f \u092a\u0930 \u091c\u093e\u090f\u0902", "\u0aa8\u0acb\u0a82\u0aa7\u0aa8\u0abe \u0ab8\u0aae\u0aaf \u0aaa\u0ab0 \u0a9c\u0abe\u0a93"]
-  });
-  (function () {
-    var st315 = document.createElement("style");
-    st315.textContent = ".seek-note315{background:#f5a623 !important}";
-    document.head.appendChild(st315);
-    var row = $("markAddBtn") && $("markAddBtn").closest(".row"); if (!row) return;
-    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "noteSeekBtn315"; btn.setAttribute("aria-pressed", "false");
-    row.appendChild(btn);
-    function noteSecs315() {
-      var b = $("noteBox"), out = [], seen = {}, m, re = /(?:^|[^0-9:])((?:\d+:)?\d+:[0-5]\d)(?![0-9:])/g;
-      if (!b) return out;
-      while ((m = re.exec(b.value)) && out.length < 12) {
-        var pp = m[1].split(":").map(Number), sec = pp.length === 3 ? pp[0] * 3600 + pp[1] * 60 + pp[2] : pp[0] * 60 + pp[1];
-        if ((pp.length === 3 && pp[1] > 59) || !Number.isSafeInteger(sec) || sec < 0 || seen[sec]) continue;
-        seen[sec] = 1; out.push(sec);
-      }
-      return out;
-    }
-    function paint315() {
-      btn.textContent = T("\ud83d\udcdd Note dots") + ": " + T(prefs.noteSeek315 ? "on" : "off");
-      btn.setAttribute("aria-pressed", prefs.noteSeek315 ? "true" : "false");
-      btn.classList.toggle("active", !!prefs.noteSeek315);
-      var box = $("seekMarks"); if (!box) return;
-      Array.prototype.forEach.call(box.querySelectorAll(".seek-note315"), function (d) { d.remove(); });
-      if (prefs.noteSeek315 && curId && duration > 0) {
-        noteSecs315().forEach(function (sec) {
-          if (sec > duration) return;
-          var d = document.createElement("button"); d.type = "button"; d.className = "seek-mark seek-note315";
-          d.style.left = (sec / duration * 100).toFixed(2) + "%";
-          d.title = T("Note") + " " + fmt(sec);
-          d.setAttribute("aria-label", T("Jump to the note time") + " " + fmt(sec));
-          d.addEventListener("click", function () { manualSeek(sec); send("playVideo"); });
-          box.appendChild(d);
-        });
-      }
-      box.hidden = !box.children.length;
-    }
-    btn.addEventListener("click", function () {
-      prefs.noteSeek315 = !prefs.noteSeek315; savePrefs(); paint315();
-      if (prefs.noteSeek315) toast(T("Note dots show the times written in your note on the seek bar."));
-      else toast(T("Note dots on the seek bar") + ": " + T("off"));
-    });
-    setInterval(paint315, 3000);
-    (window.__relang = window.__relang || []).push(paint315);
-    paint315();
-  })();
-  // Round 315 new 2: share a pack. A video's moments, its note and its practice loops each had
-  // their own copy chips, so sending everything about a song or lecture to a friend meant three
-  // separate messages. The Copy pack link chip in the marks row copies one link that carries the
-  // video's moments, its note and its saved loops together; opening it asks once and adds them
-  // on that device (existing entries are kept, duplicates skipped). The pack rides inside the
-  // link itself - nothing uploads anywhere. Hindi and Gujarati text, feature finder and What's
-  // new included.
-  Object.assign(TR_MSG, {
-    "\ud83c\udff1 Copy pack link": ["\ud83c\udff1 \u092a\u0948\u0915 \u0932\u093f\u0902\u0915 \u0915\u0949\u092a\u0940 \u0915\u0930\u0947\u0902", "\ud83c\udff1 \u0aaa\u0ac7\u0a95 \u0ab2\u0abf\u0a82\u0a95 \u0a95\u0acb\u0aaa\u0ac0 \u0a95\u0ab0\u0acb"],
-    "Share a pack": ["\u092a\u0948\u0915 \u0936\u0947\u092f\u0930 \u0915\u0930\u0947\u0902", "\u0aaa\u0ac7\u0a95 \u0ab6\u0ac7\u0af0 \u0a95\u0ab0\u0acb"],
-    "Pack link copied - it carries your moments, note and loops for this video.": ["\u092a\u0948\u0915 \u0932\u093f\u0902\u0915 \u0915\u0949\u092a\u0940 \u0939\u0941\u0908 - \u0907\u0938\u092e\u0947\u0902 \u0907\u0938 \u0935\u0940\u0921\u093f\u092f\u094b \u0915\u0947 \u092a\u0932, \u0928\u094b\u091f \u0914\u0930 \u0932\u0942\u092a \u0939\u0948\u0902.", "\u0aaa\u0ac7\u0a95 \u0ab2\u0abf\u0a82\u0a95 \u0a95\u0acb\u0aaa\u0ac0 \u0aa5\u0a88 - \u0a86\u0aae\u0abe\u0a82 \u0a86 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb\u0aa8\u0abe \u0a95\u0acd\u0ab7\u0aa3\u0acb, \u0aa8\u0acb\u0a82\u0aa7 \u0a85\u0aa8\u0ac7 \u0ab2\u0ac2\u0aaa \u0a9b\u0ac7."],
-    "Save a moment, note or loop first - the pack carries them.": ["\u092a\u0939\u0932\u0947 \u0915\u094b\u0908 \u092a\u0932, \u0928\u094b\u091f \u092f\u093e \u0932\u0942\u092a \u0938\u0947\u0935 \u0915\u0930\u0947\u0902 - \u092a\u0948\u0915 \u092f\u0939\u0940 \u0932\u0947 \u091c\u093e\u0924\u093e \u0939\u0948.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0a95\u0acb\u0a88 \u0a95\u0acd\u0ab7\u0aa3, \u0aa8\u0acb\u0a82\u0aa7 \u0a95\u0ac7 \u0ab2\u0ac2\u0aaa \u0ab8\u0abe\u0a9a\u0ab5\u0acb - \u0aaa\u0ac7\u0a95 \u0a8f\u0a9c \u0ab2\u0a88 \u0a9c\u0abe\u0aaf \u0a9b\u0ac7."],
-    "Import this pack? It adds the moments, note and loops saved in it to this video on this device.": ["\u0a2f\u0ab9 \u092a\u0948\u0915 \u0906\u092f\u093e\u0924 \u0915\u0930\u0947\u0902? \u0907\u0938\u092e\u0947\u0902 \u0938\u0947\u0935 \u092a\u0932, \u0928\u094b\u091f \u0914\u0930 \u0932\u0942\u092a \u0907\u0938 \u0921\u093f\u0935\u093e\u0907\u0938 \u092a\u0930 \u0907\u0938 \u0935\u0940\u0921\u093f\u092f\u094b \u092e\u0947\u0902 \u091c\u0941\u0921\u093c\u0947\u0902\u0917\u0947.", "\u0a86 \u0aaa\u0ac7\u0a95 \u0a86\u0aaf\u0abe\u0aa4 \u0a95\u0ab0\u0ab6\u0acb? \u0a86\u0aae\u0abe\u0a82 \u0ab8\u0abe\u0a9a\u0ab5\u0ac7\u0ab2\u0abe \u0a95\u0acd\u0ab7\u0aa3\u0acb, \u0aa8\u0acb\u0a82\u0aa7 \u0a85\u0aa8\u0ac7 \u0ab2\u0ac2\u0aaa \u0a86 \u0aa1\u0abf\u0ab5\u0abe\u0a87\u0ab8 \u0aaa\u0ab0 \u0a86 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb\u0aae\u0abe\u0a82 \u0a89\u0aae\u0ac7\u0ab0\u0ab6\u0ac7."],
-    "Import": ["\u0906\u092f\u093e\u0924 \u0915\u0930\u0947\u0902", "\u0a86\u0aaf\u0abe\u0aa4 \u0a95\u0ab0\u0acb"],
-    "Pack imported.": ["\u092a\u0948\u0915 \u0906\u092f\u093e\u0924 \u0939\u0941\u0906.", "\u0aaa\u0ac7\u0a95 \u0a86\u0aaf\u0abe\u0aa4 \u0aa5\u0aaf\u0ac1\u0a82."],
-    "That pack link could not be read.": ["\u0a35\u0ab9 \u092a\u0948\u0915 \u0932\u093f\u0902\u0915 \u0928\u0939\u0940\u0902 \u092a\u0922\u093c\u0940 \u091c\u093e \u0938\u0915\u0940.", "\u0a8f \u0aaa\u0ac7\u0a95 \u0ab2\u0abf\u0a82\u0a95 \u0ab5\u0abe\u0a82\u0a9a\u0ac0 \u0ab6\u0a95\u0abe\u0aaf \u0aa8\u0aa5\u0ac0."]
-  });
-  (function () {
-    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "packBtn315";
-    var row = $("markAddBtn") && $("markAddBtn").closest(".row"); if (!row) return;
-    row.appendChild(btn);
-    function enc315(o) { try { return btoa(unescape(encodeURIComponent(JSON.stringify(o)))).replace(/\+|-/g, function (c) { return c === "+" ? "-" : "_"; }).replace(/=+$/, ""); } catch (e) { return ""; } }
-    function dec315(t) { try { var b = t.replace(/-/g, "+").replace(/_/g, "/"); return JSON.parse(decodeURIComponent(escape(atob(b)))); } catch (e) { return null; } }
-    function paint315b() { btn.textContent = T("\ud83c\udff1 Copy pack link"); }
-    btn.addEventListener("click", function () {
-      if (!curId) { toast(T("Load a video first, then save a moment.")); return; }
-      var mm = (marks && marks[curId]) || [], nt = (typeof notes === "object" && notes && notes[curId]) || "", lp = (typeof practiceLoops === "object" && practiceLoops && practiceLoops[curId]) || [];
-      if (!mm.length && !nt.trim() && !lp.length) { toast(T("Save a moment, note or loop first - the pack carries them.")); return; }
-      var link = location.origin + location.pathname + "?v=" + curId + "&pack=" + enc315({ m: mm, n: nt, l: lp });
-      function ok() { toast(T("Pack link copied - it carries your moments, note and loops for this video.")); }
-      function fb() { try { var ta = document.createElement("textarea"); ta.value = link; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var done = document.execCommand("copy"); ta.remove(); toast(done ? T("Pack link copied - it carries your moments, note and loops for this video.") : T("Could not copy. Try again.")); } catch (e) { toast(T("Could not copy. Try again.")); } }
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(ok, fb); else fb();
-    });
-    (window.__relang = window.__relang || []).push(paint315b); paint315b();
-    // Import side: opening a pack link adds its moments, note and loops to the video on this device.
-    (async function () {
-      var q = /[?&]pack=([^&]+)/.exec(location.search || ""); if (!q) return;
-      var vq = /[?&]v=([a-zA-Z0-9_-]{11})/.exec(location.search || ""); if (!vq) return;
-      var data = dec315(q[1]);
-      if (!data || typeof data !== "object") { toast(T("That pack link could not be read.")); return; }
-      var id = vq[1];
-      var mm = Array.isArray(data.m) ? data.m.filter(function (x) { return x && typeof x.t === "number" && isFinite(x.t) && x.t >= 0 && x.t <= 604800; }).slice(0, 30).map(function (x) { return { t: Math.floor(x.t), name: typeof x.name === "string" ? x.name.slice(0, 40) : "" }; }) : [];
-      var nt = typeof data.n === "string" ? data.n.slice(0, 600) : "";
-      var lp = Array.isArray(data.l) ? data.l.filter(function (x) { return typeof validPracticeLoop === "function" ? validPracticeLoop(x) : false; }).slice(0, 12) : [];
-      if (!mm.length && !nt.trim() && !lp.length) { toast(T("That pack link could not be read.")); return; }
-      if (!(await vpConfirm(T("Import this pack? It adds the moments, note and loops saved in it to this video on this device."), T("Import")))) return;
-      if (mm.length) { var cur = marks[id] || []; mm.forEach(function (x) { if (cur.length < 30 && !cur.some(function (y) { return y.t === x.t; })) cur.push(x); }); if (cur.length) marks[id] = cur; marksSave(); if (curId === id && typeof renderMarks === "function") renderMarks(); }
-      if (nt.trim()) { notes[id] = nt; notesSave(); if (curId === id && typeof renderNotes === "function") renderNotes(); }
-      if (lp.length) { var pl = {}; pl[id] = lp; if (typeof mergePracticeLoops === "function") mergePracticeLoops(pl); savePracticeLoops(); if (typeof lpPaint === "function") lpPaint(); }
-      try { history.replaceState(null, "", location.pathname + "?v=" + id); } catch (e) {}
-      toast(T("Pack imported."));
-    })();
-  })();
-  // Round 315 new 3: queue data estimate. Data saver can cut quality, but nothing said what the
-  // queue would actually cost on a mobile plan, so a long queue on Auto could quietly eat a
-  // day's data. A small line under the queue total now estimates the data the queued videos
-  // will use at the current quality (Auto counts as a mid guess), from the lengths the app
-  // knows, honestly marked rough and updated as the queue, quality or speed changes. Videos
-  // with unknown lengths are said so. Hindi and Gujarati text, feature finder and What's new
-  // included.
-  Object.assign(TR_MSG, {
-    "About {d} of data for the queue at {q} - a rough guess.": ["{q} \u092a\u0930 \u0915\u0924\u093e\u0930 \u0915\u0947 \u0932\u093f\u090f \u0932\u0917\u092d\u0917 {d} \u0921\u0947\u091f\u093e - \u090f\u0915 \u0905\u0928\u0941\u092e\u093e\u0928.", "{q} \u0aaa\u0ab0 \u0a95\u0aa4\u0abe\u0ab0 \u0aae\u0abe\u0a9f\u0ac7 \u0a86\u0aafa\u0ac1\u0a82\u0a9a\u0abf\u0aa4 {d} \u0aa1\u0ac7\u0a9f\u0abe - \u0a8f\u0a95 \u0a85\u0aa8\u0ac1\u0aae\u0abe\u0aa8."],
-    "Queue data estimate": ["\u0915\u0924\u093e\u0930 \u0921\u0947\u091f\u093e \u0905\u0928\u0941\u092e\u093e\u0928", "\u0a95\u0aa4\u0abe\u0ab0 \u0aa1\u0ac7\u0a9f\u0abe \u0a85\u0aa8\u0ac1\u0aae\u0abe\u0aa8"]
-  });
-  (function () {
-    var qt = $("queueTime"); if (!qt || !qt.parentNode) return;
-    var line = document.createElement("p"); line.className = "hint"; line.id = "queueData315"; line.setAttribute("role", "status");
-    qt.parentNode.insertBefore(line, qt.nextSibling);
-    var RATES = { highres: 7000, hd1080: 2600, hd720: 1400, large: 700, medium: 400, small: 250, tiny: 150, auto: 1000 };
-    function qlabel315() { return prefs.dataSaver ? "480p" : (QUALITIES.filter(function (x) { return x.value === prefs.quality; })[0] || QUALITIES[0]).label; }
-    function qrate315() { return RATES[prefs.dataSaver ? "large" : prefs.quality] || 1000; }
-    function paint315c() {
-      if (!lib.queue.length) { line.textContent = ""; return; }
-      var known = 0, secs = 0;
-      lib.queue.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { known++; secs += d; } });
-      if (qPos >= 0 && qPos < lib.queue.length && curId && lib.queue[qPos] && lib.queue[qPos].id === curId && curTime > 0) {
-        var dCur = infoCache[curId] && infoCache[curId].dur;
-        if (typeof dCur === "number" && dCur > 0) secs = Math.max(0, secs - Math.min(Math.floor(curTime), dCur));
-      }
-      if (!known) { line.textContent = ""; return; }
-      var mb = Math.round(secs / 3600 * qrate315());
-      var d = mb >= 1000 ? (Math.round(mb / 100) / 10) + " GB" : mb + " MB";
-      var txt = T("About {d} of data for the queue at {q} - a rough guess.").replace("{d}", d).replace("{q}", qlabel315());
-      if (known < lib.queue.length) txt += " " + known + "/" + lib.queue.length + " " + T("lengths known");
-      line.textContent = txt;
-    }
-    setInterval(paint315c, 8000);
-    (window.__relang = window.__relang || []).push(paint315c);
-    setTimeout(paint315c, 1200);
-  })();
-  // Round 315 new 4: back to what I was watching. Tapping another queue row or a shared link
-  // swapped the video on the spot, and finding the way back meant hunting the old video in
-  // history or the queue. When a video switch interrupts something that was playing, a small
-  // chip beside the player controls now offers one tap back: it plays the interrupted video
-  // and seeks to where it stopped. The offer clears itself after the jump or when the queue
-  // moves on. Nothing is saved - it is a this-visit helper. Hindi and Gujarati text, feature
-  // finder and What's new included.
-  Object.assign(TR_MSG, {
-    "\u23ea Back to what I was watching": ["\u23ea \u091c\u094b \u0926\u0947\u0916 \u0930\u0939\u093e \u0925\u093e \u0909\u0938 \u092a\u0930 \u0935\u093e\u092a\u0938", "\u23ea \u0a9c\u0ac7 \u0a9c\u0acb\u0aa4\u0acb \u0aa4\u0acb \u0aa4\u0ac7\u0aa8\u0ac0 \u0aaa\u0abe\u0a9a\u0ac0"],
-    "Back to what I was watching": ["\u091c\u094b \u0926\u0947\u0916 \u0930\u0939\u093e \u0925\u093e \u0909\u0938 \u092a\u0930 \u0935\u093e\u092a\u0938", "\u0a9c\u0ac7 \u0a9c\u0acb\u0aa4\u0acb \u0aa4\u0acb \u0aa4\u0ac7\u0aa8\u0ac0 \u0aaa\u0abe\u0a9a\u0ac0"],
-    "Back to the last video from {t}.": ["\u092a\u093f\u091b\u0932\u0947 \u0935\u0940\u0921\u093f\u092f\u094b \u092a\u0930 {t} \u0938\u0947 \u0935\u093e\u092a\u0938.", "\u0aaa\u0abe\u0a9b\u0ab2\u0abe \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aaa\u0ab0 {t} \u0aa5\u0ac0 \u0aaa\u0abe\u0a9a\u0ac0."]
-  });
-  (function () {
-    var row = $("fsBtn") && $("fsBtn").closest(".row"); if (!row) return;
-    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "back315Btn"; btn.hidden = true;
-    row.appendChild(btn);
-    var lastId = null, lastT = 0, prevId = null, prevT = 0;
-    setInterval(function () {
-      if (curId !== prevId) {
-        if (prevId && prevT > 10) { lastId = prevId; lastT = prevT; }
-        prevId = curId; prevT = 0;
-      } else if (curId) { prevT = curTime || 0; }
-      var show = !!(lastId && curId && curId !== lastId);
-      btn.hidden = !show;
-      if (show) btn.textContent = T("\u23ea Back to what I was watching");
-    }, 1000);
-    btn.addEventListener("click", function () {
-      if (!lastId) return;
-      var t = lastT, id = lastId; lastId = null; btn.hidden = true;
-      toast(T("Back to the last video from {t}.").replace("{t}", fmt(t)));
-      playId(id);
-      var tries = 0, iv = setInterval(function () {
-        tries++;
-        if (curId === id && curTime > 0.5) { manualSeek(t); send("playVideo"); clearInterval(iv); }
-        else if (tries > 12) clearInterval(iv);
-      }, 500);
-    });
-    (window.__relang = window.__relang || []).push(function () { if (!btn.hidden) btn.textContent = T("\u23ea Back to what I was watching"); });
-  })();
-  // Round 315 new 5: moments that name themselves. Saving a moment always asked for a name,
-  // and thinking one up mid-film meant pausing; with subtitles on, the line being spoken is
-  // usually the name you want. The Moment with the spoken line chip in the marks row saves a
-  // moment at the current second named with the subtitle line on screen (your own subtitle
-  // file), no typing. With no line on screen it says so instead of guessing. The moment is a
-  // normal one - it joins the list, the seek-bar dots and the backup, and renames later as
-  // usual. Hindi and Gujarati text, feature finder and What's new included.
-  Object.assign(TR_MSG, {
-    "\ud83d\udd16 Moment with the spoken line": ["\ud83d\udd16 \u092c\u094b\u0932\u0940 \u0917\u0908 \u0932\u093e\u0907\u0928 \u0935\u093e\u0932\u093e \u092a\u0932", "\ud83d\udd16 \u0aac\u0acb\u0ab2\u0abe\u0af2 \u0ab2\u0abe\u0a87\u0aa8 \u0ab5\u0abe\u0ab3\u0acb \u0a95\u0acd\u0ab7\u0aa3"],
-    "Moments that name themselves": ["\u0905\u092a\u0928\u093e \u0928\u093e\u092e \u0932\u0947\u0928\u0947 \u0935\u093e\u0932\u0947 \u092a\u0932", "\u0a85\u0aaa\u0aa8\u0ac1\u0a82 \u0aa8\u0abe\u0aae \u0ab2\u0ac7\u0aa8\u0abe\u0ab0 \u0a95\u0acd\u0ab7\u0aa3\u0acb"],
-    "Moment saved with the spoken line.": ["\u092c\u094b\u0932\u0940 \u0917\u0908 \u0932\u093e\u0907\u0928 \u0938\u0939\u093f\u0924 \u092a\u0932 \u0938\u0947\u0935 \u0939\u0941\u0906.", "\u0aac\u0acb\u0ab2\u0abe\u0af2 \u0ab2\u0abe\u0a87\u0aa8 \u0ab8\u0abe\u0aa5\u0ac7 \u0a95\u0acd\u0ab7\u0aa3 \u0ab8\u0abe\u0a9a\u0ab5\u0abe\u0af2\u0acb."],
-    "No subtitle line on screen - use Save this moment instead.": ["\u0938\u094d\u0915\u094d\u0930\u0940\u0928 \u092a\u0930 \u0915\u094b\u0908 \u0938\u092c\u091f\u093e\u0907\u091f\u0932 \u0932\u093e\u0907\u0928 \u0928\u0939\u0940\u0902 - \u0907\u0938 \u092a\u0932 \u0915\u094b \u0938\u0947\u0935 \u0915\u0930\u0947\u0902 \u0935\u093e\u0932\u093e \u091a\u093f\u092a \u0907\u0938\u094d\u0924\u0947\u092e\u093e\u0932 \u0915\u0930\u0947\u0902.", "\u0ab8\u0acd\u0a95\u0acd\u0ab0\u0ac0\u0aa8 \u0aaa\u0ab0 \u0a95\u0acb\u0a88 \u0ab8\u0aac\u0a9f\u0abe\u0a87\u0a9f\u0ab2 \u0ab2\u0abe\u0a87\u0aa8 \u0aa8\u0aa5\u0ac0 - \u0a86 \u0a95\u0acd\u0ab7\u0aa3 \u0ab8\u0ac7\u0ab5 \u0a95\u0ab0\u0acb \u0a9a\u0abf\u0aaa \u0ab5\u0abe\u0aaa\u0ab0\u0acb."]
-  });
-  (function () {
-    var row = $("markAddBtn") && $("markAddBtn").closest(".row"); if (!row) return;
-    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "capMomBtn315";
-    row.appendChild(btn);
-    function paint315d() { btn.textContent = T("\ud83d\udd16 Moment with the spoken line"); }
-    btn.addEventListener("click", function () {
-      if (!curId) { toast(T("Load a video first, then save a moment.")); return; }
-      var ov = $("subOv314");
-      var line = ov && !ov.hidden ? (ov.textContent || "").replace(/\s+/g, " ").trim() : "";
-      if (!line) { toast(T("No subtitle line on screen - use Save this moment instead.")); return; }
-      var t = Math.floor(curTime || 0);
-      var arr = marks[curId] = marks[curId] || [];
-      if (arr.some(function (x) { return x.t === t; })) { toast(T("This video already has that moment.")); return; }
-      if (arr.length >= 30) { toast(T("Moment list is full (30).")); return; }
-      arr.push({ t: t, name: line.slice(0, 40) });
-      marksSave(); renderMarks(); toast(T("Moment saved with the spoken line."));
-      if (window.__vpMarkComet) setTimeout(function () { window.__vpMarkComet(t); }, 60);
-    });
-    (window.__relang = window.__relang || []).push(paint315d); paint315d();
-  })();
 </script>
 <script>
 /* Round 314 new 1: own subtitle file for YouTube videos. YouTube's own CC only works when the
