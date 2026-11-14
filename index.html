@@ -2079,6 +2079,7 @@ setTimeout(done,3000);})();
             <button class="chip" id="ytOpenBtn" type="button">Open in YouTube</button>
             <button class="chip" id="embedBtn" type="button">&lt;/&gt; Copy embed code</button>
             <button class="chip" id="mdLinkBtn" type="button">[ ] Copy as Markdown link</button>
+            <button class="chip" id="vidCardBtn298" type="button">🖼 Video card</button>
           </div>
           <span class="label" id="shareMsg" role="status"></span>
           <div class="qr-box" id="qrBox" hidden>
@@ -36264,6 +36265,101 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     saveLib(); renderLib();
     toast(lib.queue[i].pin ? T("Pinned in the queue - clean-up chips keep it.") : T("Unpinned."));
   }
+  // Video card (round 298 new 5): the moment card shares one saved second, but telling a
+  // friend about the video itself - the song, the lecture, the recipe - had no picture,
+  // only a plain text link. A Video card chip in the share row draws the playing video as
+  // a card in the chosen share-card style: thumbnail, title, channel, and a QR that opens
+  // it here. Shared where the device can share, saved as a PNG otherwise, exactly like the
+  // moment card. The thumbnail comes from YouTube's own image host and the card still
+  // draws without it when the network says no. Nothing is saved. Checked first: the
+  // moment card needs a saved moment and centres its time, and My week/month cards are
+  // stats - no plain video card existed. Hindi/Gujarati in the main closure; What's new
+  // and feature finder included.
+  Object.assign(TR_MSG, {
+    "Video card": ["\u0935\u0940\u0921\u093f\u092f\u094b \u0915\u093e\u0930\u094d\u0921", "\u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a95\u0abe\u0ab0\u0acd\u0aa1"],
+    "Make a share card of this video": ["\u0907\u0938 \u0935\u0940\u0921\u093f\u092f\u094b \u0915\u093e \u0936\u0947\u092f\u0930 \u0915\u093e\u0930\u094d\u0921 \u092c\u0928\u093e\u090f\u0902", "\u0a86 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb\u0aa8\u0acb \u0ab6\u0ac7\u0ab0 \u0a95\u0abe\u0ab0\u0acd\u0aa1 \u0aac\u0aa8\u0abe\u0ab5\u0acb"],
+    "Scan to open this video": ["\u092f\u0939 \u0935\u0940\u0921\u093f\u092f\u094b \u0916\u094b\u0932\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u0938\u094d\u0915\u0948\u0928 \u0915\u0930\u0947\u0902", "\u0a86 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a96\u0acb\u0ab2\u0ab5\u0abe \u0ab8\u0acd\u0a95\u0ac5\u0aa8 \u0a95\u0ab0\u0acb"],
+    "NOW PLAYING": ["\u0905\u092d\u0940 \u091a\u0932 \u0930\u0939\u093e \u0939\u0948", "\u0ab9\u0aae\u0aa3\u0abe\u0a82 \u0a9a\u0abe\u0ab2\u0ac7 \u0a9b\u0ac7"],
+    "Load a video first, then make its card.": ["\u092a\u0939\u0932\u0947 \u0915\u094b\u0908 \u0935\u0940\u0921\u093f\u092f\u094b \u091a\u0932\u093e\u090f\u0902, \u092b\u093f\u0930 \u0909\u0938\u0915\u093e \u0915\u093e\u0930\u094d\u0921 \u092c\u0928\u093e\u090f\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0a95\u0acb\u0a88 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a9a\u0ab2\u0abe\u0ab5\u0acb, \u0aaa\u0a9b\u0ac0 \u0aa4\u0ac7\u0aa8\u0acb \u0a95\u0abe\u0ab0\u0acd\u0aa1 \u0aac\u0aa8\u0abe\u0ab5\u0acb."]
+  });
+  (function () {
+    var btn = $("vidCardBtn298"); if (!btn) return;
+    function paint298c() { btn.textContent = "\uD83D\uDDBC " + T("Video card"); btn.setAttribute("aria-label", T("Make a share card of this video")); }
+    function draw298c(thumb) {
+      var link = location.origin + location.pathname + "?v=" + curId;
+      try {
+        if (typeof qrcode !== "function") { var qs = document.getElementById("qrLibSrc"); if (qs) (0, eval)(qs.textContent); }
+        var qr = qrcode(0, "M"); qr.addData(link); qr.make();
+        var W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+        var c = cv.getContext("2d");
+        var th = CARD_THEMES[cardTheme()];
+        var g = c.createLinearGradient(0, 0, W, H); th.stops.forEach(function (sp) { g.addColorStop(sp[0], sp[1]); });
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        th.blobs.forEach(function (b) {
+          var rg = c.createRadialGradient(b[0], b[1], 0, b[0], b[1], b[2]); rg.addColorStop(0, b[3]); rg.addColorStop(1, "rgba(0,0,0,0)");
+          c.fillStyle = rg; c.fillRect(0, 0, W, H);
+        });
+        function rr(x, y, w, h, r) { c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); }
+        rr(70, 70, W - 140, H - 140, 64); c.fillStyle = "rgba(255,255,255,.10)"; c.fill(); c.lineWidth = 3; c.strokeStyle = "rgba(255,255,255,.28)"; c.stroke();
+        var FF = '-apple-system, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+        rr(130, 130, 96, 96, 26); c.fillStyle = "#fff"; c.fill();
+        var lg = c.createLinearGradient(160, 150, 205, 210); lg.addColorStop(0, "#ff6a88"); lg.addColorStop(1, "#6a5cff");
+        c.fillStyle = lg; c.beginPath(); c.moveTo(165, 154); c.lineTo(205, 178); c.lineTo(165, 202); c.closePath(); c.fill();
+        c.fillStyle = "rgba(255,255,255,.85)"; c.font = "600 40px " + FF; c.textBaseline = "middle"; c.fillText("HD Video Player", 252, 178);
+        c.textBaseline = "alphabetic";
+        c.fillStyle = th.accent; c.font = "700 34px " + FF; c.fillText(T("NOW PLAYING"), 130, 300);
+        var y = 340;
+        if (thumb) {
+          var tw = W - 260, th2 = Math.round(tw * (thumb.height / thumb.width));
+          c.save(); rr(130, y, tw, th2, 28); c.clip();
+          c.drawImage(thumb, 130, y, tw, th2); c.restore();
+          rr(130, y, tw, th2, 28); c.lineWidth = 2; c.strokeStyle = "rgba(255,255,255,.35)"; c.stroke();
+          y += th2 + 50;
+        }
+        var info = (typeof infoCache !== "undefined" && curId && infoCache[curId]) || {};
+        var hi = typeof findIn === "function" ? findIn(lib.hist, curId) : -1;
+        var title = (hi >= 0 && lib.hist[hi].title) ? String(lib.hist[hi].title) : (typeof info.title === "string" && info.title) || "YouTube video";
+        c.fillStyle = "#fff"; c.font = "700 56px " + FF;
+        var words = title.split(/\s+/), lines = [], cur = "";
+        words.forEach(function (w) { var t = cur ? cur + " " + w : w; if (c.measureText(t).width > W - 260 && cur) { lines.push(cur); cur = w; } else cur = t; });
+        if (cur) lines.push(cur);
+        if (lines.length > 3) { lines = lines.slice(0, 3); lines[2] = lines[2].replace(/.{0,2}$/, "") + "\u2026"; }
+        y += 60;
+        lines.forEach(function (ln, i) { c.fillText(ln, 130, y + i * 70); });
+        y += lines.length * 70 + 16;
+        if (typeof info.author === "string" && info.author) { c.fillStyle = "rgba(255,255,255,.8)"; c.font = "500 40px " + FF; c.fillText(info.author, 130, y + 30); }
+        var qs2 = 300, qx = 130, qy = H - 130 - qs2 - 24;
+        rr(qx - 24, qy - 24, qs2 + 48, qs2 + 48, 36); c.fillStyle = "#fff"; c.fill();
+        var n = qr.getModuleCount(), cell = qs2 / n; c.fillStyle = "#111";
+        for (var r = 0; r < n; r++) for (var q = 0; q < n; q++) if (qr.isDark(r, q)) c.fillRect(qx + q * cell, qy + r * cell, Math.ceil(cell), Math.ceil(cell));
+        c.fillStyle = "#fff"; c.font = "700 42px " + FF; c.fillText(T("Scan to open this video"), 520, qy + 130);
+        c.fillStyle = "rgba(255,255,255,.7)"; c.font = "500 32px " + FF; c.fillText(location.host, 520, qy + 185);
+        cv.toBlob(function (blob) {
+          if (!blob) { toast(T("Could not make the share card.")); return; }
+          var file = null; try { file = new File([blob], "video-" + curId + ".png", { type: "image/png" }); } catch (e) {}
+          function save() {
+            var a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "video-" + curId + ".png";
+            document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+            toast(T("Share card saved as an image"));
+          }
+          if (file && navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+            navigator.share({ files: [file], text: link }).catch(function (e) { if (e && e.name !== "AbortError") save(); });
+          } else save();
+        }, "image/png");
+      } catch (e) { toast(T("Could not make the share card.")); }
+    }
+    btn.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first, then make its card.")); return; }
+      var img = new Image(); img.crossOrigin = "anonymous";
+      var done = false;
+      function fin(t) { if (done) return; done = true; draw298c(t); }
+      img.onload = function () { fin(img); };
+      img.onerror = function () { fin(null); };
+      setTimeout(function () { fin(null); }, 4000);
+      img.src = "https://i.ytimg.com/vi/" + curId + "/hqdefault.jpg";
+    });
+    (window.__relang = window.__relang || []).push(paint298c); paint298c();
+  })();
   // Photo note (round 298 new 4): the Notes card holds typed words and a spoken memo
   // (round 294), but some things refuse both - a textbook diagram, a whiteboard summary, a
   // dance pose to copy. One row under the voice note attaches ONE photo to the loaded
@@ -40976,6 +41072,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Loop for minutes", "loop for minutes timed a-b repeat practise drill clock stop after practice", "#loopMinRow298"],
       ["Manage app storage", "manage app storage space size clear delete entries device full cleanup keys", "#storageCard298"],
       ["Photo note on a video", "photo note picture image attach camera gallery page whiteboard pose diagram per video", "#vphotoRow298"],
+      ["Video card", "video card share image picture thumbnail qr poster send friend png now playing", "#vidCardBtn298"],
       ["Alarm fade-in", "alarm fade in gentle wake soft start rising volume gradual morning light sleeper", "#alarmFadeRow297"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
@@ -43514,6 +43611,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Loop for minutes", "#loopMinRow298");
   window.__vpWnew283("Manage app storage", "#storageCard298");
   window.__vpWnew283("Photo note on a video", "#vphotoRow298");
+  window.__vpWnew283("Video card", "#vidCardBtn298");
 })();
 </script>
 </body>
