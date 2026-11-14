@@ -39161,6 +39161,52 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
 
 
+  // Jump to the loudest part (round 309 new 3): the waveform seek bar shows WHERE a
+  // song or recording gets loud, but landing on the drop or the loudest chorus still
+  // meant aiming by eye. One chip beside the local player's sound tools reads the same
+  // decoded peaks (no second decode, nothing uploaded), finds the loudest slice and
+  // seeks straight there, playing - the local-file mirror of Jump to the highlight on
+  // YouTube videos. Files still decoding (or over the 25 MB waveform limit) and a
+  // silent file say so plainly; nothing is saved. Checked first: Jump to the
+  // highlight reads a YouTube community mark, Skip silence steps over quiet stretches
+  // - nothing jumped to the loudest moment of a local file. Hindi and Gujarati text,
+  // What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Jump to the loudest part": ["सबसे तेज़ हिस्से पर जाएं", "સૌથી તેજ ભાગ પર જાઓ"],
+    "🔊 Loudest part": ["🔊 सबसे तेज़ हिस्सा", "🔊 સૌથી તેજ ભાગ"],
+    "Jump to the loudest part of the open file": ["खुली फ़ाइल के सबसे तेज़ हिस्से पर जाएं", "ખુલી ફાઇલના સૌથી તેજ ભાગ પર જાઓ"],
+    "The sound shape is not ready yet - very large files are skipped, so try again in a moment.": ["साउंड शेप अभी तैयार नहीं - बहुत बड़ी फ़ाइलें छोड़ी जाती हैं, तो थोड़ी देर में फिर कोशिश करें.", "સાઉન્ડ શેપ હજી તૈયાર નથી - ખૂબ મોટી ફાઇલો છોડી દેવાય છે, તો થોડી વારમાં ફરી પ્રયાસ કરો."],
+    "The file length is not known yet.": ["फ़ाइल की लंबाई अभी ज्ञात नहीं है.", "ફાઇલની લંબાઈ હજી ખબર નથી."],
+    "This file sounds silent everywhere.": ["यह फ़ाइल हर जगह शांत लगती है.", "આ ફાઇલ બધે શાંત લાગે છે."],
+    "Jumped to the loudest part": ["सबसे तेज़ हिस्से पर पहुंचे", "સૌથી તેજ ભાગ પર પહોંચ્યા"]
+  });
+  (function () {
+    var anchor309 = $("lpNightBtn"); if (!anchor309 || !anchor309.parentNode) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "lpPeakBtn309";
+    anchor309.parentNode.appendChild(btn);
+    function paint() {
+      btn.textContent = T("🔊 Loudest part");
+      btn.setAttribute("aria-label", T("Jump to the loudest part of the open file"));
+    }
+    btn.addEventListener("click", function () {
+      var v = $("lpVideo");
+      if (!v || v.hidden || !v.currentSrc) { toast(T("Open a local file first.")); return; }
+      var peaks = window.__vpWavePeaks309 ? window.__vpWavePeaks309() : null;
+      if (!peaks || !peaks.length) { toast(T("The sound shape is not ready yet - very large files are skipped, so try again in a moment.")); return; }
+      if (!(v.duration > 0) || !isFinite(v.duration)) { toast(T("The file length is not known yet.")); return; }
+      var bi = 0;
+      for (var i = 1; i < peaks.length; i++) { if (peaks[i] > peaks[bi]) bi = i; }
+      if (peaks[bi] <= 0) { toast(T("This file sounds silent everywhere.")); return; }
+      var t = Math.max(0, Math.min(v.duration - 0.25, (bi + 0.5) / peaks.length * v.duration));
+      v.currentTime = t;
+      var p = v.play(); if (p && p.catch) p.catch(function () {});
+      toast(T("Jumped to the loudest part") + " (" + fmt(Math.floor(t)) + ")");
+    });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+
+
   // Loop the highlight (round 308 new 2): round 306's Highlight chip jumps to the
   // video's most-rewatched second, but drilling that hook - the guitar solo, the
   // wicket - meant setting A-B marks around it by hand. A chip beside it now loops
@@ -40514,6 +40560,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     bar.insertBefore(cvs, bar.firstChild);
     if (!ACw) return;
     var cache = new WeakMap(), cur = null;
+    // Round 309 new 3: share the decoded peaks with the main closure, so the Loudest
+    // part chip there can read the shape without decoding the file a second time.
+    window.__vpWavePeaks309 = function () { try { return (localIndex >= 0 && localFiles[localIndex] && cache.has(localFiles[localIndex])) ? cache.get(localFiles[localIndex]) : null; } catch (e) { return null; } };
     function draw(peaks) {
       var w = bar.clientWidth || 300, hgt = bar.clientHeight || 24, dpr = Math.min(2, window.devicePixelRatio || 1);
       cvs.width = Math.round(w * dpr); cvs.height = Math.round(hgt * dpr);
@@ -44142,6 +44191,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Skip reminders and recaps", "skip reminders subscribe like recap preview filler sponsorblock community auto", "#sponMoreBtn308"],
       ["Skip non-music parts", "skip non music parts music video talking intro chat instrumental song sponsorblock community auto", "#sponMusicBtn309"],
       ["Mute sponsors instead of skipping", "mute sponsors volume quiet instead of skip seek jump keep picture sponsorblock sound off", "#sponMuteBtn309"],
+      ["Jump to the loudest part", "loudest part drop chorus peak sound shape jump seek local file song waveform", "#lpPeakBtn309"],
       ["Loop the highlight", "loop highlight most liked moment replay hook chorus solo a-b repeat", "#hiLoopBtn308"],
       ["Triple-tap for Cinema mode", "triple tap three taps cinema mode lights dim gesture pad dark room", "#gesturePad"],
       ["Chapter ticks on the seek bar", "chapter ticks marks seek bar parts community named dots tap jump", "#chapTicks308"],
@@ -46663,6 +46713,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Skip reminders and recaps", "#sponMoreBtn308");
   window.__vpWnew283("Skip non-music parts", "#sponMusicBtn309");
   window.__vpWnew283("Mute sponsors instead of skipping", "#sponMuteBtn309");
+  window.__vpWnew283("Jump to the loudest part", "#lpPeakBtn309");
   window.__vpWnew283("Loop the highlight", "#hiLoopBtn308");
   window.__vpWnew283("Triple-tap for Cinema mode", "#gesturePad");
   window.__vpWnew283("Chapter ticks on the seek bar", "#chapTicks308");
