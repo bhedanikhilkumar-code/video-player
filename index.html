@@ -23995,15 +23995,30 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     btn.addEventListener("click", function () {
       var start = qPos + 1, up = lib.queue.slice(start);
       if (!up.length) { toast(T("No upcoming videos to park.")); return; }
-      var snapQ = lib.queue.slice(), snapL = lib.later.slice(), sp = qPos, moved = 0, kept = [], now = Date.now();
+      // Round 297 fix 4: parking the rest never moved the qAfter removal pointer - the
+      // same hole as Drop 30+ min (round 296 fix 3). With the playing video outside the
+      // queue, parking rows above the remembered one shifted the later rows down while
+      // the pointer stayed, so Next started late; parking the remembered row itself left
+      // the pointer aimed at whatever landed there. The pointer now follows its row and
+      // clears when that row is parked (nothing took its place - the whole tail went),
+      // and Undo restores it.
+      var snapQ = lib.queue.slice(), snapL = lib.later.slice(), sp = qPos, sa = qAfter, moved = 0, kept = [], now = Date.now();
+      var goneBeforeAfter = 0, afterGone = false;
+      up.forEach(function (x, ui) {
+        var i = start + ui, dup = findIn(lib.later, x.id) >= 0, full = !dup && lib.later.length >= 50;
+        if (dup || full) return;
+        if (i < sa) goneBeforeAfter++; else if (i === sa) afterGone = true;
+      });
       up.slice().reverse().forEach(function (x) {
         if (findIn(lib.later, x.id) >= 0) return;
         if (lib.later.length >= 50) { kept.unshift(x); return; }
         var it = { id: x.id, title: x.title || "", ts: now }; lib.later.unshift(it); moved++;
       });
-      lib.queue = lib.queue.slice(0, start).concat(kept); resetShuffle(); saveLib(); renderLib(); showLibErr("");
+      lib.queue = lib.queue.slice(0, start).concat(kept);
+      if (sa >= 0) qAfter = afterGone ? -1 : Math.max(0, sa - goneBeforeAfter);
+      resetShuffle(); saveLib(); renderLib(); showLibErr("");
       var msg = T("Parked in Watch later") + " " + moved + (kept.length ? " - " + kept.length + " " + T("left in the queue (Watch later is full)") : "");
-      toastUndo(msg, function () { lib.queue = snapQ; lib.later = snapL; qPos = sp; saveLib(); renderLib(); }, T("Queue and Watch later restored"));
+      toastUndo(msg, function () { lib.queue = snapQ; lib.later = snapL; qPos = sp; qAfter = sa; saveLib(); renderLib(); }, T("Queue and Watch later restored"));
     });
   })();
 
