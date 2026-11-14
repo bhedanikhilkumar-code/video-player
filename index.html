@@ -8913,6 +8913,79 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
     (window.__relang = window.__relang || []).push(function () { side.setAttribute("aria-label", T("Move mini player to the other side")); });
   })();
+  // Mini player: any corner (round 302 new 5): the side chip swaps the mini player
+  // between the two BOTTOM corners, but the bottom of the screen is where the thumb
+  // and the next tap usually are - the player floats over the very buttons you came
+  // for. A grip chip in the mini bar drags the player anywhere and lets it go: it
+  // snaps to the nearest of the four corners (the top corners too) and stays there
+  // across loads. The side chip still works and always brings the player back down.
+  // Hindi/Gujarati text below, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Mini player: any corner": ["मिनी प्लेयर: कोई भी कोना", "મિની પ્લેયર: કોઈપણ ખૂણો"],
+    "Drag to move the mini player": ["मिनी प्लेयर खींचकर ले जाएं", "મિની પ્લેયર ખેંચીને લઈ જાઓ"],
+    "Mini player snaps to the nearest corner.": ["मिनी प्लेयर सबसे नज़दीक के कोने में ठीक हो जाता है.", "મિની પ્લેયર સૌથી નજીકના ખૂણામાં ગોઠવાઈ જાય છે."]
+  });
+  (function () {
+    var root302 = document.documentElement, tools302 = $("miniTools"), dock302 = $("playerDock");
+    if (!tools302 || !dock302) return;
+    var st302 = document.createElement("style");
+    st302.textContent =
+      "html.mini-c-tr #playerDock.is-mini{inset:16px 16px auto auto}" +
+      "html.mini-c-tl #playerDock.is-mini{inset:16px auto auto 16px}" +
+      "html.mini-c-bl #playerDock.is-mini{inset:auto auto 16px 16px}" +
+      "html.mini-c-br #playerDock.is-mini{inset:auto 16px 16px auto}" +
+      "@media(max-width:480px){html.mini-c-tr #playerDock.is-mini{inset:8px 8px auto auto}html.mini-c-tl #playerDock.is-mini{inset:8px auto auto 8px}html.mini-c-bl #playerDock.is-mini{inset:auto auto 8px 8px}html.mini-c-br #playerDock.is-mini{inset:auto 8px 8px auto}}" +
+      "#miniGrip302{touch-action:none;cursor:grab;min-width:40px}";
+    document.head.appendChild(st302);
+    var grip302 = document.createElement("button");
+    grip302.type = "button"; grip302.className = "chip"; grip302.id = "miniGrip302"; grip302.textContent = "\u2725";
+    grip302.setAttribute("aria-label", T("Drag to move the mini player"));
+    var side302 = $("miniSide");
+    tools302.insertBefore(grip302, side302 ? side302.nextSibling : null);
+    var CORNERS302 = ["br", "bl", "tr", "tl"];
+    function cornerApply302(c) {
+      CORNERS302.forEach(function (x) { root302.classList.remove("mini-c-" + x); });
+      if (c) root302.classList.add("mini-c-" + c);
+    }
+    try { var svc = localStorage.getItem("vp-mini-corner.v1"); if (CORNERS302.indexOf(svc) >= 0) cornerApply302(svc); } catch (e) {}
+    var dg = null;
+    grip302.addEventListener("pointerdown", function (e) {
+      if (!dock302.classList.contains("is-mini")) return;
+      var r = dock302.getBoundingClientRect();
+      dg = { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height };
+      dock302.style.left = r.left + "px"; dock302.style.top = r.top + "px";
+      dock302.style.right = "auto"; dock302.style.bottom = "auto";
+      try { grip302.setPointerCapture(e.pointerId); } catch (x) {}
+      e.preventDefault();
+    });
+    grip302.addEventListener("pointermove", function (e) {
+      if (!dg) return;
+      var x = Math.max(0, Math.min(window.innerWidth - dg.w, e.clientX - dg.dx));
+      var y = Math.max(0, Math.min(window.innerHeight - dg.h, e.clientY - dg.dy));
+      dock302.style.left = x + "px"; dock302.style.top = y + "px";
+    });
+    function dgEnd() {
+      if (!dg) return;
+      var r = dock302.getBoundingClientRect();
+      var cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      var c = (cy < window.innerHeight / 2 ? "t" : "b") + (cx < window.innerWidth / 2 ? "l" : "r");
+      dg = null;
+      dock302.style.left = ""; dock302.style.top = ""; dock302.style.right = ""; dock302.style.bottom = "";
+      cornerApply302(c);
+      try { localStorage.setItem("vp-mini-corner.v1", c); } catch (x) {}
+      if (c === "bl") { root302.classList.add("mini-left"); try { localStorage.setItem("vp-mini-side.v1", "left"); } catch (x) {} }
+      else if (c === "br") { root302.classList.remove("mini-left"); try { localStorage.setItem("vp-mini-side.v1", "right"); } catch (x) {} }
+      toast(T("Mini player snaps to the nearest corner."), 1200);
+    }
+    grip302.addEventListener("pointerup", dgEnd);
+    grip302.addEventListener("pointercancel", dgEnd);
+    // The side chip means "back down to a bottom corner": clear a saved corner when it is used.
+    if (side302) side302.addEventListener("click", function () {
+      cornerApply302(null);
+      try { localStorage.removeItem("vp-mini-corner.v1"); } catch (e) {}
+    });
+    (window.__relang = window.__relang || []).push(function () { grip302.setAttribute("aria-label", T("Drag to move the mini player")); });
+  })();
   var miniBar = document.createElement("div"); miniBar.id = "miniBar"; miniBar.innerHTML = "<i></i>"; playerDock.appendChild(miniBar);
   (function () {
     var drag = false, dragOrigin = 0;
@@ -13889,7 +13962,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // like the rest) was in the Reset-all settings list but rode no backup either, so a
   // restore on a new phone silently turned the on-video clock back off. It now exports
   // and restores with the same 0/1 validation.
-  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short|long)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new|recent)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-last.v1": /^\d{1,3}$/, "vp-sleep-playonly.v1": /^[01]$/, "vp-dl-mp3": /^[01]$/, "vp-clock-ov.v1": /^[01]$/, "vp-latergroup.v1": /^[01]$/ };
+  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short|long)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new|recent)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-mini-corner.v1": /^(br|bl|tr|tl)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-last.v1": /^\d{1,3}$/, "vp-sleep-playonly.v1": /^[01]$/, "vp-dl-mp3": /^[01]$/, "vp-clock-ov.v1": /^[01]$/, "vp-latergroup.v1": /^[01]$/ };
   // Round 232 fix 1: the Still watching? choice (vp-stillwatch.v1: off, or ask after 2, 3
   // or 5 auto-plays) rode no backup - Reset all settings counts it, but it was missing
   // here (the same class round 230 fix 1 closed for the on-video clock), so a restore on
@@ -39835,7 +39908,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Break reminder, Keep screen awake, Fullscreen rotate and Stats on video as they were, although
   // the dialog promises settings go back to defaults. They are cleared with the rest now.
   var KEYS = ["vp-prefs.v1", "vp-keymap.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1", "vp-stillwatch.v1", "vp-ctl-use.v1",
-    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-latergroup.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1",
+    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-mini-corner.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-latergroup.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1",
     // Round 282 fix 4: Reset all settings promised defaults but left the folded sections,
     // hidden quick-row chips, channel intro-skip picks, the four per-video memories
     // (speed, rotation, picture look, A-B loop), the rewind-on-resume choice and the
@@ -41985,6 +42058,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Pinch to zoom", "pinch zoom two fingers local video magnify closer read slide scoreboard drag pan", "#lpPinchHint302"],
       ["Playlist lock", "playlist lock unlock protect accidental delete rename remove videos safe", "#lhPlaylists"],
       ["Remember EQ per file", "remember eq equalizer bass treble per file each file sound settings local", "#lpEqMemBtn302"],
+      ["Mini player: any corner", "mini player move drag grip corner top bottom floating picture in picture place", "#miniGrip302"],
       ["Vibe presets", "vibe presets nightcore slowed reverb mood one tap speed pitch hall local files", "#lpVibeRow300"],
       ["Double-tap seek", "double tap seek local video jump 10 seconds left right middle play pause touch phone", "#lpDtapHint300"],
       ["Save queue as .m3u", "save queue m3u export download playlist file vlc kodi import other player", "#queueM3uBtn300"],
@@ -44610,6 +44684,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Pinch to zoom", "#lpPinchHint302");
   window.__vpWnew283("Playlist lock", "#lhPlaylists");
   window.__vpWnew283("Remember EQ per file", "#lpEqMemBtn302");
+  window.__vpWnew283("Mini player: any corner", "#miniGrip302");
   window.__vpWnew283("Vibe presets", "#lpVibeRow300");
   window.__vpWnew283("Double-tap seek", "#lpDtapHint300");
   window.__vpWnew283("Save queue as .m3u", "#queueM3uBtn300");
