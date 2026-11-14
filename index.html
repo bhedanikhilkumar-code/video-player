@@ -35213,6 +35213,100 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
   WNEW.unshift(["Up next on the mini player", "#miniUpNext291"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  // Voice note (round 294 new 1): the note box holds typed words, but the thought that
+  // strikes while watching - a pronunciation to copy, a line to remember - is faster said
+  // than typed, and Speak your note only turns speech into text. This row in the Notes card
+  // records ONE short spoken memo per video (up to 90 seconds) with the phone's microphone,
+  // kept on this device in vp-vnotes.v1, playable and deletable any time; recording again
+  // replaces the old memo. Nothing is uploaded. Checked first: Speak your note is dictation
+  // to text and Copy note handles typed text - no audio memo existed. Hindi and Gujarati
+  // text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Voice note": ["वॉइस नोट", "વૉઇસ નોટ"],
+    "Record a voice note": ["वॉइस नोट रिकॉर्ड करें", "વૉઇસ નોટ રેકોર્ડ કરો"],
+    "Stop and save": ["रोकें और सेव करें", "રોકો અને સાચવો"],
+    "Play the voice note": ["वॉइस नोट सुनें", "વૉઇસ નોટ સાંભળો"],
+    "Stop the voice note": ["वॉइस नोट रोकें", "વૉઇસ નોટ રોકો"],
+    "Delete the voice note": ["वॉइस नोट हटाएं", "વૉઇસ નોટ કાઢો"],
+    "Recording... tap again to stop and save.": ["रिकॉर्डिंग चल रही है... रोकने और सेव करने के लिए फिर टैप करें.", "રેકોર્ડિંગ ચાલે છે... રોકવા અને સાચવવા ફરી ટેપ કરો."],
+    "Voice note saved ({n} sec).": ["वॉइस नोट सेव हुआ ({n} सेकंड).", "વૉઇસ નોટ સાચવાયો ({n} સેકન્ડ)."],
+    "Voice note deleted.": ["वॉइस नोट हटाया गया.", "વૉઇસ નોટ કાઢી નાખ્યો."],
+    "The microphone is not available - allow it in the browser and try again.": ["माइक्रोफ़ोन उपलब्ध नहीं - ब्राउज़र में अनुमति दें और फिर कोशिश करें.", "માઇક્રોફોન ઉપલબ્ધ નથી - બ્રાઉઝરમાં પરવાનગી આપો અને ફરી પ્રયાસ કરો."],
+    "Load a video first - a voice note belongs to a video.": ["पहले वीडियो लोड करें - वॉइस नोट किसी वीडियो से जुड़ता है.", "પહેલા વીડિયો લોડ કરો - વૉઇસ નોટ વીડિયો સાથે જોડાય છે."],
+    "Could not save the voice note - this device is out of storage.": ["वॉइस नोट सेव नहीं हो सका - इस डिवाइस में स्टोरेज भर गई है.", "વૉઇસ નોટ સાચવી શકાયો નથી - આ ડિવાઇસમાં સ્ટોરેજ ભરાઈ ગઈ છે."],
+    "One spoken memo per video, kept on this device. Record, listen, delete; recording again replaces the old one.": ["हर वीडियो के लिए एक बोला हुआ मेमो, इसी डिवाइस पर. रिकॉर्ड करें, सुनें, हटाएं; फिर रिकॉर्ड करने पर पुराना बदल जाता है.", "દરેક વીડિયો માટે એક બોલેલો મેમો, આ ડિવાઇસ પર. રેકોર્ડ કરો, સાંભળો, કાઢો; ફરી રેકોર્ડ કરશો એટલે જૂનો બદલાઈ જશે."],
+    "Voice note on a video": ["वीडियो पर वॉइस नोट", "વીડિયો પર વૉઇસ નોટ"]
+  });
+  (function () {
+    var card294 = $("ctl-notes"), times294 = $("noteTimes"); if (!card294 || !times294) return;
+    var VN_KEY = "vp-vnotes.v1", vnotes = {};
+    try { var vnIn = JSON.parse(localStorage.getItem(VN_KEY) || "null"); if (vnIn && typeof vnIn === "object" && !Array.isArray(vnIn)) vnotes = vnIn; } catch (e) {}
+    function vnSave() { try { localStorage.setItem(VN_KEY, JSON.stringify(vnotes)); return true; } catch (e) { return false; } }
+    var row = document.createElement("div"); row.className = "row"; row.id = "vnoteRow294"; row.style.cssText = "margin-top:6px;flex-wrap:wrap;gap:8px;align-items:center";
+    times294.parentNode.insertBefore(row, times294.nextSibling);
+    var recB = document.createElement("button"); recB.type = "button"; recB.className = "chip"; recB.id = "vnoteRec294"; row.appendChild(recB);
+    var playB = document.createElement("button"); playB.type = "button"; playB.className = "chip"; playB.id = "vnotePlay294"; playB.hidden = true; row.appendChild(playB);
+    var delB = document.createElement("button"); delB.type = "button"; delB.className = "chip"; delB.id = "vnoteDel294"; delB.hidden = true; row.appendChild(delB);
+    var stat = document.createElement("span"); stat.className = "hint"; stat.id = "vnoteStat294"; row.appendChild(stat);
+    var hint = document.createElement("p"); hint.className = "hint"; hint.id = "vnoteHint294"; hint.style.margin = "4px 0 0"; row.appendChild(hint);
+    var media = null, rec = null, chunks = [], recStart = 0, recTimer = 0, vnPlayer = null;
+    function memo() { return curId && vnotes[curId] && typeof vnotes[curId].d === "string" ? vnotes[curId] : null; }
+    function stopVnPlayer() { if (vnPlayer) { try { vnPlayer.pause(); } catch (e) {} vnPlayer = null; } }
+    function paint294() {
+      var m = memo();
+      recB.textContent = (rec ? "⏹ " + T("Stop and save") : "🎙 " + T("Record a voice note"));
+      playB.hidden = delB.hidden = !m;
+      playB.textContent = (vnPlayer ? "⏸ " + T("Stop the voice note") : "▶ " + T("Play the voice note")) + (m ? " (" + m.s + "s)" : "");
+      delB.textContent = "🗑 " + T("Delete the voice note");
+      hint.textContent = T("One spoken memo per video, kept on this device. Record, listen, delete; recording again replaces the old one.");
+      stat.textContent = "";
+    }
+    function stopRec294(saveIt) {
+      var r = rec; rec = null; if (recTimer) { clearTimeout(recTimer); recTimer = 0; }
+      if (media) { try { media.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} media = null; }
+      if (r) { if (!saveIt) { r.ondataavailable = null; r.onstop = null; } try { r.stop(); } catch (e) {} }
+      paint294();
+    }
+    recB.addEventListener("click", function () {
+      if (rec) { stopRec294(true); return; }
+      if (!curId) { toast(T("Load a video first - a voice note belongs to a video.")); return; }
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === "undefined") { toast(T("Recording is not supported in this browser.")); return; }
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(function (stream) {
+        media = stream; chunks = [];
+        var mime = ""; ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].forEach(function (mm) { if (!mime && MediaRecorder.isTypeSupported(mm)) mime = mm; });
+        try { rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream); } catch (e) { rec = new MediaRecorder(stream); }
+        var vid = curId; recStart = Date.now();
+        rec.ondataavailable = function (ev) { if (ev.data && ev.data.size) chunks.push(ev.data); };
+        rec.onstop = function () {
+          var secs = Math.max(1, Math.round((Date.now() - recStart) / 1000));
+          var blob = new Blob(chunks, { type: rec && rec.mimeType ? rec.mimeType : "audio/webm" }); chunks = [];
+          if (blob.size > 1400000) { toast(T("Could not save the voice note - this device is out of storage.")); return; }
+          var fr = new FileReader();
+          fr.onload = function () {
+            vnotes[vid] = { d: String(fr.result || ""), s: secs, t: Date.now() };
+            if (vnSave()) toast(T("Voice note saved ({n} sec).").replace("{n}", secs));
+            else { delete vnotes[vid]; toast(T("Could not save the voice note - this device is out of storage.")); }
+            paint294();
+          };
+          fr.readAsDataURL(blob);
+        };
+        try { rec.start(); } catch (e) { stopRec294(false); toast(T("Recording is not supported in this browser.")); return; }
+        recTimer = setTimeout(function () { stopRec294(true); }, 90000);
+        toast(T("Recording... tap again to stop and save.")); paint294();
+      }, function () { toast(T("The microphone is not available - allow it in the browser and try again.")); });
+    });
+    playB.addEventListener("click", function () {
+      var m = memo(); if (!m) return;
+      if (vnPlayer) { stopVnPlayer(); paint294(); return; }
+      vnPlayer = new Audio(m.d);
+      vnPlayer.onended = function () { stopVnPlayer(); paint294(); };
+      vnPlayer.play().then(paint294, function () { stopVnPlayer(); paint294(); });
+    });
+    delB.addEventListener("click", function () { if (!curId || !vnotes[curId]) return; stopVnPlayer(); delete vnotes[curId]; vnSave(); toast(T("Voice note deleted.")); paint294(); });
+    setInterval(function () { if (!rec) paint294(); }, 2500);
+    (window.__relang = window.__relang || []).push(paint294); paint294();
+  })();
+  WNEW.unshift(["Voice note on a video", "#vnoteRow294"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   window.__vpPrefs = prefs;
   window.__vpSavePrefs = savePrefs;
   Object.assign(TR_MSG, {
@@ -39559,6 +39653,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["File picked queue videos into a playlist", "playlist picked selected queue pick many file folder add collection organise bulk many at once save into", "#qPickBtn"],
       ["Star picked queue videos", "star favourite picked selected queue pick many add favourites like save heart bulk many at once", "#qPickBtn"],
       ["New badge shine", "new badge shine shimmer glint light sweep whats new card latest additions sparkle gloss", "#whatsNewList"],
+      ["Voice note on a video", "voice note record microphone spoken memo audio per video listen delete notes card", "#vnoteRow294"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
       ["Top channels", "top channels most watched creators ranking watch time stats favourite channel who watch most", "#lhStats"],
