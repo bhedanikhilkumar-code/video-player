@@ -3462,6 +3462,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Type to filter. Enter opens, Esc closes.": ["फ़िल्टर के लिए टाइप करें. Enter खोलता है, Esc बंद करता है.", "ફિલ્ટર માટે ટાઇપ કરો. Enter ખોલે છે, Esc બંધ કરે છે."],
    "Sections": ["सेक्शन", "વિભાગો"],
    "Actions": ["एक्शन", "ક્રિયાઓ"],
+   "Recently used": ["हाल में इस्तेमाल किए गए", "તાજેતરમાં વપરાયેલ"],
+   "Recently used in Search": ["खोज में हाल में इस्तेमाल किए गए", "શોધમાં તાજેતરમાં વપરાયેલ"],
    "No matches.": ["कुछ नहीं मिला.", "કંઈ મળ્યું નહીં."],
    "Type a word from the subtitles": ["सबटाइटल का कोई शब्द लिखें", "સબટાઇટલનો કોઈ શબ્દ લખો"],
    "Load a subtitle file first, then search.": ["पहले सबटाइटल फ़ाइल लोड करें, फिर खोजें.", "પહેલા સબટાઇટલ ફાઇલ લોડ કરો, પછી શોધો."],
@@ -48803,6 +48805,16 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   var T = window.T || function (s) { return s; };
   var ov = null, input = null, list = null, items = [], shown = [], act = 0, prevFocus = null, oldOverflow = "";
 
+  // Round 368 new 1: Recently used. An empty Search box used to open on the same long
+  // A-Z list every time, so reaching the action you tap daily (theme, a section, a
+  // player toggle) meant typing or scrolling again. Like every command palette, the box
+  // now opens with your last five picks on top under their own group, remembered on this
+  // device only. Typing any letter hides the group and filters as before. Checked first:
+  // the finder had keyword aliases and translated labels, but nothing remembered picks.
+  var RECKEY = "vp-pal-recent.v1";
+  function readRec() { try { var r = JSON.parse(localStorage.getItem(RECKEY) || "[]"); return Array.isArray(r) ? r.filter(function (x) { return typeof x === "string"; }).slice(0, 5) : []; } catch (e) { return []; } }
+  function writeRec(lab) { try { var r = readRec().filter(function (x) { return x !== lab; }); r.unshift(lab); localStorage.setItem(RECKEY, JSON.stringify(r.slice(0, 5))); } catch (e) {} }
+
   function buildItems() {
     var out = [];
     document.querySelectorAll(".feat-nav a.feat").forEach(function (a) {
@@ -48863,6 +48875,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     }
     var FEATS = [
       ["Language on the first open", "language first open pick choose hindi gujarati english welcome new visitor onboarding start fresh install", "#langBtn"],
+      ["Recently used in Search", "recently used in search recent actions last picks again repeat ctrl k palette history top", "#palBtn"],
       ["App font choice", "app font typeface letters style serif rounded monospace reading accessibility text look change", "#uiFontRow359"],
       ["Downloads finished alert", "downloads finished alert notification batch done tell me away background tab queue bell", "#dlQAlertBtn355"],
       ["Playback ended alert", "playback ended alert queue finished video ended notification tell me away background tab music bell", "#qEndAlertBtn355"],
@@ -49829,6 +49842,14 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   function render() {
     var q = (input.value || "").trim().toLowerCase();
     shown = items.filter(function (it) { return !q || it.label.toLowerCase().indexOf(q) >= 0 || (it.kw && it.kw.indexOf(q) >= 0); });
+    if (!q) {
+      var ritems = [];
+      readRec().forEach(function (lab) {
+        var m = items.filter(function (it) { return it.label === lab; })[0];
+        if (m && ritems.indexOf(m) < 0) ritems.push({ label: m.label, group: "Recently used", run: m.run });
+      });
+      if (ritems.length) shown = ritems.concat(shown);
+    }
     if (act > shown.length - 1) act = shown.length - 1;
     if (act < 0) act = 0;
     list.innerHTML = "";
@@ -49862,6 +49883,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
 
   function pick(i) {
     var it = shown[i]; if (!it) return;
+    writeRec(it.label);
     close();
     try { it.run(); } catch (e) {}
   }
@@ -49956,6 +49978,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     paintLi();
   }
   window.__vpPalette = { open: open, close: close };
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Recently used in Search", "#palBtn"); }, 1650); });
 })();
 </script>
 <script>
