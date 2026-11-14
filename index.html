@@ -46428,6 +46428,76 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   show = function (url, local) { baseShowCh(url, local); chRender(); };
   chRender();
 
+  // Round 358 new 2: chapter back and next for local files. Chapters jumped only by
+  // tapping a row in the list, which sits a scroll away while a long lecture or album
+  // plays; every player keeps back/next one tap from the transport. Two chips on the
+  // Chapters card jump to the previous or next saved chapter, and a small status line
+  // names the chapter the playhead sits in, following playback, seeks, renames and
+  // deletes. Back restarts the current chapter when a few seconds in (as players do),
+  // otherwise it goes to the one before; past the last chapter it says so. No chapters,
+  // no file: the chips sit disabled. Hindi and Gujarati text, What's new and feature
+  // finder included.
+  Object.assign(TR_MSG, {
+    "Previous chapter": ["\u092A\u093F\u091B\u0932\u093E \u0905\u0927\u094D\u092F\u093E\u092F", "\u0AAA\u0ABE\u0A9B\u0AB2\u0ACB \u0A9A\u0AC7\u0AAA\u0ACD\u0A9F\u0AB0"],
+    "Next chapter": ["\u0905\u0917\u0932\u093E \u0905\u0927\u094D\u092F\u093E\u092F", "\u0A86\u0A97\u0AB2\u0ACB \u0A9A\u0AC7\u0AAA\u0ACD\u0A9F\u0AB0"],
+    "Now: ": ["\u0905\u092D\u0940: ", "\u0AB9\u0AB5\u0AC7: "],
+    "This is the last chapter.": ["\u092F\u0939 \u0906\u0916\u093F\u0930\u0940 \u0905\u0927\u094D\u092F\u093E\u092F \u0939\u0948.", "\u0A86 \u0A9B\u0AC7\u0AB2\u0ACD\u0AB2\u0ACB \u0A9A\u0AC7\u0AAA\u0ACD\u0A9F\u0AB0 \u0A9B\u0AC7."],
+    "Chapter back and next": ["\u0905\u0927\u094D\u092F\u093E\u092F \u092A\u0940\u091B\u0947-\u0906\u0917\u0947", "\u0A9A\u0AC7\u0AAA\u0ACD\u0A9F\u0AB0 \u0AAA\u0ABE\u0A9B\u0AB3-\u0A86\u0A97\u0AB3"]
+  });
+  (function () {
+    if (!chList || !chList.parentNode) return;
+    var navRow358 = document.createElement("div"); navRow358.className = "row"; navRow358.id = "lpChNavRow358"; navRow358.style.marginTop = "6px";
+    var prevB358 = document.createElement("button"); prevB358.type = "button"; prevB358.className = "chip"; prevB358.id = "lpChPrev358";
+    var nextB358 = document.createElement("button"); nextB358.type = "button"; nextB358.className = "chip"; nextB358.id = "lpChNext358";
+    navRow358.appendChild(prevB358); navRow358.appendChild(nextB358);
+    var now358 = document.createElement("p"); now358.className = "hint"; now358.id = "lpChNow358"; now358.setAttribute("role", "status");
+    chList.parentNode.insertBefore(navRow358, chList);
+    chList.parentNode.insertBefore(now358, chList.nextSibling);
+    function chIdx358() {
+      var list = chCur(); if (!list || !list.length) return -2;
+      var t = vid.currentTime || 0, idx = -1;
+      for (var i = 0; i < list.length; i++) if (list[i].t <= t + 0.4) idx = i;
+      return idx;
+    }
+    var lastNow358 = "";
+    function paintChNav358() {
+      var list = chCur(), has = !!(list && list.length);
+      prevB358.textContent = "\u23EE " + T("Previous chapter");
+      nextB358.textContent = "\u23ED " + T("Next chapter");
+      prevB358.setAttribute("aria-label", T("Previous chapter"));
+      nextB358.setAttribute("aria-label", T("Next chapter"));
+      prevB358.disabled = !has; nextB358.disabled = !has;
+      var txt = "";
+      if (has) {
+        var idx = chIdx358();
+        if (idx >= 0) txt = T("Now: ") + (list[idx].n || (T("Chapter") + " " + (idx + 1))) + " \u00B7 " + chFmt(list[idx].t);
+      }
+      if (txt !== lastNow358) { lastNow358 = txt; now358.textContent = txt; }
+    }
+    prevB358.addEventListener("click", function () {
+      var list = chCur(); if (!list || !list.length) return;
+      var idx = chIdx358();
+      if (idx < 0) { vid.currentTime = list[0].t; localPlay(); paintChNav358(); return; }
+      var t = vid.currentTime || 0;
+      var target = (t - list[idx].t > 3) ? idx : idx - 1;
+      if (target < 0) target = 0;
+      vid.currentTime = list[target].t; localPlay(); paintChNav358();
+    });
+    nextB358.addEventListener("click", function () {
+      var list = chCur(); if (!list || !list.length) return;
+      var target = chIdx358() + 1;
+      if (target >= list.length) { sessionMsg.textContent = T("This is the last chapter."); return; }
+      vid.currentTime = list[target].t; localPlay(); paintChNav358();
+    });
+    vid.addEventListener("timeupdate", paintChNav358);
+    vid.addEventListener("seeked", paintChNav358);
+    var origChRender358 = chRender;
+    chRender = function () { origChRender358(); paintChNav358(); };
+    (window.__relang = window.__relang || []).push(function () { lastNow358 = ""; paintChNav358(); });
+    paintChNav358();
+    if (window.__vpWnew283) window.__vpWnew283("Chapter back and next", "#lpChPrev358");
+  })();
+
   // Round 278 new 5: split a local file into even chapters in one tap. Long recordings
   // (classes, matches) had to be marked by hand one chapter at a time; 'Every 5 min' and
   // 'Every 10 min' build an even set named Part 1, Part 2... using the same saved chapter
@@ -49695,6 +49765,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Community chapters", "chapters parts sections community named jump navigate long video podcast", "#chapBtn306"],
       ["Caption size", "caption size bigger captions cc subtitles font small big biggest readable eyes", "#ccSizeBtn307"],
       ["Loop a local chapter", "loop chapter local file repeat section practice drill part recording lecture", "#lpChList"],
+      ["Chapter back and next", "chapter back next previous jump local file lecture album navigate transport", "#lpChPrev358"],
       ["Loop a chapter", "loop chapter community repeat section part bounds a-b tutorial lecture", "#chapBtn306"],
       ["Pause at chapter end", "pause chapter end stop after part lecture one chapter a night auto", "#chapBtn306"],
       ["Save chapters as moments", "save chapters moments keep dots seek bar backup offline names convert", "#chapBtn306"],
