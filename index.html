@@ -30397,7 +30397,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     else if (cmd === "forward" || cmd === "back") { if (!(duration > 0)) return false; manualSeek(Math.max(0, Math.min(duration, curTime + (cmd === "forward" ? 10 : -10)))); }
     else if (cmd === "louder" || cmd === "quieter") {
       var v = $("vol"); if (!v) return false;
-      v.value = String(Math.max(0, Math.min(100, (+v.value || 0) + (cmd === "louder" ? 10 : -10))));
+      // Round 298 fix 2: this path kept a fixed 10, so it never followed the Volume steps
+      // setting (round 297) the way the keys, the pad swipe, the wheel and the hint say.
+      var vs298 = (typeof volStep297 === "function" ? volStep297() : 5) || 5;
+      v.value = String(Math.max(0, Math.min(100, (+v.value || 0) + (cmd === "louder" ? vs298 : -vs298))));
       v.dispatchEvent(new Event("input", { bubbles: true })); v.dispatchEvent(new Event("change", { bubbles: true }));
     }
     else if (cmd === "mute" || cmd === "unmute") { b = $("muteBtn"); if (!b) return false; var isMuted = muted === true; if ((cmd === "mute") !== isMuted) b.click(); }
