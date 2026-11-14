@@ -13,6 +13,9 @@ const anchors = new Set();
 for (const m of src.matchAll(/\["[^"\n]{2,80}",\s*"[^"\n]{2,400}",\s*"(#[-A-Za-z0-9_]+)"\]/g)) anchors.add(m[1]);
 for (const m of src.matchAll(/__vpWnew283\(\s*"[^"\n]{2,120}",\s*"(#[-A-Za-z0-9_]+)"/g)) anchors.add(m[1]);
 for (const m of src.matchAll(/WNEW\.unshift\(\["[^"\n]{2,120}",\s*"(#[-A-Za-z0-9_]+)"/g)) anchors.add(m[1]);
+// tips: ["text", "#selector"] pairs in the TIPS list
+const tips = src.match(/var TIPS = \[([\s\S]*?)\n  \];/);
+if (tips) for (const m of tips[1].matchAll(/"(#[-A-Za-z0-9_]+)"/g)) anchors.add(m[1]);
 
 // remove every "#id" reference (anchor lists, jump special cases) for anchor ids
 let work = src;
