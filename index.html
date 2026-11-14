@@ -11876,8 +11876,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Search your private notes as well as titles and video IDs": ["शीर्षक और वीडियो ID के साथ अपने निजी नोट्स भी खोजें", "શીર્ષક અને વીડિયો ID સાથે પોતાની ખાનગી નોંધો પણ શોધો"]
   });
   // Search operators (round 259 new 2): the search box also understands "exact phrase",
-  // -word (leave out), is:fav, is:later, is:queued, is:new (never played), is:played and
-  // has:note. Everything else is matched as plain words, all of which must be found. A search
+  // -word (leave out), is:fav, is:later, is:queued, is:new (never played), is:played,
+  // has:note and (round 292 new 4) is:short (under a minute) / is:long (10 minutes or
+  // more, only counted when the length is known). Everything else is matched as plain
+  // words, all of which must be found. A search
   // with no operators behaves exactly as before.
   var sqCache259 = { q: null, r: null };
   function sqParse259(q) {
@@ -11889,7 +11891,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // Round 260 fix 2: "-is:fav" (leave out) was read as the plain word "is:fav", so it hid nothing,
       // and "is:favourites" / "is:favorites" were not recognised. A leading - now negates an
       // operator, and the plural favourite spellings work.
-      var om = /^(-?)((?:is|has):(?:fav|favs|favourite|favourites|favorite|favorites|later|queued|queue|new|played|note|notes))$/.exec(w);
+      var om = /^(-?)((?:is|has):(?:fav|favs|favourite|favourites|favorite|favorites|later|queued|queue|new|played|note|notes|short|long))$/.exec(w);
       if (om) { r.ops.push(om[1] + om[2].replace(/(avourites|avorites|avourite|avorite|avs)$/, "av").replace(/s$/, "").replace("queued", "queue")); continue; }
       // Round 286 new 2: channel:word (and -channel:word to leave one out) filters by the
       // channel the app has learned for each video.
@@ -11906,6 +11908,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       else if (o === "is:later") ok = findIn(lib.later, id) >= 0;
       else if (o === "is:queue") ok = findIn(lib.queue, id) >= 0;
       else if (o === "is:new" || o === "is:played") { var rec = typeof stats === "object" && stats && stats.videos ? stats.videos[id] : null; var pl = rec && rec.plays > 0; ok = o === "is:new" ? !pl : !!pl; }
+      else if (o === "is:short" || o === "is:long") { var sd292 = queueRowDur(id); ok = sd292 > 0 && (o === "is:short" ? sd292 < 60 : sd292 >= 600); }
       else ok = typeof notes !== "undefined" && notes && typeof notes[id] === "string" && notes[id].trim() !== "";
       if (neg ? ok : !ok) return false;
     }
@@ -28005,13 +28008,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Search operators tip (round 259 new 2): one line under the library search box that lists
   // the operators; Hindi and Gujarati text, feature finder included.
   Object.assign(TR_MSG, {
-    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, has:note, channel:name": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, has:note, channel:नाम", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, has:note, channel:નામ"]
+    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, channel:name": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, channel:नाम", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, channel:નામ"]
   });
   (function () {
     var m = $("libSearchMsg"); if (!m || !m.parentNode) return;
     var tip = document.createElement("span"); tip.className = "hint"; tip.id = "sqTip259"; tip.style.cssText = "display:block;margin-top:4px";
     m.parentNode.insertBefore(tip, m.nextSibling);
-    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, has:note, channel:name"); }
+    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, channel:name"); }
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
@@ -38862,7 +38865,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Bookmark folders as playlists", "bookmark folders playlists import browser bookmarks make a playlist for each folder organise sorted", "#bmCard"],
       ["Export as browser bookmarks", "export browser bookmarks bookmarks.html chrome safari firefox edge save queue favourites watch later playlists folders backup", "#bmExpCard"],
       ["Skip parts", "skip parts segments ad read recap middle cut jump over sponsor boring stretch mark start end per video skip intro outro", "#skipPartsCard"],
-      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played has:note channel:name by channel from one channel advanced library search narrow", "#sqTip259"],
+      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played is:short is:long short long under a minute over ten minutes duration has:note channel:name by channel from one channel advanced library search narrow", "#sqTip259"],
       ["Activity log", "activity log history of changes what was added removed queue watch later favourites where did it go timeline recent changes", "#activityCard"],
       ["Speed ramp", "speed ramp ease up faster gradually raise playback speed every minutes lecture podcast step 1.25 1.5 2x training", "#rampCard"],
       ["Saved searches", "saved searches save search keep pin favourite query operators is:later chips repeat run again library", "#ssRow"],
@@ -41820,6 +41823,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Keep only picked", "#qPickKeepBtn292");
   window.__vpWnew283("Finish the queue by", "#qFinishCard292");
   window.__vpWnew283("Daily alarm playlist", "#alarmSrcSel292");
+  window.__vpWnew283("Search is:short / is:long", "#sqTip259");
 })();
 </script>
 </body>
