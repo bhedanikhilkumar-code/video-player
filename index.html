@@ -38219,6 +38219,46 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(function () { paintBtn(); if (ov) { var ht = ov.querySelector(".blank-hint305"); if (ht) ht.textContent = T("Tap anywhere or press Escape to wake the screen."); ov.setAttribute("aria-label", T("Tap anywhere or press Escape to wake the screen.")); } });
     paintBtn();
   })();
+  // Speed in the mini player (round 305 new 3): the docked mini player is how people
+  // keep a lecture running while they scroll the library, but speeding the voice up or
+  // slowing it down meant growing the player back to full size and finding the Speed
+  // card. A chip in the mini bar steps 1x, 1.25x, 1.5x and 2x through the Speed card's
+  // own preset chips, so the speed ceiling, per-channel speeds and every other speed
+  // rule behave exactly as if the card's chip was tapped; the chip always shows the
+  // current speed, including a custom one. Like the other mini chips it says so plainly
+  // when no YouTube video is loaded. Nothing new is saved - the speed's own key carries
+  // it. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Speed in the mini player": ["मिनी प्लेयर में स्पीड", "મિનિ પ્લેયરમાં સ્પીડ"],
+    "Tap to step the playback speed.": ["प्लेबैक स्पीड बदलने के लिए टैप करें.", "પ્લેબેક સ્પીડ બદલવા ટૅપ કરો."],
+    "Load a YouTube video first, then change the speed.": ["पहले कोई YouTube वीडियो चलाएं, फिर स्पीड बदलें.", "પહેલા કોઈ YouTube વીડિયો ચલાવો, પછી સ્પીડ બદલો."]
+  });
+  (function () {
+    var tools = $("miniTools");
+    if (!tools || !speedChips) return;
+    var STEPS = [1, 1.25, 1.5, 2];
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = "miniSpeedBtn305";
+    tools.insertBefore(b, $("miniBack") || null);
+    function paint() {
+      var v = prefs.speed || 1;
+      b.textContent = "⏩ " + (Math.round(v * 100) / 100) + "x";
+      b.classList.toggle("active", v !== 1);
+      b.setAttribute("aria-pressed", v !== 1 ? "true" : "false");
+      b.setAttribute("aria-label", T("Speed in the mini player") + ": " + (Math.round(v * 100) / 100) + "x. " + T("Tap to step the playback speed."));
+    }
+    b.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a YouTube video first, then change the speed.")); return; }
+      var v = prefs.speed || 1, target = 1;
+      for (var i = 0; i < STEPS.length; i++) { if (STEPS[i] > v + 0.001) { target = STEPS[i]; break; } }
+      var chip = null;
+      Array.prototype.forEach.call(speedChips.children, function (c) { if (c.dataset && c.dataset.value === String(target)) chip = c; });
+      if (chip) chip.click(); else toast(T("Load a YouTube video first, then change the speed."));
+      setTimeout(paint, 60);
+    });
+    setInterval(function () { var d = $("playerDock"); if (d && d.classList.contains("is-mini")) paint(); }, 5000);
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
 
 })();
 
