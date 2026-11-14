@@ -35719,6 +35719,59 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (window.__vpAlarmVol295) { try { window.__vpAlarmVol295(); } catch (e) {} }
     if (window.__vpAlarmTone295) { try { window.__vpAlarmTone295(); } catch (e) {} }
   };
+  // Stall watch (round 295 new 4): a video that sits on the buffering spinner forever
+  // never raises an error, so Auto-retry on a hiccup (round 293) never fires and the
+  // queue just stops moving until someone notices. Stall watch follows the player state:
+  // if the buffering state lasts 20 seconds while a video should be playing, it reloads
+  // the video once - same queue spot and position - and leaves a second stall for the
+  // viewer, so a truly dead video cannot loop reloads all night. A chip in Playback help
+  // switches the watch off. The choice is remembered on this device in vp-stall295.v1.
+  // Checked first: the update check and the local-file loader have their own watchdogs,
+  // and the onError path only fires on a raised error - nothing watched a silent stall.
+  // Hindi and Gujarati text in the main closure; What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Stall watch": ["स्टॉल वॉच", "સ્ટૉલ વૉચ"],
+    "Stall watch: on": ["स्टॉल वॉच: चालू", "સ્ટૉલ વૉચ: ચાલુ"],
+    "Stall watch: off": ["स्टॉल वॉच: बंद", "સ્ટૉલ વૉચ: બંધ"],
+    "Reloads a video stuck on the buffer spinner for 20 seconds, once per video.": ["बफर स्पिनर पर 20 सेकंड से अटका वीडियो एक बार फिर लोड करता है, हर वीडियो के लिए एक बार.", "બફર સ્પિનર પર 20 સેકન્ડથી અટકેલો વીડિયો એક વાર ફરી લોડ કરે છે, દરેક વીડિયો માટે એક વાર."],
+    "Buffering for a long time - reloading the video once...": ["लंबे समय से बफ़र हो रहा है - वीडियो एक बार फिर लोड हो रहा है...", "લાંબા સમયથી બફર થઈ રહ્યું છે - વીડિયો એક વાર ફરી લોડ થઈ રહ્યો છે..."]
+  });
+  (function () {
+    var helper = $("playbackHelper"); if (!helper) return;
+    var row = document.createElement("div"); row.className = "row"; row.id = "wdRow295"; row.style.cssText = "margin-top:8px;flex-wrap:wrap;gap:8px;align-items:center";
+    helper.appendChild(row);
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "wdBtn295"; row.appendChild(btn);
+    var hint = document.createElement("span"); hint.className = "hint"; hint.style.cssText = "flex-basis:100%"; row.appendChild(hint);
+    var wdOn = true; try { wdOn = localStorage.getItem("vp-stall295.v1") !== "0"; } catch (e) {}
+    var bufSince295 = 0, didFor295 = null;
+    var prevFx295w = window.__vpStateFx;
+    window.__vpStateFx = function (st) {
+      if (prevFx295w) prevFx295w(st);
+      if (st === 3) { if (!bufSince295) bufSince295 = Date.now(); }
+      else bufSince295 = 0;
+    };
+    btn.addEventListener("click", function () {
+      wdOn = !wdOn; try { localStorage.setItem("vp-stall295.v1", wdOn ? "1" : "0"); } catch (e) {}
+      paint295w(); toast(T(wdOn ? "Stall watch: on" : "Stall watch: off"));
+    });
+    setInterval(function () {
+      try {
+        if (!wdOn || !bufSince295 || Date.now() - bufSince295 < 20000) return;
+        if (!ready || !curId || seeking) return;
+        if (didFor295 === curId) return;
+        didFor295 = curId; bufSince295 = 0;
+        toast(T("Buffering for a long time - reloading the video once..."));
+        linkInput.value = curId;
+        loadVideo(curTime >= 5 ? Math.floor(curTime) : null, null, qPos >= 0 ? qPos : undefined, true);
+      } catch (e) {}
+    }, 5000);
+    function paint295w() {
+      btn.textContent = "⏳ " + T(wdOn ? "Stall watch: on" : "Stall watch: off");
+      btn.setAttribute("aria-pressed", String(wdOn));
+      hint.textContent = T("Reloads a video stuck on the buffer spinner for 20 seconds, once per video.");
+    }
+    (window.__relang = window.__relang || []).push(paint295w); paint295w();
+  })();
   window.__vpPrefs = prefs;
   window.__vpSavePrefs = savePrefs;
   Object.assign(TR_MSG, {
@@ -40073,6 +40126,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Alarm days", "alarm days weekdays weekend which days ring daily alarm schedule monday friday sunday off", "#alarmDaysRow295"],
       ["Alarm volume", "alarm volume louder ring wake hear loud restore quiet evening volume back", "#alarmVolRow295"],
       ["Alarm backup tone", "alarm backup tone beep silent fail video did not start wake fallback sound test network down", "#alarmToneRow295"],
+      ["Stall watch", "stall watch buffering stuck frozen spinner loading hang reload auto recover video not moving", "#wdBtn295"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
       ["Top channels", "top channels most watched creators ranking watch time stats favourite channel who watch most", "#lhStats"],
@@ -42594,6 +42648,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Alarm days", "#alarmDaysRow295");
   window.__vpWnew283("Alarm volume", "#alarmVolRow295");
   window.__vpWnew283("Alarm backup tone", "#alarmToneRow295");
+  window.__vpWnew283("Stall watch", "#wdBtn295");
 })();
 </script>
 </body>
