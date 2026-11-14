@@ -36584,7 +36584,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Stall watch: on": ["स्टॉल वॉच: चालू", "સ્ટૉલ વૉચ: ચાલુ"],
     "Stall watch: off": ["स्टॉल वॉच: बंद", "સ્ટૉલ વૉચ: બંધ"],
     "Reloads a video stuck on the buffer spinner for 20 seconds, once per video.": ["बफर स्पिनर पर 20 सेकंड से अटका वीडियो एक बार फिर लोड करता है, हर वीडियो के लिए एक बार.", "બફર સ્પિનર પર 20 સેકન્ડથી અટકેલો વીડિયો એક વાર ફરી લોડ કરે છે, દરેક વીડિયો માટે એક વાર."],
-    "Buffering for a long time - reloading the video once...": ["लंबे समय से बफ़र हो रहा है - वीडियो एक बार फिर लोड हो रहा है...", "લાંબા સમયથી બફર થઈ રહ્યું છે - વીડિયો એક વાર ફરી લોડ થઈ રહ્યો છે..."]
+    "Buffering for a long time - reloading the video once...": ["लंबे समय से बफ़र हो रहा है - वीडियो एक बार फिर लोड हो रहा है...", "લાંબા સમયથી બફર થઈ રહ્યું છે - વીડિયો એક વાર ફરી લોડ થઈ રહ્યો છે..."],
+    "Still buffering - quality lowered once to {q} to keep it playing.": ["अब भी बफ़र हो रहा है - चलता रखने के लिए क्वालिटी एक बार {q} पर घटाई गई.", "હજી બફર થઈ રહ્યું છે - ચાલુ રાખવા ક્વોલિટી એક વાર {q} પર ઘટાડી."],
+    "Quality drop on a repeat stall": ["फिर अटकने पर क्वालिटी घटना", "ફરી અટકતાં ક્વોલિટી ઘટવી"]
   });
   (function () {
     var helper = $("playbackHelper"); if (!helper) return;
@@ -36593,7 +36595,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "wdBtn295"; row.appendChild(btn);
     var hint = document.createElement("span"); hint.className = "hint"; hint.style.cssText = "flex-basis:100%"; row.appendChild(hint);
     var wdOn = true; try { wdOn = localStorage.getItem("vp-stall295.v1") !== "0"; } catch (e) {}
-    var bufSince295 = 0, didFor295 = null;
+    var bufSince295 = 0, didFor295 = null, droppedFor295 = null;
     var prevFx295w = window.__vpStateFx;
     window.__vpStateFx = function (st) {
       if (prevFx295w) prevFx295w(st);
@@ -36608,7 +36610,26 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       try {
         if (!wdOn || !bufSince295 || Date.now() - bufSince295 < 20000) return;
         if (!ready || !curId || seeking) return;
-        if (didFor295 === curId) return;
+        // Round 316 new 3: a video that stalls AGAIN after the reload used to be left for
+        // the viewer even though a heavy picture on a weak connection is the usual reason.
+        // The second stall now drops the playback quality one step (never past 240p, never
+        // against Quality lock or Data saver, once per video) and reloads; a third stall is
+        // left for the viewer as before. The toast names the new quality honestly.
+        if (didFor295 === curId) {
+          if (droppedFor295 === curId || prefs.qualityLock === true || prefs.dataSaver === true) return;
+          var qi316 = -1;
+          for (var qk = 0; qk < QUALITIES.length; qk++) { if (QUALITIES[qk].value === prefs.quality) { qi316 = qk; break; } }
+          var nextQ316 = qi316 < 0 ? "large" : (qi316 + 1 < QUALITIES.length ? QUALITIES[qi316 + 1].value : null);
+          if (!nextQ316) return;
+          droppedFor295 = curId; bufSince295 = 0;
+          prefs.quality = nextQ316; savePrefs();
+          if (ready && iframe) { try { qlAppliedFor = curId; send("setPlaybackQuality", [nextQ316]); markActive(qualityChips, nextQ316); } catch (e) {} }
+          var qlab316 = nextQ316; for (var qm = 0; qm < QUALITIES.length; qm++) { if (QUALITIES[qm].value === nextQ316) qlab316 = QUALITIES[qm].label; }
+          toast(T("Still buffering - quality lowered once to {q} to keep it playing.").replace("{q}", qlab316));
+          linkInput.value = curId;
+          loadVideo(curTime >= 5 ? Math.floor(curTime) : null, null, qPos >= 0 ? qPos : undefined, true);
+          return;
+        }
         didFor295 = curId; bufSince295 = 0;
         toast(T("Buffering for a long time - reloading the video once..."));
         linkInput.value = curId;
@@ -45162,6 +45183,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Own subtitle file", "own subtitle file srt vtt upload subtitles captions overlay foreign film lecture no cc on youtube video sync nudge", "#subUpBtn314"],
       ["Never suggest this video", "never suggest this video hide from surprise block auto pick feeds not interested stop suggesting skip", "#neverBtn316"],
       ["Clear the watch map", "clear watch map reset seen parts rewatch fresh start over forget watched stretches skip seen", "#wmapClearBtn316"],
+      ["Quality drop on a repeat stall", "quality drop repeat stall buffering weak connection lower resolution keep playing auto hd 480 slow internet", "#wdBtn295"],
       ["Speed suggestion for long videos", "speed suggestion long video hour lecture movie watch faster 1.25x 1.5x 2x offer prompt save time", "#ctl-speed"],
       ["Scan a QR code", "scan qr code camera open shared link from another device phone point reader", "#qrScanBtn311"],
       ["Snooze the alarm", "snooze daily alarm ten more minutes ring again later morning postpone", "#alarmSnoozeBtn311"],
@@ -47851,6 +47873,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Moments that name themselves", "#capMomBtn315");
   window.__vpWnew283("Never suggest this video", "#neverBtn316");
   window.__vpWnew283("Clear the watch map", "#wmapClearBtn316");
+  window.__vpWnew283("Quality drop on a repeat stall", "#wdBtn295");
 })();
 </script>
 </body>
