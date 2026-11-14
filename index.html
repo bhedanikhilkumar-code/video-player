@@ -44733,7 +44733,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (!vpFresh360 || prefs.langPick360 === true) return;
     // Same rule as the welcome tour (round 341 fix 4): a shared video link wins.
     if (/[?&](v|url|text|list|playlist|from|to)=/.test(location.search || "")) return;
-    var ov360 = null;
+    var ov360 = null, iv360 = null, mo360 = null;
     function close360() {
       if (!ov360) return;
       prefs.langPick360 = true; savePrefs();
@@ -44741,6 +44741,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       var el = ov360;
       setTimeout(function () { if (el.parentNode) el.parentNode.removeChild(el); }, 220);
       ov360 = null;
+      if (iv360) { clearInterval(iv360); iv360 = null; }
+      if (mo360) { mo360.disconnect(); mo360 = null; }
       document.removeEventListener("keydown", keys360, true);
     }
     function pick360(lg) {
@@ -44789,13 +44791,45 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       // z-index - so this card must live in the top layer too. Shown after the
       // tour, it stacks above it.
       ov360.setAttribute("popover", "manual");
-      try { ov360.showPopover(); } catch (ePop360) {}
+      // The welcome tour is a top-layer popover and re-promotes itself +260ms
+      // after it opens (round 341), which lands it above this card whenever the
+      // tour shows later than the card. So the card only shows once the tour's
+      // promote pulse has had time to pass, and it bumps itself back on top if
+      // the tour appears or re-promotes while the card is up.
+      function show360() {
+        if (!ov360 || ov360.matches(":popover-open")) return;
+        try { ov360.showPopover(); } catch (ePop360) {}
+        var f = ov360.querySelector(".lp360-pick"); if (f) { try { f.focus(); } catch (eFoc360) {} }
+      }
+      function bump360() {
+        if (!ov360) return;
+        var card = ov360.querySelector(".lp360-card"); if (card) card.style.animation = "none";
+        try { ov360.hidePopover(); ov360.showPopover(); } catch (eBump360) {}
+      }
+      var waited360 = 0, sawTour360 = false;
+      iv360 = setInterval(function () {
+        if (!ov360) { clearInterval(iv360); iv360 = null; return; }
+        waited360 += 100;
+        if (document.getElementById("tourOverlay")) sawTour360 = true;
+        if ((sawTour360 && waited360 >= 800) || waited360 >= 3000) {
+          clearInterval(iv360); iv360 = null;
+          show360();
+          setTimeout(bump360, 450); setTimeout(bump360, 1100);
+          mo360 = new MutationObserver(function (muts) {
+            muts.forEach(function (m) {
+              [].forEach.call(m.addedNodes, function (n) {
+                if (n && n.id === "tourOverlay") setTimeout(bump360, 320);
+              });
+            });
+          });
+          mo360.observe(document.body, { childList: true });
+        }
+      }, 100);
       [].forEach.call(ov360.querySelectorAll(".lp360-pick"), function (b) {
         b.addEventListener("click", function () { pick360(b.getAttribute("data-lg")); });
       });
       ov360.querySelector(".lp360-x").addEventListener("click", close360);
       document.addEventListener("keydown", keys360, true);
-      var first = ov360.querySelector(".lp360-pick"); if (first) first.focus();
     }
     if (document.readyState === "loading") window.addEventListener("DOMContentLoaded", function () { setTimeout(open360, 300); });
     else setTimeout(open360, 300);
