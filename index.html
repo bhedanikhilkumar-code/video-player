@@ -20650,6 +20650,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Best day": ["सबसे अच्छा दिन", "શ્રેષ્ઠ દિવસ"],
     "Best day in Watch stats": ["देखने के आंकड़े में सबसे अच्छा दिन", "જોવાના આંકડામાં શ્રેષ્ઠ દિવસ"]
   });
+  window.addEventListener("load", function () { setTimeout(function () { window.__vpWnew283("Take a break: safe cancel and resume", "#takeBreakBtn301"); }, 1050); });
   // Round 301 fix 1: five names on the What's new card right now (rounds 299-300) had
   // no Hindi/Gujarati entry, so the card and the feature finder showed them in English
   // on Hindi and Gujarati phones - the same gap as the round 220/221 fixes. Their chips
@@ -20665,6 +20666,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // the feature's own script block cannot see TR_MSG.
   Object.assign(TR_MSG, {
     "Take a break": ["ब्रेक लें", "બ્રેક લો"],
+    "Take a break: safe cancel and resume": ["अभी ब्रेक लें: सुरक्षित रद्द और जारी करना", "વિરામ લો: સલામત રદ અને ફરી ચાલુ"],
     "Take a break now - the video pauses and a rest card counts down": ["अभी ब्रेक लें - वीडियो रुक जाएगा और रेस्ट कार्ड उल्टी गिनती करेगा", "હવે બ્રેક લો - વીડિયો અટકી જશે અને રેસ્ટ કાર્ડ ઊલટી ગણતરી કરશે"],
     "Break time": ["ब्रेक का समय", "બ્રેકનો સમય"],
     "Rest a little - the video waits paused.": ["थोड़ा आराम करें - वीडियो रुका इंतज़ार कर रहा है.", "થોડો આરામ કરો - વીડિયો અટકીને રાહ જુએ છે."],
@@ -51268,23 +51270,20 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   var host301 = document.createElement("div"); host301.className = "row"; host301.id = "takeBreakRow301"; host301.style.marginTop = "8px";
   host301.appendChild(btn301);
   chips301.parentNode.appendChild(host301);
-  var card301 = null, tick301 = null, end301 = 0, wasPlaying301 = false, wasLocal301 = false;
+  var card301 = null, tick301 = null, end301 = 0, wasPlaying301 = false, pausedMedia301 = null;
   function paint301() {
     btn301.textContent = "\u2615 " + T("Take a break");
     btn301.setAttribute("aria-label", T("Take a break") + " - " + T("Take a break now - the video pauses and a rest card counts down"));
+    if (card301) { card301.querySelector("p").textContent = T("Rest a little - the video waits paused."); card301.querySelector("#takeBreakBack301").textContent = T("I'm back"); }
   }
   function clearCard301() {
     clearInterval(tick301); tick301 = null;
     if (card301) { card301.remove(); card301 = null; }
   }
   function closeCard301(resume) {
-    var wasPlaying = wasPlaying301, wasLocal = wasLocal301;
-    clearCard301();
-    wasPlaying301 = false;
-    if (resume && wasPlaying) {
-      if (wasLocal) { var v = document.getElementById("lpVideo"); if (v && v.paused) { var p = v.play(); if (p && p.catch) p.catch(function () {}); } }
-      else if (window.__vpPlayAfterBreak) window.__vpPlayAfterBreak();
-    }
+    var snapshot = pausedMedia301;
+    clearCard301(); wasPlaying301 = false; pausedMedia301 = null;
+    if (resume && window.__vpResumePlayback346) window.__vpResumePlayback346(snapshot);
   }
   function openCard301(mins) {
     clearCard301();
@@ -51306,12 +51305,13 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   }
   btn301.addEventListener("click", function () {
     var v = document.getElementById("lpVideo");
-    wasLocal301 = !!(v && !v.hidden && !v.paused && !v.ended);
-    wasPlaying301 = wasLocal301 || !!(window.__vpIsPlaying && window.__vpIsPlaying());
+    pausedMedia301 = window.__vpCapturePlayback346 ? window.__vpCapturePlayback346() : null;
+    wasPlaying301 = !!(pausedMedia301 && (pausedMedia301.local || pausedMedia301.youtube));
     if (window.__vpPauseForBreak) window.__vpPauseForBreak();
-    if (wasLocal301 && v) v.pause();
+    if (pausedMedia301 && pausedMedia301.local) pausedMedia301.local.video.pause();
     window.toast(wasPlaying301 ? T("Paused for your break.") : T("Nothing is playing to pause - the rest card still counts down."));
     window.vpAsk(T("Break time"), "2", {}).then(function (ans) {
+      if (ans === null) { closeCard301(true); return; }
       var n = parseInt(ans, 10);
       if ([1, 2, 5].indexOf(n) < 0) n = 2;
       openCard301(n);
