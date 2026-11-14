@@ -9948,11 +9948,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
     var qPlBtn311 = document.createElement("button"); qPlBtn311.type = "button"; qPlBtn311.className = qFeedBtn.className; qPlBtn311.id = "qPlFeedBtn311";
     qLimBtn272.parentNode.insertBefore(qPlBtn311, qLimBtn272.nextSibling);
+    // Round 311 fix 4: this block runs before the playlists array is assigned further
+    // down the closure, so a saved feed choice met playlists still undefined on the next
+    // load - the paint threw, the closure's init died, and the whole player broke.
+    // Reach the array only once it really exists (the typeof guard the older playlist
+    // chips use), and never clear a saved choice against a not-yet-loaded list.
+    var plsReady311 = function () { return typeof playlists !== "undefined" && Array.isArray(playlists); };
     var plFeedPaint311 = function () {
       var nm = (prefs.r311 && typeof prefs.r311.plFeed === "string") ? prefs.r311.plFeed : "";
       var found = false;
-      if (nm) { for (var pi = 0; pi < playlists.length; pi++) { if (playlists[pi] && playlists[pi].name === nm) { found = true; break; } } }
-      if (nm && !found) { nm = ""; prefs.r311.plFeed = ""; savePrefs(); }
+      if (nm && plsReady311()) { for (var pi = 0; pi < playlists.length; pi++) { if (playlists[pi] && playlists[pi].name === nm) { found = true; break; } } }
+      if (nm && plsReady311() && !found) { nm = ""; prefs.r311.plFeed = ""; savePrefs(); }
       qPlBtn311.textContent = T("Playlist feed") + ": " + (nm ? nm : T("off"));
       qPlBtn311.setAttribute("aria-pressed", String(!!nm));
       qPlBtn311.classList.toggle("active", !!nm);
@@ -9960,7 +9966,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     };
     qPlBtn311.addEventListener("click", function () {
       var nm = (prefs.r311 && typeof prefs.r311.plFeed === "string") ? prefs.r311.plFeed : "";
-      var names = playlists.map(function (x) { return x && x.name; }).filter(function (x) { return typeof x === "string" && x; });
+      var names = (plsReady311() ? playlists : []).map(function (x) { return x && x.name; }).filter(function (x) { return typeof x === "string" && x; });
       var idx = names.indexOf(nm);
       // Round 311 fix 3: the first tap from off landed back on off (the off case was
       // folded into the wrap-around), so the feed could never turn on. Off now steps
@@ -10016,7 +10022,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // the playlist is gone or nothing in it is pullable. Encoded as 200000 + row.
   function plFeedPl311() {
     var nm = prefs.r311 && typeof prefs.r311.plFeed === "string" ? prefs.r311.plFeed : "";
-    if (!nm) return null;
+    if (!nm || typeof playlists === "undefined" || !Array.isArray(playlists)) return null;
     for (var i = 0; i < playlists.length; i++) { if (playlists[i] && playlists[i].name === nm) return playlists[i]; }
     return null;
   }
