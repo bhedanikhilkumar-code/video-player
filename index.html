@@ -44510,6 +44510,24 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Raised": ["थोड़े ऊपर", "થોડું ઉપર"],
     "High": ["ऊपर", "ઉપર"]
   });
+  // Round 356 new 3: Queue position on the mini player. While the mini player floats, the
+  // library card with the queue list is scrolled out of sight, so during a long queue you
+  // lose the sense of "where am I in tonight's line-up". A small glass pill on the docked
+  // frame now reads "Video 3 of 12", updating as the queue moves; it hides when the mini
+  // player is not floating, when nothing from the queue is playing, or when the queue holds
+  // a single video (nothing to count). Same pill styling and phone layout as the mini time
+  // read-out (round 334), painted on a light timer like it, relang-safe. The position comes
+  // from a tiny getter here so the pill script needs no access to the library internals.
+  // Checked first: the mini player shows elapsed/total time and transport chips but never
+  // the queue position. Hindi and Gujarati text, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Queue position on the mini player": ["मिनी प्लेयर पर कतार स्थिति", "મિની પ્લેયર પર કતાર સ્થિતિ"],
+    "Video {a} of {b}": ["वीडियो {a} / {b}", "વીડિયો {a} / {b}"]
+  });
+  window.__vpQPosInfo356 = function () {
+    try { return { pos: (qPos >= 0 && qPos < lib.queue.length) ? qPos + 1 : 0, n: lib.queue.length }; } catch (e) { return { pos: 0, n: 0 }; }
+  };
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Queue position on the mini player", "#miniQPos356"); }, 1480); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Subtitle position", "#lpSubPos356"); }, 1450); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Subtitle font", "#lpSubFont356"); }, 1420); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Playback ended alert", "#qEndAlertBtn355"); }, 1390); });
@@ -49155,6 +49173,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Subtitles (CC)", "subtitle cc captions", "#ctl-subs"],
       ["Subtitle font", "subtitle font captions style serif rounded mono monospace letters local file look reading", "#lpSubFont356"],
       ["Subtitle position", "subtitle position captions move raise higher lift place bottom screen local file", "#lpSubPos356"],
+      ["Queue position on the mini player", "queue position mini player docked floating video 3 of 12 which number place line up", "#miniQPos356"],
       ["A-B repeat loop", "loop ab repeat practice", "#ctl-repeat"],
       ["Sleep timer", "sleep timer auto stop night", "#ctl-sleep"],
       ["Auto sleep timer", "auto sleep timer arm every night schedule bedtime forget automatic night", "#sleepArm318Btn"],
@@ -49970,6 +49989,33 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   new MutationObserver(tick).observe(dock, { attributes: true, attributeFilter: ["class"] });
   if (timeLabel) new MutationObserver(tick).observe(timeLabel, { attributes: true, attributeFilter: ["aria-pressed"] });
   (window.__relang = window.__relang || []).push(tick);
+})();
+</script>
+<script id="r356-mini-qpos-js">
+// Round 356 new 3: Queue position pill on the mini player - see the note in the main script.
+(function () {
+  var dock = document.getElementById("playerDock");
+  if (!dock) return;
+  var st = document.createElement("style"); st.id = "miniQPosCss356";
+  st.textContent = "#miniQPos356{display:none}"
+    + "#playerDock.is-mini #miniQPos356:not([hidden]){display:block;position:absolute;left:8px;bottom:62px;z-index:4;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.02em;color:inherit;background:var(--soft);border:1px solid var(--hairline);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);pointer-events:none}"
+    + "@media(max-width:560px){#playerDock.is-mini #miniQPos356:not([hidden]){position:static;width:max-content;max-width:calc(100% - 16px);margin:4px auto 6px 8px;min-height:32px;box-sizing:border-box;display:flex;align-items:center;white-space:normal;overflow-wrap:anywhere}}";
+  document.head.appendChild(st);
+  var el = document.createElement("div"); el.id = "miniQPos356"; el.hidden = true;
+  dock.appendChild(el);
+  function tick() {
+    var T0 = window.T || function (x) { return x; };
+    var info = window.__vpQPosInfo356 ? window.__vpQPosInfo356() : { pos: 0, n: 0 };
+    if (!dock.classList.contains("is-mini") || info.n < 2 || !info.pos) { el.hidden = true; return; }
+    var txt = T0("Video {a} of {b}").replace("{a}", info.pos).replace("{b}", info.n);
+    if (el.textContent !== txt) el.textContent = txt;
+    el.hidden = false;
+  }
+  setInterval(tick, 700);
+  new MutationObserver(tick).observe(dock, { attributes: true, attributeFilter: ["class"] });
+  document.addEventListener("vp-video-loaded", function () { setTimeout(tick, 250); });
+  (window.__relang = window.__relang || []).push(tick);
+  tick();
 })();
 </script>
 <script id="r36-ab-band-js">
