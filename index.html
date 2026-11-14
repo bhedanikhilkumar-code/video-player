@@ -6425,6 +6425,52 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     laterLenBtn.classList.toggle("active", laterLenMode !== "all");
     laterLenBtn.hidden = lib.later.length < 2;
   };
+  // Mix order for favourites and Watch later (round 317 new 2): the queue has had a
+  // Mix order chip for a long time, but the two saved lists only ever SORTED - A-Z,
+  // top rated, shortest, newest. Falling back in love with an old favourites list
+  // needs a surprise order, and every sort just re-orders by a rule. The 🎲 Mix
+  // order chip on each list shuffles its saved order once (pinned rows still float
+  // to the top, snoozed Watch later rows still sink), switches the list back to its
+  // default order so the mix is actually visible, and offers undo. Checked first:
+  // Shuffle play exists for the queue and for playlists, but nothing reorders the
+  // saved lists themselves. Hindi and Gujarati text, feature finder and What's new
+  // included; nothing new to remember, nothing in the backup.
+  Object.assign(TR_MSG, {
+    "🎲 Mix order": ["🎲 क्रम मिलाएं", "🎲 ક્રમ ભળાવો"],
+    "Mix favourites order": ["पसंदीदा क्रम मिलाएं", "મનપસંદ ક્રમ ભળાવો"],
+    "Mix watch-later order": ["वॉच लेटर क्रम मिलाएं", "વોચ લેટર ક્રમ ભળાવો"],
+    "Favourites order mixed": ["पसंदीदा क्रम मिला दिया गया", "મનપસંદ ક્રમ ભળી ગયો"],
+    "Watch later order mixed": ["वॉच लेटर क्रम मिला दिया गया", "વોચ લેટર ક્રમ ભળી ગયો"],
+    "Favourites restored": ["पसंदीदा वापस आ गए", "મનપસંદ પાછા આવ્યા"],
+    "Watch later restored": ["वॉच लेटर वापस आ गया", "વોચ લેટર પાછું આવ્યું"],
+    "Shuffle the saved order of this list. Pinned videos still float to the top.": ["इस सूची का सहेजा क्रम मिलाएं. पिन किए वीडियो ऊपर ही रहते हैं.", "આ યાદીનો સાચવેલો ક્રમ ભળાવો. પિન કરેલા વીડિયો ઉપર જ રહે છે."]
+  });
+  // Shared one-time shuffle used by the mix chips (round 317) - in place, so every
+  // reference to the saved list keeps pointing at the same array.
+  function vpShuf317(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  (function () {
+    function mkMix317(rowSel, arr, setNewest, mixMsg, undoMsg, ariaKey, id) {
+      var r = document.querySelector(rowSel); if (!r) return null;
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = id;
+      b.addEventListener("click", function () {
+        if (arr().length < 2) return;
+        var snap = arr().slice();
+        var a = arr(); vpShuf317(a);
+        var same = true; for (var i = 0; i < a.length; i++) if (a[i] !== snap[i]) { same = false; break; }
+        if (same) { var t2 = a[0]; a[0] = a[1]; a[1] = t2; }
+        setNewest(); saveLib(); renderLib();
+        toastUndo(T(mixMsg), function () { var cur = arr(); cur.length = 0; for (var k = 0; k < snap.length; k++) cur.push(snap[k]); saveLib(); renderLib(); }, T(undoMsg));
+      });
+      r.appendChild(b);
+      b.refresh = function () { b.textContent = T("🎲 Mix order"); b.setAttribute("aria-label", T(ariaKey)); b.title = T("Shuffle the saved order of this list. Pinned videos still float to the top."); b.hidden = arr().length < 2; };
+      (window.__relang = window.__relang || []).push(function () { if (b.refresh) b.refresh(); });
+      return b;
+    }
+    var fm317 = mkMix317('.lib-listtools[data-for="lhFavs"]', function () { return lib.favs; }, function () { favSortMode = "new"; try { localStorage.setItem("vp-favsort.v1", "new"); } catch (e) {} }, "Favourites order mixed", "Favourites restored", "Mix favourites order", "favMixBtn317");
+    var lm317 = mkMix317('.lib-listtools[data-for="lhLater"]', function () { return lib.later; }, function () { if (typeof laterSort !== "undefined" && laterSort) laterSort.set("new"); }, "Watch later order mixed", "Watch later restored", "Mix watch-later order", "laterMixBtn317");
+    window.__vpMixRefresh317 = function () { if (fm317 && fm317.refresh) fm317.refresh(); if (lm317 && lm317.refresh) lm317.refresh(); };
+  })();
+
   function renderCounts() {
     [["lhFavs", lib.favs], ["lhLater", lib.later], ["lhHist", lib.hist], ["lhQueue", lib.queue]].forEach(function (x) {
       var h = $(x[0]); if (!h || !h.parentNode) return;
@@ -6437,6 +6483,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     favSortBtn.hidden = lib.favs.length < 2;
     laterSortBtn.refresh(); histSortBtn.refresh();
     if (laterLenBtn && laterLenBtn.refresh) laterLenBtn.refresh();
+    if (window.__vpMixRefresh317) window.__vpMixRefresh317();
     if (typeof window.__histLenRefresh304 === "function") window.__histLenRefresh304();
     if (typeof window.__favLenRefresh304 === "function") window.__favLenRefresh304();
   }
@@ -45275,6 +45322,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Back to what I was watching", "back to what I was watching interrupted video return continue where stopped previous video tap", "#back315Btn"],
       ["Moments that name themselves", "moment spoken line subtitle name itself save no typing caption bookmark quick", "#capMomBtn315"],
       ["Loop the queue", "loop queue repeat whole queue again from the top first video cycle continuous binge marathon replay all when finished ended", "#qLoopBtn317"],
+      ["Mix order for saved lists", "mix shuffle random order favourites watch later saved list surprise rediscover jumble", "#favMixBtn317"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
@@ -47992,6 +48040,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Save corrected subtitles", "#subSaveBtn316");
   window.__vpWnew283("Copy the spoken line", "#subLineBtn316");
   window.__vpWnew283("Loop the queue", "#qLoopBtn317");
+  window.__vpWnew283("Mix order for saved lists", "#favMixBtn317");
 })();
 </script>
 </body>
