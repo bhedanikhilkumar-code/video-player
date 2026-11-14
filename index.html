@@ -4625,7 +4625,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       { label: T("Paste a link"), fn: function () { var lb = $("pasteLinkBtn"); if (lb) lb.click(); var li2 = $("link"); if (li2) li2.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); var inp = $("linkInput"); if (inp) setTimeout(function () { inp.focus(); }, 350); } },
       { label: T("Import playlist"), fn: function () { var pb = $("plImportBtn"); if (pb) pb.click(); } }
     ]);
-    fillList(laterList, laterView(), laterEmptyMsg(), T("Remove"), function (item) {
+    // Round 324 new 3: Watch later fold. Favourites has drawn only its first 30 rows with
+    // a Show all row since round 206, but Watch later - capped at 50, and on a parked
+    // backlog often exactly that - still rendered every row on each library repaint, the
+    // same heavy scroll the favourites fold fixed. The same pattern now applies here:
+    // the first 30 rows with a Show all / Show less row (search always renders
+    // everything, and the grouped-by-channel view keeps its own full list). The open
+    // choice is remembered on this device in prefs.laterFold324 (loader-whitelisted, so
+    // it rides the backup). Hindi/Gujarati reuse the favourites fold's strings; feature
+    // finder and What's new included.
+    var latAll324 = laterView();
+    var latSearchOn324 = !!(libSearch && libSearch.value && libSearch.value.trim());
+    var latShow324 = (prefs.laterFold324 || latSearchOn324 || latAll324.length <= 30) ? latAll324 : latAll324.slice(0, 30);
+    fillList(laterList, latShow324, laterEmptyMsg(), T("Remove"), function (item) {
       // Round 118: removing a Watch later row offers Undo, like queue and history removals do.
       var lIdx = findIn(lib.later, item.id); if (lIdx < 0) return;
       var snapLat = lib.later.slice();
@@ -4641,7 +4653,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (v233) lib.later[li233].why = v233; else delete lib.later[li233].why;
       saveLib(); renderLib();
       toast(v233 ? T("Reason saved on the row.") : T("Reason removed."));
-    } }, plRowAction(), favRowAction(), queueRowAction()], "later", undefined, true);
+    } }, plRowAction(), favRowAction(), queueRowAction()], "later", undefined, true);;
+    if (latAll324.length > 30 && !latSearchOn324) {
+      var latFoldLi324 = document.createElement("li"); latFoldLi324.className = "lib-empty fav-fold-row";
+      var latFoldBtn324 = document.createElement("button"); latFoldBtn324.className = "chip"; latFoldBtn324.type = "button"; latFoldBtn324.id = "laterFoldBtn324";
+      latFoldBtn324.textContent = prefs.laterFold324 ? T("Show less") : T("Show all") + " (" + (latAll324.length - 30) + " " + T("more") + ")";
+      latFoldBtn324.addEventListener("click", function () { prefs.laterFold324 = !prefs.laterFold324; savePrefs(); renderLib(); });
+      latFoldLi324.appendChild(latFoldBtn324); laterList.appendChild(latFoldLi324);
+    }
+    if (!window.__vpWnewLaterFold324 && window.__vpWnew283) { window.__vpWnewLaterFold324 = 1; window.__vpWnew283("Watch later fold", "#laterFoldBtn324"); }
     if (typeof laterWakeRender === "function") laterWakeRender();
     // Round 206 new 4: Favourites fold - a long favourites list made the library card heavy
     // to draw and scroll on phones. Show the first 30 with a Show all row; the full list is
@@ -34482,7 +34502,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Group by channel: off": ["चैनल से समूह: बंद", "ચેનલ પ્રમાણે જૂથ: બંદ"],
     "Other channel": ["अन्य / अज्ञात चैनल", "અન્ય / અજાણ ચેનલ"],
     "{n} videos": ["{n} वीडियो", "{n} વીડિયો"],
-    "Watch later grouped by channel": ["बाद में देखें चैनल से समूहित", "પછી જુઓ ચેનલ પ્રમાણે જૂથમાં"]
+    "Watch later grouped by channel": ["बाद में देखें चैनल से समूहित", "પછી જુઓ ચેનલ પ્રમાણે જૂથમાં"],
+    "Watch later fold": ["बाद में देखें लिस्ट मोड़", "પછી જુઓ યાદી ઘટાડો"]
   });
   (function () {
     var KEY = "vp-latergroup.v1";
@@ -45537,6 +45558,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Split into even parts", "split video into even parts auto chapters moments part markers long lecture mix divide", "#splitRow281"],
       ["Rate right after finishing", "rate after finishing video ends quick stars favourite unrated prompt enjoyed", "#rateRow"],
       ["Watch later grouped by channel", "watch later group by channel creator folders sections tidy backlog organised", "#laterGroupBtn281"],
+      ["Watch later fold", "watch later show all less fold long list 30 rows scroll heavy phone collapse expand", "#laterFoldBtn324"],
       ["Favourites grouped by channel", "favourites group by channel creator folders sections tidy organise songs lectures", "#favGroupBtn324"],
       ["Hold a row for quick actions", "hold press long press right click row quick actions play now play next add queue watch later favourite remove action sheet", "#library"],
       ["Channel intro skip", "channel intro skip theme song opening every episode podcast auto first seconds creator remember", "#chIntroRow280"],
