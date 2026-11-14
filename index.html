@@ -11931,18 +11931,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (sqCache259.q === q) return sqCache259.r;
     var r = { words: [], not: [], ops: [] }, re = /(-?)"([^"]*)"|(\S+)/g, m;
     while ((m = re.exec(q))) {
-      if (m[2] !== undefined) { if (m[2].trim()) (m[1] ? r.not : r.words).push(m[2].trim()); continue; }
+      if (m[2] !== undefined) { if (m[2].trim()) (m[1] ? r.not : r.words).push(m[2].trim().toLowerCase()); continue; }
       var w = m[3];
       // Round 260 fix 2: "-is:fav" (leave out) was read as the plain word "is:fav", so it hid nothing,
       // and "is:favourites" / "is:favorites" were not recognised. A leading - now negates an
       // operator, and the plural favourite spellings work.
-      var om = /^(-?)((?:is|has):(?:fav|favs|favourite|favourites|favorite|favorites|later|queued|queue|new|played|note|notes|short|long))$/.exec(w);
+      // Round 292 fix 2: the haystack is lowercased but the query words never were, so a
+      // capitalised search - "Music", or the "Is:fav" a phone's autocapitalise types -
+      // matched nothing at all. Words, leave-out words, quoted phrases and the operator
+      // spellings are all lowercased at parse time now.
+      var wl = w.toLowerCase();
+      var om = /^(-?)((?:is|has):(?:fav|favs|favourite|favourites|favorite|favorites|later|queued|queue|new|played|note|notes|short|long))$/.exec(wl);
       if (om) { r.ops.push(om[1] + om[2].replace(/(avourites|avorites|avourite|avorite|avs)$/, "av").replace(/s$/, "").replace("queued", "queue")); continue; }
       // Round 286 new 2: channel:word (and -channel:word to leave one out) filters by the
       // channel the app has learned for each video.
-      var cm286 = /^(-?)channel:(\S+)$/.exec(w);
+      var cm286 = /^(-?)channel:(\S+)$/.exec(wl);
       if (cm286) { r.chans = r.chans || []; r.chans.push({ neg: !!cm286[1], name: cm286[2].toLowerCase() }); continue; }
-      if (w.length > 1 && w.charAt(0) === "-") r.not.push(w.slice(1)); else r.words.push(w);
+      if (w.length > 1 && w.charAt(0) === "-") r.not.push(w.slice(1).toLowerCase()); else r.words.push(w.toLowerCase());
     }
     sqCache259 = { q: q, r: r }; return r;
   }
