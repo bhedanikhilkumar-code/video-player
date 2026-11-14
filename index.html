@@ -38802,7 +38802,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       else toast(T("All chapters are already saved as moments."));
     });
     (window.__relang = window.__relang || []).push(paintMom307); paintMom307();
-    var pauseArmed307 = false;
+    var pauseArmed307 = false, prevTick307 = 0;
     function paintPause307() {
       pauseBtn307.textContent = T(pauseArmed307 ? "\u23f8 Pause at chapter end: on" : "\u23f8 Pause at chapter end: off");
       pauseBtn307.setAttribute("aria-pressed", pauseArmed307 ? "true" : "false");
@@ -38889,10 +38889,15 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (!open || state !== "ok") return;
       var t = curTime, cur = -1;
       for (var i = 0; i < rows.length; i++) { if (t >= rows[i].a && t < rows[i].b) { cur = i; break; } if (t >= rows[i].a && (i + 1 >= rows.length || t < rows[i + 1].a)) cur = i; }
-      if (pauseArmed307 && cur >= 0) {
-        var endT = isFinite(rows[cur].b) ? rows[cur].b : (duration > 0 ? duration : Infinity);
-        if (curTime >= endT - 0.3) { pauseArmed307 = false; paintPause307(); send("pauseVideo"); toast(T("Paused at the chapter end.")); }
+      if (pauseArmed307) {
+        var crossed = false;
+        for (var ci = 0; ci < rows.length; ci++) {
+          var endT = isFinite(rows[ci].b) ? rows[ci].b : (duration > 0 ? duration : Infinity);
+          if (prevTick307 < endT - 0.3 && curTime >= endT - 0.3) { crossed = true; break; }
+        }
+        if (crossed) { pauseArmed307 = false; paintPause307(); send("pauseVideo"); toast(T("Paused at the chapter end.")); }
       }
+      prevTick307 = curTime;
       var kids = list.children;
       for (var j = 0; j < kids.length; j++) {
         var kb = kids[j].querySelector ? (kids[j].querySelector("button") || kids[j]) : kids[j];
@@ -40527,7 +40532,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (typeof loopA !== "undefined" && loopA !== null && loopB !== null && Math.abs(loopA - ch.t) < 0.5) lp307.classList.add("active");
       lp307.addEventListener("click", function () {
         if (!isFinite(vid.duration) || !vid.duration) return;
-        if (loopA !== null && loopB !== null && Math.abs(loopA - ch.t) < 0.5) { resetLocalLoop(); return; }
+        if (loopA !== null && loopB !== null && Math.abs(loopA - ch.t) < 0.5) { resetLocalLoop(); chRender(); return; }
         var end = (i + 1 < list.length) ? list[i + 1].t : vid.duration;
         if (end - ch.t < 0.5) { sessionMsg.textContent = T("This chapter is too short to loop."); return; }
         loopA = ch.t; loopB = end; lpLoopCount = 0; loopText();
