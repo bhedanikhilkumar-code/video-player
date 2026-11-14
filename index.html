@@ -2415,6 +2415,7 @@ setTimeout(done,3000);})();
         <span class="hint lib-tools-msg" id="libBackupMsg" role="status"></span>
       </div>
       <p class="hint" id="backupAge" role="status"></p>
+      <div class="row" id="autoBkRow296" style="margin-top:6px;align-items:center;gap:8px;flex-wrap:wrap"><span class="label" id="autoBkLab296">Automatic backup</span><span class="chips" id="autoBkChips296"></span></div>
       <p class="hint" id="dataSize" role="status"></p>
       <div class="tip-card backup-remind" id="backupRemind" hidden>
         <div class="tip-main"><p id="backupRemindTx"></p></div>
@@ -13684,6 +13685,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // Reset all settings left the old choice behind although the dialog promises defaults.
   // It now rides the backup raw keys like its neighbours and is cleared by the reset.
   VP_RAW_KEYS["vp-stall295.v1"] = /^[01]$/;
+  VP_RAW_KEYS["vp-autobk.v1"] = /^(0|7|30)$/;
   function vpBuildBackup282() {
     if (typeof noteFlush === "function") noteFlush();
     if (typeof lyricsFlush === "function") lyricsFlush();
@@ -36017,6 +36019,51 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var t0 = $("cbSafe296T"); if (t0) t0.textContent = T("Colour-blind safe look (safe accent pair, active states also underlined)");
     apply296();
   })();
+  // Automatic backup (round 296 new 5): the backup reminder only nags - a viewer who taps
+  // Later every time still loses everything the day the browser wipes storage. An
+  // Automatic backup row in the backup card turns the nag into a safety net: Every week or
+  // Every month, when the app opens and the last backup (export, copy or import) is older
+  // than that, the same backup file the Export chip makes downloads by itself, once, and
+  // the reminder clock starts again. Off by default; the choice rides the backup as
+  // vp-autobk.v1 so a restored phone keeps the habit. Checked first: the reminder, the
+  // last-backup line and Restore points all wait for you to act - nothing ever saved the
+  // file on its own. Hindi and Gujarati text in the main closure; What's new and feature
+  // finder included.
+  Object.assign(TR_MSG, {
+    "Automatic backup": ["\u0911\u091f\u094b\u092e\u0948\u091f\u093f\u0915 \u092c\u0948\u0915\u0905\u092a", "\u0a91\u0a9f\u0acb\u0aae\u0ac7\u0a9f\u0abf\u0a95 \u0aac\u0ac7\u0a95\u0a85\u0aaa"],
+    "Every week": ["\u0939\u0930 \u0939\u092b\u093c\u094d\u0924\u0947", "\u0aa6\u0ab0 \u0a85\u0aa0\u0ab5\u0abe\u0aa1\u0abf\u0aaf\u0ac7"],
+    "Every month": ["\u0939\u0930 \u092e\u0939\u0940\u0928\u0947", "\u0aa6\u0ab0 \u0aae\u0ab9\u0abf\u0aa8\u0ac7"],
+    "Downloads the backup file by itself when the last one is this old. Off by default.": ["\u0a9c\u092c \u0aa6\u094b\u0936\u094d\u0930\u0940 \u092c\u0948\u0915\u0905\u092a \u0907\u0924\u0928\u0940 \u092a\u0941\u0930\u093e\u0928\u0940 \u0939\u094b \u091c\u093e\u090f, \u092b\u093c\u093e\u0907\u0932 \u0905\u092a\u0928\u0947-\u0906\u092a \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0939\u094b \u091c\u093e\u0924\u0940 \u0939\u0948. \u0921\u093f\u092b\u093c\u0949\u0932\u094d\u091f \u0930\u0942\u092a \u0938\u0947 \u092c\u0902\u0926.", "\u0a9c\u0acd\u0aaf\u0abe\u0ab0\u0ac7 \u0aaa\u0abe\u0a9b\u0ab2\u0ac1\u0a82 \u0aac\u0ac7\u0a95\u0a85\u0aaa \u0a86\u0a9f\u0ab2\u0ac1\u0a82 \u0a9c\u0ac1\u0aa8\u0ac1\u0a82 \u0aa5\u0abe\u0aaf, \u0aab\u0abe\u0a87\u0ab2 \u0a86\u0aaa\u0aae\u0ac7\u0ab3\u0ac7 \u0aa1\u0abe\u0a89\u0aa8\u0ab2\u0acb\u0aa1 \u0aa5\u0a88 \u0a9c\u0abe\u0aaf. \u0aa1\u0abf\u0aab\u0ac9\u0ab2\u0acd\u0a9f \u0aac\u0a82\u0aa7."],
+    "Backup downloaded automatically.": ["\u092c\u0948\u0915\u0905\u092a \u0905\u092a\u0928\u0947-\u0906\u092a \u0921\u093e\u0909\u0928\u0932\u094b\u0921 \u0939\u0941\u0906.", "\u0aac\u0ac7\u0a95\u0a85\u0aaa \u0a86\u0aaa\u0aae\u0ac7\u0ab3\u0ac7 \u0aa1\u0abe\u0a89\u0aa8\u0ab2\u0acb\u0aa1 \u0aa5\u0aaf\u0ac1\u0a82."]
+  });
+  (function () {
+    var lab = $("autoBkLab296"), chips = $("autoBkChips296"); if (!lab || !chips) return;
+    var KEY296 = "vp-autobk.v1";
+    function choice() { try { var v = localStorage.getItem(KEY296); return v === "7" ? 7 : v === "30" ? 30 : 0; } catch (e) { return 0; } }
+    function paint296() {
+      lab.textContent = T("Automatic backup") + ":";
+      chips.textContent = "";
+      [[0, "Off"], [7, "Every week"], [30, "Every month"]].forEach(function (p) {
+        var b = document.createElement("button"); b.type = "button";
+        b.className = "chip" + (choice() === p[0] ? " active" : "");
+        b.setAttribute("aria-pressed", String(choice() === p[0]));
+        b.textContent = T(p[1]);
+        b.title = T("Downloads the backup file by itself when the last one is this old. Off by default.");
+        b.addEventListener("click", function () { try { localStorage.setItem(KEY296, String(p[0])); } catch (e) {} paint296(); });
+        chips.appendChild(b);
+      });
+    }
+    (window.__relang = window.__relang || []).push(paint296); paint296();
+    setTimeout(function () {
+      try {
+        var c = choice(); if (!c) return;
+        var last = bkLast(); if (last && (Date.now() - last) <= c * 864e5) return;
+        if (bkCount() < 3) return;
+        vpSaveBackup282(); bkMark();
+        toast(T("Backup downloaded automatically."));
+      } catch (e) {}
+    }, 4000);
+  })();
   window.__vpPrefs = prefs;
   window.__vpSavePrefs = savePrefs;
   Object.assign(TR_MSG, {
@@ -40377,6 +40424,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Park the playing video", "park playing video not now watch later skip save for later next queue mood", "#parkBtn296"],
       ["Welcome back", "welcome back greeting yesterday watched queue continue resume first open day hello", "#greetCard296"],
       ["Colour-blind safe look", "colour blind color safe palette accent accessibility underline active state hue vision deuteranopia", "#cbSafe296"],
+      ["Automatic backup", "automatic backup auto download export weekly monthly schedule save file protect data", "#autoBkRow296"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
       ["Top channels", "top channels most watched creators ranking watch time stats favourite channel who watch most", "#lhStats"],
@@ -42904,6 +42952,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Park the playing video", "#parkBtn296");
   window.__vpWnew283("Welcome back", "#greetCard296");
   window.__vpWnew283("Colour-blind safe look", "#cbSafe296");
+  window.__vpWnew283("Automatic backup", "#autoBkRow296");
 })();
 </script>
 </body>
