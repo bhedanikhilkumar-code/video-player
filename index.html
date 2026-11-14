@@ -33575,7 +33575,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   });
   (function () {
     var btn = $("sponBtn287"); if (!btn) return;
-    var segs = [], segsFor = "", lastSkip = 0, lastId = "";
+    var segs = [], segsFor = "", lastSkip = 0, lastId = "", nextTry = 0;
     function paint() {
       btn.textContent = T("🚫 Skip sponsors: ") + T(prefs.sponsor287 ? "on" : "off");
       btn.setAttribute("aria-pressed", String(!!prefs.sponsor287));
@@ -33583,14 +33583,21 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     function fetchSegs() {
       if (!prefs.sponsor287 || !curId || segsFor === curId) return;
+      if (Date.now() < nextTry) return;
       var want = curId; segsFor = curId; segs = [];
+      // Round 288 fix: a failed fetch (phone briefly offline, SponsorBlock rate-limit 429)
+      // left segsFor pinned to this video, so sponsor skipping silently stayed off for the
+      // rest of it. Failures now release segsFor and retry after 20 s; a real 404 (the
+      // database simply has nothing for this video) is kept as a final "no segments".
       fetch("https://sponsor.ajay.app/api/skipSegments?videoID=" + encodeURIComponent(want) + "&categories=" + encodeURIComponent('["sponsor","selfpromo"]'))
-        .then(function (r) { return r.ok ? r.json() : []; })
+        .then(function (r) { if (r.status === 404) return "none"; return r.ok ? r.json() : "fail"; })
         .then(function (list) {
-          if (segsFor !== want || curId !== want || !Array.isArray(list)) return;
+          if (segsFor !== want || curId !== want) return;
+          if (list === "fail") { segsFor = ""; nextTry = Date.now() + 20000; return; }
+          if (list === "none" || !Array.isArray(list)) return;
           segs = list.map(function (s) { return s && s.segment; }).filter(function (s) { return Array.isArray(s) && s.length === 2 && isFinite(s[0]) && isFinite(s[1]) && s[1] > s[0] + 0.5; });
         })
-        .catch(function () {});
+        .catch(function () { if (segsFor === want) { segsFor = ""; nextTry = Date.now() + 20000; } });
     }
     setInterval(function () {
       if (curId !== lastId) { lastId = curId; segs = []; segsFor = ""; if (curId) fetchSegs(); }
