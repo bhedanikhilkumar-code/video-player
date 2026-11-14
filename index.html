@@ -39543,6 +39543,67 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (window.__vpWnew283) window.__vpWnew283("Surprise anywhere", "#qAnywhereBtn310");
   })();
 
+  // Shift+drag a practice loop on the waveform (round 310 new 2): the local seek
+  // bar draws the sound's shape, so the loud chorus and the quiet verse are right
+  // there - but turning what you SEE into an A-B loop still meant scrubbing to
+  // one edge, tapping Set A, scrubbing to the other, tapping Set B. Holding Shift
+  // and dragging across the bar now marks that stretch as the practice loop in
+  // one move: the drag paints a golden band over the shape, and letting go sets A
+  // at the drag's start and B at its end through the same Set A / Set B chips
+  // (so the loop count chips, Clear loop and the saved-per-file memory all behave
+  // as before), then plays from the loop's start. A drag shorter than half a
+  // second says so and changes nothing; a plain drag without Shift still scrubs
+  // exactly as before. Desktop-only gesture (phones have no Shift), so the
+  // existing chips stay the touch path. Checked first: Loop a local chapter loops
+  // a saved chapter's bounds and the fine-tune chips nudge a set loop - nothing
+  // turned a drag on the waveform itself into a loop. Hindi and Gujarati text,
+  // What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Shift-drag a loop on the waveform": ["वेवफ़ॉर्म पर Shift-ड्रैग से लूप", "વેવફોર્મ પર Shift-ડ્રૅગથી લૂપ"],
+    "Practice loop set from the waveform": ["वेवफ़ॉर्म से प्रैक्टिस लूप सेट हुआ", "વેવફોર્મથી પ્રૅક્ટિસ લૂપ સેટ થયો"],
+    "Drag a longer stretch - a loop needs at least half a second.": ["थोड़ा लंबा हिस्सा खींचें - लूप के लिए कम से कम आधा सेकंड चाहिए.", "થોડો લાંબો ભાગ ખેંચો - લૂપ માટે ઓછામાં ઓછી અડધી સેકંડ જોઈએ."]
+  });
+  (function () {
+    var bar310 = $("lpSeekBar"), vid310 = $("lpVideo"); if (!bar310 || !vid310) return;
+    var st310 = document.createElement("style");
+    st310.textContent = "#lpLoopSel310{position:absolute;top:0;bottom:0;z-index:2;pointer-events:none;background:rgba(255,181,36,.30);border-left:2px solid #ffb524;border-right:2px solid #ffb524;border-radius:3px}html.high-contrast #lpLoopSel310{background:rgba(255,181,36,.55)}";
+    document.head.appendChild(st310);
+    var sel310 = document.createElement("div"); sel310.id = "lpLoopSel310"; sel310.hidden = true; sel310.setAttribute("aria-hidden", "true");
+    bar310.appendChild(sel310);
+    var drag310 = null;
+    function frac310(e) { var r = bar310.getBoundingClientRect(); return r.width > 0 ? Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)) : 0; }
+    function paintSel310(f0, f1) {
+      var lo = Math.min(f0, f1), hi = Math.max(f0, f1);
+      sel310.hidden = false; sel310.style.left = (lo * 100) + "%"; sel310.style.width = Math.max(1, (hi - lo) * 100) + "%";
+    }
+    bar310.addEventListener("pointerdown", function (e) {
+      if (!e.shiftKey || !(vid310.duration > 0)) return;
+      drag310 = frac310(e);
+      try { bar310.setPointerCapture(e.pointerId); } catch (err) {}
+      paintSel310(drag310, drag310);
+    });
+    bar310.addEventListener("pointermove", function (e) { if (drag310 !== null) paintSel310(drag310, frac310(e)); });
+    function end310(e) {
+      if (drag310 === null) return;
+      var f1 = frac310(e), lo = Math.min(drag310, f1), hi = Math.max(drag310, f1);
+      drag310 = null; sel310.hidden = true;
+      if (!(vid310.duration > 0)) return;
+      var t0 = lo * vid310.duration, t1 = hi * vid310.duration;
+      if (t1 - t0 < 0.5) { toast(T("Drag a longer stretch - a loop needs at least half a second.")); return; }
+      var a310 = $("lpSetA"), b310 = $("lpSetB"); if (!a310 || !b310) return;
+      try { vid310.currentTime = t0; } catch (err) {}
+      a310.click();
+      try { vid310.currentTime = t1; } catch (err) {}
+      b310.click();
+      try { vid310.currentTime = t0; } catch (err) {}
+      try { var pr = vid310.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (err) {}
+      toast(T("Practice loop set from the waveform"));
+    }
+    bar310.addEventListener("pointerup", end310);
+    bar310.addEventListener("pointercancel", function () { drag310 = null; sel310.hidden = true; });
+    if (window.__vpWnew283) window.__vpWnew283("Shift-drag a loop on the waveform", "#lpLoopBox");
+  })();
+
 })();
 
 
@@ -44334,6 +44395,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Mute sponsors instead of skipping", "mute sponsors volume quiet instead of skip seek jump keep picture sponsorblock sound off", "#sponMuteBtn309"],
       ["Jump to the loudest part", "loudest part drop chorus peak sound shape jump seek local file song waveform", "#lpPeakBtn309"],
       ["Surprise anywhere", "surprise anywhere random unwatched video any list queue watch later favourites playlists cross library dice pick play", "#qAnywhereBtn310"],
+      ["Shift-drag a loop on the waveform", "shift drag select practice loop a-b waveform local seek bar region mark stretch chorus desktop mouse", "#lpLoopBox"],
       ["Community chapter previous and next", "community chapter previous next back forward step named parts youtube panel", "#chapPrevBtn309"],
       ["Sound reset", "sound reset normal effects off eq flat balance centre night hall wide mono voice cut dialogue boost undo", "#lpSndResetBtn309"],
       ["Loop the highlight", "loop highlight most liked moment replay hook chorus solo a-b repeat", "#hiLoopBtn308"],
