@@ -4654,7 +4654,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       foldBtn.addEventListener("click", function () { favFoldOpen = !favFoldOpen; renderLib(); });
       foldLi.appendChild(foldBtn); favList.appendChild(foldLi);
     }
-    fillList(histList, histView(), (prefs.histUnwatched === true && lib.hist.length) ? T("Everything here is watched. Turn the filter off to see the full list.") : (prefs.histHideShorts === true && lib.hist.length) ? T("Everything here is a short clip. Turn Hide shorts off to see the full list.") : T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, [{ label: T("Remove"), fn: function (item) {
+    fillList(histList, histView(), (typeof window.__histLenActive304 === "function" && window.__histLenActive304() && lib.hist.length) ? T("Nothing here is in this length range - turn the length filter off to see the full list.") : (prefs.histUnwatched === true && lib.hist.length) ? T("Everything here is watched. Turn the filter off to see the full list.") : (prefs.histHideShorts === true && lib.hist.length) ? T("Everything here is a short clip. Turn Hide shorts off to see the full list.") : T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, [{ label: T("Remove"), fn: function (item) {
       var i = findIn(lib.hist, item.id);
       if (i >= 0) { var snapH = lib.hist.slice(); lib.hist.splice(i, 1); saveLib(); renderLib(); if (typeof libSay === "function") libSay(T("Removed from history.")); toastUndo(T("Removed from history."), function () { lib.hist = snapH; saveLib(); renderLib(); }, T("History restored")); }
     } }, plRowAction(), queueRowAction()], "hist");
@@ -6363,7 +6363,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (prefs.laterUnwatched && lib.later.length) return T("Everything here is watched. Turn the filter off to see the full list.");
     return T("Nothing saved for later yet. Load a video and tap Watch later.");
   }
-  function histView() { var v = typeof histSort !== "undefined" && histSort ? histSort.view(lib.hist) : lib.hist; if (prefs.histUnwatched === true) v = v.filter(function (x) { return !(x && x.done === true); }); if (prefs.histHideShorts === true) v = v.filter(function (x) { return !(x && typeof x.dur === "number" && x.dur > 0 && x.dur <= 60); }); return v; }
+  function histView() { var v = typeof histSort !== "undefined" && histSort ? histSort.view(lib.hist) : lib.hist; if (prefs.histUnwatched === true) v = v.filter(function (x) { return !(x && x.done === true); }); if (prefs.histHideShorts === true) v = v.filter(function (x) { return !(x && typeof x.dur === "number" && x.dur > 0 && x.dur <= 60); }); if (typeof window.__histLenOk304 === "function") v = v.filter(window.__histLenOk304); return v; }
   function makeSortBtn(headingId, sort, items, labelKey) {
     var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = headingId + "SortBtn";
     b.addEventListener("click", function () { sort.toggle(); renderLib(); });
@@ -6413,6 +6413,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     favSortBtn.hidden = lib.favs.length < 2;
     laterSortBtn.refresh(); histSortBtn.refresh();
     if (laterLenBtn && laterLenBtn.refresh) laterLenBtn.refresh();
+    if (typeof window.__histLenRefresh304 === "function") window.__histLenRefresh304();
   }
   function renderListTools() {
     renderCounts();
@@ -14022,7 +14023,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // rotate and the Stats on video overlay - so a restore on a new phone silently reset them
   // while every other setting moved over. They export and import as validated one-word values
   // like the rest of this list.
-  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;  VP_RAW_KEYS["vp-eqcust.v1"] = /^\[[\s\S]{0,2000}\]$/;  VP_RAW_KEYS["vp-mini-size.v1"] = /^(std|lg)$/;
+  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;  VP_RAW_KEYS["vp-eqcust.v1"] = /^\[[\s\S]{0,2000}\]$/;  VP_RAW_KEYS["vp-mini-size.v1"] = /^(std|lg)$/;  VP_RAW_KEYS["vp-histlen.v1"] = /^(all|u10|m30|o30)$/;
 
 
   // Round 282 fix 1: the Rewind on resume choice (vp-rewback.v1: jump back 5, 10 or 30
@@ -37966,6 +37967,50 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (window.__vpWnew283) window.__vpWnew283("Sleep timer in the mini player", "#miniSleepBtn304");
   })();
 
+  // History length filter (round 304 new 3): Recently watched can grow to 100 entries
+  // and the only cuts were watched, shorts and sort order - finding "that long video
+  // from last week" still meant reading the whole list. A chip beside Recently watched
+  // filters the list by length, stepping All, under 10 minutes, 10-30 and over 30 -
+  // the same ranges Watch later already uses, so both lists feel identical. History
+  // rows carry their own length, so matches work even for videos never opened in this
+  // browser; rows with no known length stay visible. The choice persists, survives a
+  // backup, resets with Reset all, and when the filter hides everything the list says
+  // so honestly. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "History length filter": ["इतिहास लंबाई फ़िल्टर", "ઇતિહાસ લંબાઈ ફિલ્ટર"],
+    "Filter Recently watched by length": ["हिस्ट्री को लंबाई से छांटें", "હિસ્ટ્રી લંબાઈ પ્રમાણે ગાળો"],
+    "Nothing here is in this length range - turn the length filter off to see the full list.": ["इस लंबाई में यहाँ कुछ नहीं है - पूरी सूची देखने के लिए लंबाई फ़िल्टर बंद करें.", "આ લંબાઈમાં અહીં કંઈ નથી - આખી યાદી જોવા લંબાઈ ફિલ્ટર બંધ કરો."]
+  });
+  (function () {
+    var mode = "all";
+    try { var m = localStorage.getItem("vp-histlen.v1"); if (m === "u10" || m === "m30" || m === "o30") mode = m; } catch (e) {}
+    window.__histLenActive304 = function () { return mode !== "all"; };
+    window.__histLenOk304 = function (x) {
+      if (mode === "all") return true;
+      var d = x && typeof x.dur === "number" && x.dur > 0 ? x.dur : (x && infoCache[x.id] && infoCache[x.id].dur);
+      if (typeof d !== "number" || d <= 0) return true;
+      if (mode === "u10") return d < 600;
+      if (mode === "m30") return d >= 600 && d <= 1800;
+      return d > 1800;
+    };
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = "histLenBtn304";
+    b.addEventListener("click", function () {
+      mode = mode === "all" ? "u10" : (mode === "u10" ? "m30" : (mode === "m30" ? "o30" : "all"));
+      try { localStorage.setItem("vp-histlen.v1", mode); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
+      renderLib();
+    });
+    var row = document.querySelector('.lib-listtools[data-for="lhHist"]'); if (row) row.appendChild(b);
+    window.__histLenRefresh304 = function () {
+      b.textContent = T(mode === "u10" ? "Length: under 10 min" : (mode === "m30" ? "Length: 10-30 min" : (mode === "o30" ? "Length: over 30 min" : "Length: All")));
+      b.setAttribute("aria-label", T("Filter Recently watched by length"));
+      b.setAttribute("aria-pressed", String(mode !== "all"));
+      b.classList.toggle("active", mode !== "all");
+      b.hidden = lib.hist.length < 2;
+    };
+    window.__histLenRefresh304();
+    if (window.__vpWnew283) window.__vpWnew283("History length filter", "#histLenBtn304");
+  })();
+
 })();
 
 
@@ -40412,7 +40457,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     // Round 300 fix: the automatic backup toggle (vp-autobk.v1) and the per-file speed
     // memory (vp-lpspeeds.v1) are settings the backup carries but Reset all settings left
     // behind - they are cleared with the rest now.
-    "vp-autobk.v1", "vp-lpspeeds.v1", "vp-lpvols.v1", "vp-lpeqs.v1", "vp-eqcust.v1", "vp-mini-size.v1"];
+    "vp-autobk.v1", "vp-lpspeeds.v1", "vp-lpvols.v1", "vp-lpeqs.v1", "vp-eqcust.v1", "vp-mini-size.v1", "vp-histlen.v1"];
   btn.addEventListener("click", async function () {
     if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices, downloader choices, list sort orders, fade, focus and mini player choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
@@ -42547,7 +42592,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Per-video quality memory", "per video quality remember this video 1080 720 480 one blurry upload exception", "#pvQualBtn299"],
       ["Remember speed per file", "remember speed per file local files lecture song own rate each file", "#lpSpdMemRow299"],
       ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
-      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],      ["Left-handed layout", "left handed lefty swap gesture pad sides double tap seek left hand thumb", "#leftHandRow303"],      ["My EQ presets", "my eq presets save custom equalizer bass middle treble own named preset local files sound", "#lpEqCustRow303"],      ["Mini player size", "mini player size large bigger floating docked video enlarge small corner standard", "#miniSizeBtn304"],      ["Sleep timer in the mini player", "sleep timer mini player floating bedtime moon chip 15 30 60 minutes off small screen", "#miniSleepBtn304"],
+      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],      ["Left-handed layout", "left handed lefty swap gesture pad sides double tap seek left hand thumb", "#leftHandRow303"],      ["My EQ presets", "my eq presets save custom equalizer bass middle treble own named preset local files sound", "#lpEqCustRow303"],      ["Mini player size", "mini player size large bigger floating docked video enlarge small corner standard", "#miniSizeBtn304"],      ["Sleep timer in the mini player", "sleep timer mini player floating bedtime moon chip 15 30 60 minutes off small screen", "#miniSleepBtn304"],      ["History length filter", "history length filter recently watched short long videos under 10 10-30 over 30 minutes find", "#histLenBtn304"],
 
 
 
