@@ -42378,6 +42378,105 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint);
     window.__vpMetro331 = { get running() { return running; }, cfg: cfg };
   })();
+  // Round 331 new 3: Tuner. Next to the Metronome, a way to tune an instrument without
+  // another app. One Listen button asks for the microphone (only when tapped, never at
+  // load), reads the pitch with an autocorrelation on this device, and shows the nearest
+  // note, how many cents sharp or flat, and a needle that sits in the middle when the
+  // string is in tune. Nothing is recorded, saved or sent: the audio is read live and
+  // dropped. Stop (or hiding the page) releases the microphone at once. Where the browser
+  // has no microphone access it says so in words. Hindi and Gujarati text, feature finder
+  // and What's new included.
+  Object.assign(TR_MSG, {
+    "Tuner": ["ट्यूनर", "ટ્યુનર"],
+    "Hold your instrument near the phone and play one note. Nothing is recorded or saved.": ["वाद्य को फोन के पास रखें और एक सुर बजाएं. कुछ भी रिकॉर्ड या सेव नहीं होता.", "વાદ્યને ફોન પાસે રાખો અને એક સૂર વગાડો. કશું રેકોર્ડ કે સેવ થતું નથી."],
+    "Listen": ["सुनें", "સાંભળો"],
+    "Stop listening": ["सुनना रोकें", "સાંભળવાનું બંધ કરો"],
+    "Play a note": ["एक सुर बजाएं", "એક સૂર વગાડો"],
+    "In tune": ["सही सुर", "સાચો સૂર"],
+    "Too low - tune up": ["बहुत नीचा - ऊपर करें", "બહુ નીચો - ઉપર કરો"],
+    "Too high - tune down": ["बहुत ऊंचा - नीचे करें", "બહુ ઊંચો - નીચે કરો"],
+    "cents": ["सेंट", "સેન્ટ"],
+    "The microphone is not available or was not allowed.": ["माइक्रोफोन उपलब्ध नहीं है या अनुमति नहीं मिली.", "માઇક્રોફોન ઉપલબ્ધ નથી અથવા મંજૂરી મળી નથી."]
+  });
+  (function () {
+    var host = $("ctl-sound"); if (!host) return;
+    var card = document.createElement("details"); card.id = "tunerCard331"; card.className = "r239-card";
+    card.innerHTML = '<summary></summary><p class="hint r239-desc"></p>'
+      + '<div class="row" style="margin-top:6px;gap:8px;align-items:center;flex-wrap:wrap"><button type="button" class="chip" id="tunerGo331" aria-pressed="false"></button></div>'
+      + '<div id="tunerNote331" role="status" aria-live="polite" style="font-size:2.2rem;font-weight:700;margin-top:8px;min-height:2.6rem"></div>'
+      + '<div id="tunerHint331" class="hint" aria-live="polite"></div>'
+      + '<div aria-hidden="true" style="position:relative;height:12px;border-radius:6px;background:rgba(120,130,125,.3);margin:10px 4px"><span style="position:absolute;left:50%;top:-3px;width:2px;height:18px;background:#12a594"></span><span id="tunerNeedle331" style="position:absolute;top:-4px;left:50%;width:6px;height:20px;margin-left:-3px;border-radius:3px;background:#e8590c;transition:left .12s"></span></div>';
+    host.appendChild(card);
+    var goBtn = $("tunerGo331"), noteEl = $("tunerNote331"), hintEl = $("tunerHint331"), needle = $("tunerNeedle331");
+    var NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    var listening = false, ctx = null, stream = null, an = null, buf = null, raf = 0, lastTs = 0;
+    function detect(b, sr) {
+      var n = b.length, rms = 0, i, lag;
+      for (i = 0; i < n; i++) rms += b[i] * b[i];
+      rms = Math.sqrt(rms / n);
+      if (rms < 0.01) return -1;
+      var minLag = Math.floor(sr / 1000), maxLag = Math.min(Math.floor(sr / 50), n >> 1);
+      var best = -1, bestC = 0, cs = new Float32Array(maxLag + 2);
+      for (lag = minLag; lag <= maxLag; lag++) {
+        var c = 0;
+        for (i = 0; i < n - lag; i++) c += b[i] * b[i + lag];
+        cs[lag] = c;
+      }
+      var max0 = 0; for (i = 0; i < n; i++) max0 += b[i] * b[i];
+      for (lag = minLag + 1; lag < maxLag; lag++) {
+        if (cs[lag] > cs[lag - 1] && cs[lag] >= cs[lag + 1] && cs[lag] > 0.5 * max0 && cs[lag] > bestC * 1.0001) { bestC = cs[lag]; best = lag; if (cs[lag] > 0.9 * max0) break; }
+      }
+      if (best < 0) return -1;
+      var y1 = cs[best - 1], y2 = cs[best], y3 = cs[best + 1], d = (y1 - 2 * y2 + y3);
+      var shift = d !== 0 ? 0.5 * (y1 - y3) / d : 0;
+      return sr / (best + shift);
+    }
+    function describe(f) {
+      var midi = 69 + 12 * Math.log2(f / 440), r = Math.round(midi);
+      return { name: NAMES[((r % 12) + 12) % 12] + (Math.floor(r / 12) - 1), cents: Math.round((midi - r) * 100) };
+    }
+    window.__vpTuner331 = { detect: detect, describe: describe };
+    function paint() {
+      card.querySelector("summary").textContent = T("Tuner");
+      card.querySelector(".r239-desc").textContent = T("Hold your instrument near the phone and play one note. Nothing is recorded or saved.");
+      goBtn.textContent = (listening ? "\u23F9 " : "\uD83C\uDFA4 ") + T(listening ? "Stop listening" : "Listen");
+      goBtn.setAttribute("aria-pressed", listening ? "true" : "false");
+    }
+    function show(f) {
+      if (f < 0) { noteEl.textContent = "-"; hintEl.textContent = listening ? T("Play a note") : ""; needle.style.left = "50%"; return; }
+      var d = describe(f);
+      noteEl.textContent = d.name + "  " + (d.cents > 0 ? "+" : "") + d.cents + " " + T("cents");
+      needle.style.left = (50 + Math.max(-50, Math.min(50, d.cents))) + "%";
+      hintEl.textContent = Math.abs(d.cents) <= 5 ? T("In tune") : d.cents < 0 ? T("Too low - tune up") : T("Too high - tune down");
+    }
+    function loop(ts) {
+      if (!listening) return;
+      raf = requestAnimationFrame(loop);
+      if (ts - lastTs < 90) return; lastTs = ts;
+      an.getFloatTimeDomainData(buf);
+      show(detect(buf, ctx.sampleRate));
+    }
+    function stop() {
+      listening = false; if (raf) cancelAnimationFrame(raf); raf = 0;
+      if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+      if (ctx) { try { ctx.close(); } catch (e) {} ctx = null; }
+      noteEl.textContent = ""; hintEl.textContent = ""; needle.style.left = "50%"; paint();
+    }
+    function start() {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast(T("The microphone is not available or was not allowed.")); return; }
+      navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(function (s) {
+        stream = s; ctx = new AC(); an = ctx.createAnalyser(); an.fftSize = 4096; buf = new Float32Array(an.fftSize);
+        ctx.createMediaStreamSource(s).connect(an);
+        listening = true; paint(); show(-1); raf = requestAnimationFrame(loop);
+      }).catch(function () { toast(T("The microphone is not available or was not allowed.")); });
+    }
+    goBtn.addEventListener("click", function () { if (listening) stop(); else start(); });
+    document.addEventListener("visibilitychange", function () { if (document.hidden && listening) stop(); });
+    window.addEventListener("pagehide", function () { if (listening) stop(); });
+    paint();
+    (window.__relang = window.__relang || []).push(paint);
+  })();
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -46709,6 +46808,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Tidy Watch later", "tidy clean watch later already favourite watched old parked remove clutter", "#tidyBtn"],
       ["Follows the phone's Reduce transparency", "reduce transparency solid glass phone system setting accessibility follow os blur", "#a11yTrans"],
       ["Metronome", "metronome tempo bpm beat click tap tempo practice music rhythm drum timing", "#metroCard331"],
+      ["Tuner", "tuner tune guitar instrument microphone pitch note cents string ukulele violin sharp flat", "#tunerCard331"],
       ["Storage check", "storage space full quota size memory used how much data backup trim 5 mb", "#storChkBtn"],
       ["Today's recap", "recap today summary journal share what i watched copy text day log", "#recapBtn"],
       ["This week's recap", "week recap summary 7 days weekly journal share what i watched copy text log", "#wrecapBtn"],
@@ -50040,6 +50140,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Keep first 10 in Watch later", "#laterKeepBtn317");
   window.__vpWnew283("Follows the phone's Reduce transparency", "#a11yTrans");
   window.__vpWnew283("Metronome", "#metroCard331");
+  window.__vpWnew283("Tuner", "#tunerCard331");
 })();
 </script>
 </body>
