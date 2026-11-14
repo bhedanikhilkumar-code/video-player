@@ -38919,6 +38919,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "\ud83d\udd20 Captions: biggest": ["\ud83d\udd20 कैप्शन: सबसे बड़े", "\ud83d\udd20 કૅપ્શન: સૌથી મોટા"],
     "Turn CC on first - the size applies to the captions.": ["पहले CC चालू करें - साइज़ कैप्शन पर लागू होता है.", "પહેલા CC ચાલુ કરો - સાઇઝ કૅપ્શન પર લાગુ થાય છે."]
   });
+  Object.assign(TR_MSG, {
+    "Loop this chapter": ["इस अध्याय को लूप करें", "આ પ્રકરણને લૂપ કરો"],
+    "This chapter is too short to loop.": ["यह अध्याय लूप करने के लिए बहुत छोटा है.", "આ પ્રકરણ લૂપ કરવા માટે ખૂબ ટૂંકું છે."],
+    "Looping chapter ": ["अध्याय लूप हो रहा है ", "પ્રકરણ લૂપ થઈ રહ્યું છે "]
+  });
   (function () {
     var anchor307 = $("ccMuteBtn") || $("ccBtn"); if (!anchor307 || !anchor307.parentNode) return;
     var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "ccSizeBtn307";
@@ -40510,10 +40515,30 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       var rn = document.createElement("button"); rn.type = "button"; rn.className = "chip ch-mini"; rn.textContent = "\u270e";
       rn.setAttribute("aria-label", T("Rename chapter") + " " + chFmt(ch.t));
       rn.addEventListener("click", async function () { var nv = await vpAsk(T("Chapter name"), ch.n || ""); if (nv !== null) { ch.n = nv.trim().slice(0, 40); chSave(); chRender(); } });
+      // Round 307 new 2: loop this chapter. Drilling one part of a recorded lecture or
+      // song meant setting the practice loop's A and B by hand around the chapter. Each
+      // chapter row gains a loop chip: it sets the local practice loop to the chapter's
+      // bounds (its own start to the next chapter, or the file's end) and plays from the
+      // start, and tapping it again (or Clear loop) lets go. The loop chips, pass counter
+      // and every other practice-loop rule behave exactly as if A and B were set by hand.
+      var lp307 = document.createElement("button"); lp307.type = "button"; lp307.className = "chip ch-mini"; lp307.textContent = "\ud83d\udd01";
+      lp307.setAttribute("aria-label", T("Loop this chapter") + " " + chFmt(ch.t));
+      lp307.title = T("Loop this chapter");
+      if (typeof loopA !== "undefined" && loopA !== null && loopB !== null && Math.abs(loopA - ch.t) < 0.5) lp307.classList.add("active");
+      lp307.addEventListener("click", function () {
+        if (!isFinite(vid.duration) || !vid.duration) return;
+        if (loopA !== null && loopB !== null && Math.abs(loopA - ch.t) < 0.5) { resetLocalLoop(); return; }
+        var end = (i + 1 < list.length) ? list[i + 1].t : vid.duration;
+        if (end - ch.t < 0.5) { sessionMsg.textContent = T("This chapter is too short to loop."); return; }
+        loopA = ch.t; loopB = end; lpLoopCount = 0; loopText();
+        vid.currentTime = ch.t; localPlay();
+        sessionMsg.textContent = T("Looping chapter ") + chFmt(ch.t) + " - " + chFmt(end) + ".";
+        chRender();
+      });
       var del = document.createElement("button"); del.type = "button"; del.className = "chip ch-mini"; del.textContent = "\u2715";
       del.setAttribute("aria-label", T("Delete chapter") + " " + chFmt(ch.t));
       del.addEventListener("click", function () { list.splice(list.indexOf(ch), 1); chSave(); chRender(); });
-      li.appendChild(go); li.appendChild(rn); li.appendChild(del); chList.appendChild(li);
+      li.appendChild(go); li.appendChild(lp307); li.appendChild(rn); li.appendChild(del); chList.appendChild(li);
     });
     chTicks();
   }
