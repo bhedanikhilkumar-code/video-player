@@ -2399,7 +2399,7 @@ setTimeout(done,3000);})();
       <h2 id="libHeading">Your videos</h2>
       <p class="error" id="libError" role="alert" hidden></p>
       <div class="row lib-tools">
-        <button class="chip" id="libExport" type="button">Export backup</button>
+        <button class="chip" id="libExport" type="button">Export backup</button> <button class="chip" id="libExpSet289" type="button">Export settings only</button>
         <button class="chip" id="libCopyBackup" type="button">Copy backup</button>
         <button class="chip" id="libImport" type="button">Import backup</button><button class="chip" id="libUndoImport" type="button" hidden>Undo last import</button>
         <button class="chip" id="libCheck" type="button">Check backup</button>
@@ -34244,6 +34244,34 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
+  // Export settings only (round 289 new 5): moving to a new phone sometimes means only "make
+  // it behave like the old one" - theme, speed, sleep choices, every toggle - while the queue
+  // and favourites should start fresh. A full backup always carries every list. This chip next
+  // to Export backup saves just the settings (every preference, queue modes, per-video
+  // memories and the small named stores the full backup already packs) as a small JSON file.
+  // The existing import already accepts a settings-only file: the import preview sees it adds
+  // no lists and passes it straight through, and the normal import applies the settings.
+  // Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Export settings only": ["\u0938\u093f\u0930\u094d\u092b\u093c \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u090f\u0915\u094d\u0938\u092a\u094b\u0930\u094d\u091f \u0915\u0930\u0947\u0902", "\u0aab\u0a95\u0acd\u0aa4 \u0ab8\u0ac7\u0a9f\u0abf\u0a82\u0a97\u0acd\u0ab8 \u0a8f\u0a95\u0acd\u0ab8\u0aaa\u0acb\u0ab0\u0acd\u0a9f \u0a95\u0ab0\u0acb"],
+    "Settings saved (no lists). Import this file on another device to carry the same settings over.": ["\u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0938\u0947\u0935 \u0939\u0941\u0908\u0902 (\u0932\u093f\u0938\u094d\u091f \u0915\u0947 \u092c\u093f\u0928\u093e). \u0926\u0942\u0938\u0930\u0947 \u0921\u093f\u0935\u093e\u0907\u0938 \u092a\u0930 \u0935\u0939\u0940 \u0938\u0947\u091f\u093f\u0902\u0917\u094d\u0938 \u0932\u093e\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u092f\u0939 \u092b\u093c\u093e\u0907\u0932 \u0907\u092e\u094d\u092a\u094b\u0930\u094d\u091f \u0915\u0930\u0947\u0902.", "\u0ab8\u0ac7\u0a9f\u0abf\u0a82\u0a97\u0acd\u0ab8 \u0ab8\u0abe\u0a9a\u0ab5\u0abe\u0a88 (\u0ab2\u0abf\u0ab8\u0acd\u0a9f \u0ab5\u0a97\u0ab0). \u0aac\u0ac0\u0a9c\u0abe \u0aa1\u0abf\u0ab5\u0abe\u0a87\u0ab8 \u0aaa\u0ab0 \u0a8f \u0a9c \u0ab8\u0ac7\u0a9f\u0abf\u0a82\u0a97\u0acd\u0ab8 \u0ab2\u0abe\u0ab5\u0ab5\u0abe \u0a86 \u0aab\u0abe\u0a87\u0ab2 \u0a87\u0aae\u0acd\u0aaa\u0acb\u0ab0\u0acd\u0a9f \u0a95\u0ab0\u0acb."]
+  });
+  (function () {
+    var btn = $("libExpSet289"); if (!btn || typeof vpBuildBackup282 !== "function") return;
+    btn.addEventListener("click", function () {
+      var full = vpBuildBackup282();
+      var data = { app: full.app, version: full.version, exportedAt: full.exportedAt, settings: full.settings };
+      var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+      var n = new Date(), day = n.getFullYear() + "-" + String(n.getMonth() + 1).padStart(2, "0") + "-" + String(n.getDate()).padStart(2, "0");
+      a.download = "video-player-settings-" + day + ".json";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+      var msg = $("libBackupMsg"); if (msg) msg.textContent = T("Settings saved (no lists). Import this file on another device to carry the same settings over.");
+    });
+    function paint() { btn.textContent = T("Export settings only"); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
   window.__vpPrefs = prefs;
   window.__vpSavePrefs = savePrefs;
 })();
@@ -38707,6 +38735,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Likes and views on the card", "likes dislikes views counts now playing card return youtube dislike community estimate stats numbers", "#rydChk289"],
       ["Jump to live", "jump to live edge live stream behind catch up dvr skip to now realtime broadcast", "#liveBtn289"],
       ["Full screen on play", "full screen when video starts auto fullscreen on play every new video opens fullscreen automatic", "#autoFsChk289"],
+      ["Export settings only", "export settings only small backup file no lists move settings another device preferences file carry over", "#libExpSet289"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
@@ -41053,6 +41082,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Likes and views on the card", "#rydChk289");
   window.__vpWnew283("Jump to live", "#liveBtn289");
   window.__vpWnew283("Full screen on play", "#autoFsChk289");
+  window.__vpWnew283("Export settings only", "#libExpSet289");
 })();
 </script>
 </body>
