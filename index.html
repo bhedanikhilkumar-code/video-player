@@ -3944,10 +3944,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Recent videos and favourites, saved in this browser only.
   var LIB_KEY = "vp-library.v1", HIST_MAX = 20;
   var lib = { hist: [], favs: [], queue: [], later: [] };
+  // Round 320 new 3: rows marked Keep (the pin chip below) survive the 20-row history
+  // cap too - the cap drops the oldest rows that are not kept, and only ever goes past
+  // 20 when every row is kept.
+  function histCapNow() {
+    while (lib.hist.length > HIST_MAX) {
+      var ci = -1;
+      for (var cj = lib.hist.length - 1; cj >= 0; cj--) { if (!(lib.hist[cj] && lib.hist[cj].keep320 === true)) { ci = cj; break; } }
+      if (ci < 0) break;
+      lib.hist.splice(ci, 1);
+    }
+  }
   try {
     var savedLib = JSON.parse(localStorage.getItem(LIB_KEY) || "null");
     if (savedLib) {
-      if (Array.isArray(savedLib.hist)) lib.hist = savedLib.hist.filter(validItem).slice(0, HIST_MAX);
+      if (Array.isArray(savedLib.hist)) { lib.hist = savedLib.hist.filter(validItem); histCapNow(); }
       if (Array.isArray(savedLib.favs)) lib.favs = savedLib.favs.filter(validItem);
       if (Array.isArray(savedLib.queue)) lib.queue = savedLib.queue.filter(validItem).slice(0, 50);
       if (Array.isArray(savedLib.later)) lib.later = savedLib.later.filter(validItem).slice(0, 50);
@@ -4036,7 +4047,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var i = findIn(lib.hist, id), item = i >= 0 ? lib.hist.splice(i, 1)[0] : { id: id, title: titleFor(id) };
     item.ts = Date.now();
     lib.hist.unshift(item);
-    if (lib.hist.length > HIST_MAX) lib.hist.length = HIST_MAX;
+    histCapNow();
     saveLib(); renderLib(); fetchTitle(id);
   }
   function vpPop(el) {
@@ -4673,7 +4684,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       foldBtn.addEventListener("click", function () { favFoldOpen = !favFoldOpen; renderLib(); });
       foldLi.appendChild(foldBtn); favList.appendChild(foldLi);
     }
-    fillList(histList, histView(), (typeof window.__histLenActive304 === "function" && window.__histLenActive304() && lib.hist.length) ? T("Nothing here is in this length range - turn the length filter off to see the full list.") : (prefs.histUnwatched === true && lib.hist.length) ? T("Everything here is watched. Turn the filter off to see the full list.") : (prefs.histHideShorts === true && lib.hist.length) ? T("Everything here is a short clip. Turn Hide shorts off to see the full list.") : T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, [{ label: T("Remove"), fn: function (item) {
+    fillList(histList, histView(), (typeof window.__histLenActive304 === "function" && window.__histLenActive304() && lib.hist.length) ? T("Nothing here is in this length range - turn the length filter off to see the full list.") : (prefs.histUnwatched === true && lib.hist.length) ? T("Everything here is watched. Turn the filter off to see the full list.") : (prefs.histHideShorts === true && lib.hist.length) ? T("Everything here is a short clip. Turn Hide shorts off to see the full list.") : T("Videos you play will show up here."), T("☆ Save"), function (item) { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, [{ label: function (item) { return item.keep320 === true ? "\u{1F4CC}" : "\u{1F4CD}"; }, aria: function (item) { return item.keep320 === true ? T("Kept in history - tap to stop keeping") : T("Keep this row in history - the tidy-up chips will not remove it"); }, cls: "pin-chip", on: function (item) { return item.keep320 === true; }, fn: function (item) {
+      var hi320 = findIn(lib.hist, item.id); if (hi320 < 0) return;
+      if (lib.hist[hi320].keep320 === true) delete lib.hist[hi320].keep320; else lib.hist[hi320].keep320 = true;
+      saveLib(); renderLib();
+      toast(lib.hist[hi320].keep320 === true ? T("Kept in history") : T("No longer kept"));
+    } }, { label: T("Remove"), fn: function (item) {
       var i = findIn(lib.hist, item.id);
       if (i >= 0) { var snapH = lib.hist.slice(); lib.hist.splice(i, 1); saveLib(); renderLib(); if (typeof libSay === "function") libSay(T("Removed from history.")); toastUndo(T("Removed from history."), function () { lib.hist = snapH; saveLib(); renderLib(); }, T("History restored")); }
     } }, plRowAction(), queueRowAction()], "hist");
@@ -4682,6 +4698,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (typeof updateLaterTime === "function") updateLaterTime();
     if (typeof window.__vpBadgesTick === "function") window.__vpBadgesTick();
   }
+
+  // Keep a history row (round 320 new 3): Recently watched trims itself - the 20-row
+  // cap drops the oldest rows, and Trim old, Clear watched and Clear this day all take
+  // rows out - so the one reference video you keep going back to could vanish in a
+  // tidy-up. A pin chip on every history row marks it Keep: the tidy-up chips skip it
+  // and the 20-row cap drops the oldest un-kept rows instead. A kept row shows the
+  // filled pin; a second tap lets it go. The mark rides the backup like the row itself.
+  // Hindi and Gujarati text, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Keep a history row": ["\u0939\u093f\u0938\u094d\u091f\u094d\u0930\u0940 \u0915\u0940 \u092a\u0902\u0915\u094d\u0924\u093f \u0930\u094b\u0915\u0947\u0902", "\u0ab9\u0abf\u0ab8\u0acd\u0a9f\u0acd\u0ab0\u0ac0\u0aa8\u0ac0 \u0ab9\u0a82\u0aa4\u0ac0 \u0ab0\u0acb\u0a95\u0acb"],
+    "Keep this row in history - the tidy-up chips will not remove it": ["\u0907\u0938 \u092a\u0902\u0915\u094d\u0924\u093f \u0915\u094b \u0939\u093f\u0938\u094d\u091f\u094d\u0930\u0940 \u092e\u0947\u0902 \u0930\u094b\u0915\u0947\u0902 - \u0938\u093e\u092b\u093c-\u0938\u092b\u093e\u0908 \u0935\u093e\u0932\u0940 \u091a\u093f\u092a\u094d\u0938 \u0907\u0938\u0947 \u0928\u0939\u0940\u0902 \u0939\u091f\u093e\u090f\u0902\u0917\u0940", "\u0a86 \u0ab9\u0a82\u0aa4\u0ac0\u0aa8\u0ac7 \u0ab9\u0abf\u0ab8\u0acd\u0a9f\u0acd\u0ab0\u0ac0\u0aae\u0abe\u0a82 \u0ab0\u0acb\u0a95\u0acb - \u0a9a\u0abf\u0aa4\u0acd\u0aa4\u0ac1\u0a95\u0aa1\u0ac0 \u0a9a\u0abf\u0aaa\u0acd\u0ab8 \u0aa4\u0ac7\u0aa8\u0ac7 \u0a95\u0abe\u0aa7\u0ab6\u0ac7 \u0aa8\u0ab9\u0ac0\u0a82"],
+    "Kept in history - tap to stop keeping": ["\u0939\u093f\u0938\u094d\u091f\u094d\u0930\u0940 \u092e\u0947\u0902 \u0930\u094b\u0915\u093e \u0917\u092f\u093e - \u0939\u091f\u093e\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u091f\u0948\u092a \u0915\u0930\u0947\u0902", "\u0ab9\u0abf\u0ab8\u0acd\u0a9f\u0acd\u0ab0\u0ac0\u0aae\u0abe\u0a82 \u0ab0\u0acb\u0a95\u0abe\u0aef\u0ac1\u0a82 - \u0aae\u0ac1\u0a95\u0ab5\u0abe \u0a9f\u0ac7\u0aaa \u0a95\u0ab0\u0acb"],
+    "Kept in history": ["\u0939\u093f\u0938\u094d\u091f\u094d\u0930\u0940 \u092e\u0947\u0902 \u0930\u094b\u0915\u093e \u0917\u092f\u093e", "\u0ab9\u0abf\u0ab8\u0acd\u0a9f\u0acd\u0ab0\u0ac0\u0aae\u0abe\u0a82 \u0ab0\u0acb\u0a95\u0abe\u0aaf\u0ac1\u0a82"],
+    "No longer kept": ["\u0905\u092c \u0930\u094b\u0915\u093e \u0928\u0939\u0940\u0902 \u0917\u092f\u093e", "\u0ab9\u0ab5\u0ac7 \u0ab0\u0acb\u0a95\u0abe\u0aaf\u0ac1\u0a82 \u0aa8\u0aa5\u0ac0"],
+    "That day only has kept rows - unpin them first.": ["\u0909\u0938 \u0926\u093f\u0928 \u092e\u0947\u0902 \u0938\u093f\u0930\u094d\u092b\u093c \u0930\u094b\u0915\u0940 \u0939\u0941\u0908 \u092a\u0902\u0915\u094d\u0924\u093f\u092f\u093e\u0901 \u0939\u0948\u0902 - \u092a\u0939\u0932\u0947 \u0909\u0928\u094d\u0939\u0947\u0902 \u0905\u0928\u092a\u093f\u0928 \u0915\u0930\u0947\u0902.", "\u0a8f \u0aa6\u0abf\u0ab5\u0ab8\u0aae\u0abe\u0a82 \u0aab\u0a95\u0acd\u0aa4 \u0ab0\u0acb\u0a95\u0abe\u0aaf\u0ac7\u0ab2\u0ac0 \u0ab9\u0a82\u0aa4\u0ac0\u0a93 \u0a9b\u0ac7 - \u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0aa4\u0ac7\u0aae\u0aa8\u0ac7 \u0a85\u0aa8\u0aaa\u0abf\u0aa8 \u0a95\u0ab0\u0acb."]
+  });
+  window.addEventListener("load", function () { if (window.__vpWnew283) window.__vpWnew283("Keep a history row", "#histList"); });
 
   // Add to playlist from any list (round 126): every Watch later, Favourites and
   // Recently watched row grows a small folder button that files that video into a
@@ -4886,7 +4919,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       toast(T("Marked as not watched"));
       return;
     }
-    if (hi < 0) { lib.hist.unshift({ id: curId, title: titleFor(curId), ts: Date.now(), t: 0, dur: duration || 0, done: true }); if (lib.hist.length > HIST_MAX) lib.hist.length = HIST_MAX; hi = 0; }
+    if (hi < 0) { lib.hist.unshift({ id: curId, title: titleFor(curId), ts: Date.now(), t: 0, dur: duration || 0, done: true }); histCapNow(); hi = 0; }
     lib.hist[hi].done = true; lib.hist[hi].t = 0; if (duration > 0) lib.hist[hi].dur = duration;
     saveLib(); renderLib(); updateWatchedBtn(); vpPop(watchedBtn);
     // Round 316 fix 3: a hand-marked video counts as fully seen - the map fills and Skip
@@ -12350,8 +12383,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var ids = this._ids || []; if (!ids.length) return;
     var drop = {}; ids.forEach(function (id) { drop[id] = 1; });
     var snapH = lib.hist.slice();
-    lib.hist = lib.hist.filter(function (x) { return !(x && x.id && drop[x.id]); });
-    if (lib.hist.length === snapH.length) return;
+    lib.hist = lib.hist.filter(function (x) { return (x && x.keep320 === true) || !(x && x.id && drop[x.id]); });
+    if (lib.hist.length === snapH.length) { toast(T("That day only has kept rows - unpin them first.")); return; }
     saveLib(); renderLib();
     toastUndo(T("Day removed from history."), function () { lib.hist = snapH; saveLib(); renderLib(); }, T("History restored"));
   }
@@ -13849,7 +13882,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
           if (hi < 0) { lib.hist.unshift({ id: x.id, title: x.title || titleFor(x.id) || ("Video " + x.id), ts: Date.now(), t: 0, dur: 0, done: true }); nMW++; }
           else if (!lib.hist[hi].done) { lib.hist[hi].done = true; lib.hist[hi].t = 0; nMW++; }
         });
-        if (lib.hist.length > HIST_MAX) lib.hist.length = HIST_MAX;
+        histCapNow();
         if (!nMW) { plSay(T("Everything in this playlist is watched.")); return; }
         saveLib(); renderLib(); updateWatchedBtn();
         toastUndo(T("Marked as watched") + ": " + nMW + " " + (nMW === 1 ? T("video") : T("videos")) + " - \"" + pl.name + "\".", function () {
@@ -14589,7 +14622,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       lyrics: (function () { var o = {}; if (typeof lyrics === "object" && lyrics) Object.keys(lyrics).forEach(function (id) { if (typeof lyrics[id] === "string" && lyrics[id].trim()) o[id] = lyrics[id]; }); return o; })(),
       lyricSync: (function () { var o = {}; if (typeof lyrSync === "object" && lyrSync) Object.keys(lyrSync).forEach(function (id) { var a = lyrSync[id]; if (Array.isArray(a) && a.length) o[id] = a.map(function (x) { return Math.round(x * 10) / 10; }); }); return o; })(),
       practiceLoops: practiceLoops,
-      history: lib.hist.map(function (x) { var o = { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0 }; if (typeof x.t === "number" && x.t > 0) o.t = Math.floor(x.t); if (typeof x.dur === "number" && x.dur > 0) o.dur = Math.floor(x.dur); if (x.done === true) o.done = true; return o; }),
+      history: lib.hist.map(function (x) { var o = { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0 }; if (typeof x.t === "number" && x.t > 0) o.t = Math.floor(x.t); if (typeof x.dur === "number" && x.dur > 0) o.dur = Math.floor(x.dur); if (x.done === true) o.done = true; if (x.keep320 === true) o.keep320 = true; return o; }),
       stats: (stats && (stats.total > 0 || stats.plays > 0)) ? stats : null,
       channels: vpChans.map(function (c) { return { n: c.n, u: c.u }; }),
       chanSpeeds: (function () { var o = {}; Object.keys(chSpeed).forEach(function (k) { o[k] = chSpeed[k]; }); return o; })(),
@@ -14886,6 +14919,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
             if (typeof x.t === "number" && isFinite(x.t) && x.t > 0) o.t = Math.floor(x.t);
             if (typeof x.dur === "number" && isFinite(x.dur) && x.dur > 0) o.dur = Math.floor(x.dur);
             if (x.done === true) o.done = true;
+            if (x.keep320 === true) o.keep320 = true;
             lib.hist.push(o); hn++;
           });
           if (hn) lib.hist.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
@@ -23726,7 +23760,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   histTrimPaint();
   if (histTrimBtn) histTrimBtn.addEventListener("click", function () {
     var cutoff = Date.now() - 30 * 86400000, snap = lib.hist.slice();
-    var keep = lib.hist.filter(function (h) { return !(h && typeof h.ts === "number" && h.ts > 0 && h.ts < cutoff); });
+    var keep = lib.hist.filter(function (h) { return (h && h.keep320 === true) || !(h && typeof h.ts === "number" && h.ts > 0 && h.ts < cutoff); });
     var n = snap.length - keep.length;
     if (!n) { showLibErr(T("Nothing in history is older than 30 days.")); return; }
     showLibErr("");
@@ -23755,7 +23789,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   histDonePaint();
   if (histDoneBtn) histDoneBtn.addEventListener("click", function () {
     var snap = lib.hist.slice();
-    var keep = lib.hist.filter(function (x) { return !(x && x.done === true); });
+    var keep = lib.hist.filter(function (x) { return !(x && x.done === true) || x.keep320 === true; });
     var n = snap.length - keep.length;
     if (!n) { showLibErr(T("No finished videos in history.")); return; }
     showLibErr("");
@@ -44913,6 +44947,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var FEATS = [
       ["Channel feed", "channel feed same channel creator auto next when queue runs out keep playing unwatched more from", "#qChanFeedBtn320"],
       ["Similar saved videos", "similar saved videos titles like this one related same topic words queue unwatched more like this", "#infoSimBtn320"],
+      ["Keep a history row", "keep pin history row recently watched protect trim clear cap tidy stop removing keep forever", "#histList"],
       ["Forget the playing video", "forget this video completely wipe start fresh moments note resume position memories history clean", "#forgetVid281"],
       ["Split into even parts", "split video into even parts auto chapters moments part markers long lecture mix divide", "#splitRow281"],
       ["Rate right after finishing", "rate after finishing video ends quick stars favourite unrated prompt enjoyed", "#rateRow"],
