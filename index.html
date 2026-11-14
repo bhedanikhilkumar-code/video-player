@@ -8568,7 +8568,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   sleepPicStyle.textContent = "#sleepDimLayer{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;z-index:6;border-radius:inherit;transition:opacity .95s linear}@media (prefers-reduced-motion:reduce){#sleepDimLayer{transition:none}}";
   document.head.appendChild(sleepPicStyle);
   (function () { var fb = $("frameBox"); if (!fb) return; sleepDimLayer = document.createElement("div"); sleepDimLayer.id = "sleepDimLayer"; sleepDimLayer.setAttribute("aria-hidden", "true"); fb.appendChild(sleepDimLayer); })();
-  function sleepPicRestore() { if (sleepDimLayer) sleepDimLayer.style.opacity = "0"; }
+  function sleepPicRestore() { if (sleepDimLayer) sleepDimLayer.style.opacity = "0"; document.documentElement.style.setProperty("--vp-sleepfade", "brightness(1)"); }
   function sleepFadeRestore() {
     sleepPicRestore();
     if (fadeBase == null) return;
@@ -8626,6 +8626,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         send("setVolume", [fvol]); vol.value = fvol; volLabel.textContent = fvol + "%";
       }
       if (sleepDimLayer) sleepDimLayer.style.opacity = (prefs.sleepPicFade && playing && leftMs <= 60000) ? String(Math.min(0.9, Math.max(0, (1 - leftMs / 60000) * 0.9)).toFixed(3)) : "0";
+      // Round 306 fix 1: "Fade the picture to dark in the last minute" never faded a
+      // local file - its black veil lives inside the YouTube frame box and the gate
+      // reads the YouTube playing flag, so a downloaded video kept full brightness
+      // while the timer counted down. The same dim now drives a brightness filter on
+      // the local player through a CSS variable, with the same 0.9 ceiling and the
+      // same restore when the timer fires or is cleared.
+      var lpV306 = $("lpVideo"), lpLive306 = !!(lpV306 && !lpV306.hidden && !lpV306.paused && !lpV306.ended);
+      var lpFade306 = (prefs.sleepPicFade && lpLive306 && leftMs <= 60000) ? Math.min(0.9, Math.max(0, (1 - leftMs / 60000) * 0.9)) : 0;
+      document.documentElement.style.setProperty("--vp-sleepfade", "brightness(" + (1 - lpFade306).toFixed(3) + ")");
       return;
     }
     clearInterval(sleepTick); sleepTick = null; sleepEnd = 0; sleepPaused = true; sleepTimerEnded = true;
@@ -44931,7 +44940,7 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
     ["cinema", "Cinema", "contrast(1.18) saturate(.88) brightness(.96)"]
   ];
   var st = document.createElement("style");
-  st.textContent = ".look-row{display:flex;align-items:center;gap:10px;margin:6px 0;flex-wrap:wrap}.look-chips{display:flex;gap:6px;flex-wrap:wrap}.look-chips .chip{padding:5px 11px;font-size:13px}.look-chips .chip.active{outline:2px solid rgba(10,132,255,.75);outline-offset:1px;font-weight:700}.look-chips .chip i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px;background:linear-gradient(135deg,#ff5e62,#ffd36e 40%,#4fd1c5 70%,#5a7dff)}#frameBox iframe,#lpVideo{filter:var(--vp-look,brightness(1)) var(--vp-adjust,brightness(1))}";
+  st.textContent = ".look-row{display:flex;align-items:center;gap:10px;margin:6px 0;flex-wrap:wrap}.look-chips{display:flex;gap:6px;flex-wrap:wrap}.look-chips .chip{padding:5px 11px;font-size:13px}.look-chips .chip.active{outline:2px solid rgba(10,132,255,.75);outline-offset:1px;font-weight:700}.look-chips .chip i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px;background:linear-gradient(135deg,#ff5e62,#ffd36e 40%,#4fd1c5 70%,#5a7dff)}#frameBox iframe,#lpVideo{filter:var(--vp-look,brightness(1)) var(--vp-adjust,brightness(1)) var(--vp-sleepfade,brightness(1))}#lpVideo{transition:filter .95s linear}";
   document.head.appendChild(st);
   var KEY = "vp-look.v1", cur = "normal";
   try { var sv = localStorage.getItem(KEY); if (LOOKS.some(function (l) { return l[0] === sv; })) cur = sv; } catch (e) {}
