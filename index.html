@@ -24775,6 +24775,39 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Shuffle play unwatched", "#favShufUnwBtn323"); }, 0); });
   })();
 
+  // Sort Recently watched by rating (round 323 new 5): Recently watched could be ordered by
+  // play count, but not by the stars you gave - finding the great lectures you watched last
+  // week meant scanning the whole list. A chip by Sort by most played orders the history
+  // best-rated first (ties keep their order, unrated stay at the end); tap again for lowest
+  // first, with the usual Undo toast. Hindi and Gujarati text, feature finder and What's new
+  // included.
+  Object.assign(TR_MSG, {
+    "Sort Recently watched by rating": ["Recently watched \u0915\u094b \u0930\u0947\u091f\u093f\u0902\u0917 \u0938\u0947 \u0915\u094d\u0930\u092e\u093f\u0924 \u0915\u0930\u0947\u0902", "Recently watched \u0aa8\u0ac7 \u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97\u0aa5\u0ac0 \u0a97\u0acb\u0aa5\u0ab5\u0acb"],
+    "Sort Recently watched by rating, best first": ["Recently watched \u0915\u094b \u0930\u0947\u091f\u093f\u0902\u0917 \u0938\u0947 \u0915\u094d\u0930\u092e\u093f\u0924 \u0915\u0930\u0947\u0902, \u0938\u092c\u0938\u0947 \u0905\u091a\u094d\u091b\u093e \u092a\u0939\u0932\u0947", "Recently watched \u0aa8\u0ac7 \u0ab0\u0ac7\u0a9f\u0abf\u0a82\u0a97\u0aa5\u0ac0 \u0a97\u0acb\u0aa5\u0ab5\u0acb, \u0ab8\u0acc\u0aa5\u0ac0 \u0ab8\u0abe\u0ab0\u0abe \u0aaa\u0ab9\u0ac7\u0ab2\u0abe"],
+    "Need at least 2 rated videos in Recently watched to sort.": ["\u0915\u094d\u0930\u092e \u0915\u0947 \u0932\u093f\u090f Recently watched \u092e\u0947\u0902 \u0915\u092e \u0938\u0947 \u0915\u092e 2 \u0930\u0947\u091f\u0947\u0921 \u0935\u0940\u0921\u093f\u092f\u094b \u091a\u093e\u0939\u093f\u090f.", "\u0a95\u0acd\u0ab0\u0aae \u0aae\u0abe\u0a9f\u0ac7 Recently watched \u0aae\u0abe\u0a82 \u0a93\u0a9b\u0abe\u0aae\u0abe\u0a82 \u0a93\u0a9b\u0abe 2 \u0ab0\u0ac7\u0a9f\u0ac7\u0aa1 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a9c\u0acb\u0a88\u0a8f."],
+    "Recently watched sorted: best rated first": ["Recently watched \u0915\u094d\u0930\u092e\u093f\u0924: \u0938\u092c\u0938\u0947 \u0905\u091a\u094d\u091b\u0947 \u0930\u0947\u091f\u0947\u0921 \u092a\u0939\u0932\u0947", "Recently watched \u0a97\u0acb\u0aa5\u0ab5\u0abe\u0aaf\u0ac1\u0a82: \u0ab8\u0acc\u0aa5\u0ac0 \u0ab8\u0abe\u0ab0\u0abe \u0ab0\u0ac7\u0a9f\u0ac7\u0aa1 \u0aaa\u0ab9\u0ac7\u0ab2\u0abe"],
+    "Recently watched sorted: lowest rated first": ["Recently watched \u0915\u094d\u0930\u092e\u093f\u0924: \u0915\u092e \u0930\u0947\u091f\u0947\u0921 \u092a\u0939\u0932\u0947", "Recently watched \u0a97\u0acb\u0aa5\u0ab5\u0abe\u0aaf\u0ac1\u0a82: \u0a93\u0a9b\u0abe \u0ab0\u0ac7\u0a9f\u0ac7\u0aa1 \u0aaa\u0ab9\u0ac7\u0ab2\u0abe"]
+  });
+  (function () {
+    var anchor = $("histSortPlaysBtn") || $("histShufBtn"); if (!anchor || !anchor.parentNode) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "histSortRateBtn323";
+    anchor.parentNode.insertBefore(btn, anchor.nextSibling);
+    var nextBest = true;
+    function paint() { btn.textContent = nextBest ? T("Sort by rating") : T("Sort: lowest rated first"); btn.setAttribute("aria-label", T("Sort Recently watched by rating, best first")); }
+    (window.__relang = window.__relang || []).push(paint); paint();
+    btn.addEventListener("click", function () {
+      var rated = [], unrated = [];
+      lib.hist.forEach(function (x) { if (x && x.id && vpRateOf(x.id) > 0) rated.push(x); else unrated.push(x); });
+      if (rated.length < 2) { toast(T("Need at least 2 rated videos in Recently watched to sort.")); return; }
+      var snap = lib.hist.slice(), dir = nextBest ? -1 : 1;
+      rated.sort(function (a, b) { return dir * (vpRateOf(a.id) - vpRateOf(b.id)); });
+      lib.hist = rated.concat(unrated); saveLib(); renderLib();
+      toastUndo(dir === -1 ? T("Recently watched sorted: best rated first") : T("Recently watched sorted: lowest rated first"), function () { lib.hist = snap; saveLib(); renderLib(); }, T("Recently watched restored"));
+      nextBest = !nextBest; paint();
+    });
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Sort Recently watched by rating", "#histSortRateBtn323"); }, 0); });
+  })();
+
   // Surprise playlist (round 232 new 5): Watch later, favourites and Recently watched
   // each have a one-tap Surprise me, but the collections you organised on purpose did
   // not - landing on tonight's playlist still meant reading your own list. One chip in
@@ -45318,6 +45351,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Sort Recently watched by rating", "sort history recently watched rating stars best rated order", "#histSortRateBtn323"],
       ["Shuffle play unwatched", "shuffle play unwatched unseen fresh random favourites watch later backlog", "#favShufUnwBtn323"],
       ["Sort a playlist by most played", "sort playlist most played play count order arrange replays", "#lhPlaylists"],
       ["Mark a playlist as unwatched", "mark playlist unwatched reset watched fresh rewatch course again start over", "#lhPlaylists"],
