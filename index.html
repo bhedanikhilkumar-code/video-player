@@ -41847,6 +41847,115 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Queue top rated from Watch later", "#laterQueueTopBtn"); }, 0); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Queue top rated from a playlist", "#plEditMenu"); }, 0); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Recently watched grouped by channel", "#histGroupBtn327"); }, 0); });
+  // Round 328 new 1: Find dead videos. Favourites, Watch later and playlists keep
+  // videos for months, but YouTube videos disappear - deleted by the uploader or turned
+  // private - and a saved row only shows it the day you finally tap it. One chip checks
+  // every saved video once through the same oEmbed lookup the app already uses for
+  // titles: still-there, not-found (deleted or private), or could-not-check (network).
+  // Videos that did not answer are listed with the lists holding them and a Remove
+  // everywhere chip with the usual Undo. Nothing is uploaded beyond the title lookups
+  // the app already makes; checks run one at a time with a pause, and Cancel stops it.
+  // Hindi and Gujarati text, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Find dead videos": ["मिटे वीडियो खोजें", "ડિલીટ થયેલા વીડિયો શોધો"],
+    "Checks each saved video once through the same title lookup the app already uses.": ["हर सेव किया वीडियो उसी टाइटल खोज से एक बार जांचा जाता है जो ऐप पहले से करता है.", "દરેક સાચવેલો વીડિયો એપ પહેલેથી કરે તે જ ટાઇટલ શોધથી એક વાર તપાસાય છે."],
+    "Nothing saved to check yet - save a video first.": ["जांचने के लिए अभी कुछ सेव नहीं - पहले कोई वीडियो सेव करें.", "તપાસવા માટે હજુ કંઈ સાચવ્યું નથી - પહેલા કોઈ વીડિયો સાચવો."],
+    "You are offline - the check needs internet.": ["आप ऑफ़लाइन हैं - जांच के लिए इंटरनेट चाहिए.", "તમે ઓફલાઇન છો - તપાસ માટે ઇન્ટરનેટ જોઈએ."],
+    "Checking": ["जांच जारी", "તપાસ ચાલુ"],
+    "Done": ["जांच पूरी", "તપાસ પૂરી"],
+    "still there": ["मौजूद", "હજી છે"],
+    "not found": ["नहीं मिले", "મળ્યા નહીં"],
+    "could not be checked": ["जांचे नहीं जा सके", "તપાસી શકાયા નહીં"],
+    "Every saved video is still there.": ["हर सेव किया वीडियो मौजूद है.", "દરેક સાચવેલો વીડિયો હજી છે."],
+    "Not found on YouTube - removed or made private?": ["YouTube पर नहीं मिला - मिटाया गया या निजी किया गया?", "YouTube પર મળ્યો નહીં - ડિલીટ થયો કે પ્રાઇવેટ કરાયો?"],
+    "Remove everywhere": ["हर जगह से हटाएं", "બધ્ધેથી કાઢો"],
+    "Stopped.": ["रोका गया.", "રોકાયું."]
+  });
+  (function () {
+    var libChk = $("libCheck");
+    if (!libChk || !libChk.parentNode) return;
+    var btn328 = document.createElement("button");
+    btn328.type = "button"; btn328.className = "chip"; btn328.id = "deadChkBtn328";
+    libChk.parentNode.insertBefore(btn328, libChk.nextSibling);
+    var box328 = document.createElement("div");
+    box328.className = "q-pick-bar"; box328.id = "deadChkBox328"; box328.hidden = true;
+    box328.style.alignItems = "flex-start";
+    var msg328 = document.createElement("p"); msg328.className = "hint"; msg328.id = "deadChkMsg328"; msg328.setAttribute("role", "status"); msg328.style.margin = "0";
+    var cancel328 = document.createElement("button"); cancel328.type = "button"; cancel328.className = "chip"; cancel328.id = "deadChkCancel328"; cancel328.hidden = true;
+    var list328 = document.createElement("ul"); list328.className = "lib-list"; list328.id = "deadChkList328"; list328.style.flexBasis = "100%"; list328.style.margin = "4px 0 0";
+    box328.appendChild(msg328); box328.appendChild(cancel328); box328.appendChild(list328);
+    libChk.parentNode.parentNode.insertBefore(box328, libChk.parentNode.nextSibling);
+    var run = null;
+    function paint328() {
+      btn328.textContent = "\uD83E\uDE7A " + T("Find dead videos");
+      cancel328.textContent = T("Cancel");
+    }
+    (window.__relang = window.__relang || []).push(paint328);
+    paint328();
+    function listsOf328(id) {
+      var names = [];
+      if (findIn(lib.favs, id) >= 0) names.push(T("Favourites"));
+      if (findIn(lib.later, id) >= 0) names.push(T("Watch later"));
+      playlists.forEach(function (p) { if (findIn(p.items, id) >= 0) names.push(p.name); });
+      return names;
+    }
+    function removeEverywhere328(id, li) {
+      var snapF = lib.favs.slice(), snapL = lib.later.slice(), snapP = JSON.parse(JSON.stringify(playlists));
+      var n = 0;
+      var fi = findIn(lib.favs, id); if (fi >= 0) { lib.favs.splice(fi, 1); n++; }
+      var li2 = findIn(lib.later, id); if (li2 >= 0) { lib.later.splice(li2, 1); n++; }
+      playlists.forEach(function (p) { var pi = findIn(p.items, id); if (pi >= 0) { p.items.splice(pi, 1); n++; } });
+      saveLib(); renderLib();
+      if (li && li.parentNode) li.remove();
+      toastUndo(T("Removed everywhere"), function () { lib.favs = snapF; lib.later = snapL; playlists.splice.apply(playlists, [0, playlists.length].concat(snapP)); saveLib(); renderLib(); }, T("Restore"));
+    }
+    cancel328.addEventListener("click", function () { if (run) run.stop = true; });
+    btn328.addEventListener("click", async function () {
+      if (run) return;
+      var ids = [], seen = {};
+      [lib.favs, lib.later].forEach(function (lst) { lst.forEach(function (x) { if (x && /^[A-Za-z0-9_-]{11}$/.test(x.id) && !seen[x.id]) { seen[x.id] = 1; ids.push(x.id); } }); });
+      playlists.forEach(function (p) { p.items.forEach(function (x) { if (x && /^[A-Za-z0-9_-]{11}$/.test(x.id) && !seen[x.id]) { seen[x.id] = 1; ids.push(x.id); } }); });
+      if (!ids.length) { toast(T("Nothing saved to check yet - save a video first.")); return; }
+      if (navigator.onLine === false) { toast(T("You are offline - the check needs internet.")); return; }
+      box328.hidden = false; cancel328.hidden = false; list328.textContent = "";
+      run = { stop: false };
+      var fine = 0, dead = [], unk = 0;
+      try {
+        for (var i = 0; i < ids.length; i++) {
+          if (run.stop) break;
+          msg328.textContent = T("Checking") + " " + (i + 1) + "/" + ids.length + "\u2026";
+          var id = ids[i], st = "unk";
+          try {
+            var r = await fetch("https://www.youtube.com/oembed?format=json&url=" + encodeURIComponent("https://www.youtube.com/watch?v=" + id));
+            st = r.ok ? "ok" : "dead";
+          } catch (e) { st = "unk"; }
+          if (st === "ok") fine++;
+          else if (st === "dead") dead.push(id);
+          else unk++;
+          await new Promise(function (res) { setTimeout(res, 130); });
+        }
+      } finally {
+        cancel328.hidden = true;
+        var stopped = run.stop; run = null;
+        dead.forEach(function (id) {
+          var li = document.createElement("li"); li.className = "lib-item";
+          li.style.cssText = "display:flex;align-items:center;gap:8px;padding:8px 10px";
+          var tx = document.createElement("span"); tx.style.flex = "1"; tx.style.overflowWrap = "anywhere";
+          tx.textContent = (titleFor(id) || ("Video " + id)) + " \u00b7 " + listsOf328(id).join(", ");
+          var rm = document.createElement("button"); rm.type = "button"; rm.className = "chip";
+          rm.textContent = T("Remove everywhere");
+          rm.addEventListener("click", function () { removeEverywhere328(id, li); });
+          li.appendChild(tx); li.appendChild(rm); list328.appendChild(li);
+        });
+        msg328.textContent = (stopped ? T("Stopped.") + " " : "") + T("Done") + ": " + fine + " " + T("still there") + ", " + dead.length + " " + T("not found") + (unk ? ", " + unk + " " + T("could not be checked") : "") + ".";
+        if (!dead.length && !stopped) {
+          var okLi = document.createElement("li"); okLi.className = "lib-empty";
+          okLi.textContent = T("Every saved video is still there."); list328.appendChild(okLi);
+        }
+      }
+    });
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Find dead videos", "#deadChkBtn328"); }, 0); });
   window.__vpMainOk325 = true;
 
 
@@ -45910,6 +46019,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Find dead videos", "find dead removed deleted private unavailable videos library cleanup scan health check broken links gone favourites watch later playlists", "#deadChkBtn328"],
       ["Recently watched grouped by channel", "recently watched history group by channel creator folders sections tidy organise find channel everything from", "#histGroupBtn327"],
       ["Queue a playlist's unwatched", "queue unwatched playlist videos left unfinished course append after playing keep watching", "#lhPlaylists"],
       ["Queue top rated from a playlist", "queue top rated playlist 4 5 star stars best first course music evening rated", "#plEditMenu"],
