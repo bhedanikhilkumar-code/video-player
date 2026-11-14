@@ -38310,8 +38310,16 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       var chip = null;
       Array.prototype.forEach.call(speedChips.children, function (c) { if (c.dataset && c.dataset.value === String(target)) chip = c; });
       if (chip) chip.click(); else toast(T("Load a YouTube video first, then change the speed."));
-      setTimeout(paint, 60);
+      // Round 305 fix 5: paint right away - the preset chip's own handler has already
+      // run synchronously, and the old 60 ms timer left the mini chip showing the
+      // previous speed for a beat (longest when several taps landed inside a second).
+      paint();
     });
+    // Round 305 fix 5 (cont.): a speed picked on the Speed CARD itself repainted the
+    // mini chip only on the 5-second dock tick, so the mini bar disagreed with the
+    // card for up to five seconds. This listener is attached after the card's own
+    // handler, so prefs is already updated when it repaints.
+    speedChips.addEventListener("click", function () { paint(); });
     setInterval(function () { var d = $("playerDock"); if (d && d.classList.contains("is-mini")) paint(); }, 5000);
     (window.__relang = window.__relang || []).push(paint);
     paint();
