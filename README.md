@@ -4,7 +4,7 @@
 
 <br/>
 
-![Hosted on Vercel](https://img.shields.io/badge/Hosted%20on-Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
+![Hosted on Cloudflare Pages](https://img.shields.io/badge/Hosted%20on-Cloudflare%20Pages-F38020?style=for-the-badge&logo=cloudflarepages&logoColor=white)
 ![Vanilla JS](https://img.shields.io/badge/Frontend-Vanilla%20JS-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 ![Flask](https://img.shields.io/badge/Backend-Flask-3BABC3?style=for-the-badge&logo=flask&logoColor=white)
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
@@ -13,7 +13,7 @@
 ![No ads](https://img.shields.io/badge/Own%20ads-None-22c55e?style=for-the-badge)
 ![Cost](https://img.shields.io/badge/Cost-%240-f59e0b?style=for-the-badge)
 
-### [Open the live app](https://video-player-eta-one.vercel.app/)
+### [Open the live app](https://vp-player.pages.dev/)
 
 </div>
 
