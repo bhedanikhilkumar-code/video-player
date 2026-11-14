@@ -4,3 +4,6 @@ const name='awayDue345';let i=html.indexOf('    function '+name+'(');assert(i>=0
 for(const [since,now,sec,pin,want] of [[0,30000,30,true,true],[0,29999,30,true,false],[0,30000,-1,true,false],[null,30000,0,true,false],[0,30000,0,false,false],[0,1,0,true,true],[0,30000,20,true,false],[100,0,0,true,false]])assert.equal(c.awayDue345(since,now,sec,pin),want);
 assert.match(html,/lockAway345: -1/);assert.match(html,/\[-1, 0, 30, 60, 300\]\.indexOf\(saved.lockAway345\)/);
 console.log('Round 345 automatic away-lock boundaries passed.');
+i=html.indexOf('    function idleDue345(');assert(i>=0);vm.runInContext(html.slice(i,html.indexOf('\n',i)),c);
+for(const [since,now,min,pin,active,want] of [[0,300000,5,true,false,true],[0,299999,5,true,false,false],[0,300000,5,true,true,false],[0,300000,5,false,false,false],[0,300000,0,true,false,false],[0,300000,1,true,false,false],[0,900000,15,true,false,true]])assert.equal(c.idleDue345(since,now,min,pin,active),want);
+console.log('Round 345 idle-lock timing, playback exemption and opt-in checks passed.');
