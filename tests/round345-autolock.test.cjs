@@ -7,3 +7,5 @@ console.log('Round 345 automatic away-lock boundaries passed.');
 i=html.indexOf('    function idleDue345(');assert(i>=0);vm.runInContext(html.slice(i,html.indexOf('\n',i)),c);
 for(const [since,now,min,pin,active,want] of [[0,300000,5,true,false,true],[0,299999,5,true,false,false],[0,300000,5,true,true,false],[0,300000,5,false,false,false],[0,300000,0,true,false,false],[0,300000,1,true,false,false],[0,900000,15,true,false,true]])assert.equal(c.idleDue345(since,now,min,pin,active),want);
 console.log('Round 345 idle-lock timing, playback exemption and opt-in checks passed.');
+assert.match(html,/if \(\[-1, 0, 30, 60, 300\]\.indexOf\(prefs.lockAway345\) < 0\) prefs.lockAway345 = -1;/);
+assert.match(html,/if \(\[0, 5, 15, 30\]\.indexOf\(prefs.lockIdle345\) < 0\) prefs.lockIdle345 = 0;/);
