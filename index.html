@@ -37203,7 +37203,14 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     showAll.addEventListener("click", function () { if (!prefs.tidy290.length) return; prefs.tidy290 = []; savePrefs(); apply(); paint(); });
     apply();
     // Chips re-render their text on language switches, so rebuild the picker then too.
-    (window.__relang = window.__relang || []).push(function () { apply(); paint(); }); paint();
+    // Round 337 fix: this picker is registered before the chips made in rounds 306-316, so its
+    // language pass ran first and copied each chip's one-switch-old text - after switching to
+    // Hindi the picker listed "Turn for full screen", "Stats", "Highlight" and eight more in
+    // English while the player row itself read Hindi (seen live). Rebuild after every language
+    // hook has run, and once on load after every chip exists.
+    (window.__relang = window.__relang || []).push(function () { setTimeout(function () { apply(); paint(); }, 0); });
+    window.addEventListener("load", function () { setTimeout(function () { apply(); paint(); }, 0); });
+    paint();
   })();
   WNEW.unshift(["Tidy the player row", "#tidyCard290"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   // Skip poorly rated videos (round 291 new 1): Skip watched (round 76) and Skip Shorts
