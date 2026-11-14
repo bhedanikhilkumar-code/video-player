@@ -39613,7 +39613,15 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       var pickFrom310 = un310.length ? un310 : uniq310;
       var pick310 = pickFrom310[Math.floor(Math.random() * pickFrom310.length)];
       toast(T("Surprise pick from ") + pick310.from + (un310.length ? "" : " - " + T("everything here was already watched, so any of them could come up")));
-      playId(pick310.id, pick310.title);
+      // Round 311 fix 2: this called playId, which lives inside another script block's
+      // closure - the chip threw ReferenceError on every tap and never played anything.
+      // Do the same steps with this closure's own queue functions instead.
+      if (findIn(lib.queue, pick310.id) < 0) {
+        if (lib.queue.length >= 50) { toast(T("The queue is full at 50 videos. Remove some first.")); return; }
+        lib.queue.unshift({ id: pick310.id, title: pick310.title || "" });
+      }
+      var qi310 = findIn(lib.queue, pick310.id);
+      saveLib(); renderLib(); playQueueAt(qi310);
     });
     anchor310.parentNode.insertBefore(anyBtn310, anchor310.nextSibling);
     (window.__relang = window.__relang || []).push(paintAny310); paintAny310();
