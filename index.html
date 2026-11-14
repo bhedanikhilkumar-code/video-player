@@ -8100,6 +8100,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Round 66: repeat count - play the A-B section a set number of times, then it stops on its own.
   var abLoopLimit = 0, abLoopCount = 0;
   function abLoopBack(restart) {
+    // Loop for minutes (round 298 new 2): a timed loop stops here, before the seek back.
+    if (window.__vpLoopMinEnd298 && Date.now() >= window.__vpLoopMinEnd298) {
+      window.__vpLoopMinEnd298 = 0; window.__vpLoopMinVal298 = 0; abLoopLimit = 0; abLoopCount = 0; abEnabled = false; updateAB();
+      if (window.__vpLoopMinPaint298) window.__vpLoopMinPaint298();
+      toast(T("A-B time loop finished."));
+      return;
+    }
     if (abLoopLimit > 0) {
       abLoopCount++;
       if (abLoopCount >= abLoopLimit) {
@@ -8122,6 +8129,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     c.textContent = n === 0 ? "∞" : n + "×";
     c.addEventListener("click", function () {
       abLoopLimit = n; abLoopCount = 0;
+      window.__vpLoopMinEnd298 = 0; window.__vpLoopMinVal298 = 0; if (window.__vpLoopMinPaint298) window.__vpLoopMinPaint298();
       if (abA != null && abB != null) abEnabled = true;
       renderAbLoops(); updateAB();
     });
@@ -8252,7 +8260,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     else abLabel.textContent = (abEnabled ? T("Repeating ") : T("Paused repeat: ")) + fmtAB(abA) + T(" to ") + fmtAB(abB) + (abLoopLimit > 0 ? " · " + T("loop") + " " + abLoopCount + "/" + abLoopLimit : "");
     if (window.__vpABBand) window.__vpABBand(abA, abB);
   }
-  function clearAB() { abA = null; abB = null; abEnabled = true; abLoopCount = 0; updateAB(); }
+  function clearAB() { abA = null; abB = null; abEnabled = true; abLoopCount = 0; window.__vpLoopMinEnd298 = 0; window.__vpLoopMinVal298 = 0; if (window.__vpLoopMinPaint298) window.__vpLoopMinPaint298(); updateAB(); }
   aBtn.addEventListener("click", function () {
     abA = Math.floor(curTime); abLoopCount = 0;
     if (abB != null && abB <= abA) abB = null;
@@ -36255,6 +36263,59 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     saveLib(); renderLib();
     toast(lib.queue[i].pin ? T("Pinned in the queue - clean-up chips keep it.") : T("Unpinned."));
   }
+  // Loop for minutes (round 298 new 2): the A-B repeat count stops after N passes, but a
+  // drill is usually clocked - "practise this change for 5 minutes" - and counting loops
+  // of a 12-second section mid-practice is nobody's job. A Loop-for row under the repeat
+  // chips picks 1, 5 or 10 minutes: the section repeats until the clock runs out, then the
+  // loop switches off and a toast says so. Picking a repeat count clears the clock and
+  // picking a clock clears the count - the two stops never fight. Clearing A-B also clears
+  // it. Session only, like the repeat count; nothing is saved. Checked first: the repeat
+  // count, the sleep timer (pauses the video, not the drill) and the Tempo trainer (steps
+  // speed per pass) each cover a different stop. Hindi/Gujarati in the main closure;
+  // What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Loop for": ["\u0907\u0924\u0928\u0947 \u0938\u092e\u092f \u0924\u0915 \u0932\u0942\u092a", "\u0a86\u0a9f\u0ab2\u0abe \u0ab8\u0aae\u0aaf\u0aae\u0abe\u0a82 \u0ab2\u0ac2\u0aaa"],
+    "The A-B section repeats until this much time passes, then stops.": ["A-B \u0939\u093f\u0938\u094d\u0938\u093e \u0907\u0924\u0928\u0947 \u0938\u092e\u092f \u0924\u0915 \u0926\u094b\u0939\u0930\u093e\u090f\u0917\u093e, \u092b\u093f\u0930 \u0930\u0941\u0915 \u091c\u093e\u090f\u0917\u093e.", "A-B \u0aad\u0abe\u0a97 \u0a86\u0a9f\u0ab2\u0abe \u0ab8\u0aae\u0aaf\u0aae\u0abe\u0a82 \u0aa6\u0acb\u0ab9\u0ab0\u0abe\u0ab6\u0ac7, \u0aaa\u0a9b\u0ac0 \u0a85\u0a9f\u0a95\u0ac0 \u0a9c\u0ab6\u0ac7."],
+    "5 min": ["5 \u092e\u093f\u0928\u091f", "5 \u0aae\u0abf\u0aa8\u0abf\u0a9f"],
+    "10 min": ["10 \u092e\u093f\u0928\u091f", "10 \u0aae\u0abf\u0aa8\u0abf\u0a9f"],
+    "Loop stops after {n} min.": ["\u0932\u0942\u092a {n} \u092e\u093f\u0928\u091f \u092c\u093e\u0926 \u0930\u0941\u0915 \u091c\u093e\u090f\u0917\u093e.", "\u0ab2\u0ac2\u0aaa {n} \u0aae\u0abf\u0aa8\u0abf\u0a9f \u0aaa\u0a9b\u0ac0 \u0a85\u0a9f\u0a95\u0ac0 \u0a9c\u0ab6\u0ac7."],
+    "A-B time loop finished.": ["A-B \u091f\u093e\u0907\u092e \u0932\u0942\u092a \u092a\u0942\u0930\u093e \u0939\u0941\u0906.", "A-B \u0a9f\u0abe\u0a87\u0aae \u0ab2\u0ac2\u0aaa \u0aaa\u0ac2\u0ab0\u0acb \u0aa5\u0aaf\u0acb."],
+    "Set A and B first.": ["\u092a\u0939\u0932\u0947 A \u0914\u0930 B \u0938\u0947\u091f \u0915\u0930\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe A \u0a85\u0aa8\u0ac7 B \u0ab8\u0ac7\u0a9f \u0a95\u0ab0\u0acb."]
+  });
+  (function () {
+    var anchor = $("abLoopRow"); if (!anchor || !anchor.parentNode) return;
+    var row = document.createElement("div"); row.className = "row"; row.id = "loopMinRow298";
+    row.style.cssText = "margin-top:8px;flex-wrap:wrap;gap:8px;align-items:center";
+    row.innerHTML = '<span class="label" id="loopMinLab298"></span><span class="chips" id="loopMinChips298"></span><p class="hint" id="loopMinHint298" style="flex-basis:100%;margin:2px 0 0"></p>';
+    anchor.parentNode.insertBefore(row, anchor.nextSibling);
+    function paint298m() {
+      var lab = $("loopMinLab298"), chips = $("loopMinChips298"), hint = $("loopMinHint298"); if (!lab || !chips) return;
+      lab.textContent = T("Loop for") + ":";
+      if (hint) hint.textContent = T("The A-B section repeats until this much time passes, then stops.");
+      if (!chips.children.length) {
+        [[0, "Off"], [1, "1 min"], [5, "5 min"], [10, "10 min"]].forEach(function (p) {
+          var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.min = p[0];
+          b.addEventListener("click", function () {
+            if (!p[0]) { window.__vpLoopMinEnd298 = 0; window.__vpLoopMinVal298 = 0; paint298m(); return; }
+            if (abA == null || abB == null) { toast(T("Set A and B first.")); paint298m(); return; }
+            abLoopLimit = 0; abLoopCount = 0; abEnabled = true; renderAbLoops(); updateAB();
+            window.__vpLoopMinEnd298 = Date.now() + p[0] * 60000; window.__vpLoopMinVal298 = p[0];
+            toast(T("Loop stops after {n} min.").replace("{n}", p[0]));
+            paint298m();
+          });
+          chips.appendChild(b);
+        });
+      }
+      [].forEach.call(chips.children, function (c) {
+        var n = Number(c.dataset.min);
+        var on = n === 0 ? !window.__vpLoopMinEnd298 : !!(window.__vpLoopMinEnd298 && window.__vpLoopMinVal298 === n);
+        c.textContent = T(n === 0 ? "Off" : n === 1 ? "1 min" : n === 5 ? "5 min" : "10 min");
+        c.classList.toggle("active", on); c.setAttribute("aria-pressed", String(on));
+      });
+    }
+    window.__vpLoopMinPaint298 = paint298m;
+    (window.__relang = window.__relang || []).push(paint298m); paint298m();
+  })();
   // Copy loop link (round 298 new 4): the A-B card could fine-tune, count and share a
   // timestamp, but sending a practice loop to a friend meant two messages - the link, then
   // "set A to 1:05 and B to 1:40". One chip on the A-B row copies a link that opens this
@@ -40747,6 +40808,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Pin queue rows", "pin queue rows protect keep clean up chips clear upcoming trim drop shorts long dedupe safe guard", "#queueList"],
       ["Volume steps", "volume steps step size arrow keys swipe wheel voice louder softer fine coarse one five ten twenty", "#volStepRow297"],
       ["Copy loop link", "copy loop link share a-b repeat section friend send url from to armed", "#abLinkBtn298"],
+      ["Loop for minutes", "loop for minutes timed a-b repeat practise drill clock stop after practice", "#loopMinRow298"],
       ["Alarm fade-in", "alarm fade in gentle wake soft start rising volume gradual morning light sleeper", "#alarmFadeRow297"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
@@ -43282,6 +43344,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Volume steps", "#volStepRow297");
   window.__vpWnew283("Alarm fade-in", "#alarmFadeRow297");
   window.__vpWnew283("Copy loop link", "#abLinkBtn298");
+  window.__vpWnew283("Loop for minutes", "#loopMinRow298");
 })();
 </script>
 </body>
