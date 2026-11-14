@@ -2070,7 +2070,7 @@ setTimeout(done,3000);})();
           <h3>Share and save</h3>
           <div class="row">
             <button class="chip" id="favBtn">☆ Add to favourites</button>
-            <button class="chip" id="laterBtn" type="button">🕒 Watch later</button>
+            <button class="chip" id="laterBtn" type="button">🕒 Watch later</button> <button class="chip" id="parkBtn296" type="button">🅿 Park this video</button>
             <button class="chip" id="watchedBtn" type="button" aria-pressed="false">✔ Mark as watched</button>
             <button class="chip" id="shareBtn">🔗 Share at this time</button>
             <button class="chip" id="waBtn" type="button">📲 WhatsApp</button>
@@ -35895,6 +35895,41 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var prevSave296 = savePracticeLoops;
     savePracticeLoops = function () { var ok = prevSave296(); paint296(); return ok; };
   })();
+  // Park the playing video (round 296 new 2): "not now, later" took three steps - save to
+  // Watch later, then Next, then (with nothing queued) pause - so a video you are not in
+  // the mood for usually just played on. One chip beside Watch later does it all: the
+  // playing video is parked in Watch later (its position is remembered by the resume
+  // record as always) and the queue's next video starts; with nothing queued the video
+  // simply pauses. Already parked? It just moves on. Checked first: Park the rest of the
+  // queue parks upcoming rows and Z skips with removal - nothing parked the playing video
+  // in one tap. Hindi and Gujarati text in the main closure; What's new and feature
+  // finder included.
+  Object.assign(TR_MSG, {
+    "🅿 Park this video": ["🅿 इस वीडियो को पार्क करें", "🅿 આ વીડિયો પાર્ક કરો"],
+    "Park this video in Watch later and play the next one": ["इस वीडियो को बाद में देखें में पार्क करें और अगला चलाएं", "આ વીડિયો પછી જુઓમાં પાર્ક કરો અને આગળનો ચલાવો"],
+    "Parked in Watch later - playing the next video.": ["बाद में देखें में पार्क किया - अगला वीडियो चल रहा है.", "પછી જુઓમાં પાર્ક કર્યું - આગળનો વીડિયો ચાલે છે."],
+    "Already parked - playing the next video.": ["पहले से पार्क है - अगला वीडियो चल रहा है.", "પહેલેથી પાર્ક છે - આગળનો વીડિયો ચાલે છે."],
+    "Parked in Watch later and paused - nothing is queued.": ["बाद में देखें में पार्क किया और रोका - कतार खाली है.", "પછી જુઓમાં પાર્ક કરીને રોક્યું - કતાર ખાલી છે."],
+    "Park the playing video": ["चल रहा वीडियो पार्क करें", "ચાલુ વીડિયો પાર્ક કરો"]
+  });
+  (function () {
+    var btn = $("parkBtn296"); if (!btn) return;
+    function paint296() { btn.textContent = T("🅿 Park this video"); btn.setAttribute("aria-label", T("Park this video in Watch later and play the next one")); }
+    btn.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first.")); return; }
+      var i = findIn(lib.later, curId);
+      if (i < 0) {
+        if (lib.later.length >= 50) { toast(T("Watch later is full (50 videos). Remove one first.")); return; }
+        lib.later.unshift({ id: curId, title: titleFor(curId), ts: Date.now() });
+        saveLib(); renderLib(); fetchTitle(curId);
+        if (typeof window.__vpSavePop === "function") window.__vpSavePop("later", curId);
+      }
+      var hasNext = lib.queue.length > 1 && (qPos >= 0 ? qPos + 1 : (qAfter >= 0 ? qAfter : 0)) < lib.queue.length;
+      if (hasNext) { nextBtn.click(); toast(T(i < 0 ? "Parked in Watch later - playing the next video." : "Already parked - playing the next video.")); }
+      else { send("pauseVideo"); toast(T("Parked in Watch later and paused - nothing is queued.")); }
+    });
+    (window.__relang = window.__relang || []).push(paint296); paint296();
+  })();
   window.__vpPrefs = prefs;
   window.__vpSavePrefs = savePrefs;
   Object.assign(TR_MSG, {
@@ -40252,6 +40287,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Stall watch", "stall watch buffering stuck frozen spinner loading hang reload auto recover video not moving", "#wdBtn295"],
       ["Playback error log", "playback error log history recent errors code copy report problem diagnose failed videos record", "#errCard295"],
       ["Loop library", "loop library all saved loops every video a-b practice play jump across videos list", "#loopLibCard296"],
+      ["Park the playing video", "park playing video not now watch later skip save for later next queue mood", "#parkBtn296"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
       ["Top channels", "top channels most watched creators ranking watch time stats favourite channel who watch most", "#lhStats"],
@@ -42776,6 +42812,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Stall watch", "#wdBtn295");
   window.__vpWnew283("Playback error log", "#errCard295");
   window.__vpWnew283("Loop library", "#loopLibCard296");
+  window.__vpWnew283("Park the playing video", "#parkBtn296");
 })();
 </script>
 </body>
