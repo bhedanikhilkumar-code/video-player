@@ -2032,6 +2032,7 @@ setTimeout(done,3000);})();
             <button class="chip" id="subBack314" type="button" hidden>−0.5s</button>
             <button class="chip" id="subFwd314" type="button" hidden>+0.5s</button>
             <button class="chip" id="subOff314" type="button" hidden>Own subtitles: on</button>
+            <button class="chip" id="subLineBtn316" type="button" hidden>📋 Copy line</button>
             <button class="chip" id="subSaveBtn316" type="button" hidden>💾 Save as .srt</button>
             <input id="subFile314" type="file" accept=".srt,.vtt,text/plain" hidden>
           </div>
@@ -39807,7 +39808,12 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Save corrected subtitles as .srt": ["ठीक की हुई सबटाइटल .srt सेव करें", "ઠીક કરેલી સબટાઇટલ .srt સેવ કરો"],
     "Downloads this video's subtitle file with your timing shifts applied.": ["इस वीडियो की सबटाइटल फ़ाइल आपके टाइमिंग बदलावों के साथ डाउनलोड करता है.", "આ વીડિયોની સબટાઇટલ ફાઇલ તમારા ટાઇમિંગ ફેરફારો સાથે ડાઉનલોડ કરે છે."],
     "Corrected subtitles saved.": ["ठीक की हुई सबटाइटल सेव हुई.", "ઠીક કરેલી સબટાઇટલ સેવ થઈ."],
-    "Save corrected subtitles": ["ठीक की हुई सबटाइटल सेव करें", "ઠીક કરેલી સબટાઇટલ સેવ કરો"]
+    "Save corrected subtitles": ["ठीक की हुई सबटाइटल सेव करें", "ઠીક કરેલી સબટાઇટલ સેવ કરો"],
+    "📋 Copy line": ["📋 लाइन कॉपी करें", "📋 લાઇન કોપી કરો"],
+    "Copy the subtitle line on screen": ["स्क्रीन पर चल रही सबटाइटल लाइन कॉपी करें", "સ્ક્રીન પર ચાલતી સબટાઇટલ લાઇન કોપી કરો"],
+    "No subtitle line on screen right now.": ["अभी स्क्रीन पर कोई सबटाइटल लाइन नहीं है.", "હમણાં સ્ક્રીન પર કોઈ સબટાઇટલ લાઇન નથી."],
+    "Line copied.": ["लाइन कॉपी हुई.", "લાઇન કોપી થઈ."],
+    "Copy the spoken line": ["बोली गई लाइन कॉपी करें", "બોલાઈ રહેલી લાઇન કોપી કરો"]
   });
 
   // Shift+drag a practice loop on the waveform (round 310 new 2): the local seek
@@ -45197,6 +45203,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Clear the watch map", "clear watch map reset seen parts rewatch fresh start over forget watched stretches skip seen", "#wmapClearBtn316"],
       ["Quality drop on a repeat stall", "quality drop repeat stall buffering weak connection lower resolution keep playing auto hd 480 slow internet", "#wdBtn295"],
       ["Save corrected subtitles", "save corrected subtitles srt download fixed sync shifted timing own subtitle file keep corrected", "#subSaveBtn316"],
+      ["Copy the spoken line", "copy spoken line subtitle current text quote film clipboard what did they say", "#subLineBtn316"],
       ["Speed suggestion for long videos", "speed suggestion long video hour lecture movie watch faster 1.25x 1.5x 2x offer prompt save time", "#ctl-speed"],
       ["Scan a QR code", "scan qr code camera open shared link from another device phone point reader", "#qrScanBtn311"],
       ["Snooze the alarm", "snooze daily alarm ten more minutes ring again later morning postpone", "#alarmSnoozeBtn311"],
@@ -47641,7 +47648,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   var up = document.getElementById("subUpBtn314"), back = document.getElementById("subBack314"),
     fwd = document.getElementById("subFwd314"), offBtn = document.getElementById("subOff314"),
     fileIn = document.getElementById("subFile314"), msg = document.getElementById("subMsg314"),
-    saveBtn316 = document.getElementById("subSaveBtn316");
+    lineBtn316 = document.getElementById("subLineBtn316"), saveBtn316 = document.getElementById("subSaveBtn316");
   var wrap = document.querySelector(".frame-wrap");
   if (!up || !wrap) return;
   var st = document.createElement("style");
@@ -47685,6 +47692,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
     up.textContent = T("📄 Own subtitle file");
     var en = entry();
     back.hidden = fwd.hidden = offBtn.hidden = !en;
+    if (lineBtn316) lineBtn316.hidden = !en;
     if (saveBtn316) saveBtn316.hidden = !en;
     offBtn.textContent = T(shown ? "Own subtitles: on" : "Own subtitles: off");
     offBtn.setAttribute("aria-pressed", shown ? "true" : "false");
@@ -47744,11 +47752,24 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
     setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
     toast(T("Corrected subtitles saved."));
   });
+  // Round 316 new 5: copy the spoken line - a film quote worth keeping meant typing it out
+  // by hand, and with subtitles off the line was not even selectable. The 📋 Copy line chip
+  // copies the line the bar is showing right now; with no line on screen it says so plainly.
+  if (lineBtn316) lineBtn316.addEventListener("click", function () {
+    if (!lastLine) { toast(T("No subtitle line on screen right now.")); return; }
+    var txt = lastLine;
+    function done(ok) { toast(ok ? T("Line copied.") : T("Could not copy. Try again.")); }
+    function fb() {
+      try { var ta = document.createElement("textarea"); ta.value = txt; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var ok2 = document.execCommand("copy"); ta.remove(); done(!!ok2); } catch (e) { done(false); }
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { done(true); }, fb); else fb();
+  });
   back.addEventListener("click", function () { var en = entry(); if (!en) return; en.off = Math.max(-60, en.off - 0.5); toast(T("Timing shifted by {n}s").replace("{n}", en.off.toFixed(1))); });
   fwd.addEventListener("click", function () { var en = entry(); if (!en) return; en.off = Math.min(60, en.off + 0.5); toast(T("Timing shifted by {n}s").replace("{n}", en.off.toFixed(1))); });
   offBtn.addEventListener("click", function () { shown = !shown; if (!shown) { ov.hidden = true; lastLine = ""; } paint(); toast(T(shown ? "Own subtitles: on" : "Own subtitles: off")); });
   (window.__relang = window.__relang || []).push(function () { msg.dataset.for = ""; msg.textContent = ""; paint(); });
   (window.__relang = window.__relang || []).push(function () {
+    if (lineBtn316) { lineBtn316.textContent = T("📋 Copy line"); lineBtn316.setAttribute("aria-label", T("Copy the subtitle line on screen")); }
     if (saveBtn316) { saveBtn316.textContent = T("💾 Save as .srt"); saveBtn316.setAttribute("aria-label", T("Downloads this video's subtitle file with your timing shifts applied.")); saveBtn316.title = T("Downloads this video's subtitle file with your timing shifts applied."); }
   });
   paint();
@@ -47912,6 +47933,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Clear the watch map", "#wmapClearBtn316");
   window.__vpWnew283("Quality drop on a repeat stall", "#wdBtn295");
   window.__vpWnew283("Save corrected subtitles", "#subSaveBtn316");
+  window.__vpWnew283("Copy the spoken line", "#subLineBtn316");
 })();
 </script>
 </body>
