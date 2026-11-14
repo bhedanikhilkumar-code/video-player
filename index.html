@@ -39680,6 +39680,90 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (window.__vpWnew283) window.__vpWnew283("Shift-drag a loop on the waveform", "#lpLoopBox");
   })();
 
+  // Scan a QR code (round 311 new 3): the app makes QR codes everywhere - Share at
+  // this time, playlist QR, queue QR - so a link can jump from one screen to another,
+  // but opening one still meant reaching for the camera app and hoping it hands the
+  // link back. A chip beside QR code opens a small glass scanner: allow the camera,
+  // point it at a code, and the moment a YouTube link (or one of this app's own
+  // share links, which carry the video inside them) is read, the video loads in the
+  // player and the camera switches off. A code with no video link says so plainly and
+  // keeps scanning. Browsers without a camera or without the built-in QR reader say
+  // so up front instead of failing silently, and the camera never runs unless this
+  // panel is open. Nothing is saved or uploaded - the picture never leaves the
+  // device. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Scan a QR code": ["QR कोड स्कैन करें", "QR કોડ સ્કૅન કરો"],
+    "Stop scanning": ["स्कैन बंद करें", "સ્કૅન બંધ કરો"],
+    "Point the camera at a QR code from this app or any YouTube link.": ["कैमरा इस ऐप के QR कोड या किसी YouTube लिंक के कोड की ओर रखें.", "કેમેરો આ ઍપના QR કોડ કે કોઈપણ YouTube લિંકના કોડ તરફ રાખો."],
+    "Starting the camera...": ["कैमरा शुरू हो रहा है...", "કેમેરો શરૂ થઈ રહ્યો છે..."],
+    "This browser cannot scan QR codes - paste or type the link instead.": ["यह ब्राउज़र QR कोड स्कैन नहीं कर सकता - लिंक पेस्ट करें या टाइप करें.", "આ બ્રાઉઝર QR કોડ સ્કૅન કરી શકતું નથી - લિંક પેસ્ટ કરો કે ટાઇપ કરો."],
+    "Camera said no - allow the camera and try again.": ["कैमरे ने मना कर दिया - कैमरा की अनुमति दें और फिर कोशिश करें.", "કેમેરાએ ના પાડી - કેમેરાની મંજૂરી આપી ફરી પ્રયાસ કરો."],
+    "No video link in that code - still looking.": ["उस कोड में कोई वीडियो लिंक नहीं - अभी भी देख रहे हैं.", "એ કોડમાં વીડિયો લિંક નથી - હજી જોઈ રહ્યા છીએ."],
+    "Opened the scanned link.": ["स्कैन की गई लिंक खुल गई.", "સ્કૅન કરેલી લિંક ખુલી ગઈ."]
+  });
+  (function () {
+    var qrB311 = $("qrBtn"), qrBox311 = $("qrBox");
+    if (!qrB311 || !qrBox311 || !qrBox311.parentNode) return;
+    var btn311 = document.createElement("button"); btn311.type = "button"; btn311.className = qrB311.className; btn311.id = "qrScanBtn311";
+    qrB311.parentNode.insertBefore(btn311, qrB311.nextSibling);
+    var panel311 = document.createElement("div"); panel311.className = qrBox311.className; panel311.id = "qrScanBox311"; panel311.hidden = true;
+    var vid311 = document.createElement("video"); vid311.id = "qrScanVid311"; vid311.muted = true; vid311.setAttribute("playsinline", "");
+    vid311.style.cssText = "width:100%;max-width:280px;border-radius:16px;background:#000;aspect-ratio:4/3";
+    var hint311 = document.createElement("p"); hint311.className = "hint qr-hint"; hint311.id = "qrScanHint311";
+    panel311.appendChild(vid311); panel311.appendChild(hint311);
+    qrBox311.parentNode.insertBefore(panel311, qrBox311.nextSibling);
+    var stream311 = null, raf311 = 0, det311 = null, miss311 = 0;
+    try { if ("BarcodeDetector" in window) det311 = new BarcodeDetector({ formats: ["qr_code"] }); } catch (e) { det311 = null; }
+    function paint311() { btn311.textContent = stream311 ? "⏹ " + T("Stop scanning") : "📷 " + T("Scan a QR code"); }
+    function stop311() {
+      if (raf311) { cancelAnimationFrame(raf311); raf311 = 0; }
+      if (stream311) { stream311.getTracks().forEach(function (tr) { try { tr.stop(); } catch (e) {} }); stream311 = null; }
+      panel311.hidden = true; paint311();
+    }
+    function idFrom311(txt) {
+      var t = String(txt || "").trim(); if (!t) return null;
+      try { t = decodeURIComponent(t); } catch (e) {}
+      var m = t.match(/(?:youtu\.be\/|[?&]vi?=|\/shorts\/|\/embed\/|\/live\/)([A-Za-z0-9_-]{11})/);
+      if (m) return m[1];
+      m = t.match(/^([A-Za-z0-9_-]{11})$/);
+      return m ? m[1] : null;
+    }
+    function tick311() {
+      if (!stream311) return;
+      if (vid311.readyState >= 2 && det311) {
+        det311.detect(vid311).then(function (codes) {
+          if (!stream311) return;
+          if (codes && codes.length) {
+            var id = idFrom311(codes[0].rawValue);
+            if (id) {
+              linkInput.value = "https://youtu.be/" + id; loadBtn.click();
+              toast(T("Opened the scanned link.")); stop311(); return;
+            }
+            miss311++;
+            if (miss311 % 4 === 1) hint311.textContent = T("No video link in that code - still looking.");
+          }
+          raf311 = requestAnimationFrame(tick311);
+        }).catch(function () { raf311 = requestAnimationFrame(tick311); });
+      } else raf311 = requestAnimationFrame(tick311);
+    }
+    btn311.addEventListener("click", function () {
+      if (stream311) { stop311(); return; }
+      panel311.hidden = false; miss311 = 0;
+      if (!det311 || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        hint311.textContent = T("This browser cannot scan QR codes - paste or type the link instead."); return;
+      }
+      hint311.textContent = T("Starting the camera...");
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } }).then(function (s) {
+        stream311 = s; vid311.srcObject = s;
+        try { var pr = vid311.play(); if (pr && pr.catch) pr.catch(function () {}); } catch (e) {}
+        hint311.textContent = T("Point the camera at a QR code from this app or any YouTube link.");
+        paint311(); tick311();
+      }).catch(function () { hint311.textContent = T("Camera said no - allow the camera and try again."); });
+    });
+    window.addEventListener("pagehide", stop311);
+    (window.__relang = window.__relang || []).push(function () { paint311(); if (!stream311 && !panel311.hidden && hint311.textContent) {} }); paint311();
+  })();
+
   // Turn for full screen (round 311 new 2): Auto-rotate (round 68) already turns the
   // video landscape when YOU enter full screen, but the everyday move - just tipping
   // the phone sideways while a video plays - still needed a tap on Full screen. With
@@ -44521,6 +44605,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Shift-drag a loop on the waveform", "shift drag select practice loop a-b waveform local seek bar region mark stretch chorus desktop mouse", "#lpLoopBox"],
       ["Playlist feed", "playlist feed auto play next unwatched from playlist when queue runs out ends empty continuous autoplay", "#qPlFeedBtn311"],
       ["Turn for full screen", "turn rotate phone sideways landscape auto full screen hands free watching tilt", "#fsLandBtn311"],
+      ["Scan a QR code", "scan qr code camera open shared link from another device phone point reader", "#qrScanBtn311"],
       ["Community chapter previous and next", "community chapter previous next back forward step named parts youtube panel", "#chapPrevBtn309"],
       ["Sound reset", "sound reset normal effects off eq flat balance centre night hall wide mono voice cut dialogue boost undo", "#lpSndResetBtn309"],
       ["Loop the highlight", "loop highlight most liked moment replay hook chorus solo a-b repeat", "#hiLoopBtn308"],
@@ -47050,6 +47135,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Loop the highlight", "#hiLoopBtn308");
   window.__vpWnew283("Triple-tap for Cinema mode", "#gesturePad");
   window.__vpWnew283("Chapter ticks on the seek bar", "#chapTicks308");
+  window.__vpWnew283("Scan a QR code", "#qrScanBtn311");
   window.__vpWnew283("Turn for full screen", "#fsLandBtn311");
   window.__vpWnew283("Playlist feed", "#qPlFeedBtn311");
   window.__vpWnew283("Undo a skip", "#sponMoreBtn308");
