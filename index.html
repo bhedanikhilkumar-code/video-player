@@ -49965,7 +49965,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
  wrap.append(label,chips,hint);host.before(wrap);
  function dismiss(){elapsed=0;if(card)card.remove();card=null;}
  function show(){
-  if(card)return;elapsed=0;card=document.createElement("section");card.id="vpBreak";card.setAttribute("aria-labelledby","vpBreakT");
+  if(card||document.getElementById("vpBreak"))return;elapsed=0;card=document.createElement("section");card.id="vpBreak";card.setAttribute("aria-labelledby","vpBreakT");
   card.innerHTML='<h3 id="vpBreakT" role="status"></h3><p></p><div class="row"><button class="chip" type="button" id="vpBreakPause"></button><button class="chip" type="button" id="vpBreakGo"></button></div>';
   card.querySelector("h3").textContent=T("Time for a short break?");card.querySelector("p").textContent=T("Rest your eyes for a minute.");
   card.querySelector("#vpBreakPause").textContent=T("Pause for a break");card.querySelector("#vpBreakGo").textContent=T("Keep watching");
@@ -52267,8 +52267,14 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
     if (resume && window.__vpResumePlayback346) window.__vpResumePlayback346(snapshot);
   }
   function openCard301(mins) {
+    // Round 367 fix 2: the break reminder's card and this card both used the id vpBreak
+    // with only their own variable as a guard, so a timed break and an auto reminder could
+    // stand up two cards with the same id at once (getElementById then finds only one).
+    // Both sides now respect a card already up: the reminder stays quiet while any rest
+    // card is showing, and opening a timed break retires a showing reminder first.
     clearCard301();
     end301 = Date.now() + mins * 60000;
+    var otherRest301 = document.getElementById("vpBreak"); if (otherRest301) otherRest301.remove();
     card301 = document.createElement("section"); card301.id = "vpBreak"; card301.setAttribute("aria-labelledby", "takeBreakT301");
     card301.innerHTML = '<h3 id="takeBreakT301" role="status"></h3><p></p><div class="row"><button class="chip" type="button" id="takeBreakBack301"></button></div>';
     card301.querySelector("p").textContent = T("Rest a little - the video waits paused.");
