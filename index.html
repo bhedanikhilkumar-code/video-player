@@ -50856,5 +50856,58 @@ input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):
 input[type=checkbox],input[type=radio]{width:24px;height:24px;min-width:24px;min-height:24px;flex:none}
 summary{min-height:28px;box-sizing:border-box}
 </style>
+<script id="r336-fix4">
+// Round 336 fix 4: Label in Name (WCAG 2.5.3). 115 visible buttons carried an aria-label that did not contain
+// the text printed on them, so a screen reader or voice-control user never heard the current value
+// ("Hold: 2x", "Captions: normal", "Mini: standard", "Feed limit: 5", "10s" skip sizes) and could not say
+// the visible name to tap it. This pass puts the visible text first - "Hold: 2x - Hold to rush at 2x" - on every
+// labelled button, including ones created or repainted later (the owners keep re-setting their own labels,
+// and the observer folds the text back in once per frame).
+(function () {
+  "use strict";
+  var NORM = /[^\p{L}\p{M}\p{N} ]+/gu;
+  function norm(s) { return String(s || "").toLowerCase().replace(NORM, " ").replace(/\s+/g, " ").trim(); }
+  function visible(b) {
+    var t = (b.textContent || "").replace(/\s+/g, " ").trim();
+    if (t.length < 2 || t.length > 60) return "";
+    return t.replace(/^[^\p{L}\p{M}\p{N}]+/u, "").replace(/[^\p{L}\p{M}\p{N}%+\-.]+$/u, "");
+  }
+  function fix(b) {
+    var al = b.getAttribute("aria-label"); if (!al) return;
+    var t = visible(b); if (t.length < 2) return;
+    var nt = norm(t); if (!nt || norm(al).indexOf(nt) >= 0) return;
+    b.setAttribute("aria-label", t + " - " + al);
+  }
+  function scan(root) {
+    if (!root || root.nodeType !== 1) return;
+    if (root.matches && root.matches("button,[role=button],a[href]")) fix(root);
+    var all = root.querySelectorAll ? root.querySelectorAll("button[aria-label],[role=button][aria-label],a[href][aria-label]") : [];
+    for (var i = 0; i < all.length; i++) fix(all[i]);
+  }
+  var pending = new Set(), queued = false;
+  function flush() {
+    queued = false; var list = Array.from(pending); pending.clear();
+    list.forEach(function (n) { if (n.isConnected) scan(n); });
+  }
+  function queue(n) {
+    if (!n) return; if (n.nodeType === 3) n = n.parentElement; if (!n || n.nodeType !== 1) return;
+    var b = n.closest ? n.closest("button,[role=button],a[href]") : null;
+    pending.add(b || n);
+    if (!queued) { queued = true; setTimeout(flush, 250); }
+  }
+  function start() {
+    scan(document.body);
+    new MutationObserver(function (ms) {
+      for (var i = 0; i < ms.length && i < 400; i++) {
+        var m = ms[i];
+        if (m.type === "childList") { for (var j = 0; j < m.addedNodes.length; j++) queue(m.addedNodes[j]); queue(m.target); }
+        else queue(m.target);
+      }
+    }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["aria-label"] });
+    (window.__relang = window.__relang || []).push(function () { setTimeout(function () { scan(document.body); }, 300); });
+  }
+  if (document.readyState === "complete") setTimeout(start, 0); else window.addEventListener("load", function () { setTimeout(start, 600); });
+})();
+</script>
 </body>
           </html>
