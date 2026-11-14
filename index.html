@@ -7940,7 +7940,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     t = Math.max(0, Math.min(duration, t));
     if (typeof endedCardHide === "function") endedCardHide();
     var from = typeof origin === "number" ? origin : curTime;
-    if (Math.abs(t - from) >= .5) {
+    // Round 308 fix 4: community-skip engines (sponsor, intro/outro, reminder) seek
+    // through here, so every skip also armed the generic Undo-jump bar - a second,
+    // redundant Undo whose target sits inside the skipped stretch and re-skips the
+    // moment you tap it. Skips no longer arm it; the skip toast's own Undo (round
+    // 308) is the way back, and it lands before the stretch.
+    var skipOrigins308 = {sponsor287:1, sponIntro306:1, sponMore308:1};
+    if (Math.abs(t - from) >= .5 && !skipOrigins308[origin]) {
       undoSeekState = {id:curId, time:from}; renderUndoSeek();
       $("undoSeekWrap").hidden = false;
       if (undoSeekTimer) clearTimeout(undoSeekTimer);
