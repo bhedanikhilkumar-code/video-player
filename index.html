@@ -2447,6 +2447,7 @@ setTimeout(done,3000);})();
       <div class="row" id="autoBkRow296" style="margin-top:6px;align-items:center;gap:8px;flex-wrap:wrap"><span class="label" id="autoBkLab296">Automatic backup</span><span class="chips" id="autoBkChips296"></span></div>
       <p class="hint" id="dataSize" role="status"></p>
       <details class="faq" id="storageCard298"><summary id="storageSum298">Manage app storage</summary><p class="hint" id="storageHint298"></p><div id="storageRows298"></div></details>
+      <details class="faq" id="lockCard322"><summary id="lockSum322">Lock a backup</summary><p class="hint" id="lockDesc322">Lock a backup file with a passphrase, so only someone who knows it can open the file. Everything happens on this device - the file and the passphrase never leave it. If you forget the passphrase, nobody can open the locked file, not even you.</p><div class="row" style="flex-wrap:wrap;gap:8px;align-items:center"><input id="lockPass322" type="password" autocomplete="off" placeholder="Passphrase" aria-label="Passphrase for locking a backup" style="min-width:170px"><button class="chip" id="lockGo322" type="button">Lock a backup file</button><button class="chip" id="unlockGo322" type="button">Unlock a locked file</button><input id="lockFile322" type="file" accept="application/json,.json" hidden><input id="unlockFile322" type="file" accept="application/json,.json" hidden></div><p class="hint" id="lockMsg322" role="status"></p></details>
       <div class="tip-card backup-remind" id="backupRemind" hidden>
         <div class="tip-main"><p id="backupRemindTx"></p></div>
         <div class="tip-btns">
@@ -15076,6 +15077,124 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   if ($("backupLaterBtn")) $("backupLaterBtn").addEventListener("click", function () { try { localStorage.setItem(BK_SNOOZE, String(Date.now() + 3 * 864e5)); } catch (e) {} bkRender(); });
   (window.__relang = window.__relang || []).push(bkRender);
   bkRender();
+
+  // Passphrase-locked backups (round 322 new 1): a backup holds the whole library, and it
+  // often rides WhatsApp or a notes app to the new phone, where anyone who opens the chat
+  // can read every video and note. The Lock a backup card locks a backup file with a
+  // passphrase (PBKDF2-SHA256, 250k rounds, AES-GCM-256, fresh salt and IV per file, all
+  // Web Crypto on this device) and unlocks it back to a plain backup for Import backup.
+  // Nothing is uploaded and nothing is remembered: the passphrase is never stored, so a
+  // forgotten passphrase means the file stays locked forever - the card says so plainly.
+  // Checked first: Check a backup only reads a file, App lock gates the app itself, and no
+  // existing feature protected the exported file. Hindi and Gujarati text, feature finder
+  // and What's new included. The crypto helpers are DOM-free on purpose so
+  // tests/round322.test.cjs can run a full lock/unlock round trip in Node.
+  Object.assign(TR_MSG, {
+    "Lock a backup": ["\u092c\u0948\u0915\u0905\u092a \u0932\u0949\u0915 \u0915\u0930\u0947\u0902", "\u0aac\u0ac7\u0a95\u0a85\u0aaa \u0ab2\u0ac9\u0a95 \u0a95\u0ab0\u0acb"],
+    "Lock a backup with a passphrase": ["\u092a\u093e\u0938\u092b\u093c\u094d\u0930\u0947\u091c\u093c \u0938\u0947 \u092c\u0948\u0915\u0905\u092a \u0932\u0949\u0915 \u0915\u0930\u0947\u0902", "\u0aaa\u0abe\u0ab8\u0aab\u0acd\u0ab0\u0ac7\u0a9d\u0aa5\u0ac0 \u0aac\u0ac7\u0a95\u0a85\u0aaa \u0ab2\u0ac9\u0a95 \u0a95\u0ab0\u0acb"],
+    "Lock a backup file with a passphrase, so only someone who knows it can open the file. Everything happens on this device - the file and the passphrase never leave it. If you forget the passphrase, nobody can open the locked file, not even you.": ["\u092c\u0948\u0915\u0905\u092a \u092b\u093c\u093e\u0907\u0932 \u0915\u094b \u092a\u093e\u0938\u092b\u093c\u094d\u0930\u0947\u091c\u093c \u0938\u0947 \u0932\u0949\u0915 \u0915\u0930\u0947\u0902, \u0924\u093e\u0915\u093f \u0909\u0938\u0947 \u0938\u093f\u0930\u094d\u092b\u093c \u0935\u0939\u0940 \u0916\u094b\u0932 \u0938\u0915\u0947 \u091c\u093f\u0938\u0947 \u092a\u093e\u0938\u092b\u093c\u094d\u0930\u0947\u091c\u093c \u092e\u093e\u0932\u0942\u092e \u0939\u094b. \u0938\u092c \u0915\u0941\u091b \u0907\u0938\u0940 \u0921\u093f\u0935\u093e\u0907\u0938 \u092a\u0930 \u0939\u094b\u0924\u093e \u0939\u0948 - \u092b\u093c\u093e\u0907\u0932 \u0914\u0930 \u092a\u093e\u0938\u092b\u093c\u094d\u0930\u0947\u091c\u093c \u0907\u0938\u0947 \u0915\u092d\u0940 \u0928\u0939\u0940\u0902 \u091b\u094b\u0921\u093c\u0924\u0947. \u0905\u0917\u0930 \u092a\u093e\u0938\u092b\u093c\u094d\u0930\u0947\u091c\u093c \u092d\u0942\u0932 \u0917\u090f, \u0924\u094b \u0932\u0949\u0915 \u0915\u0940 \u0939\u0941\u0908 \u092b\u093c\u093e\u0907\u0932 \u0915\u094b\u0908 \u0928\u0939\u0940\u0902 \u0916\u094b\u0932 \u0938\u0915\u0924\u093e, \u0906\u092a \u092d\u0940 \u0928\u0939\u0940\u0902.", "\u0aac\u0ac7\u0a95\u0a85\u0aaa \u0aab\u0abe\u0a87\u0ab2\u0aa8\u0ac7 \u0aaa\u0abe\u0ab8\u0aab\u0acd\u0ab0\u0ac7\u0a9d\u0aa5\u0ac0 \u0ab2\u0ac9\u0a95 \u0a95\u0ab0\u0acb, \u0a9c\u0ac7\u0aa5\u0ac0 \u0aab\u0a95\u0acd\u0aa4\u0abf \u0a8f\u0a9c \u0a96\u0acb\u0ab2\u0ac0 \u0ab6\u0a95\u0ac7 \u0a9c\u0aa8\u0ac7 \u0aaa\u0abe\u0ab8\u0aab\u0acd\u0ab0\u0ac7\u0a9d \u0a96\u0aac\u0ab0 \u0ab9\u0acb\u0aaf. \u0aac\u0aa7\u0ac1\u0a82 \u0a86 \u0aa1\u0abf\u0ab5\u0abe\u0a87\u0ab8 \u0aaa\u0ab0 \u0a9c \u0aa5\u0abe\u0aaf \u0a9b\u0ac7 - \u0aab\u0abe\u0a87\u0ab2 \u0a85\u0aa8\u0ac7 \u0aaa\u0abe\u0ab8\u0aab\u0acd\u0ab0\u0ac7\u0a9d \u0a95\u0aa7\u0abe\u0a9a \u0ab9\u0aae\u0ac7\u0ab6\u0abe \u0a9b\u0acb\u0aa1\u0aa4\u0abe\u0a82 \u0aa8\u0aa5\u0ac0. \u0a9c\u0acb \u0aaa\u0abe\u0ab8\u0aab\u0acd\u0ab0\u0ac7\u0a9d \u0aad\u0ac2\u0ab2\u0ac0 \u0a9c\u0a85\u0acb, \u0aa4\u0acb \u0ab2\u0ac9\u0a95 \u0a95\u0ab0\u0ac7\u0ab2\u0ac0 \u0aab\u0abe\u0a87\u0ab2 \u0a95\u0acb\u0a88 \u0a96\u0acb\u0ab2\u0ac0 \u0ab6\u0a95\u0ac7 \u0aa8\u0ab9\u0ac0\u0a82, \u0aa4\u0aae\u0ac7 \u0aaa\u0aa3 \u0aa8\u0ab9\u0ac0\u0a82."],
+    "Passphrase": ["\u092a\u093e\u0938\u092b\u093c\u094d\u0930\u0947\u091c\u093c", "\u0aaa\u0abe\u0ab8\u0aab\u0acd\u0ab0\u0ac7\u0a9d"],
+    "Passphrase for locking a backup": ["\u092c\u0948\u0915\u0905\u092a \u0932\u0949\u0915 \u0915\u0930\u0928\u0947 \u0915\u093e \u092a\u093e\u0938\u092b\u093c\u094d\u0930\u0947\u091c\u093c", "\u0aac\u0ac7\u0a95\u0a85\u0aaa \u0ab2\u0ac9\u0a95 \u0a95\u0ab0\u0ab5\u0abe\u0aa8\u0acb \u0aaa\u0abe\u0ab8\u0aab\u0acd\u0ab0\u0ac7\u0a9d"],
+    "Lock a backup file": ["\u092c\u0948\u0915\u0905\u092a \u092b\u093c\u093e\u0907\u0932 \u0932\u0949\u0915 \u0915\u0930\u0947\u0902", "\u0aac\u0ac7\u0a95\u0a85\u0aaa \u0aab\u0abe\u0a87\u0ab2 \u0ab2\u0ac9\u0a95 \u0a95\u0ab0\u0acb"],
+    "Unlock a locked file": ["\u0932\u0949\u0915 \u0915\u0940 \u0939\u0941\u0908 \u092b\u093c\u093e\u0907\u0932 \u0916\u094b\u0932\u0947\u0902", "\u0ab2\u0ac9\u0a95 \u0a95\u0ab0\u0ac7\u0ab2\u0ac0 \u0aab\u0abe\u0a87\u0ab2 \u0a96\u0acb\u0ab2\u0acb"],
+    "Type a passphrase first.": ["\u092a\u0939\u0932\u0947 \u092a\u093e\u0938\u092b\u093c\u094d\u0930\u0947\u091c\u093c \u0932\u093f\u0916\u0947\u0902.", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0aaa\u0abe\u0ab8\u0aab\u0acd\u0ab0\u0ac7\u0a9d \u0ab2\u0a96\u0acb."],
+    "That file is not a backup from this app.": ["\u0935\u0939 \u092b\u093c\u093e\u0907\u0932 \u0907\u0938 \u0910\u092a \u0915\u093e \u092c\u0948\u0915\u0905\u092a \u0928\u0939\u0940\u0902 \u0939\u0948.", "\u0aa4\u0ac7 \u0aab\u0abe\u0a87\u0ab2 \u0a86 \u0a8f\u0aaa\u0aa8\u0ac1\u0a82 \u0aac\u0ac7\u0a95\u0a85\u0aaa \u0aa8\u0aa5\u0ac0."],
+    "That file is not a locked backup from this app.": ["\u0935\u0939 \u092b\u093c\u093e\u0907\u0932 \u0907\u0938 \u0910\u092a \u0915\u093e \u0932\u0949\u0915 \u0915\u093f\u092f\u093e \u0939\u0941\u0906 \u092c\u0948\u0915\u0905\u092a \u0928\u0939\u0940\u0902 \u0939\u0948.", "\u0aa4\u0ac7 \u0aab\u0abe\u0a87\u0ab2 \u0a86 \u0a8f\u0aaa\u0aa8\u0ac1\u0a82 \u0ab2\u0ac9\u0a95 \u0a95\u0ab0\u0ac7\u0ab2\u0ac1\u0a82 \u0aac\u0ac7\u0a95\u0a85\u0aaa \u0aa8\u0aa5\u0ac0."],
+    "That passphrase did not open this file. Check it and try again.": ["\u0907\u0938 \u092a\u093e\u0938\u092b\u093c\u094d\u0930\u0947\u091c\u093c \u0938\u0947 \u092b\u093c\u093e\u0907\u0932 \u0928\u0939\u0940\u0902 \u0916\u0941\u0932\u0940. \u091c\u093e\u0901\u091a \u0915\u0930 \u092b\u093f\u0930 \u0915\u094b\u0936\u093f\u0936 \u0915\u0930\u0947\u0902.", "\u0a86 \u0aaa\u0abe\u0ab8\u0aab\u0acd\u0ab0\u0ac7\u0a9d\u0aa5\u0ac0 \u0aab\u0abe\u0a87\u0ab2 \u0a96\u0ac1\u0ab2\u0ac0 \u0aa8\u0ab9\u0ac0\u0a82. \u0aa4\u0aaa\u0abe\u0ab8\u0ac0\u0aa8\u0ac7 \u0aab\u0ab0\u0ac0 \u0aaa\u0acd\u0ab0\u0aaf\u0abe\u0ab8 \u0a95\u0ab0\u0acb."],
+    "Locked backup saved ({name}). Keep the passphrase safe - there is no way back without it.": ["\u0932\u0949\u0915 \u0915\u093f\u092f\u093e \u0939\u0941\u0906 \u092c\u0948\u0915\u0905\u092a \u0938\u0947\u0935 \u0939\u0941\u0906 ({name}). \u092a\u093e\u0938\u092b\u093c\u094d\u0930\u0947\u091c\u093c \u0938\u0902\u092d\u093e\u0932 \u0915\u0930 \u0930\u0916\u0947\u0902 - \u0909\u0938\u0915\u0947 \u092c\u093f\u0928\u093e \u0935\u093e\u092a\u0938\u0940 \u0915\u093e \u0915\u094b\u0908 \u0930\u093e\u0938\u094d\u0924\u093e \u0928\u0939\u0940\u0902 \u0939\u0948.", "\u0ab2\u0ac9\u0a95 \u0a95\u0ab0\u0ac7\u0ab2\u0ac1\u0a82 \u0aac\u0ac7\u0a95\u0a85\u0aaa \u0ab8\u0abe\u0a9a\u0ab5\u0abe\u0aaf\u0ac1\u0a82 ({name}). \u0aaa\u0abe\u0ab8\u0aab\u0acd\u0ab0\u0ac7\u0a9d \u0ab8\u0abe\u0a82\u0aad\u0ab3\u0ac0\u0aa8\u0ac7 \u0ab0\u0abe\u0a96\u0acb - \u0aa4\u0ac7\u0ab5\u0a97\u0ab0 \u0aaa\u0abe\u0a9b\u0abe \u0aab\u0ab0\u0ab5\u0abe\u0aa8\u0acb \u0a95\u0acb\u0a88 \u0ab0\u0abe\u0ab9 \u0aa8\u0aa5\u0ac0."],
+    "Backup unlocked and saved ({name}). You can now import it above.": ["\u092c\u0948\u0915\u0905\u092a \u0916\u0941\u0932 \u0917\u092f\u093e \u0914\u0930 \u0938\u0947\u0935 \u0939\u0941\u0906 ({name}). \u0905\u092c \u0909\u0938\u0947 \u090a\u092a\u0930 \u0907\u092e\u094d\u092a\u094b\u0930\u094d\u091f \u0915\u0930 \u0938\u0915\u0924\u0947 \u0939\u0948\u0902.", "\u0aac\u0ac7\u0a95\u0a85\u0aaa \u0a96\u0ac1\u0ab2\u0acd\u0aaf\u0ac1\u0a82 \u0a85\u0aa8\u0ac7 \u0ab8\u0abe\u0a9a\u0ab5\u0abe\u0aaf\u0ac1\u0a82 ({name}). \u0ab9\u0ab5\u0ac7 \u0aa4\u0aae\u0ac7 \u0aa4\u0ac7\u0aa8\u0ac7 \u0a89\u0aaa\u0ab0 \u0a87\u0aae\u0acd\u0aaa\u0acb\u0ab0\u0acd\u0a9f \u0a95\u0ab0\u0ac0 \u0ab6\u0a95\u0acb \u0a9b\u0acb."],
+    "This browser cannot lock files - the Web Crypto tools are missing.": ["\u092f\u0939 \u092c\u094d\u0930\u093e\u0909\u091c\u093c\u0930 \u092b\u093c\u093e\u0907\u0932 \u0932\u0949\u0915 \u0928\u0939\u0940\u0902 \u0915\u0930 \u0938\u0915\u0924\u093e - \u0935\u0947\u092c \u0915\u094d\u0930\u093f\u092a\u094d\u091f\u094b \u091f\u0942\u0932 \u0928\u0939\u0940\u0902 \u0939\u0948\u0902.", "\u0a86 \u0aac\u0acd\u0ab0\u0abe\u0a89\u0a9d\u0ab0 \u0aab\u0abe\u0a87\u0ab2 \u0ab2\u0ac9\u0a95 \u0a95\u0ab0\u0ac0 \u0ab6\u0a95\u0abe \u0aa8\u0ab9\u0ac0\u0a82 - \u0ab5\u0ac7\u0aac \u0a95\u0acd\u0ab0\u0abf\u0aaa\u0acd\u0a9f\u0acb \u0ab8\u0abe\u0aa7\u0aa8\u0acb \u0aa8\u0aa5\u0ac0."],
+    "Locking...": ["\u0932\u0949\u0915 \u0939\u094b \u0930\u0939\u093e \u0939\u0948...", "\u0ab2\u0ac9\u0a95 \u0aa5\u0a88 \u0ab0\u0ab9\u0acd\u0aaf\u0ac1\u0a82 \u0a9b\u0ac7..."],
+    "Unlocking...": ["\u0916\u0941\u0932 \u0930\u0939\u093e \u0939\u0948...", "\u0a96\u0ac1\u0ab2\u0ac0 \u0ab0\u0ab9\u0acd\u0aaf\u0ac1\u0a82 \u0a9b\u0ac7..."]
+  });
+  function vpLockB64e322(buf) { var b = new Uint8Array(buf), s = ""; for (var i = 0; i < b.length; i++) s += String.fromCharCode(b[i]); return btoa(s); }
+  function vpLockB64d322(str) { var bin = atob(str), b = new Uint8Array(bin.length); for (var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i); return b; }
+  function vpLockLooksBackup322(d) { return !!(d && typeof d === "object" && !Array.isArray(d) && (Array.isArray(d.queue) || Array.isArray(d.favourites) || Array.isArray(d.favs) || Array.isArray(d.playlists) || (d.settings && typeof d.settings === "object"))); }
+  function vpLockDerive322(pass, salt, iter) {
+    return crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]).then(function (k) {
+      return crypto.subtle.deriveKey({ name: "PBKDF2", salt: salt, iterations: iter, hash: "SHA-256" }, k, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    });
+  }
+  function vpLockText322(text, pass) {
+    var d;
+    try { d = JSON.parse(text); } catch (e) { return Promise.reject(new Error("not-json")); }
+    if (!vpLockLooksBackup322(d)) return Promise.reject(new Error("not-backup"));
+    var salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12)), iter = 250000;
+    return vpLockDerive322(pass, salt, iter).then(function (key) {
+      return crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, new TextEncoder().encode(text));
+    }).then(function (cipher) {
+      return JSON.stringify({ vpLocked322: 1, kdf: "PBKDF2-SHA256", iter: iter, salt: vpLockB64e322(salt), iv: vpLockB64e322(iv), data: vpLockB64e322(cipher) }, null, 2);
+    });
+  }
+  function vpUnlockText322(text, pass) {
+    var w;
+    try { w = JSON.parse(text); } catch (e) { return Promise.reject(new Error("not-json")); }
+    if (!w || w.vpLocked322 !== 1 || typeof w.salt !== "string" || typeof w.iv !== "string" || typeof w.data !== "string" || typeof w.iter !== "number") return Promise.reject(new Error("not-locked"));
+    var salt, iv, data;
+    try { salt = vpLockB64d322(w.salt); iv = vpLockB64d322(w.iv); data = vpLockB64d322(w.data); } catch (e) { return Promise.reject(new Error("not-locked")); }
+    return vpLockDerive322(pass, salt, w.iter).then(function (key) {
+      return crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, data).then(function (plain) {
+        var text2 = new TextDecoder().decode(plain), d2;
+        try { d2 = JSON.parse(text2); } catch (e) { throw new Error("bad-pass"); }
+        if (!vpLockLooksBackup322(d2)) throw new Error("bad-pass");
+        return text2;
+      }, function () { throw new Error("bad-pass"); });
+    });
+  }
+  // round 322 lock wiring (DOM)
+  (function () {
+    var pass = $("lockPass322"), goL = $("lockGo322"), goU = $("unlockGo322"), fL = $("lockFile322"), fU = $("unlockFile322"), msg = $("lockMsg322");
+    if (!pass || !goL || !goU || !fL || !fU || !msg) return;
+    function say(t) { msg.textContent = t; }
+    function saveText(text, name) {
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+      a.download = name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    }
+    function busy(on, t) { goL.disabled = on; goU.disabled = on; if (t) say(t); }
+    function paint322() {
+      $("lockSum322").textContent = T("Lock a backup");
+      $("lockDesc322").textContent = T("Lock a backup file with a passphrase, so only someone who knows it can open the file. Everything happens on this device - the file and the passphrase never leave it. If you forget the passphrase, nobody can open the locked file, not even you.");
+      pass.placeholder = T("Passphrase"); pass.setAttribute("aria-label", T("Passphrase for locking a backup"));
+      goL.textContent = T("Lock a backup file"); goU.textContent = T("Unlock a locked file");
+    }
+    (window.__relang = window.__relang || []).push(paint322); paint322();
+    function pickFile(input, mode) {
+      if (!(window.crypto && crypto.subtle)) { say(T("This browser cannot lock files - the Web Crypto tools are missing.")); return; }
+      if (!pass.value) { say(T("Type a passphrase first.")); pass.focus(); return; }
+      input.click();
+    }
+    goL.addEventListener("click", function () { pickFile(fL, "lock"); });
+    goU.addEventListener("click", function () { pickFile(fU, "unlock"); });
+    function handle(input, mode) {
+      input.addEventListener("change", function () {
+        var f = this.files[0]; this.value = "";
+        if (!f) return;
+        var pw = pass.value;
+        var rd = new FileReader();
+        rd.onload = function () {
+          busy(true, T(mode === "lock" ? "Locking..." : "Unlocking..."));
+          var work = mode === "lock" ? vpLockText322(String(rd.result), pw) : vpUnlockText322(String(rd.result), pw);
+          var base = f.name.replace(/\.json$/i, "");
+          work.then(function (out) {
+            busy(false);
+            if (mode === "lock") { saveText(out, base + ".locked.json"); say(T("Locked backup saved ({name}). Keep the passphrase safe - there is no way back without it.").replace("{name}", base + ".locked.json")); }
+            else { saveText(out, base + ".unlocked.json"); say(T("Backup unlocked and saved ({name}). You can now import it above.").replace("{name}", base + ".unlocked.json")); }
+          }, function (err) {
+            busy(false);
+            var m = err && err.message;
+            if (m === "bad-pass") say(T("That passphrase did not open this file. Check it and try again."));
+            else if (m === "not-locked") say(T("That file is not a locked backup from this app."));
+            else say(T("That file is not a backup from this app."));
+          });
+        };
+        rd.readAsText(f);
+      });
+    }
+    handle(fL, "lock"); handle(fU, "unlock");
+    window.addEventListener("load", function () { if (window.__vpWnew283) window.__vpWnew283("Lock a backup with a passphrase", "#lockCard322"); });
+  })();
 
   // ---- Round 84: add the playing video straight into a saved playlist ----
   // Until now a playlist only changed as a whole-queue save; this adds one video.
@@ -45072,6 +45191,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Lock a backup with a passphrase", "lock backup passphrase encrypt protect private file unlock safe share", "#lockCard322"],
       ["Channel feed", "channel feed same channel creator auto next when queue runs out keep playing unwatched more from", "#qChanFeedBtn320"],
       ["Similar saved videos", "similar saved videos titles like this one related same topic words queue unwatched more like this", "#infoSimBtn320"],
       ["Keep a history row", "keep pin history row recently watched protect trim clear cap tidy stop removing keep forever", "#histList"],
