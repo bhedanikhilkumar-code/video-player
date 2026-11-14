@@ -34151,6 +34151,48 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
+  // Jump to live (round 289 new 3): a live stream left running drifts behind - a pause for
+  // chai, a slow buffer - and the seek bar alone never says how far from "now" you are. A
+  // player-row chip appears only on live streams once you fall more than a minute behind,
+  // showing how far back you are; one tap seeks to the live edge. Live detection needs no API
+  // key: a normal video's length is fixed, while a live DVR stream's reported length keeps
+  // growing, so the app samples the duration and treats steady growth past the one-hour mark
+  // as live (a long 10-hour video stays constant and is left alone). Nothing is remembered.
+  // Checked first: the time label and seek bar show position, but nothing offered a jump to
+  // the live edge. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Jump to live": ["\u0932\u093e\u0907\u0935 \u092a\u0930 \u091c\u093e\u090f\u0902", "\u0ab2\u0abe\u0a87\u0ab5 \u0aaa\u0ab0 \u0a9c\u0abe\u0a93"],
+    "Jumped to the live edge.": ["\u0932\u093e\u0907\u0935 \u0915\u093f\u0928\u093e\u0930\u0947 \u092a\u0930 \u092a\u0939\u0941\u0902\u091a\u0947.", "\u0ab2\u0abe\u0a87\u0ab5 \u0a95\u0abf\u0aa8\u0abe\u0ab0\u0ac7 \u0aaa\u0ab9\u0acb\u0a82\u0a9a\u0acd\u0aaf\u0abe."]
+  });
+  (function () {
+    var ref = $("fsExitBtn"); if (!ref || !ref.parentNode) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "liveBtn289"; btn.hidden = true;
+    ref.parentNode.insertBefore(btn, ref.nextSibling);
+    var samples = [], isLive = false;
+    function paintTxt() {
+      var behind = typeof curTime === "number" ? duration - curTime : 0;
+      btn.textContent = "\uD83D\uDD34 " + T("Jump to live") + " (" + fmt(Math.round(Math.max(0, behind))) + ")";
+    }
+    setInterval(function () {
+      if (!curId || !ready || typeof duration !== "number" || !(duration > 0)) { samples = []; isLive = false; btn.hidden = true; return; }
+      samples.push([Date.now(), duration]); if (samples.length > 4) samples.shift();
+      isLive = false;
+      if (samples.length >= 3) {
+        var a = samples[0], b = samples[samples.length - 1];
+        if (b[1] > 3600 && b[1] - a[1] > 2 && b[0] - a[0] >= 3500) isLive = true;
+      }
+      var behind = isLive && typeof curTime === "number" ? duration - curTime : 0;
+      btn.hidden = !(isLive && behind > 60);
+      if (!btn.hidden) paintTxt();
+    }, 2000);
+    btn.addEventListener("click", function () {
+      if (!isLive || typeof duration !== "number" || !(duration > 0)) return;
+      manualSeek(Math.max(0, duration - 3));
+      send("playVideo");
+      toast(T("Jumped to the live edge."));
+    });
+    (window.__relang = window.__relang || []).push(function () { if (!btn.hidden) paintTxt(); });
+  })();
   window.__vpPrefs = prefs;
   window.__vpSavePrefs = savePrefs;
 })();
@@ -38612,6 +38654,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Gallery view", "gallery view big thumbnails picture cards grid library lists photos covers visual browse", "#galBtn288"],
       ["Keep screen on", "keep screen on wake lock display sleep stays awake while playing video phone cooking workout", "#wakeChk289"],
       ["Likes and views on the card", "likes dislikes views counts now playing card return youtube dislike community estimate stats numbers", "#rydChk289"],
+      ["Jump to live", "jump to live edge live stream behind catch up dvr skip to now realtime broadcast", "#liveBtn289"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
@@ -40956,6 +40999,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Gallery view", "#galBtn288");
   window.__vpWnew283("Keep screen on", "#wakeChk289");
   window.__vpWnew283("Likes and views on the card", "#rydChk289");
+  window.__vpWnew283("Jump to live", "#liveBtn289");
 })();
 </script>
 </body>
