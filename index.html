@@ -34573,7 +34573,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
           if (Date.now() - lastSkip < 1500) return;
           lastSkip = Date.now();
           manualSeek(s[1] + 0.05, "sponsor287"); send("playVideo");
-          toast(T("Skipped a sponsored part") + " (" + fmt(Math.round(s[1] - s[0])) + ")");
+          var skipMsg287 = T("Skipped a sponsored part") + " (" + fmt(Math.round(s[1] - s[0])) + ")";
+          if (window.__vpSkipUndo308) window.__vpSkipUndo308(s[0], skipMsg287); else toast(skipMsg287);
           return;
         }
       }
@@ -38713,7 +38714,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
           if (Date.now() - lastSkip < 1500) return;
           lastSkip = Date.now();
           manualSeek(s.b + 0.05, "sponIntro306"); send("playVideo");
-          toast(T(s.cat === "outro" ? "Skipped an outro" : "Skipped an intro") + " (" + fmt(Math.round(s.b - s.a)) + ")");
+          var skipMsg306 = T(s.cat === "outro" ? "Skipped an outro" : "Skipped an intro") + " (" + fmt(Math.round(s.b - s.a)) + ")";
+          if (window.__vpSkipUndo308) window.__vpSkipUndo308(s.a, skipMsg306); else toast(skipMsg306);
           return;
         }
       }
@@ -39193,6 +39195,27 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }, 1000);
     (window.__relang = window.__relang || []).push(function () { if (!box.hidden) paint308(); });
   })();
+
+
+  // Undo a skip (round 308 new 5): sponsor, intro/outro and reminder skips jump the
+  // moment playback crosses a marked stretch, and a wrong community mark threw you
+  // forward with no way back but scrubbing and guessing. Every community-skip toast
+  // now carries Undo: one tap puts the playhead back where the skip took it, using
+  // the same toast-undo the app's other reversible actions use. The hook lives here
+  // (window.__vpSkipUndo308); the two older skip engines (287 sponsors, 306
+  // intros/outros) now call it too, and 308's reminder skip was built on it. Skips
+  // behave exactly the same otherwise. Hindi and Gujarati text, What's new and
+  // feature finder included.
+  Object.assign(TR_MSG, {
+    "Undo a skip": ["स्किप अनडू करें", "સ્કિપ અનડુ કરો"],
+    "Back where you were.": ["वापस जहां थे.", "પાછા જ્યાં હતા ત્યાં."]
+  });
+  window.__vpSkipUndo308 = function (fromT, msg) {
+    toastUndo(msg, function () {
+      if (!ready) return;
+      manualSeek(Math.max(0, fromT), "skipUndo308"); send("playVideo");
+    }, T("Back where you were."));
+  };
 
 })();
 
