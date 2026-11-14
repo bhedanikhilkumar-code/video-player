@@ -3955,6 +3955,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
 
   window.T = T;
   window.__vpIsPlaying = function () { return !!(playing && iframe && ready); };
+  window.__vpCapturePlayback346 = function () {
+    var v = $("lpVideo");
+    return { youtube: playing && iframe && ready ? { frame: iframe, id: curId } : null,
+      local: v && v.src && !v.hidden && !v.paused && !v.ended ? { video: v, src: v.currentSrc || v.src } : null };
+  };
+  window.__vpResumePlayback346 = function (snapshot) {
+    if (!snapshot || playbackCovered345()) return;
+    if (snapshot.youtube && snapshot.youtube.frame === iframe && snapshot.youtube.id === curId && ready) send("playVideo");
+    var l = snapshot.local;
+    if (l && l.video === $("lpVideo") && !l.video.hidden && l.video.paused && !l.video.ended && (l.video.currentSrc || l.video.src) === l.src) {
+      var pending = l.video.play(); if (pending && pending.catch) pending.catch(function () {});
+    }
+  };
+  TR_MSG["Focus resumes only its paused source"] = ["फ़ोकस सिर्फ़ अपना रोका वीडियो चलाता है", "ફોકસ ફક્ત પોતે અટકાવેલો વીડિયો ચલાવે છે"];
+  window.addEventListener("load", function () { setTimeout(function () { window.__vpWnew283("Focus resumes only its paused source", "#ctl-focus"); }, 950); });
   window.__vpPauseForBreak = function () { if (iframe && ready) send("pauseVideo"); };
   window.__vpPlayAfterBreak = function () { if (iframe && ready) send("playVideo"); };
 
@@ -49583,7 +49598,7 @@ html.low-fx #ctl-focus .fr-fg{transition:none}
   var chips = $("focusChips"), startB = $("focusStart"), skipB = $("focusSkip"), stopB = $("focusStop"), autoB = $("focusAuto");
   var longB312 = $("focusLong312");
   var timeEl = $("focusTime"), phaseEl = $("focusPhase"), arc = $("focusArc"), label = $("focusLabel");
-  var plans = [[25, 5], [50, 10], [15, 3]], pick = 0, phase = "idle", endAt = 0, total = 1, tick = null, rounds = 0, wasPlaying = false;
+  var plans = [[25, 5], [50, 10], [15, 3]], pick = 0, phase = "idle", endAt = 0, total = 1, tick = null, rounds = 0, pausedMedia346 = null;
   // Round 245 fix 2: 'Rounds done today' used the UTC date, so in India (UTC+5:30) it only reset at
   // 5:30 am and yesterday's rounds still showed after midnight. It now uses the local date.
   var dayKey = function () { var d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); };
@@ -49628,12 +49643,12 @@ html.low-fx #ctl-focus .fr-fg{transition:none}
     total = (p === "work" ? plans[pick][0] : plans[pick][1]) * 60000 * (mult312 || 1); endAt = Date.now() + total;
     clearInterval(tick); tick = setInterval(step, 500); paint();
   }
-  function pauseAll() { var v = $("lpVideo"); wasPlaying = !!(window.__vpIsPlaying && window.__vpIsPlaying()) || !!(v && !v.paused); if (window.__vpPauseForBreak) window.__vpPauseForBreak(); if (v && !v.paused) v.pause(); }
+  function pauseAll() { pausedMedia346 = window.__vpCapturePlayback346 ? window.__vpCapturePlayback346() : null; if (window.__vpPauseForBreak) window.__vpPauseForBreak(); if (pausedMedia346 && pausedMedia346.local) pausedMedia346.local.video.pause(); }
   // Round 312 fix 1: "Skip break" called resumeAll() like a timer would, so with
   // "Resume the video when the break ends" unticked the explicit tap was ignored and
   // the video stayed paused. A tap is a manual resume - it now plays regardless of
   // the auto checkbox, while the timer path still honours it.
-  function resumeAll(force312) { if ((!autoB.checked && !force312) || !wasPlaying) return; var v = $("lpVideo"); if (window.__vpPlayAfterBreak) window.__vpPlayAfterBreak(); if (v && v.paused && v.src && v.offsetParent) v.play().catch(function () {}); }
+  function resumeAll(force312) { if (!autoB.checked && !force312) return; var snapshot = pausedMedia346; pausedMedia346 = null; if (window.__vpResumePlayback346) window.__vpResumePlayback346(snapshot); }
   function step() {
     if (Date.now() < endAt) { paint(); return; }
     if (phase === "work") { rounds++; save(); pauseAll(); var isLong312 = !!(longB312 && longB312.checked) && rounds % 4 === 0; window.toast && window.toast(isLong312 ? D312[lg312()].toast : T("Focus round done - break time. The video is paused."), 4500); begin("break", isLong312 ? 3 : 1); }
