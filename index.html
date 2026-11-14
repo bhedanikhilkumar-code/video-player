@@ -5997,16 +5997,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   clearQueueBtn.addEventListener("click", function () { var snap = lib.queue.slice(), sp = qPos, sa = qAfter; lib.queue = []; qPos = -1; qAfter = -1; showLibErr(""); saveLib(); renderLib(); if (snap.length) toastUndo(T("Queue cleared"), function () { lib.queue = snap; qPos = sp; qAfter = sa; saveLib(); renderLib(); }, T("Queue restored")); });
   var dedupeQueueBtn = $("dedupeQueueBtn");
   if (dedupeQueueBtn) dedupeQueueBtn.addEventListener("click", function () {
-    var seen = {}, nq = [], nqPos = -1, removed = 0, snap = lib.queue.slice(), sp = qPos;
+    // Round 292 fix 5: rows before the qAfter removal pointer shifting down never moved
+    // the pointer, so after a dedupe Next started a video late (seen as: remove the
+    // playing row, dedupe away a duplicate above it, Next skips one). The pointer now
+    // follows the row it remembered, and Undo restores it.
+    var seen = {}, nq = [], nqPos = -1, removed = 0, snap = lib.queue.slice(), sp = qPos, sa = qAfter, qAfterNew = qAfter;
     lib.queue.forEach(function (it, i) {
-      if (seen[it.id]) { removed++; return; }
+      if (seen[it.id]) { removed++; if (i < qAfterNew) qAfterNew--; return; }
       seen[it.id] = true;
       if (i === qPos) nqPos = nq.length;
       nq.push(it);
     });
     if (!removed) { showLibErr(T("No duplicates in the queue.")); return; }
-    lib.queue = nq; qPos = nqPos; saveLib(); renderLib(); showLibErr("");
-    toastUndo(removed === 1 ? T("1 duplicate removed") : removed + " " + T("duplicates removed"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    lib.queue = nq; qPos = nqPos; qAfter = qAfterNew; saveLib(); renderLib(); showLibErr("");
+    toastUndo(removed === 1 ? T("1 duplicate removed") : removed + " " + T("duplicates removed"), function () { lib.queue = snap; qPos = sp; qAfter = sa; saveLib(); renderLib(); }, T("Queue restored"));
   });
   var clearPlayedBtn = $("clearPlayedBtn");
   if (clearPlayedBtn) clearPlayedBtn.addEventListener("click", function () {
