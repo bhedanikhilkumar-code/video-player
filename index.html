@@ -8177,6 +8177,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (sel === "#tourReplayBtn") { var tb = document.getElementById("tourReplayBtn"); if (tb) tb.click(); return; }
     var el = null; try { el = document.querySelector(sel); } catch (e) {}
     if (!el) return;
+    // Round 353 fix 2: the visibility check ran BEFORE the collapsed-section/details
+    // expansion below, so a target sitting inside a collapsed section (Help's App lock row,
+    // the Help search box) failed the check and the tap just toasted "This one shows up only
+    // when it can be used" even though the section could simply open (seen live from the
+    // What's new card). Expand first, then judge visibility.
+    var sec = el.closest ? el.closest("section.sec-collapsed") : null;
+    if (sec && window.vpExpandSection) window.vpExpandSection(sec.id);
+    var det = el.closest ? el.closest("details:not([open])") : null;
+    if (det) det.open = true;
     // Round 209 fix: a What's new or feature finder tap on something that is not on
     // screen right now (player controls before a video loads, the Undo last import
     // chip before any import) scrolled to nothing and stayed silent - it looked
@@ -8192,10 +8201,6 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         return;
       }
     } catch (e) {}
-    var sec = el.closest ? el.closest("section.sec-collapsed") : null;
-    if (sec && window.vpExpandSection) window.vpExpandSection(sec.id);
-    var det = el.closest ? el.closest("details:not([open])") : null;
-    if (det) det.open = true;
     setTimeout(function () {
       try { el.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); } catch (e) { el.scrollIntoView(); }
       el.classList.remove("vp-find-flash"); void el.offsetWidth; el.classList.add("vp-find-flash");
@@ -50968,6 +50973,13 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
   }
   function jump(sel) {
     var el = document.querySelector(sel); if (!el) return;
+    // Round 353 fix 2: same ordering bug as the What's new jump - a tip pointing into a
+    // collapsed section toasted "This one shows up only when it can be used" instead of
+    // opening the section. Expand first, then judge visibility.
+    var sec = el.closest ? el.closest("section.sec-collapsed") : null;
+    if (sec && window.vpExpandSection) window.vpExpandSection(sec.id);
+    var det = el.closest ? el.closest("details:not([open])") : null;
+    if (det) det.open = true;
     // Round 320 fix 2: a tip's Try it button jumped with no word when the control it
     // points to is not on screen right now (player controls before a video loads), so
     // the tip looked broken. Now it says plainly why nothing moved, matching What's new.
@@ -50977,10 +50989,6 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
         return;
       }
     } catch (e) {}
-    var sec = el.closest ? el.closest("section.sec-collapsed") : null;
-    if (sec && window.vpExpandSection) window.vpExpandSection(sec.id);
-    var det = el.closest ? el.closest("details:not([open])") : null;
-    if (det) det.open = true;
     setTimeout(function () {
       try { el.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); } catch (e) { el.scrollIntoView(); }
       el.classList.remove("vp-find-flash"); void el.offsetWidth; el.classList.add("vp-find-flash");
