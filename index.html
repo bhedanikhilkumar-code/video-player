@@ -32243,6 +32243,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // speech recognition, so it only listens after you tap Start listening, and it hides itself
   // where the browser has none. English, Hinglish and Hindi words are understood.
   var VOICE269 = [
+    ["exitfullscreen", ["exit fullscreen", "leave fullscreen", "small screen", "फुल स्क्रीन बंद", "छोटी स्क्रीन", "ફુલ સ્ક્રીન બંધ", "નાની સ્ક્રીન"]],
+    ["fullscreen", ["fullscreen", "full screen", "full-screen", "फुल स्क्रीन", "ફુલ સ્ક્રીન", "बड़ी स्क्रीन", "મોટી સ્ક્રીન"]],
     ["unmute", ["unmute", "sound on", "awaaz chalu", "आवाज़ चालू", "અનમ્યૂટ", "અવાજ ચાલુ"]],
     ["mute", ["mute", "silence", "chup", "चुप", "म्यूट", "મ્યૂટ", "ચૂપ", "અવાજ બંધ"]],
     ["previous", ["previous", "prev", "go to previous", "last video", "pichla", "pehle wala", "पिछला", "પાછલું", "અગાઉનું", "પાછલો વીડિયો"]],
@@ -32284,12 +32286,39 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     else if (cmd === "mute" || cmd === "unmute") { b = $("muteBtn"); if (!b) return false; var isMuted = muted === true; if ((cmd === "mute") !== isMuted) b.click(); }
     else if (cmd === "faster" || cmd === "slower") speedKeyStep(cmd === "faster" ? 1 : -1);
+    else if (cmd === "fullscreen") { if (document.fullscreenElement || !curId) return false; var fb341 = $("fsBtn"); if (!fb341 || fb341.disabled) return false; fb341.click(); }
+    else if (cmd === "exitfullscreen") { if (!document.fullscreenElement) return false; document.exitFullscreen(); }
     else return false;
     return true;
   }
+  // Round 341 new 2: the voice card could play, pause and skip, but the two things you most
+  // want hands-free in bed - "sleep 30 minutes" and "full screen" - were not commands at all.
+  // The sleep half needs a number, so it parses on its own before the fixed phrase list: a
+  // sleep word (sleep / स्लीप / સ્લીપ, plus सोना and ઊંઘ) with a number of minutes (1-720)
+  // starts the timer through the same sleepSet() the chips use, so the floating pill, the
+  // countdown and the Off-undo all behave as if tapped; a sleep word with a cancel word
+  // (cancel/stop/off/बंद/બંધ) turns a running timer off. Full screen and exit full screen
+  // are plain phrase commands in all three languages, added above unmute so the longer
+  // "exit full screen" is never swallowed by "full screen".
+  function parseSleep341(heard) {
+    var t = " " + String(heard || "").toLowerCase().replace(/[.,!?;:"'()]/g, " ").replace(/\s+/g, " ").trim() + " ";
+    if (!/ (sleep|स्लीप|सोना|सो|સ્લીપ|ઊંઘ) /.test(t)) return null;
+    if (/ (cancel|stop|off|बंद|हटा|હટાવો|બંધ|કેન્સલ) /.test(t)) return 0;
+    var m = t.match(/ (\d{1,3}) /);
+    if (m) { var n = Math.round(Number(m[1])); if (n >= 1 && n <= 720) return n; return null; }
+    var words = { "दस": 10, "पंद्रह": 15, "पन्द्रह": 15, "बीस": 20, "तीस": 30, "पैंतालीस": 45, "साठ": 60, "दસ": 10, "પંદર": 15, "વીસ": 20, "ત્રીસ": 30, "પિસ્તાલીસ": 45, "સાઠ": 60 };
+    var k; for (k in words) { if (t.indexOf(" " + k + " ") >= 0) return words[k]; }
+    return null;
+  }
+  function voiceSleep341(mins) {
+    if (typeof sleepSet !== "function") return false;
+    if (mins > 0) { sleepSet(mins); return true; }
+    if (!(sleepEnd > Date.now())) return false;
+    sleepSet(0); return true;
+  }
   Object.assign(TR_MSG, {
     "Voice control": ["आवाज़ से नियंत्रण", "અવાજથી નિયંત્રણ"],
-    "Say a short command and the player obeys: pause, play, next, previous, forward, back, louder, quieter, mute, faster, slower. It listens only after you tap Start listening.": ["छोटा कमांड बोलें और प्लेयर मान लेगा: pause, play, next, previous, forward, back, louder, quieter, mute, faster, slower - या हिंदी में: रुको, चलाओ, अगला, पिछला, आगे, पीछे, आवाज़ बढ़ाओ, आवाज़ कम, चुप, तेज़ चलाओ, धीरे चलाओ. यह तभी सुनता है जब आप सुनना शुरू करें दबाएँ.", "ટૂંકો આદેશ બોલો અને પ્લેયર માનશે: pause, play, next, previous, forward, back, louder, quieter, mute, faster, slower - કે ગુજરાતીમાં: રોકો, ચલાવો, આગળનું, પાછલું, આગળ વધો, પાછળ જાઓ, અવાજ વધારો, અવાજ ઓછો કરો, ચૂપ, ઝડપી, ધીમું. તમે સાંભળવાનું શરૂ કરો દબાવો ત્યારે જ તે સાંભળે છે."],
+    "Say a short command and the player obeys: pause, play, next, previous, forward, back, louder, quieter, mute, faster, slower, full screen - or sleep 30 minutes. It listens only after you tap Start listening.": ["छोटा कमांड बोलें और प्लेयर मान लेगा: pause, play, next, previous, forward, back, louder, quieter, mute, faster, slower, full screen - या sleep 30 minutes. हिंदी में भी: रुको, चलाओ, अगला, पिछला, आगे, पीछे, आवाज़ बढ़ाओ, आवाज़ कम, चुप, तेज़ चलाओ, धीरे चलाओ, फुल स्क्रीन, स्लीप तीस मिनट. यह तभी सुनता है जब आप सुनना शुरू करें दबाएँ.", "ટૂંકો આદેશ બોલો અને પ્લેયર માનશે: pause, play, next, previous, forward, back, louder, quieter, mute, faster, slower, full screen - કે sleep 30 minutes. ગુજરાતીમાં પણ: રોકો, ચલાવો, આગળનું, પાછલું, આગળ વધો, પાછળ જાઓ, અવાજ વધારો, અવાજ ઓછો કરો, ચૂપ, ઝડપી, ધીમું, ફુલ સ્ક્રીન, સ્લીપ ત્રીસ મિનિટ. તમે સાંભળવાનું શરૂ કરો દબાવો ત્યારે જ તે સાંભળે છે."],
     "Start listening": ["सुनना शुरू करें", "સાંભળવાનું શરૂ કરો"],
     "Stop listening": ["सुनना बंद करें", "સાંભળવાનું બંધ કરો"],
     "Not listening.": ["सुन नहीं रहा.", "સાંભળતું નથી."],
@@ -32310,7 +32339,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     var rec = null, on = false, note = "", noteKey = "", noteExtra = "";
     function paint() {
-      hint.textContent = T("Say a short command and the player obeys: pause, play, next, previous, forward, back, louder, quieter, mute, faster, slower. It listens only after you tap Start listening.");
+      hint.textContent = T("Say a short command and the player obeys: pause, play, next, previous, forward, back, louder, quieter, mute, faster, slower, full screen - or sleep 30 minutes. It listens only after you tap Start listening.");
       btn.textContent = T(on ? "Stop listening" : "Start listening"); btn.setAttribute("aria-pressed", on ? "true" : "false"); btn.disabled = !SR;
       st.textContent = !SR ? T("This browser has no speech recognition, so voice control is not available here.") : noteKey ? T(noteKey) + (noteExtra ? " " + noteExtra : "") : on ? T("Listening... say a command.") : T("Not listening.");
     }
@@ -32324,8 +32353,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         rec.onresult = function (ev) {
           for (var i = ev.resultIndex; i < ev.results.length; i++) {
             if (!ev.results[i].isFinal) continue;
-            var heard = "", cmd = "";
-            for (var j = 0; j < ev.results[i].length && !cmd; j++) { heard = ev.results[i][j].transcript || ""; cmd = parseVoice269(heard); }
+            var heard = "", cmd = "", sleepMin341 = null;
+            for (var j = 0; j < ev.results[i].length && !cmd; j++) {
+              heard = ev.results[i][j].transcript || "";
+              sleepMin341 = parseSleep341(heard);
+              if (sleepMin341 !== null) break;
+              cmd = parseVoice269(heard);
+            }
+            if (sleepMin341 !== null) {
+              var okS = false; try { okS = voiceSleep341(sleepMin341); } catch (e) {}
+              say(okS ? "Done:" : "That could not be done now.", okS ? (sleepMin341 > 0 ? "sleep " + sleepMin341 + " min" : "sleep off") : "");
+              continue;
+            }
             if (!cmd) { say("No command in that.", "(" + T("Heard:") + " " + String(heard).slice(0, 40) + ")"); continue; }
             var ok = false; try { ok = voiceDo269(cmd); } catch (e) {}
             say(ok ? "Done:" : "That could not be done now.", ok ? cmd : "");
@@ -32343,6 +32382,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   WNEW.unshift(["Voice control","#voiceCard269"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
   Object.assign(TR_MSG, { "Gujarati voice commands": ["गुजराती वॉइस कमांड", "ગુજરાતી વૉઇસ કમાન્ડ"] });
   WNEW.unshift(["Gujarati voice commands","#voiceCard269"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
+  Object.assign(TR_MSG, { "Voice: sleep timer and full screen": ["वॉइस: स्लीप टाइमर और फुल स्क्रीन", "વૉઇસ: સ્લીપ ટાઇમર અને ફુલ સ્ક્રીન"] });
+  WNEW.unshift(["Voice: sleep timer and full screen","#voiceCard269"]);WNEW.length=Math.min(10,WNEW.length);wnewRender();
   // Round 269 new 2: Privacy screen - one tap (or the ` key) covers the whole page with a plain
   // dark screen and pauses the video, for when someone walks past or a screen is shared. Tap the
   // screen or press ` / Esc to bring everything back; the video resumes only if this feature
@@ -47586,6 +47627,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Check saved videos", "dead links removed private unavailable broken videos clean queue watch later favourites check", "#chkCard268"],
       ["Voice control", "voice commands speak say pause play next hands free microphone talk control hinglish ruko agla awaaz", "#voiceCard269"],
       ["Gujarati voice commands", "gujarati voice commands speak gu-IN roko chalavo aaglanu pachhalu avaj vadharo chup zadapi", "#voiceCard269"],
+      ["Voice: sleep timer and full screen", "voice sleep timer minutes full screen hands free bed say speak command exit fullscreen", "#voiceCard269"],
       ["Privacy screen", "privacy hide screen boss key panic cover black blank shoulder surfing screen share public hide video quick", "#privCard269"],
       ["Shake to control", "shake phone next video play pause motion sensor accelerometer wet hands gesture skip", "#shakeCard269"],
       ["Queue snapshots", "save queue snapshot restore previous queue backup undo clear shuffle mood bring back list version", "#snapCard269"],
