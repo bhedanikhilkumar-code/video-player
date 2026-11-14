@@ -2302,6 +2302,8 @@ setTimeout(done,3000);})();
         <p class="hint" id="lpHallHint285" hidden></p>
         <div class="row"><button class="chip" id="lpWideBtn287" type="button" aria-pressed="false">📡 Wide sound: off</button></div>
         <p class="hint" id="lpWideHint287" hidden></p>
+        <div class="row"><button class="chip" id="lpVcutBtn300" type="button" aria-pressed="false">🎤 Voice cut: off</button></div>
+        <p class="hint" id="lpVcutHint300" hidden></p>
         <label class="dl-lab" for="lpBal"><span id="lpBalLab">Balance: </span><b id="lpBalVal">Center</b></label>
         <input id="lpBal" type="range" min="-100" max="100" step="5" value="0" style="width:100%">
         <p class="hint" id="lpBalHint">Move the sound towards the left or right ear - handy when one earphone sounds louder. Works on files you open here.</p>
@@ -36871,6 +36873,12 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Per-file speed memory off.": ["हर फ़ाइल की स्पीड याद रखना बंद.", "દરેક ફાઇલની સ્પીડ યાદ રાખવું બંધ."],
     "Speed for this file: {n}x": ["इस फ़ाइल की स्पीड: {n}x", "આ ફાઇલની સ્પીડ: {n}x"]
   });
+  Object.assign(TR_MSG, {
+    "Voice cut": ["आवाज़ कट", "અવાજ કટ"],
+    "Voice cut on": ["आवाज़ कट चालू", "અવાજ કટ ચાલુ"],
+    "Voice cut off": ["आवाज़ कट बंद", "અવાજ કટ બંધ"],
+    "Takes the middle voice out of files you open here - sing along or hear the music on its own. Strongest on studio songs; some voice can stay, and Mono switches off because one channel has no middle. Hall and Wide still echo a little of the voice. The YouTube player's sound cannot be changed (a browser security limit).": ["यहाँ खोली गई फ़ाइलों से बीच की आवाज़ हटा देता है - साथ गाएँ या सिर्फ़ संगीत सुनें। स्टूडियो गानों पर सबसे अच्छा; कुछ आवाज़ रह सकती है, और मोनो बंद हो जाता है क्योंकि एक चैनल में बीच नहीं होता। हॉल और वाइड में आवाज़ की हल्की गूँज रह सकती है। YouTube प्लेयर की आवाज़ बदली नहीं जा सकती (ब्राउज़र सुरक्षा सीमा)।", "અહીં ખોલેલી ફાઇલોમાંથી વચ્ચેનો અવાજ કાઢી નાખે છે - સાથે ગાઓ અથવા ફક્ત સંગીત સાંભળો. સ્ટુડિયો ગીતો પર સૌથી સારું; થોડો અવાજ રહી શકે, અને મોનો બંધ થઈ જાય કારણ કે એક ચેનલમાં વચ્ચે હોતું નથી. હોલ અને વાઇડમાં અવાજની હળવી પડઘો રહી શકે. YouTube પ્લેયરનો અવાજ બદલી શકાતો નથી (બ્રાઉઝર સુરક્ષા મર્યાદા)."]
+  });
   (function () {
     var sp = $("lpSpeeds"), vid = $("lpVideo"); if (!sp || !vid) return;
     var LPS_KEY = "vp-lpspeeds.v1", mem = {};
@@ -37392,7 +37400,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var file = $("lpFile"), vid = $("lpVideo"), ctl = $("lpCtl"), gain = $("lpGain"), gv = $("lpGainVal"), warn = $("lpWarn"), sp = $("lpSpeeds");
-  var ctx = null, node = null, curUrl = null, eqNodes = null, nightNode = null, panNode = null, monoNode = null, hallConv285 = null, hallWet285 = null, wideSplit287 = null, wideMerger287 = null, wideWet287 = null;
+  var ctx = null, node = null, curUrl = null, eqNodes = null, nightNode = null, panNode = null, monoNode = null, hallConv285 = null, hallWet285 = null, wideSplit287 = null, wideMerger287 = null, wideWet287 = null, vcutSplit300 = null, vcutMatrix300 = null;
   function ensureAudio() {
     if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -37414,9 +37422,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var delay276 = null, output276 = ctx.createGain();
     output276.gain.value = vid.paused ? 0 : 1; output276.connect(ctx.destination); window.__lpOutput276 = output276;
     function flushDelay276() {
-      if(delay276){try{monoN.disconnect(delay276);delay276.disconnect();}catch(e){}}
+      if(delay276){try{monoN.disconnect(delay276);}catch(e){} try{if(vcutMatrix300)vcutMatrix300.disconnect(delay276);}catch(e){} try{delay276.disconnect();}catch(e){}}
       delay276=ctx.createDelay(2);delay276.delayTime.value=window.__vpDelayValue276?window.__vpDelayValue276()/1000:0;
-      monoN.connect(delay276);delay276.connect(output276);window.__lpDelay276=delay276;
+      (lp.vcut&&vcutMatrix300?vcutMatrix300:monoN).connect(delay276);delay276.connect(output276);window.__lpDelay276=delay276;
     }
     function muteAndFlush276(){output276.gain.setValueAtTime(0,ctx.currentTime);flushDelay276();}
     function openOutput276(){
@@ -37452,6 +37460,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     wideSplit287.connect(wg3, 0); wg3.connect(wideMerger287, 0, 1);
     wideSplit287.connect(wg4, 1); wg4.connect(wideMerger287, 0, 1);
     wideMerger287.connect(wideWet287); wideWet287.connect(output276);
+    // Round 300 new: Voice cut - a mid/side matrix drops the centre (L+R)/2, where the
+    // voice usually sits. Taps monoN like Wide sound; the dry path switches to it in
+    // flushDelay276 while the toggle is on.
+    vcutSplit300 = ctx.createChannelSplitter(2);
+    vcutMatrix300 = ctx.createChannelMerger(2);
+    var vA300 = ctx.createGain(), vB300 = ctx.createGain(), vC300 = ctx.createGain(), vD300 = ctx.createGain();
+    vA300.gain.value = 0.5; vB300.gain.value = -0.5; vC300.gain.value = -0.5; vD300.gain.value = 0.5;
+    monoN.connect(vcutSplit300);
+    vcutSplit300.connect(vA300, 0); vA300.connect(vcutMatrix300, 0, 0);
+    vcutSplit300.connect(vB300, 1); vB300.connect(vcutMatrix300, 0, 0);
+    vcutSplit300.connect(vC300, 0); vC300.connect(vcutMatrix300, 0, 1);
+    vcutSplit300.connect(vD300, 1); vD300.connect(vcutMatrix300, 0, 1);
     if (typeof wideApply287 === "function") wideApply287();
     eqNodes = { b: fb, m: fm, t: ft }; nightNode = comp; panNode = pan;
     if (typeof eqApply === "function") eqApply();
@@ -37466,8 +37486,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     try { ensureAudio(); if(!ctx || typeof ctx.setSinkId !== 'function') return Promise.reject(new Error('unsupported')); return ctx.setSinkId(id); }
     catch(e) { return Promise.reject(e); }
   };
-  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, night: false, bal: 0, fade: 0, hall: "off", wide: "off", eq: { b: 0, m: 0, t: 0 } };
-  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.ccBg === "none" || sv.ccBg === "solid") lp.ccBg = sv.ccBg; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; if (typeof sv.bal === "number" && sv.bal >= -100 && sv.bal <= 100) lp.bal = Math.round(sv.bal); if (sv.mono === true) lp.mono = true; if (sv.soft === true) lp.soft = true; if ([0, 2, 4, 8].indexOf(sv.fade) >= 0) lp.fade = sv.fade; if (["off", "room", "hall"].indexOf(sv.hall) >= 0) lp.hall = sv.hall; if (["off", "wide", "extra"].indexOf(sv.wide) >= 0) lp.wide = sv.wide; } } catch (e) {}
+  var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, night: false, bal: 0, fade: 0, hall: "off", wide: "off", vcut: false, eq: { b: 0, m: 0, t: 0 } };
+  try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.ccBg === "none" || sv.ccBg === "solid") lp.ccBg = sv.ccBg; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; if (typeof sv.bal === "number" && sv.bal >= -100 && sv.bal <= 100) lp.bal = Math.round(sv.bal); if (sv.mono === true) lp.mono = true; if (sv.soft === true) lp.soft = true; if ([0, 2, 4, 8].indexOf(sv.fade) >= 0) lp.fade = sv.fade; if (["off", "room", "hall"].indexOf(sv.hall) >= 0) lp.hall = sv.hall; if (["off", "wide", "extra"].indexOf(sv.wide) >= 0) lp.wide = sv.wide; if (sv.vcut === true) lp.vcut = true; } } catch (e) {}
   gain.value = lp.gain;
   function saveLp() { try { localStorage.setItem(LK, JSON.stringify(lp)); } catch (e) { if(window.vpStorageWarning276)window.vpStorageWarning276(); } }
   function setGain() { var v = Number(gain.value); lp.gain = v; saveLp(); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
@@ -37631,6 +37651,28 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ensureAudio(); saveLp(); wideApply287(); widePaint287();
     });
     widePaint287();
+
+  // Voice cut (round 300): takes the middle voice out of files opened here - sing
+  // along or hear the music on its own. The matrix above drops (L+R)/2; Mono switches
+  // off because one channel has no middle. Hindi/Gujarati in the main closure, in the
+  // feature finder and the What's new card.
+  var vcutBtn300 = $("lpVcutBtn300"), vcutHint300 = $("lpVcutHint300");
+  function vcutRender300() {
+    if (vcutBtn300) {
+      vcutBtn300.textContent = "\uD83C\uDFA4 " + T("Voice cut") + ": " + T(lp.vcut ? "on" : "off");
+      vcutBtn300.setAttribute("aria-pressed", lp.vcut ? "true" : "false");
+      vcutBtn300.classList.toggle("active", !!lp.vcut);
+    }
+    if (vcutHint300) { vcutHint300.textContent = T("Takes the middle voice out of files you open here - sing along or hear the music on its own. Strongest on studio songs; some voice can stay, and Mono switches off because one channel has no middle. Hall and Wide still echo a little of the voice. The YouTube player's sound cannot be changed (a browser security limit)."); vcutHint300.hidden = !lp.vcut; }
+  }
+  if (vcutBtn300) vcutBtn300.addEventListener("click", function () {
+    lp.vcut = !lp.vcut;
+    if (lp.vcut && lp.mono) { lp.mono = false; monoApply(); monoRender(); }
+    saveLp(); ensureAudio(); if (ctx) flushDelay276(); vcutRender300();
+    toast(lp.vcut ? T("Voice cut on") : T("Voice cut off"));
+  });
+  (window.__relang = window.__relang || []).push(vcutRender300);
+  vcutRender300();
   }
   [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3].forEach(function (r) {
     var b = document.createElement("button"); b.className = "chip" + (r === lp.rate ? " active" : ""); b.type = "button"; b.textContent = r + "x";
@@ -41387,6 +41429,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Loop breather", "loop breather rest pause between a-b loop passes practice breathe break repeat", "#abRestRow299"],
       ["Per-video quality memory", "per video quality remember this video 1080 720 480 one blurry upload exception", "#pvQualBtn299"],
       ["Remember speed per file", "remember speed per file local files lecture song own rate each file", "#lpSpdMemRow299"],
+      ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
       ["Alarm fade-in", "alarm fade in gentle wake soft start rising volume gradual morning light sleeper", "#alarmFadeRow297"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
@@ -43931,6 +43974,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Loop breather", "#abRestRow299");
   window.__vpWnew283("Per-video quality memory", "#pvQualBtn299");
   window.__vpWnew283("Remember speed per file", "#lpSpdMemRow299");
+  window.__vpWnew283("Voice cut", "#lpVcutBtn300");
 })();
 </script>
 </body>
