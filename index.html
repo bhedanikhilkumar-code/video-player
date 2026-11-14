@@ -45038,6 +45038,21 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     if (sel === "#vpBreak") { if (window.__vpRestCardDemo) window.__vpRestCardDemo(); return; }
     if (sel === "#tourReplayBtn") { var tb = document.getElementById("tourReplayBtn"); if (tb) tb.click(); return; }
         var el = document.querySelector(sel); if (!el) return;
+        // Round 320 fix 1: the finder's own jump never got the round-209 hidden-element
+        // feedback that What's new taps use, so picking a feature whose control is not on
+        // screen right now (Similar saved videos before anything similar exists, Undo last
+        // import before any import) scrolled to nothing and stayed silent - it looked
+        // broken. Now the finder says plainly why nothing moved, same words as What's new.
+        try {
+          var elVis = el.offsetParent !== null || (el.getClientRects && el.getClientRects().length > 0);
+          if (!elVis) {
+            var whyHidden = T("This one shows up only when it can be used.");
+            if (el.id === "libUndoImport") whyHidden = T("This chip appears after you import a backup - then it can undo that import.");
+            else if (el.closest && (el.closest("#controls") || el.closest(".info-card") || el.closest("#frameBox"))) whyHidden = T("Load a video first - this one works on the playing video.");
+            if (window.toast) window.toast(whyHidden);
+            return;
+          }
+        } catch (e) {}
         var sec = el.closest ? el.closest("section.sec-collapsed") : null;
         if (sec && window.vpExpandSection) window.vpExpandSection(sec.id);
         var det = el.closest ? el.closest("details:not([open])") : null;
