@@ -37587,8 +37587,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     addBtn.addEventListener("click", async function () {
       var list = load();
       if (list.length >= MAX) { toast(T("Four presets are saved - remove one first (long press or right-click it).")); return; }
+      // Round 304 fix 2: naming asked through the browser's own prompt - the one raw
+      // dialog left in the app. It blocks the whole page, ignores the theme and looks
+      // nothing like the glass dialogs every other question uses, and some embedded
+      // browsers suppress it so Save simply did nothing. The app's own glass ask
+      // dialog (vpAsk, already used for renames and notes) asks now.
       var name = "";
-      try { name = (window.prompt ? window.prompt(T("Name this EQ preset (for example: Evening bass)"), "") : "") || ""; } catch (e) { name = ""; }
+      try { name = (await (window.vpAsk ? window.vpAsk(T("Name this EQ preset (for example: Evening bass)"), "", { okLabel: T("Save") }) : Promise.resolve(""))) || ""; } catch (e) { name = ""; }
       name = name.trim().slice(0, 18); if (!name) return;
       var c = curEq();
       list.push({ name: name, b: c.b, m: c.m, t: c.t });
