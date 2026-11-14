@@ -44292,6 +44292,66 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Loop count-in", "#abCountInRow338"); }, 0); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Guest session", "#guestBtn339"); }, 0); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Moments to note", "#markNoteBtn339"); }, 0); });
+  /* Local file stats (round 352 new 1): the Stats chip used to stay blank over a local
+     file, because the overlay only listened to the YouTube frame's messages. It now shows
+     the same five live rows over local playback too - resolution, speed, volume, buffered
+     share and time - read straight from the local video element, in the app language. */
+  (function () {
+    "use strict";
+    Object.assign(TR_MSG, {
+      "Audio": ["\u0911\u0921\u093f\u092f\u094b", "\u0a91\u0aa1\u0abf\u0aaf\u0acb"],
+      "Stats over local files": ["\u0932\u094b\u0915\u0932 \u092b\u093c\u093e\u0907\u0932\u094b\u0902 \u092a\u0930 \u092d\u0940 \u0906\u0902\u0915\u0921\u093c\u0947", "\u0ab2\u0acb\u0a95\u0ab2 \u0aab\u0abe\u0a87\u0ab2\u0acb \u0aaa\u0ab0 \u0aaa\u0aa3 \u0a86\u0a82\u0a95\u0aa1\u0abe"]
+    });
+    var btn352 = document.getElementById("statsBtn"), vid352 = document.getElementById("lpVideo");
+    if (!btn352 || !vid352 || !vid352.parentNode) return;
+    var wrap352 = document.createElement("div");
+    wrap352.style.position = "relative";
+    vid352.parentNode.insertBefore(wrap352, vid352);
+    wrap352.appendChild(vid352);
+    var ov352 = document.createElement("div");
+    ov352.className = "vp-statsov"; ov352.id = "vpLpStatsOv352"; ov352.setAttribute("aria-hidden", "true"); ov352.hidden = true;
+    wrap352.appendChild(ov352);
+    for (var r352 = 0; r352 < 5; r352++) {
+      var row352 = document.createElement("div"); row352.className = "so-r";
+      var l352 = document.createElement("span"); l352.className = "so-l";
+      var v352 = document.createElement("span"); v352.className = "so-v";
+      row352.appendChild(l352); row352.appendChild(v352); ov352.appendChild(row352);
+    }
+    function fmtT352(s) {
+      if (!isFinite(s) || s < 0) return "0:00";
+      s = Math.floor(s);
+      var h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, sec = s % 60;
+      var mm = h > 0 ? String(m).padStart(2, "0") : String(m);
+      return (h > 0 ? h + ":" : "") + mm + ":" + String(sec).padStart(2, "0");
+    }
+    function statsOn352() { try { return localStorage.getItem("vp-stats-ov.v1") === "1"; } catch (e) { return false; } }
+    function text352(el, next) { if (el.textContent !== next) el.textContent = next; }
+    function paint352() {
+      var show = !vid352.hidden && !!vid352.src && statsOn352();
+      ov352.hidden = !show; ov352.setAttribute("aria-hidden", show ? "false" : "true");
+      if (!show) return;
+      var dur = vid352.duration, buf = "-";
+      try {
+        var b = vid352.buffered;
+        if (b.length && isFinite(dur) && dur > 0) buf = Math.min(100, Math.round(b.end(b.length - 1) / dur * 100)) + "%";
+      } catch (e) {}
+      var res = "-";
+      if (vid352.readyState >= 1) res = vid352.videoWidth ? vid352.videoWidth + "\u00d7" + vid352.videoHeight : T("Audio");
+      var vals = [
+        [T("Quality"), res],
+        [T("Speed"), vid352.playbackRate + "x"],
+        [T("Volume"), vid352.muted ? "0%" : Math.round(vid352.volume * 100) + "%"],
+        [T("Buffered"), buf],
+        [T("Time"), fmtT352(vid352.currentTime) + (isFinite(dur) && dur > 0 ? " / " + fmtT352(dur) : "")]
+      ];
+      for (var k352 = 0; k352 < 5; k352++) { text352(ov352.children[k352].firstChild, vals[k352][0]); text352(ov352.children[k352].lastChild, vals[k352][1]); }
+    }
+    setInterval(paint352, 600);
+    ["play", "pause", "loadedmetadata", "emptied"].forEach(function (ev) { vid352.addEventListener(ev, paint352); });
+    btn352.addEventListener("click", function () { setTimeout(paint352, 0); });
+    (window.__relang = window.__relang || []).push(paint352);
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Stats over local files", "#statsBtn"); }, 0); });
+  })();
   window.__vpMainOk325 = true;
 
 
@@ -48378,6 +48438,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Stats over local files", "local file stats resolution speed volume buffered time overlay playback mp4 own video numbers quality", "#statsBtn"],
       ["Repair offline app", "repair offline app saved copy missing icons page pwa cache refresh inspect files storage", "#offlineRepair342"],
       ["Offline library pictures", "offline pictures prepare cache library covers thumbnails trip airplane images clear storage", "#offlinePics342"],
       ["Guest session", "guest session hand phone friend child borrow private history paused lists hidden protect library lend", "#guestBtn339"],
