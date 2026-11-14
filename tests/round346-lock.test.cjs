@@ -9,7 +9,7 @@ play({target:v,stopImmediatePropagation(){stopped++;}});assert.equal(paused,1);a
 covered=false;play({target:v});assert.equal(paused,1);
 covered=true;play({target:{}});assert.equal(paused,1);
 let localPause=0,softPending=42,cleared=0;const p=html.indexOf('  vid.pause = function () {');
-const c2=vm.createContext({vid:{paused:false},document:{querySelector:()=>true},clearTimeout:x=>{assert.equal(x,42);cleared++;},softPend283:softPending,origPause283:()=>localPause++});
+const c2=vm.createContext({vid:{paused:false},document:{querySelector:()=>true},cancelSoft346:()=>{cleared++;},origPause283:()=>localPause++});
 vm.runInContext(html.slice(p,html.indexOf('\n  };',p)+5),c2);c2.vid.pause();assert.equal(localPause,1);assert.equal(cleared,1);
 assert.match(html,/ov\.showModal\(\); pauseCoveredYouTube345\(\);\s+var local346.*local346\.pause\(\)/);
 console.log('Round 346 local cover guard, immediate soft-pause bypass and app-lock regression checks passed.');
