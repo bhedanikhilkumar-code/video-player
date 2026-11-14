@@ -13755,7 +13755,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       queuePos: (qPos >= 0 && qPos < lib.queue.length && lib.queue[qPos]) ? lib.queue[qPos].id : null,
       favourites: lib.favs.map(function (x) { var o = { id: x.id, title: x.title || "", pin: x.pin === true }; if (typeof x.why === "string" && x.why.trim()) o.why = x.why.slice(0, 200); return o; }),
       later: lib.later.map(function (x) { var o = { id: x.id, title: x.title || "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (laterSnoozed(x)) o.snoozeUntil = x.snoozeUntil; if (typeof x.why === "string" && x.why.trim()) o.why = x.why.slice(0, 200); return o; }),
-      playlists: playlists.map(function (p) { var o = { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; if (p.pinned === true) o.pinned = true; if (typeof p.note === "string" && p.note) o.note = p.note.slice(0, 80); if (typeof p.group === "string" && p.group) o.group = p.group.slice(0, 30); if (typeof p.lastPlay === "number" && p.lastPlay > 0) o.lastPlay = p.lastPlay; if (typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3) o.speed = p.speed; return o; }),
+      playlists: playlists.map(function (p) { var o = { name: p.name, items: p.items.map(function (x) { return { id: x.id, title: x.title || "" }; }) }; if (p.pinned === true) o.pinned = true; if (typeof p.note === "string" && p.note) o.note = p.note.slice(0, 80); if (typeof p.group === "string" && p.group) o.group = p.group.slice(0, 30); if (typeof p.lastPlay === "number" && p.lastPlay > 0) o.lastPlay = p.lastPlay; if (typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3) o.speed = p.speed; if (typeof p.vol === "number" && [25, 50, 75, 100].indexOf(p.vol) >= 0) o.vol = p.vol; return o; }),
       moments: (function () { var o = {}; Object.keys(marks).forEach(function (id) { if (Array.isArray(marks[id]) && marks[id].length) o[id] = marks[id].map(function (m) { return { t: m.t, name: m.name || "" }; }); }); return o; })(),
       notes: (function () { var o = {}; if (typeof notes === "object" && notes) Object.keys(notes).forEach(function (id) { if (typeof notes[id] === "string" && notes[id].trim()) o[id] = notes[id]; }); return o; })(),
       lyrics: (function () { var o = {}; if (typeof lyrics === "object" && lyrics) Object.keys(lyrics).forEach(function (id) { if (typeof lyrics[id] === "string" && lyrics[id].trim()) o[id] = lyrics[id]; }); return o; })(),
@@ -13903,7 +13903,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
           // A playlist with the same name and the same videos in the same order is already here - skip it.
           if (playlists.some(function (q) { return q.name === nm && q.items.length === items.length && q.items.every(function (it, ix) { return it.id === items[ix].id; }); })) return;
           var base = nm, k = 2; while (plFind(nm) >= 0) { nm = (base.slice(0, 34) + " (" + k + ")"); k++; }
-          playlists.push({ name: nm, pinned: p.pinned === true ? true : undefined, note: typeof p.note === "string" && p.note ? p.note.slice(0, 80) : undefined, group: typeof p.group === "string" && p.group ? p.group.slice(0, 30) : undefined, lastPlay: typeof p.lastPlay === "number" && p.lastPlay > 0 ? p.lastPlay : undefined, speed: typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3 ? p.speed : undefined, items: items }); pn++;
+          playlists.push({ name: nm, pinned: p.pinned === true ? true : undefined, note: typeof p.note === "string" && p.note ? p.note.slice(0, 80) : undefined, group: typeof p.group === "string" && p.group ? p.group.slice(0, 30) : undefined, lastPlay: typeof p.lastPlay === "number" && p.lastPlay > 0 ? p.lastPlay : undefined, speed: typeof p.speed === "number" && p.speed >= 0.25 && p.speed <= 3 ? p.speed : undefined, vol: typeof p.vol === "number" && [25, 50, 75, 100].indexOf(p.vol) >= 0 ? p.vol : undefined, items: items }); pn++;
         });
         var ln = 0;
         (Array.isArray(d.later) ? d.later : []).forEach(function (x) { if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length >= 50) capN++; if (validItem(x) && findIn(lib.later, x.id) < 0 && lib.later.length < 50) { var li2 = { id: x.id, title: typeof x.title === "string" ? x.title : "", ts: typeof x.ts === "number" ? x.ts : 0, pin: x.pin === true }; if (typeof x.snoozeUntil === "number" && x.snoozeUntil > Date.now() && x.snoozeUntil < Date.now() + 30 * 864e5) li2.snoozeUntil = x.snoozeUntil; if (typeof x.why === "string" && x.why.trim()) li2.why = x.why.slice(0, 200); if (typeof x.due === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x.due)) li2.due = x.due; lib.later.push(li2); ln++; } });
@@ -25681,6 +25681,58 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       });
     }
     renderPlaylists = (function (orig) { return function () { var r = orig.apply(this, arguments); try { addSpd(); } catch (e) {} return r; }; })(renderPlaylists);
+  })();
+  // Playlist default volume (round 299 new 1): a lullaby playlist wants 30%, a workout one
+  // full volume, but the volume was one global for everything - the same extra trip to the
+  // slider that the playlist default speed (round 246) already fixed for rate. A Volume chip
+  // in the playlist's More menu cycles off, 25, 50, 75 or 100; the next Play, Shuffle play,
+  // Play unwatched or play-from-a-video of that playlist sets the volume through the slider's
+  // own input event, so saving, un-muting, per-video memory and the night cap all work as
+  // before. The choice rides the playlist, so backups and shared devices keep it.
+  Object.assign(TR_MSG, {
+    "Playlist default volume": ["प्लेलिस्ट डिफ़ॉल्ट वॉल्यूम", "પ્લેલિસ્ટ ડિફૉલ્ટ વૉલ્યૂમ"],
+    "Volume": ["वॉल्यूम", "વૉલ્યૂમ"],
+    "Volume: off": ["वॉल्यूम: बंद", "વૉલ્યૂમ: બંધ"],
+    "Playlist volume: {n}%": ["प्लेलिस्ट वॉल्यूम: {n}%", "પ્લેલિસ્ટ વૉલ્યૂમ: {n}%"],
+    "Volume {n}% for this playlist.": ["इस प्लेलिस्ट के लिए वॉल्यूम {n}%.", "આ પ્લેલિસ્ટ માટે વૉલ્યૂમ {n}%."],
+    "Playlist volume off.": ["प्लेलिस्ट वॉल्यूम बंद.", "પ્લેલિસ્ટ વૉલ્યૂમ બંધ."]
+  });
+  var PL_VOLS299 = [25, 50, 75, 100];
+  plHookPlay246 = (function (orig) {
+    return function (pl) {
+      var r = orig.apply(this, arguments);
+      if (pl && typeof pl.vol === "number" && PL_VOLS299.indexOf(pl.vol) >= 0) {
+        var volEl = $("vol");
+        if (volEl) { volEl.value = pl.vol; volEl.dispatchEvent(new Event("input", { bubbles: true })); }
+        toast(T("Volume {n}% for this playlist.").replace("{n}", pl.vol));
+      }
+      return r;
+    };
+  })(plHookPlay246);
+  (function () {
+    function addVol299() {
+      var lis = plList.querySelectorAll(":scope > li.pl-item");
+      Array.prototype.forEach.call(lis, function (li) {
+        var idx = li.dataset && li.dataset.playlistIndex != null ? +li.dataset.playlistIndex : -1;
+        if (!(idx >= 0) || !playlists[idx]) return;
+        var menu = li.querySelector(".pl-more-menu"); if (!menu) return;
+        var old = menu.querySelector(".pl-vol"); if (old) old.remove();
+        var pl = playlists[idx];
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip pl-vol"; b.setAttribute("role", "menuitem");
+        var cur = typeof pl.vol === "number" && PL_VOLS299.indexOf(pl.vol) >= 0 ? pl.vol : 0;
+        b.textContent = cur ? T("Playlist volume: {n}%").replace("{n}", cur) : T("Volume: off");
+        b.setAttribute("aria-label", T("Playlist default volume") + ": " + pl.name);
+        b.addEventListener("click", function () {
+          var i = PL_VOLS299.indexOf(cur), nv = i < 0 ? PL_VOLS299[0] : (i + 1 < PL_VOLS299.length ? PL_VOLS299[i + 1] : 0);
+          if (nv) pl.vol = nv; else delete pl.vol;
+          savePlaylists();
+          plSay(nv ? T("Playlist volume: {n}%").replace("{n}", nv) + " - \"" + pl.name + "\"." : T("Playlist volume off.") + " \"" + pl.name + "\".");
+          addVol299();
+        });
+        menu.appendChild(b);
+      });
+    }
+    renderPlaylists = (function (orig) { return function () { var r = orig.apply(this, arguments); try { addVol299(); } catch (e) {} return r; }; })(renderPlaylists);
   })();
   // Playlist groups (round 246 new 1): thirty saved playlists are one long list - courses, music
   // and mom's songs all mixed. A Group chip in the playlist's More menu files it under one word
@@ -41081,6 +41133,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Manage app storage", "manage app storage space size clear delete entries device full cleanup keys", "#storageCard298"],
       ["Photo note on a video", "photo note picture image attach camera gallery page whiteboard pose diagram per video", "#vphotoRow298"],
       ["Video card", "video card share image picture thumbnail qr poster send friend png now playing", "#vidCardBtn298"],
+      ["Playlist default volume", "playlist default volume per playlist loud quiet music lullaby workout level", "#plList"],
       ["Alarm fade-in", "alarm fade in gentle wake soft start rising volume gradual morning light sleeper", "#alarmFadeRow297"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
@@ -43620,6 +43673,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Manage app storage", "#storageCard298");
   window.__vpWnew283("Photo note on a video", "#vphotoRow298");
   window.__vpWnew283("Video card", "#vidCardBtn298");
+  window.__vpWnew283("Playlist default volume", "#plList");
 })();
 </script>
 </body>
