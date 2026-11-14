@@ -41927,12 +41927,37 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var list328 = document.createElement("ul"); list328.className = "lib-list"; list328.id = "deadChkList328"; list328.style.flexBasis = "100%"; list328.style.margin = "4px 0 0";
     box328.appendChild(msg328); box328.appendChild(cancel328); box328.appendChild(list328);
     libChk.parentNode.parentNode.insertBefore(box328, libChk.parentNode.nextSibling);
-    var run = null;
+    var run = null, last328 = null;
     function paint328() {
       btn328.textContent = "\uD83E\uDE7A " + T("Find dead videos");
       cancel328.textContent = T("Cancel");
     }
-    (window.__relang = window.__relang || []).push(paint328);
+    // Round 337 fix: the result line, the dead rows and the all-clear row were written once with
+    // T() at the moment the check finished, so after a language switch they stayed in the old
+    // language while the rest of the card translated (seen live in Hindi and Gujarati). The
+    // result is kept and re-rendered on every language change; rows for videos since removed
+    // from every list stay out, so Remove everywhere is not resurrected.
+    function renderRes328() {
+      if (!last328) return;
+      list328.textContent = "";
+      last328.dead.forEach(function (id) {
+        var names = listsOf328(id); if (!names.length) return;
+        var li = document.createElement("li"); li.className = "lib-item";
+        li.style.cssText = "display:flex;align-items:center;gap:8px;padding:8px 10px";
+        var tx = document.createElement("span"); tx.style.flex = "1"; tx.style.overflowWrap = "anywhere";
+        tx.textContent = (titleFor(id) || ("Video " + id)) + " \u00b7 " + names.join(", ");
+        var rm = document.createElement("button"); rm.type = "button"; rm.className = "chip";
+        rm.textContent = T("Remove everywhere");
+        rm.addEventListener("click", function () { removeEverywhere328(id, li); });
+        li.appendChild(tx); li.appendChild(rm); list328.appendChild(li);
+      });
+      msg328.textContent = (last328.stopped ? T("Stopped.") + " " : "") + T("Check done") + ": " + last328.fine + " " + T("still there") + ", " + last328.dead.length + " " + T("not found") + (last328.unk ? ", " + last328.unk + " " + T("could not be checked") : "") + ".";
+      if (!last328.dead.length && !last328.stopped) {
+        var okLi = document.createElement("li"); okLi.className = "lib-empty";
+        okLi.textContent = T("Every saved video is still there."); list328.appendChild(okLi);
+      }
+    }
+    (window.__relang = window.__relang || []).push(function () { paint328(); if (last328 && !run) renderRes328(); });
     paint328();
     function listsOf328(id) {
       var names = [];
@@ -41979,21 +42004,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       } finally {
         cancel328.hidden = true;
         var stopped = run.stop; run = null;
-        dead.forEach(function (id) {
-          var li = document.createElement("li"); li.className = "lib-item";
-          li.style.cssText = "display:flex;align-items:center;gap:8px;padding:8px 10px";
-          var tx = document.createElement("span"); tx.style.flex = "1"; tx.style.overflowWrap = "anywhere";
-          tx.textContent = (titleFor(id) || ("Video " + id)) + " \u00b7 " + listsOf328(id).join(", ");
-          var rm = document.createElement("button"); rm.type = "button"; rm.className = "chip";
-          rm.textContent = T("Remove everywhere");
-          rm.addEventListener("click", function () { removeEverywhere328(id, li); });
-          li.appendChild(tx); li.appendChild(rm); list328.appendChild(li);
-        });
-        msg328.textContent = (stopped ? T("Stopped.") + " " : "") + T("Check done") + ": " + fine + " " + T("still there") + ", " + dead.length + " " + T("not found") + (unk ? ", " + unk + " " + T("could not be checked") : "") + ".";
-        if (!dead.length && !stopped) {
-          var okLi = document.createElement("li"); okLi.className = "lib-empty";
-          okLi.textContent = T("Every saved video is still there."); list328.appendChild(okLi);
-        }
+        last328 = { stopped: stopped, fine: fine, dead: dead.slice(), unk: unk };
+        renderRes328();
       }
     });
   })();
