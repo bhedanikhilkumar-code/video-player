@@ -6602,6 +6602,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // automatic reload after a short wait, at the same queue spot and playback position.
       // If it fails again the video is marked tried and the old skip/Retry path runs.
       Object.assign(TR_MSG, {
+        "Moments named while scrubbing": ["स्क्रब करते समय पलों के नाम", "સ્ક્રબ કરતી વખતે ક્ષણોના નામ"],
         "Auto-retry on a hiccup": ["हिचकी पर अपने आप फिर कोशिश", "અટકવાપર આપોઆપ ફરી કોશિશ"],
         "Playback hiccup - trying the video again once...": ["प्लेबैक में हिचकी - वीडियो एक बार फिर चलाने की कोशिश...", "પ્લેબૅકમાં અટકાવ - વીડિયો એક વાર ફરી ચલાવવાની કોશિશ..."]
       });
@@ -7935,7 +7936,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var r = seek.getBoundingClientRect();
     if (!(r.width > 0)) return;
     var frac = Math.min(1, Math.max(0, (clientX - r.left) / r.width));
-    seekTip.textContent = fmt(frac * duration);
+    // Moments named while scrubbing (round 293 new 4): the seek tip named only the time under
+    // the cursor, so landing on a saved moment meant stopping and reading the dots below the
+    // bar. When the hovered spot is within a couple of seconds of a saved moment, the bubble
+    // names it ("2:34 - Chorus"), so favourite spots are findable straight from the bar.
+    var hoverT293 = frac * duration, tipTxt293 = fmt(hoverT293);
+    if (curId && typeof marks !== "undefined" && marks && marks[curId]) {
+      var mm293 = marks[curId];
+      for (var mi293 = 0; mi293 < mm293.length; mi293++) {
+        if (Math.abs(mm293[mi293].t - hoverT293) <= 2.5) { tipTxt293 = fmt(mm293[mi293].t) + (mm293[mi293].name ? " - " + mm293[mi293].name : ""); break; }
+      }
+    }
+    seekTip.textContent = tipTxt293;
     seekTip.style.left = (seek.offsetLeft + frac * r.width) + "px";
     seekTip.style.top = (seek.offsetTop - 32) + "px";
     seekTip.hidden = false;
@@ -39557,6 +39569,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Sort Watch later by length", "sort watch later by length shortest longest duration order list arrange", "#laterSortLenBtn"],
       ["Sort favourites by length", "sort favourites by length shortest longest duration order list arrange", "#favSortLenBtn"],
       ["Auto-retry on a hiccup", "auto retry playback error hiccup try again once flaky network reload video failed", "#playerRetryBtn"],
+      ["Moments named while scrubbing", "seek bar hover scrub bubble shows saved moment name time tooltip find favourite spot", "#seekTip"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
@@ -41918,6 +41931,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Search is:short / is:long", "#sqTip259");
   window.__vpWnew283("Sort Watch later and favourites by length", "#laterSortLenBtn");
   window.__vpWnew283("Auto-retry on a hiccup", "#playerRetryBtn");
+  window.__vpWnew283("Moments named while scrubbing", "#seekTip");
 })();
 </script>
 </body>
