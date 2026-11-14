@@ -49877,6 +49877,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   }
 
   function open() {
+    if (ov && !ov.open) { if (ov.parentNode) ov.parentNode.removeChild(ov); ov = null; input = null; list = null; }
     if (ov) { input.focus(); return; }
     if(document.querySelector("[aria-modal=true]")) return;
     prevFocus = document.activeElement; oldOverflow=document.body.style.overflow; document.body.style.overflow="hidden";
@@ -49885,6 +49886,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     ov.innerHTML = '<div class="vp-pal-card"><div class="vp-pal-tools"><span id="vpPalTitle"></span><button class="chip" id="vpPalClose" type="button"></button></div><input id="vpPalIn" type="text" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="vpPalList"><div class="vp-pal-list" id="vpPalList" role="listbox"></div></div>';
     document.body.appendChild(ov);
     ov.querySelector("#vpPalClose").onclick=close;
+    ov.addEventListener("cancel", function () { if (ov) { var d = ov; ov = null; input = null; list = null; document.body.style.overflow = oldOverflow; setTimeout(function () { if (d.parentNode) d.parentNode.removeChild(d); }, 0); } });
     ov.addEventListener("keydown",function(e){if(e.key==="Escape"){e.preventDefault();e.stopPropagation();close();}else if(e.key==="Tab"){e.preventDefault();(document.activeElement===input?ov.querySelector("#vpPalClose"):input).focus();}});
     input = ov.querySelector("#vpPalIn");
     list = ov.querySelector("#vpPalList");
@@ -49918,6 +49920,11 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   document.addEventListener("keydown", function (e) {
     if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) {
       e.preventDefault();
+      // Round 368 fix 3: a natively closed palette (cancel event, another script's
+      // dialog.close()) left ov pointing at a closed ghost node, so this toggle and the
+      // Search button silently "closed" nothing the first time and only opened on the
+      // second press. Treat a non-open node as already closed.
+      if (ov && !ov.open) { if (ov.parentNode) ov.parentNode.removeChild(ov); ov = null; input = null; list = null; }
       if (ov) close(); else open();
     }
   });
