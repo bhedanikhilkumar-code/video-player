@@ -19388,6 +19388,19 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Per-video quality memory": ["हर वीडियो की क्वालिटी याद", "દરેક વીડિયોની ક્વૉલિટી યાદ"],
     "Loop breather": ["लूप के बीच ठहराव", "લૂપ વચ્ચે વિરામ"]
   });
+  // Round 301 new 3 (Take a break) strings live here inside the main app closure -
+  // the feature's own script block cannot see TR_MSG.
+  Object.assign(TR_MSG, {
+    "Take a break": ["ब्रेक लें", "બ્રેક લો"],
+    "Take a break now - the video pauses and a rest card counts down": ["अभी ब्रेक लें - वीडियो रुक जाएगा और रेस्ट कार्ड उल्टी गिनती करेगा", "હવે બ્રેક લો - વીડિયો અટકી જશે અને રેસ્ટ કાર્ડ ઊલટી ગણતરી કરશે"],
+    "Break time": ["ब्रेक का समय", "બ્રેકનો સમય"],
+    "Rest a little - the video waits paused.": ["थोड़ा आराम करें - वीडियो रुका इंतज़ार कर रहा है.", "થોડો આરામ કરો - વીડિયો અટકીને રાહ જુએ છે."],
+    "I'm back": ["मैं आ गया", "હું પાછો આવ્યો"],
+    "{n} min left": ["{n} मिनट बाकी", "{n} મિનિટ બાકી"],
+    "Break over - welcome back!": ["ब्रेक ख़त्म - फिर से स्वागत!", "બ્રેક પૂરો - ફરી સ્વાગત!"],
+    "Paused for your break.": ["आपके ब्रेक के लिए रोका गया.", "તમારા બ્રેક માટે રોક્યું."],
+    "Nothing is playing to pause - the rest card still counts down.": ["रोकने को कुछ नहीं चल रहा - रेस्ट कार्ड फिर भी गिनती करेगा.", "રોકવા કંઈ ચાલતું નથી - રેસ્ટ કાર્ડ છતાં ગણતરી કરશે."]
+  });
   Object.assign(TR_MSG, {
     "Glass pick boxes": ["\u0917\u094d\u0932\u093e\u0938 \u092a\u093f\u0915 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aaa\u0abf\u0a95 \u0aac\u0ac9\u0a95\u0acd\u0ab8"],
     "Glass file picker": ["\u0917\u094d\u0932\u093e\u0938 \u092b\u093c\u093e\u0907\u0932 \u092a\u093f\u0915\u0930", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aab\u0abe\u0a87\u0ab2 \u0aaa\u0abf\u0a95\u0ab0"],
@@ -41700,6 +41713,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Drift-off sound", "drift off sound sleep timer rain ocean white noise after timer fall asleep 30 minutes", "#sleepAfterRow300"],
       ["Remember volume per file", "remember volume per file boost level loud quiet each file local music lecture song gain", "#lpVolMemRow301"],
       ["My looks", "my looks saved theme accent colour preset night day mood one tap switch look outfit style", "#myLooksRow301"],
+      ["Take a break", "take a break now manual rest card pause eyes tired countdown one two five minutes resume", "#takeBreakBtn301"],
       ["Alarm fade-in", "alarm fade in gentle wake soft start rising volume gradual morning light sleeper", "#alarmFadeRow297"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
@@ -44167,6 +44181,70 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
 </style>
 
 <script>
+/* Take a break (round 301 new 3): the Break reminder fires on a timer, but sometimes
+   the eyes ask first. A Take a break chip beside the reminder chips pauses the video
+   (YouTube through __vpPauseForBreak, and a local file), shows the glass rest card for
+   the picked minutes (1, 2 or 5) with a live countdown, and the I'm back chip - or the
+   countdown's end - resumes play only if it was playing when the break began. Nothing
+   is saved. Hindi/Gujarati strings live in the main closure; feature finder and
+   What's new included. */
+(function () {
+  "use strict";
+  var T = window.T || function (s) { return s; };
+  var chips301 = document.getElementById("brkChips"); if (!chips301 || !chips301.parentNode) return;
+  var btn301 = document.createElement("button"); btn301.type = "button"; btn301.className = "chip"; btn301.id = "takeBreakBtn301";
+  var host301 = document.createElement("div"); host301.className = "row"; host301.id = "takeBreakRow301"; host301.style.marginTop = "8px";
+  host301.appendChild(btn301);
+  chips301.parentNode.appendChild(host301);
+  var card301 = null, tick301 = null, end301 = 0, wasPlaying301 = false, wasLocal301 = false;
+  function paint301() {
+    btn301.textContent = "\u2615 " + T("Take a break");
+    btn301.setAttribute("aria-label", T("Take a break") + " - " + T("Take a break now - the video pauses and a rest card counts down"));
+  }
+  function closeCard301(resume) {
+    clearInterval(tick301); tick301 = null;
+    if (card301) { card301.remove(); card301 = null; }
+    if (resume && wasPlaying301) {
+      if (wasLocal301) { var v = document.getElementById("lpVideo"); if (v && v.paused) { var p = v.play(); if (p && p.catch) p.catch(function () {}); } }
+      else if (window.__vpPlayAfterBreak) window.__vpPlayAfterBreak();
+    }
+    wasPlaying301 = false;
+  }
+  function openCard301(mins) {
+    closeCard301(false);
+    end301 = Date.now() + mins * 60000;
+    card301 = document.createElement("section"); card301.id = "vpBreak"; card301.setAttribute("aria-labelledby", "takeBreakT301");
+    card301.innerHTML = '<h3 id="takeBreakT301" role="status"></h3><p></p><div class="row"><button class="chip" type="button" id="takeBreakBack301"></button></div>';
+    card301.querySelector("p").textContent = T("Rest a little - the video waits paused.");
+    var back301 = card301.querySelector("#takeBreakBack301");
+    back301.textContent = T("I'm back");
+    back301.addEventListener("click", function () { closeCard301(true); });
+    document.body.append(card301);
+    function left() {
+      var s = Math.max(0, Math.ceil((end301 - Date.now()) / 1000));
+      var m = Math.floor(s / 60), ss = s % 60;
+      card301.querySelector("h3").textContent = T("Break time") + " - " + m + ":" + (ss < 10 ? "0" : "") + ss + " " + T("{n} min left").replace("{n}", m + (ss > 0 ? 1 : 0));
+      if (s <= 0) { closeCard301(true); window.toast(T("Break over - welcome back!")); }
+    }
+    left(); tick301 = setInterval(left, 1000);
+  }
+  btn301.addEventListener("click", function () {
+    var v = document.getElementById("lpVideo");
+    wasLocal301 = !!(v && !v.hidden && !v.paused && !v.ended);
+    wasPlaying301 = wasLocal301 || !!(window.__vpIsPlaying && window.__vpIsPlaying());
+    if (window.__vpPauseForBreak) window.__vpPauseForBreak();
+    if (wasLocal301 && v) v.pause();
+    window.toast(wasPlaying301 ? T("Paused for your break.") : T("Nothing is playing to pause - the rest card still counts down."));
+    window.vpAsk(T("Break time"), "2", {}).then(function (ans) {
+      var n = parseInt(ans, 10);
+      if ([1, 2, 5].indexOf(n) < 0) n = 2;
+      openCard301(n);
+    });
+  });
+  (window.__relang = window.__relang || []).push(paint301); paint301();
+})();
+</script>
+<script>
 /* Round 287 fix 1: this round's What's new entries were registered from the main closure
    and the local-player script, so the many standalone feature scripts that run AFTER them
    unshifted on top and pushed all four round-287 rows out of the capped ten-row card
@@ -44251,6 +44329,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Drift-off sound", "#sleepAfterRow300");
   window.__vpWnew283("Remember volume per file", "#lpVolMemRow301");
   window.__vpWnew283("My looks", "#myLooksRow301");
+  window.__vpWnew283("Take a break", "#takeBreakBtn301");
 })();
 </script>
 </body>
