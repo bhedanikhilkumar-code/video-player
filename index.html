@@ -43839,6 +43839,72 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     window.addEventListener("load", function () { setTimeout(function () { window.__vpWnew283("Saved media links", "#mediaShelf346"); }, 900); });
   })();
 
+  Object.assign(TR_MSG, {
+    "Local playback recovery": ["लोकल प्लेबैक की मरम्मत", "લોકલ પ્લેબેકની મરામત"],
+    "Reloads only the open file or direct link at its last good position. It stays paused so you can check it before pressing Play. No other file is opened and nothing is downloaded for offline use.": ["सिर्फ़ खुली फ़ाइल या सीधे लिंक को पिछली सही जगह पर फिर लोड करता है. यह रुका रहता है ताकि Play दबाने से पहले जाँच सकें. दूसरी फ़ाइल नहीं खुलती और ऑफ़लाइन के लिए कुछ डाउनलोड नहीं होता.", "ફક્ત ખુલ્લી ફાઇલ કે સીધી લિંક છેલ્લી સારી જગ્યાએ ફરી લોડ કરે છે. તે અટકેલી રહે છે જેથી Play દબાવતાં પહેલાં તપાસી શકો. બીજી ફાઇલ ખૂલતી નથી અને ઑફલાઇન માટે કંઈ ડાઉનલોડ થતું નથી."],
+    "Retry this source": ["यही स्रोत फिर खोलें", "આ જ સ્રોત ફરી ખોલો"],
+    "Last good position": ["पिछली सही जगह", "છેલ્લી સારી જગ્યા"],
+    "Choose a file or open a direct link first.": ["पहले फ़ाइल चुनें या सीधा लिंक खोलें.", "પહેલાં ફાઇલ પસંદ કરો કે સીધી લિંક ખોલો."],
+    "Reloading this source...": ["यही स्रोत फिर लोड हो रहा है...", "આ જ સ્રોત ફરી લોડ થાય છે..."],
+    "Source reloaded. Press Play when ready.": ["स्रोत फिर लोड हुआ. तैयार हों तो Play दबाएँ.", "સ્રોત ફરી લોડ થયો. તૈયાર થાઓ ત્યારે Play દબાવો."],
+    "Retry stopped because the source changed.": ["स्रोत बदल गया इसलिए कोशिश रुकी.", "સ્રોત બદલાયો એટલે પ્રયાસ અટક્યો."],
+    "The source did not become ready. Check your connection or choose the file again.": ["स्रोत तैयार नहीं हुआ. कनेक्शन जाँचें या फ़ाइल फिर चुनें.", "સ્રોત તૈયાર ન થયો. કનેક્શન તપાસો કે ફાઇલ ફરી પસંદ કરો."],
+    "The connection failed. Check the connection and retry this source.": ["कनेक्शन टूट गया. कनेक्शन जाँचकर यही स्रोत फिर खोलें.", "કનેક્શન નિષ્ફળ થયું. કનેક્શન તપાસીને આ જ સ્રોત ફરી ખોલો."],
+    "This source could not be decoded. Try another format or another copy of the file.": ["यह स्रोत पढ़ा नहीं जा सका. दूसरा फ़ॉर्मेट या फ़ाइल की दूसरी कॉपी चुनें.", "આ સ્રોત વાંચી શકાયો નહીં. બીજું ફૉર્મેટ કે ફાઇલની બીજી નકલ પસંદ કરો."],
+    "This source or format is not supported here. The host may also block playback on other sites.": ["यह स्रोत या फ़ॉर्मेट यहाँ नहीं चलता. होस्ट दूसरी साइट पर प्लेबैक रोक सकता है.", "આ સ્રોત કે ફૉર્મેટ અહીં ચાલતું નથી. હોસ્ટ બીજી સાઇટ પર પ્લેબેક રોકી શકે છે."],
+    "Waiting for playable media...": ["चलाने योग्य मीडिया का इंतज़ार...", "ચાલી શકે એવા મીડિયાની રાહ જોઈએ છીએ..."],
+    "Ready to play": ["चलाने के लिए तैयार", "ચલાવવા તૈયાર"],
+    "Retry cancelled. The source stays paused.": ["कोशिश रद्द. स्रोत रुका रहेगा.", "પ્રયાસ રદ થયો. સ્રોત અટકેલો રહેશે."]
+  });
+  (function () {
+    var v = $("lpVideo"), anchor = $("lpSeekWrap"); if (!v || !anchor) return;
+    var box = document.createElement("details"); box.id = "localRecovery346"; box.className = "faq";
+    box.innerHTML = '<summary></summary><p class="hint"></p><p id="recoverySource346" style="overflow-wrap:anywhere"></p><p id="recoveryPosition346" class="hint"></p><div class="row"><button id="recoveryRetry346" type="button" class="chip"></button><button id="recoveryCancel346" type="button" class="chip" hidden></button></div><p id="recoveryMsg346" class="hint" role="status"></p>';
+    anchor.after(box);
+    var retry = $("recoveryRetry346"), cancel = $("recoveryCancel346"), current = "", good = 0, pending = null, timer = null, status = "";
+    function source() { return v.getAttribute("src") ? v.currentSrc || v.src : ""; }
+    function resetPending() { clearTimeout(timer); timer = null; pending = null; }
+    function paint() {
+      box.querySelector("summary").textContent = T("Local playback recovery");
+      box.querySelector("p").textContent = T("Reloads only the open file or direct link at its last good position. It stays paused so you can check it before pressing Play. No other file is opened and nothing is downloaded for offline use.");
+      var src = source(), label = v.dataset.fileName276 || T("Local file");
+      if (/^https?:/i.test(src)) { try { label = new URL(src).host; } catch(e){} }
+      $("recoverySource346").textContent = src ? label : T("Choose a file or open a direct link first.");
+      $("recoveryPosition346").textContent = T("Last good position") + ": " + fmt(good);
+      retry.textContent = T("Retry this source"); cancel.textContent = T("Cancel"); retry.disabled = !src || !!pending; cancel.hidden = !pending;
+      var text = status;
+      if (!text && v.error) text = v.error.code === 2 ? "The connection failed. Check the connection and retry this source." : v.error.code === 3 ? "This source could not be decoded. Try another format or another copy of the file." : "This source or format is not supported here. The host may also block playback on other sites.";
+      if (!text) text = !src ? "Choose a file or open a direct link first." : v.readyState < 2 ? "Waiting for playable media..." : "Ready to play";
+      $("recoveryMsg346").textContent = T(text);
+    }
+    function sync() {
+      var src = source();
+      if (src !== current) { var changed = !!pending; resetPending(); current = src; good = 0; status = changed ? "Retry stopped because the source changed." : ""; }
+      if (pending && v.error) { resetPending(); status = ""; }
+      if (!pending && !v.error && v.readyState >= 2 && Number.isFinite(v.currentTime)) good = v.currentTime;
+      paint();
+    }
+    function finish() {
+      if (!pending || v.readyState < 1) return;
+      if (source() !== pending.src) { sync(); return; }
+      var t = pending.time, rate = pending.rate; resetPending();
+      try { v.currentTime = Number.isFinite(v.duration) ? Math.max(0, Math.min(t, Math.max(0,v.duration - 0.1))) : t; v.playbackRate = rate; } catch(e) {}
+      status = "Source reloaded. Press Play when ready."; paint();
+    }
+    retry.addEventListener("click", function () {
+      var src = source(); if (!src || pending) return;
+      pending = {src:src,time:good,rate:v.playbackRate}; status = "Reloading this source...";
+      // A reload is explicitly paused, even when Soft pause is enabled.
+      HTMLMediaElement.prototype.pause.call(v); v.load();
+      timer = setTimeout(function () { if (!pending) return; resetPending(); status = "The source did not become ready. Check your connection or choose the file again."; paint(); }, 15000); paint();
+    });
+    cancel.addEventListener("click", function () { resetPending(); status = "Retry cancelled. The source stays paused."; paint(); });
+    ["timeupdate", "loadeddata", "loadstart", "emptied", "error", "waiting", "canplay"].forEach(function (ev) { v.addEventListener(ev, sync); });
+    v.addEventListener("canplay", function () { finish(); sync(); });
+    (window.__relang = window.__relang || []).push(paint); paint();
+    window.addEventListener("load", function () { setTimeout(function () { window.__vpWnew283("Local playback recovery", "#localRecovery346"); }, 1000); });
+  })();
+
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -48597,6 +48663,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Per-video quality memory", "per video quality remember this video 1080 720 480 one blurry upload exception", "#pvQualBtn299"],
       ["Remember speed per file", "remember speed per file local files lecture song own rate each file", "#lpSpdMemRow299"],
       ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
+      ["Local playback recovery", "local playback recovery retry source reload stalled file direct media error last good position connection", "#localRecovery346"],
       ["Saved media links", "saved direct media links audio video streams bookmark shelf collection named source library", "#mediaShelf346"],
       ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],      ["Left-handed layout", "left handed lefty swap gesture pad sides double tap seek left hand thumb", "#leftHandRow303"],      ["My EQ presets", "my eq presets save custom equalizer bass middle treble own named preset local files sound", "#lpEqCustRow303"],      ["Mini player size", "mini player size large bigger floating docked video enlarge small corner standard", "#miniSizeBtn304"],      ["Sleep timer in the mini player", "sleep timer mini player floating bedtime moon chip 15 30 60 minutes off small screen", "#miniSleepBtn304"],      ["History length filter", "history length filter recently watched short long videos under 10 10-30 over 30 minutes find", "#histLenBtn304"],      ["Favourites length filter", "favourites length filter saved short long videos under 10 10-30 over 30 minutes find", "#favLenBtn304"],      ["Playlist length filter", "playlist length filter videos box short long under 10 10-30 over 30 minutes find", "#plList"],
 
