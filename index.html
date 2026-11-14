@@ -14022,7 +14022,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // rotate and the Stats on video overlay - so a restore on a new phone silently reset them
   // while every other setting moved over. They export and import as validated one-word values
   // like the rest of this list.
-  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;  VP_RAW_KEYS["vp-eqcust.v1"] = /^\[[\s\S]{0,2000}\]$/;
+  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;  VP_RAW_KEYS["vp-eqcust.v1"] = /^\[[\s\S]{0,2000}\]$/;  VP_RAW_KEYS["vp-mini-size.v1"] = /^(std|lg)$/;
 
 
   // Round 282 fix 1: the Rewind on resume choice (vp-rewback.v1: jump back 5, 10 or 30
@@ -37882,6 +37882,49 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (window.__vpWnew283) window.__vpWnew283("Play a direct link", "#lpLinkRow303");
   })();
 
+  // Mini player size (round 304 new 1): the floating mini player is one fixed small
+  // rectangle - right for a glance while you scroll, cramped for a match or lecture you
+  // keep half-watching from the corner. A chip in the mini bar swaps between the usual
+  // size and a Large size (about one and a half times wider, still inside the screen).
+  // The corner, side and drag choices keep working; the choice is remembered on this
+  // device, rides the backup and goes with Reset all settings. Hindi and Gujarati text,
+  // What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Mini player size": ["मिनी प्लेयर का आकार", "મિનિ પ્લેયરનું કદ"],
+    "Mini: standard": ["मिनी: सामान्य", "મિનિ: સામાન્ય"],
+    "Mini: large": ["मिनी: बड़ा", "મિનિ: મોટું"],
+    "Standard": ["सामान्य", "સામાન્ય"],
+    "Large": ["बड़ा", "મોટું"],
+    "Make the floating mini player bigger or back to usual.": ["तैरते मिनी प्लेयर को बड़ा करें या फिर सामान्य करें.", "તરતો મિનિ પ્લેયર મોટો કરો કે ફરી સામાન્ય કરો."]
+  });
+  (function () {
+    var tools = $("miniTools"), dock = $("playerDock");
+    if (!tools || !dock) return;
+    var KEY = "vp-mini-size.v1";
+    var st304 = document.createElement("style");
+    st304.textContent = "#playerDock.is-mini.mini-lg304{width:min(560px,calc(100vw - 32px))}@media(max-width:480px){#playerDock.is-mini.mini-lg304{width:min(430px,calc(100vw - 16px))}}";
+    document.head.appendChild(st304);
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = "miniSizeBtn304";
+    tools.insertBefore(b, $("miniBack") || null);
+    function cur() { try { return localStorage.getItem(KEY) === "lg" ? "lg" : "std"; } catch (e) { return "std"; } }
+    function paint() {
+      var lg = cur() === "lg";
+      dock.classList.toggle("mini-lg304", lg);
+      b.textContent = "▤ " + T(lg ? "Mini: large" : "Mini: standard");
+      b.setAttribute("aria-pressed", lg ? "true" : "false");
+      b.setAttribute("aria-label", T("Mini player size") + ": " + T(lg ? "Large" : "Standard") + ". " + T("Make the floating mini player bigger or back to usual."));
+    }
+    b.addEventListener("click", function () {
+      var nx = cur() === "lg" ? "std" : "lg";
+      try { localStorage.setItem(KEY, nx); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
+      paint();
+      toast(T("Mini player size") + ": " + T(nx === "lg" ? "Large" : "Standard"));
+    });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+    if (window.__vpWnew283) window.__vpWnew283("Mini player size", "#miniSizeBtn304");
+  })();
+
 })();
 
 
@@ -40328,7 +40371,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     // Round 300 fix: the automatic backup toggle (vp-autobk.v1) and the per-file speed
     // memory (vp-lpspeeds.v1) are settings the backup carries but Reset all settings left
     // behind - they are cleared with the rest now.
-    "vp-autobk.v1", "vp-lpspeeds.v1", "vp-lpvols.v1", "vp-lpeqs.v1", "vp-eqcust.v1"];
+    "vp-autobk.v1", "vp-lpspeeds.v1", "vp-lpvols.v1", "vp-lpeqs.v1", "vp-eqcust.v1", "vp-mini-size.v1"];
   btn.addEventListener("click", async function () {
     if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices, downloader choices, list sort orders, fade, focus and mini player choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
@@ -42463,7 +42506,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Per-video quality memory", "per video quality remember this video 1080 720 480 one blurry upload exception", "#pvQualBtn299"],
       ["Remember speed per file", "remember speed per file local files lecture song own rate each file", "#lpSpdMemRow299"],
       ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
-      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],      ["Left-handed layout", "left handed lefty swap gesture pad sides double tap seek left hand thumb", "#leftHandRow303"],      ["My EQ presets", "my eq presets save custom equalizer bass middle treble own named preset local files sound", "#lpEqCustRow303"],
+      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],      ["Left-handed layout", "left handed lefty swap gesture pad sides double tap seek left hand thumb", "#leftHandRow303"],      ["My EQ presets", "my eq presets save custom equalizer bass middle treble own named preset local files sound", "#lpEqCustRow303"],      ["Mini player size", "mini player size large bigger floating docked video enlarge small corner standard", "#miniSizeBtn304"],
 
 
 
