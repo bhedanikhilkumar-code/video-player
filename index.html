@@ -6594,6 +6594,32 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (data.event === "onError") {
       var ec = data.info;
       clearTimeout(loadWatchdog);
+      // Auto-retry once (round 293 new 1): a network wobble ends an embed with error 5 (or
+      // another transient code) and the video was simply skipped or left dead behind a Retry
+      // chip, so one dropout on a flaky connection could hop past a queue video that would
+      // have played fine seconds later. Errors a retry can never fix (private/deleted 100,
+      // embed-disabled 101/150, broken link 2) keep the old path; anything else gets ONE
+      // automatic reload after a short wait, at the same queue spot and playback position.
+      // If it fails again the video is marked tried and the old skip/Retry path runs.
+      Object.assign(TR_MSG, {
+        "Auto-retry on a hiccup": ["हिचकी पर अपने आप फिर कोशिश", "અટકવાપર આપોઆપ ફરી કોશિશ"],
+        "Playback hiccup - trying the video again once...": ["प्लेबैक में हिचकी - वीडियो एक बार फिर चलाने की कोशिश...", "પ્લેબૅકમાં અટકાવ - વીડિયો એક વાર ફરી ચલાવવાની કોશિશ..."]
+      });
+      if (curId && ec !== 100 && ec !== 101 && ec !== 150 && ec !== 2) {
+        window.__vpRetry293 = window.__vpRetry293 || {};
+        if (!window.__vpRetry293[curId]) {
+          window.__vpRetry293[curId] = 1;
+          var retryId293 = curId, retryAt293 = curTime >= 5 ? Math.floor(curTime) : null;
+          playerError.hidden = true; showPlayerRetry(false);
+          toast(T("Playback hiccup - trying the video again once..."));
+          setTimeout(function () {
+            if (curId !== retryId293) return;
+            linkInput.value = retryId293;
+            loadVideo(retryAt293, null, qPos >= 0 ? qPos : undefined, true);
+          }, 4000);
+          return;
+        }
+      }
       var emsg = ec === 100
         ? T("This video is private, deleted, or the link is incomplete. It cannot be played.")
         : (ec === 101 || ec === 150)
@@ -39530,6 +39556,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Daily alarm playlist", "daily alarm playlist pick choose source bhajan morning study wake up plays saved list every day", "#alarmSrcSel292"],
       ["Sort Watch later by length", "sort watch later by length shortest longest duration order list arrange", "#laterSortLenBtn"],
       ["Sort favourites by length", "sort favourites by length shortest longest duration order list arrange", "#favSortLenBtn"],
+      ["Auto-retry on a hiccup", "auto retry playback error hiccup try again once flaky network reload video failed", "#playerRetryBtn"],
     ];
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
@@ -41890,6 +41917,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Daily alarm playlist", "#alarmSrcSel292");
   window.__vpWnew283("Search is:short / is:long", "#sqTip259");
   window.__vpWnew283("Sort Watch later and favourites by length", "#laterSortLenBtn");
+  window.__vpWnew283("Auto-retry on a hiccup", "#playerRetryBtn");
 })();
 </script>
 </body>
