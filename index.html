@@ -23877,16 +23877,23 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     function paint() { btn.textContent = T("\u23F1\uFE0F Drop 30+ min"); btn.setAttribute("aria-label", T("Drop long videos from the queue")); }
     (window.__relang = window.__relang || []).push(paint); paint();
     btn.addEventListener("click", function () {
-      var start = qPos + 1, n = 0, snap = lib.queue.slice(), sp = qPos;
+      var start = qPos + 1, n = 0, snap = lib.queue.slice(), sp = qPos, sa = qAfter;
+      // Round 296 fix 3: dropped rows never moved the qAfter removal pointer - the same
+      // hole Remove duplicates had (round 292 fix 5). When the playing video is not in the
+      // queue, qAfter remembers the row that took its place; a long video dropped above
+      // that row shifted every later row down one while the pointer stayed, so Next then
+      // started a video late and skipped one. The pointer now follows its row, and Undo
+      // restores it like the other queue fixes.
+      var dropped = 0, qAfterNew = qAfter;
       var keep = lib.queue.filter(function (x, i) {
         if (i < start) return true;
         var hi = findIn(lib.hist, x.id), d = (infoCache[x.id] && infoCache[x.id].dur) || (hi >= 0 && lib.hist[hi].dur) || 0;
-        if (typeof d === "number" && d > 1800) { n++; return false; }
+        if (typeof d === "number" && d > 1800) { n++; if (i < sa) qAfterNew--; return false; }
         return true;
       });
       if (!n) { toast(T("No upcoming video with a learned length over 30 minutes.")); return; }
-      lib.queue = keep; resetShuffle(); saveLib(); renderLib(); showLibErr("");
-      toastUndo(T("Queue trimmed: long videos removed") + " " + n, function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+      lib.queue = keep; qAfter = qAfterNew; resetShuffle(); saveLib(); renderLib(); showLibErr("");
+      toastUndo(T("Queue trimmed: long videos removed") + " " + n, function () { lib.queue = snap; qPos = sp; qAfter = sa; saveLib(); renderLib(); }, T("Queue restored"));
     });
   })();
 
