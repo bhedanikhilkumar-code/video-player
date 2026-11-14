@@ -20740,6 +20740,10 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       var li = document.createElement("li");
       var b = document.createElement("button"); b.type = "button"; b.className = "wnew-item";
       var badge = document.createElement("span"); badge.className = "wnew-badge"; badge.textContent = T("New");
+      // Round 353 fix 1: the badge is visual garnish; the accessible name already carries
+      // the feature's name. Marked decorative so the Label-in-Name pass (round 336) does not
+      // fold "New" into the button's spoken name.
+      badge.setAttribute("aria-hidden", "true");
       var name = document.createElement("span"); name.className = "wnew-name"; name.textContent = T(w[0]);
       var go = document.createElement("span"); go.className = "wnew-go"; go.setAttribute("aria-hidden", "true"); go.textContent = "\u2192";
       b.appendChild(badge); b.appendChild(name); b.appendChild(go);
@@ -52152,7 +52156,22 @@ summary{min-height:28px;box-sizing:border-box}
   var NORM = /[^\p{L}\p{M}\p{N} ]+/gu;
   function norm(s) { return String(s || "").toLowerCase().replace(NORM, " ").replace(/\s+/g, " ").trim(); }
   function visible(b) {
-    var t = (b.textContent || "").replace(/\s+/g, " ").trim();
+    // Round 353 fix 1: textContent ran child spans together (the What's new "New" badge and
+    // the feature name became "NewMedia queue recovery") and counted decorative aria-hidden
+    // spans, so this pass prepended a garbled run-together copy of the name to the aria-label
+    // (seen live: "NewMedia queue recovery - Media queue recovery - Jump to it"). Build the
+    // visible text from the child nodes instead: real spaces between elements, aria-hidden
+    // subtrees skipped, matching how the accessibility tree reads the button.
+    function walk(n) {
+      var s = "";
+      for (var i = 0; i < n.childNodes.length; i++) {
+        var c = n.childNodes[i];
+        if (c.nodeType === 3) s += " " + c.textContent;
+        else if (c.nodeType === 1 && c.getAttribute("aria-hidden") !== "true") s += " " + walk(c);
+      }
+      return s;
+    }
+    var t = walk(b).replace(/\s+/g, " ").trim();
     if (t.length < 2 || t.length > 60) return "";
     return t.replace(/^[^\p{L}\p{M}\p{N}]+/u, "").replace(/[^\p{L}\p{M}\p{N}%+\-.]+$/u, "");
   }
