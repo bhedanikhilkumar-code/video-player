@@ -13183,6 +13183,18 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         plSay(pl.pinned === true ? T("Pinned on top:") + " \"" + pl.name + "\" - " + T("it stays first in every sort.") : T("Unpinned:") + " \"" + pl.name + "\".");
       });
       pinBtn.setAttribute("aria-pressed", String(pl.pinned === true));
+      // Playlist lock (round 302 new 3): Pin guards a playlist's place, but one stray
+      // tap on Rename, Delete or a row's ✕ could still wreck a list that took weeks to
+      // build - there is Undo, yet only if you notice in time. A Lock chip by Pin marks
+      // the list locked (saved with the playlist, so it rides the backup): Rename,
+      // Delete and removing a video then refuse with a note until you Unlock. Play,
+      // sorting views and watching are untouched. Hindi/Gujarati text below.
+      var lockBtn302 = btn(pl.lock === true ? T("\uD83D\uDD12 Locked") : T("\uD83D\uDD13 Lock"), "", function () {
+        pl.lock = pl.lock === true ? undefined : true;
+        savePlaylists(); renderPlaylists();
+        plSay(pl.lock === true ? T("Locked:") + " \"" + pl.name + "\" - " + T("Rename, Delete and removing videos need Unlock first.") : T("Unlocked:") + " \"" + pl.name + "\".");
+      });
+      lockBtn302.setAttribute("aria-pressed", String(pl.lock === true));
       btn(T("Play"), "", playPl);
       var rs260 = window.__vpPlResume ? window.__vpPlResume(pl) : null;
       if (rs260) btn(rs260.label, "", function () {
@@ -13452,6 +13464,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         toastUndo(T("Moved to the top:") + " " + pl.name, function () { var at = playlists.indexOf(pl); if (at >= 0) { playlists.splice(at, 1); playlists.splice(Math.min(oldAt, playlists.length), 0, pl); savePlaylists(); renderPlaylists(); } }, T("Playlist order restored"));
       });
       btn(T("Rename"), "", async function () {
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         var nv = cleanName(await vpAsk(T("New name for this playlist"), pl.name)); if (!nv || nv === pl.name) return;
         var f = plFind(nv); if (f >= 0 && f !== idx) { plSay(T("You already have a playlist named") + " \"" + nv + "\"."); return; }
         var oldNm247 = pl.name; pl.name = nv; if (window.__vpPlanRename) window.__vpPlanRename(oldNm247, nv); savePlaylists(); renderPlaylists(); plSay(T("Renamed."));
@@ -13554,8 +13567,18 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         window.__wnewM3u282 = 1;
         setTimeout(function () { WNEW.unshift(["Save a playlist as .m3u", "#lhPlaylists"]); WNEW.length = Math.min(10, WNEW.length); wnewRender(); }, 0);
       }
+      Object.assign(TR_MSG, {
+        "\uD83D\uDD12 Locked": ["\uD83D\uDD12 लॉक्ड", "\uD83D\uDD12 લૉક્ડ"],
+        "\uD83D\uDD13 Lock": ["\uD83D\uDD13 लॉक", "\uD83D\uDD13 લૉક"],
+        "Locked:": ["लॉक:", "લૉક:"],
+        "Unlocked:": ["अनलॉक:", "અનલૉક:"],
+        "Rename, Delete and removing videos need Unlock first.": ["नाम बदलने, मिटाने और वीडियो हटाने के लिए पहले अनलॉक करें.", "નામ બદલવા, ડિલીટ કરવા અને વિડિઓ કાઢવા માટે પહેલા અનલૉક કરો."],
+        "This playlist is locked.": ["यह प्लेलिस्ट लॉक है.", "આ પ્લેલિસ્ટ લૉક છે."],
+        "Unlock it with the Lock chip on the playlist.": ["प्लेलिस्ट की लॉक चिप से इसे अनलॉक करें.", "પ્લેલિસ્ટની લૉક ચિપથી તેને અનલૉક કરો."]
+      });
       Object.assign(TR_MSG, { "Playlist deleted:": ["प्लेलिस्ट हटाई:", "પ્લેલિસ્ટ કાઢી:"] });
       btn(T("Delete"), "pl-del", async function () {
+        if (pl.lock === true) { plSay(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist.")); return; }
         if (!await vpConfirm(T("Delete the playlist") + " \"" + pl.name + "\"? " + T("Your queue stays as it is."), T("Delete"))) return;
         // Round 225 fix 1: deleting a whole playlist (up to 50 picked videos) asked once
         // and was gone for good, while every item-level action on the same row (Remove
@@ -21932,6 +21955,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         rm.type = "button"; rm.className = "chip"; rm.textContent = "✕";
         rm.setAttribute("aria-label", T("Remove from playlist") + ": " + (x.title || x.id));
         rm.addEventListener("click", function () {
+          if (pl.lock === true) { toast(T("This playlist is locked.") + " " + T("Unlock it with the Lock chip on the playlist."), 2200); return; }
           var gone = pl.items.splice(i, 1)[0];
           savePlaylists(); renderPlaylists();
           toastUndo(T("Removed from the playlist."), function () {
@@ -41897,6 +41921,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
       ["Dialogue boost", "dialogue boost voice louder speech hear films lectures interviews quiet voice loud music local files", "#lpDbBtn302"],
       ["Pinch to zoom", "pinch zoom two fingers local video magnify closer read slide scoreboard drag pan", "#lpPinchHint302"],
+      ["Playlist lock", "playlist lock unlock protect accidental delete rename remove videos safe", "#lhPlaylists"],
       ["Vibe presets", "vibe presets nightcore slowed reverb mood one tap speed pitch hall local files", "#lpVibeRow300"],
       ["Double-tap seek", "double tap seek local video jump 10 seconds left right middle play pause touch phone", "#lpDtapHint300"],
       ["Save queue as .m3u", "save queue m3u export download playlist file vlc kodi import other player", "#queueM3uBtn300"],
@@ -44520,6 +44545,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Voice cut", "#lpVcutBtn300");
   window.__vpWnew283("Dialogue boost", "#lpDbBtn302");
   window.__vpWnew283("Pinch to zoom", "#lpPinchHint302");
+  window.__vpWnew283("Playlist lock", "#lhPlaylists");
   window.__vpWnew283("Vibe presets", "#lpVibeRow300");
   window.__vpWnew283("Double-tap seek", "#lpDtapHint300");
   window.__vpWnew283("Save queue as .m3u", "#queueM3uBtn300");
