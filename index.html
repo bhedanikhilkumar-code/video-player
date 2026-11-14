@@ -33390,8 +33390,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function build() {
       host.textContent = "";
       if (typeof lib !== "object" || !lib || !Array.isArray(lib.queue) || !lib.queue.length) { host.hidden = true; return; }
-      var start = (typeof qPos === "number" && qPos >= 0) ? qPos + 1 : 0;
-      var next = lib.queue.slice(start, start + 3);
+      // Round 289 fix 4: with Shuffle on, the strip showed the next three rows in LIST order,
+      // but playNext draws from the shuffle bag - so "Plays after this" named videos that were
+      // not coming at all. With Shuffle on and a bag already drawn, show the bag's own order
+      // (its tail plays next). Before the first draw the bag is empty, so list order stays as
+      // a best guess.
+      var next;
+      if (queueModes.shuffle && Array.isArray(shuffleBag) && shuffleBag.length) {
+        next = shuffleBag.slice(-3).reverse().map(function (i) { return lib.queue[i]; }).filter(function (x) { return !!x; });
+      } else {
+        var start = (typeof qPos === "number" && qPos >= 0) ? qPos + 1 : 0;
+        next = lib.queue.slice(start, start + 3);
+      }
       if (!next.length) { host.hidden = true; return; }
       var lab = document.createElement("span"); lab.className = "uq3-lab"; lab.textContent = T("Plays after this:");
       host.appendChild(lab);
