@@ -13977,7 +13977,8 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // rotate and the Stats on video overlay - so a restore on a new phone silently reset them
   // while every other setting moved over. They export and import as validated one-word values
   // like the rest of this list.
-  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;
+  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;  VP_RAW_KEYS["vp-eqcust.v1"] = /^\[[\s\S]{0,2000}\]$/;
+
 
   // Round 282 fix 1: the Rewind on resume choice (vp-rewback.v1: jump back 5, 10 or 30
   // seconds when continuing a half-watched video, round 279 new 3) rode no backup - every
@@ -37486,6 +37487,94 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Search is:short / is:long": ["खोज is:short / is:long", "શોધ is:short / is:long"],
     "Sort Watch later and favourites by length": ["बाद में देखें और पसंदीदा को लंबाई से क्रम में लगाएं", "પછી જુઓ અને મનપસંદને લંબાઈ મુજબ ગોઠવો"]
   });
+  // My EQ presets (round 303 new 5): the local player's equalizer has four fixed
+  // presets, and Remember EQ per file keeps each file's last tuning - but a tuning you
+  // love (say, +4 bass, +2 middle for evening listening) had no name and no home. A
+  // row beside the presets now saves the current bass/middle/treble under a name, up
+  // to four; one tap wears it again, a long press or right-click removes it. The row
+  // lives next to the fixed presets rather than inside them, so the fixed row's own
+  // active-marking is untouched. Saved in vp-eqcust.v1, riding the backup, cleared by
+  // Reset all settings. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "My EQ presets": ["मेरे EQ प्रीसेट", "મારા EQ પ્રીસેટ"],
+    "Save current EQ": ["अभी का EQ सेव करें", "હાલનો EQ સાચવો"],
+    "Save the current bass, middle and treble as your own preset.": ["अभी का बास, मिडल और ट्रेबल अपने प्रीसेट के रूप में सेव करें.", "હાલનો બેઝ, મિડલ અને ટ્રેબલ તમારા પ્રીસેટ તરીકે સાચવો."],
+    "Name this EQ preset (for example: Evening bass)": ["इस EQ प्रीसेट को नाम दें (जैसे: शाम का बास)", "આ EQ પ્રીસેટને નામ આપો (દા.ત.: સાંજનો બેઝ)"],
+    "Preset saved.": ["प्रीसेट सेव हुआ.", "પ્રીસેટ સાચવ્યું."],
+    "Four presets are saved - remove one first (long press or right-click it).": ["चार प्रीसेट सेव हैं - पहले एक हटाएं (दबाकर रखें या राइट-क्लिक करें).", "ચાર પ્રીસેટ સાચવેલા છે - પહેલા એક કાઢો (દબાવી રાખો કે રાઇટ-ક્લિક કરો)."],
+    "Remove this preset?": ["यह प्रीसेट हटाएं?", "આ પ્રીસેટ કાઢો?"],
+    "Preset removed.": ["प्रीसेट हटाया गया.", "પ્રીસેટ કાઢ્યું."],
+    "EQ set to your preset.": ["EQ आपके प्रीसेट पर सेट हुआ.", "EQ તમારા પ્રીસેટ પર સેટ થયું."]
+  });
+  (function () {
+    var KEY = "vp-eqcust.v1", MAX = 4;
+    var fixed = $("lpEqPresets"), eqB = $("lpEqB"), eqM = $("lpEqM"), eqT = $("lpEqT");
+    if (!fixed || !eqB || !eqM || !eqT) return;
+    function load() {
+      try {
+        var a = JSON.parse(localStorage.getItem(KEY) || "[]");
+        if (!Array.isArray(a)) return [];
+        return a.filter(function (x) { return x && typeof x.name === "string" && x.name.trim() && isFinite(x.b) && isFinite(x.m) && isFinite(x.t); })
+          .map(function (x) { return { name: x.name.slice(0, 18), b: Math.max(-12, Math.min(12, Math.round(x.b))), m: Math.max(-12, Math.min(12, Math.round(x.m))), t: Math.max(-12, Math.min(12, Math.round(x.t))) }; }).slice(0, MAX);
+      } catch (e) { return []; }
+    }
+    function save(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (e) { if (typeof storageWarn === "function") storageWarn(); } }
+    var row = document.createElement("div"); row.className = "row"; row.id = "lpEqCustRow303";
+    fixed.parentNode.insertBefore(row, fixed.nextSibling);
+    var addBtn = document.createElement("button"); addBtn.type = "button"; addBtn.className = "chip"; addBtn.id = "lpEqCustAdd303";
+    function setEq(b, m, t) {
+      eqB.value = b; eqM.value = m; eqT.value = t;
+      ["input", "change"].forEach(function (ev) {
+        eqB.dispatchEvent(new Event(ev, { bubbles: true })); eqM.dispatchEvent(new Event(ev, { bubbles: true })); eqT.dispatchEvent(new Event(ev, { bubbles: true }));
+      });
+    }
+    function curEq() { return { b: Number(eqB.value) || 0, m: Number(eqM.value) || 0, t: Number(eqT.value) || 0 }; }
+    function mark() {
+      var c = curEq();
+      [].forEach.call(row.querySelectorAll("button[data-eq303]"), function (b2) {
+        var on = b2.dataset.eq303 === (c.b + "," + c.m + "," + c.t);
+        b2.classList.toggle("active", on); b2.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+    }
+    function render() {
+      var list = load();
+      [].forEach.call(row.querySelectorAll("button[data-eq303]"), function (x) { x.remove(); });
+      list.forEach(function (p, i) {
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.eq303 = p.b + "," + p.m + "," + p.t;
+        b.textContent = p.name; b.setAttribute("aria-pressed", "false");
+        b.title = "+B" + p.b + " M" + p.m + " T" + p.t;
+        b.addEventListener("click", function () { setEq(p.b, p.m, p.t); toast(T("EQ set to your preset.") + " " + p.name); mark(); });
+        async function del(e) {
+          e.preventDefault();
+          if (!await vpConfirm(T("Remove this preset?") + " " + p.name)) return;
+          var a = load(); a.splice(i, 1); save(a); render(); toast(T("Preset removed."));
+        }
+        b.addEventListener("contextmenu", del);
+        var lpT = 0;
+        b.addEventListener("pointerdown", function () { lpT = setTimeout(function () { lpT = 0; del(new Event("x")); }, 600); });
+        ["pointerup", "pointerleave", "pointercancel"].forEach(function (ev) { b.addEventListener(ev, function () { if (lpT) { clearTimeout(lpT); lpT = 0; } }); });
+        row.insertBefore(b, addBtn);
+      });
+      addBtn.textContent = "＋ " + T("Save current EQ");
+      addBtn.title = T("Save the current bass, middle and treble as your own preset.");
+      mark();
+    }
+    (window.__relang = window.__relang || []).push(render);
+    render();
+    addBtn.addEventListener("click", async function () {
+      var list = load();
+      if (list.length >= MAX) { toast(T("Four presets are saved - remove one first (long press or right-click it).")); return; }
+      var name = "";
+      try { name = (window.prompt ? window.prompt(T("Name this EQ preset (for example: Evening bass)"), "") : "") || ""; } catch (e) { name = ""; }
+      name = name.trim().slice(0, 18); if (!name) return;
+      var c = curEq();
+      list.push({ name: name, b: c.b, m: c.m, t: c.t });
+      save(list); render(); toast(T("Preset saved.") + " " + name);
+    });
+    [eqB, eqM, eqT].forEach(function (s) { s.addEventListener("input", mark); });
+    if (window.__vpWnew283) window.__vpWnew283("My EQ presets", "#lpEqCustRow303");
+  })();
+
   // Left-handed gestures (round 303 new 4): the gesture pad's double-tap sides and the
   // sideways swipe were drawn for a right thumb - the back jump sat under the left hand's
   // home side and every reach meant crossing the screen. A chip in the Gesture pad card
@@ -40144,7 +40233,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     // Round 300 fix: the automatic backup toggle (vp-autobk.v1) and the per-file speed
     // memory (vp-lpspeeds.v1) are settings the backup carries but Reset all settings left
     // behind - they are cleared with the rest now.
-    "vp-autobk.v1", "vp-lpspeeds.v1", "vp-lpvols.v1", "vp-lpeqs.v1"];
+    "vp-autobk.v1", "vp-lpspeeds.v1", "vp-lpvols.v1", "vp-lpeqs.v1", "vp-eqcust.v1"];
   btn.addEventListener("click", async function () {
     if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices, downloader choices, list sort orders, fade, focus and mini player choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
@@ -42279,7 +42368,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Per-video quality memory", "per video quality remember this video 1080 720 480 one blurry upload exception", "#pvQualBtn299"],
       ["Remember speed per file", "remember speed per file local files lecture song own rate each file", "#lpSpdMemRow299"],
       ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
-      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],      ["Left-handed layout", "left handed lefty swap gesture pad sides double tap seek left hand thumb", "#leftHandRow303"],
+      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],      ["Left-handed layout", "left handed lefty swap gesture pad sides double tap seek left hand thumb", "#leftHandRow303"],      ["My EQ presets", "my eq presets save custom equalizer bass middle treble own named preset local files sound", "#lpEqCustRow303"],
+
 
 
 
