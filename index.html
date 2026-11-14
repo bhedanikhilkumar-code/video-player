@@ -2313,6 +2313,7 @@ setTimeout(done,3000);})();
         <div class="row"><button class="chip" id="lpVcutBtn300" type="button" aria-pressed="false">🎤 Voice cut: off</button></div>
         <p class="hint" id="lpVcutHint300" hidden></p>
         <div class="row"><button class="chip" id="lpDbBtn302" type="button" aria-pressed="false">🗣 Dialogue boost: off</button></div>
+        <div class="row"><button class="chip" id="lpBlankBtn305" type="button" aria-pressed="false">🌙 Blank screen: off</button></div>
         <p class="hint" id="lpDbHint302" hidden></p>
         <label class="dl-lab" for="lpBal"><span id="lpBalLab">Balance: </span><b id="lpBalVal">Center</b></label>
         <input id="lpBal" type="range" min="-100" max="100" step="5" value="0" style="width:100%">
@@ -38150,6 +38151,73 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     window.__vpSponPaint305 = paint305;
     window.__vpSponTick305 = function (segs) { if (segs !== lastSegs || duration !== lastDur) paint305(segs); };
+  })();
+  // Blank screen while listening (round 305 new 2): plenty of local files are really
+  // listened to, not watched - a recorded lecture, a long mix, a downloaded song - but
+  // the picture stayed lit the whole time, which is what drains a phone battery fastest
+  // (on OLED screens a black pixel is off). A chip beside the sound tools drops a pure
+  // black blanket over everything, with just a dim clock and a wake hint; the sound
+  // keeps playing untouched. Any tap, click or Escape wakes the screen, and picking a
+  // YouTube video lifts the blanket too, so nobody gets stuck on black. It never turns
+  // itself on, and it refuses plainly when no local file is open. Local files only -
+  // the YouTube player is never covered. Hindi and Gujarati text, What's new and
+  // feature finder included.
+  Object.assign(TR_MSG, {
+    "🌙 Blank screen: off": ["🌙 ब्लैंक स्क्रीन: बंद", "🌙 બ્લેન્ક સ્ક્રીન: બંધ"],
+    "🌙 Blank screen: on": ["🌙 ब्लैंक स्क्रीन: चालू", "🌙 બ્લેન્ક સ્ક્રીન: ચાલુ"],
+    "Blank screen while listening": ["सुनते समय ब्लैंक स्क्रीन", "સાંભળતી વખતે બ્લેન્ક સ્ક્રીન"],
+    "Open a file in the local player first.": ["पहले लोकल प्लेयर में एक फ़ाइल खोलें.", "પહેલા લોકલ પ્લેયરમાં ફાઇલ ખોલો."],
+    "Tap anywhere or press Escape to wake the screen.": ["स्क्रीन जगाने के लिए कहीं भी टैप करें या Escape दबाएं.", "સ્ક્રીન જગાડવા ગમે ત્યાં ટૅપ કરો કે Escape દબાવો."],
+    "A black screen saves battery on OLED phones while you listen. The sound keeps playing.": ["सुनते समय काली स्क्रीन OLED फ़ोन पर बैटरी बचाती है. आवाज़ चलती रहती है.", "સાંભળતી વખતે કાળી સ્ક્રીન OLED ફોન પર બેટરી બચાવે છે. અવાજ ચાલુ રહે છે."]
+  });
+  (function () {
+    var btn = $("lpBlankBtn305"); if (!btn) return;
+    var st = document.createElement("style");
+    st.textContent = "#vpBlank305{position:fixed;inset:0;z-index:100000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}"
+      + ".blank-clock305{font-size:clamp(28px,7vw,44px);font-weight:700;color:rgba(255,255,255,.72);font-variant-numeric:tabular-nums}"
+      + ".blank-hint305{font-size:14px;color:rgba(255,255,255,.45);padding:0 28px;text-align:center;line-height:1.5}";
+    document.head.appendChild(st);
+    var ov = null, tick = null, on = false;
+    function localOn() { var v = $("lpVideo"); return !!(v && !v.hidden && v.currentSrc); }
+    function paintBtn() {
+      btn.textContent = on ? T("🌙 Blank screen: on") : T("🌙 Blank screen: off");
+      btn.setAttribute("aria-pressed", String(on));
+      btn.classList.toggle("active", on);
+      btn.setAttribute("aria-label", T("Blank screen while listening") + ". " + T("A black screen saves battery on OLED phones while you listen. The sound keeps playing."));
+    }
+    function paintClock() {
+      if (!ov) return;
+      var c = ov.querySelector(".blank-clock305");
+      if (c) c.textContent = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+    function escH(e) { if (e.key === "Escape") hide(); }
+    function show() {
+      if (on) return;
+      if (!localOn()) { toast(T("Open a file in the local player first.")); return; }
+      on = true;
+      ov = document.createElement("div"); ov.id = "vpBlank305"; ov.setAttribute("role", "button"); ov.tabIndex = 0;
+      ov.setAttribute("aria-label", T("Tap anywhere or press Escape to wake the screen."));
+      var ck = document.createElement("div"); ck.className = "blank-clock305";
+      var ht = document.createElement("div"); ht.className = "blank-hint305"; ht.textContent = T("Tap anywhere or press Escape to wake the screen.");
+      ov.appendChild(ck); ov.appendChild(ht);
+      document.body.appendChild(ov);
+      ov.addEventListener("pointerdown", hide);
+      document.addEventListener("keydown", escH);
+      tick = setInterval(paintClock, 1000); paintClock();
+      paintBtn();
+    }
+    function hide() {
+      if (!on) return;
+      on = false;
+      if (tick) { clearInterval(tick); tick = null; }
+      document.removeEventListener("keydown", escH);
+      if (ov) { ov.remove(); ov = null; }
+      paintBtn();
+    }
+    btn.addEventListener("click", function () { if (on) hide(); else show(); });
+    document.addEventListener("vp-youtube-selected", hide);
+    (window.__relang = window.__relang || []).push(function () { paintBtn(); if (ov) { var ht = ov.querySelector(".blank-hint305"); if (ht) ht.textContent = T("Tap anywhere or press Escape to wake the screen."); ov.setAttribute("aria-label", T("Tap anywhere or press Escape to wake the screen.")); } });
+    paintBtn();
   })();
 
 })();
