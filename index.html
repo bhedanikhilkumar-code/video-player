@@ -4375,9 +4375,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var idx = lib.queue.indexOf(item);
     if (idx < 0) return;
     if (idx === qPos) { toast(T("Already playing")); return; }
+    // Round 297 fix 5: with the playing video outside the queue (qAfter remembering the
+    // row that took its place), Play next inserted the row at the very top instead of the
+    // remembered next spot - so the row you asked to play next did not play next - and
+    // removing a row above the remembered one never moved the pointer. The row now lands
+    // at the qAfter spot and becomes what Next plays, and the pointer follows the shift.
     lib.queue.splice(idx, 1);
     if (idx < qPos) qPos--;
-    lib.queue.splice(qPos + 1, 0, item);
+    var at = qPos + 1;
+    if (qPos < 0 && qAfter >= 0) {
+      if (idx < qAfter) qAfter--;
+      at = Math.min(qAfter, lib.queue.length);
+      lib.queue.splice(at, 0, item);
+      qAfter = at;
+    } else {
+      lib.queue.splice(at, 0, item);
+    }
     resetShuffle();
     saveLib(); renderLib();
     toast(T("Will play next"));
