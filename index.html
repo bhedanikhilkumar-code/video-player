@@ -37314,6 +37314,72 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     });
     (window.__relang = window.__relang || []).push(paint301v); paint301v();
   })();
+  // Remember EQ per file (round 302 new 4): the equalizer saved one global bass /
+  // middle / treble, so a bass-heavy film and a spoken podcast fought over the same
+  // three sliders - every switch meant re-tuning. A chip by the EQ presets remembers
+  // each open file's last bass/middle/treble (keyed by its file name, up to 30 files,
+  // local files only) and restores them when the file opens again. Round 302 fix 1:
+  // the first cut lived in the local-player script, which has no TR_MSG / prefs /
+  // savePrefs of its own (strict mode) - the ReferenceError killed that script's
+  // whole tail (visualizer, chapters UI, subtitle background, WAV export) on load.
+  // Like Remember volume per file it now lives here in the main closure and talks to
+  // the equalizer through the sliders' own input events, so the local chain updates
+  // itself. Off by default; the switch is remembered in prefs so it rides the
+  // backup, the per-file map rides the backup raw keys, and Reset all settings
+  // clears both. Hindi/Gujarati below.
+  Object.assign(TR_MSG, {
+    "Remember EQ per file": ["हर फ़ाइल की EQ याद", "દરેક ફાઇલની EQ યાદ"],
+    "Remember EQ per file: on": ["हर फ़ाइल की EQ याद: चालू", "દરેક ફાઇલની EQ યાદ: ચાલુ"],
+    "Remember EQ per file: off": ["हर फ़ाइल की EQ याद: बंद", "દરેક ફાઇલની EQ યાદ: બંધ"],
+    "Each file keeps the bass, middle and treble you last set for it.": ["हर फ़ाइल अपना आखिरी बेस, मिडल और ट्रेबल याद रखेगी.", "દરેક ફાઇલ પોતાનો છેલ્લો બેસ, મિડલ અને ટ્રેબલ યાદ રાખશે."],
+    "Per-file EQ memory off.": ["प्रति-फ़ाइल EQ याद बंद.", "ફાઇલ દીઠ EQ યાદ બંધ."],
+    "EQ for this file: {v}": ["इस फ़ाइल की EQ: {v}", "આ ફાઇલની EQ: {v}"]
+  });
+  (function () {
+    var vid302 = $("lpVideo"), eqB302 = $("lpEqB"), eqM302 = $("lpEqM"), eqT302 = $("lpEqT"), presets302 = $("lpEqPresets");
+    if (!vid302 || !eqB302 || !eqM302 || !eqT302 || !presets302) return;
+    var LPEQ_KEY = "vp-lpeqs.v1", eqmem302 = {};
+    try { var rawq302 = JSON.parse(localStorage.getItem(LPEQ_KEY) || "null"); if (rawq302 && typeof rawq302 === "object" && !Array.isArray(rawq302)) eqmem302 = rawq302; } catch (e) {}
+    function eqmemSave302() {
+      try {
+        var ks = Object.keys(eqmem302);
+        while (ks.length > 30) delete eqmem302[ks.shift()];
+        localStorage.setItem(LPEQ_KEY, JSON.stringify(eqmem302));
+      } catch (e) {}
+    }
+    function fname302() { return (vid302.dataset && vid302.dataset.fileName276) || ""; }
+    var row302 = document.createElement("div"); row302.className = "row"; row302.id = "lpEqMemRow302"; row302.style.marginTop = "8px";
+    var eqBtn302 = document.createElement("button"); eqBtn302.type = "button"; eqBtn302.className = "chip"; eqBtn302.id = "lpEqMemBtn302"; eqBtn302.setAttribute("aria-pressed", "false");
+    row302.appendChild(eqBtn302);
+    presets302.parentNode.insertBefore(row302, presets302.nextSibling);
+    function paint302e() {
+      eqBtn302.textContent = "\uD83C\uDF9A " + T(prefs.lpEqMem302 ? "Remember EQ per file: on" : "Remember EQ per file: off");
+      eqBtn302.setAttribute("aria-pressed", String(prefs.lpEqMem302 === true));
+      eqBtn302.classList.toggle("active", prefs.lpEqMem302 === true);
+    }
+    eqBtn302.addEventListener("click", function () {
+      prefs.lpEqMem302 = !prefs.lpEqMem302; savePrefs(); paint302e();
+      toast(prefs.lpEqMem302 ? T("Each file keeps the bass, middle and treble you last set for it.") : T("Per-file EQ memory off."));
+    });
+    function eqmemNote302() {
+      if (!prefs.lpEqMem302) return;
+      var nm = fname302(); if (!nm) return;
+      delete eqmem302[nm]; eqmem302[nm] = [Math.round(Number(eqB302.value)), Math.round(Number(eqM302.value)), Math.round(Number(eqT302.value))]; eqmemSave302();
+    }
+    [eqB302, eqM302, eqT302].forEach(function (sl) { sl.addEventListener("input", function () { setTimeout(eqmemNote302, 0); }); });
+    presets302.addEventListener("click", function () { setTimeout(eqmemNote302, 0); });
+    vid302.addEventListener("loadedmetadata", function () {
+      if (!prefs.lpEqMem302) return;
+      var nm = fname302(); if (!nm) return;
+      var v = eqmem302[nm];
+      if (!Array.isArray(v) || v.length !== 3 || v.some(function (x) { return typeof x !== "number" || !isFinite(x) || x < -12 || x > 12; })) return;
+      if (Math.round(Number(eqB302.value)) === v[0] && Math.round(Number(eqM302.value)) === v[1] && Math.round(Number(eqT302.value)) === v[2]) return;
+      eqB302.value = v[0]; eqM302.value = v[1]; eqT302.value = v[2];
+      [eqB302, eqM302, eqT302].forEach(function (sl) { sl.dispatchEvent(new Event("input", { bubbles: true })); });
+      toast(T("EQ for this file: {v}").replace("{v}", (v[0] > 0 ? "+" : "") + v[0] + "/" + (v[1] > 0 ? "+" : "") + v[1] + "/" + (v[2] > 0 ? "+" : "") + v[2]), 1800);
+    });
+    (window.__relang = window.__relang || []).push(paint302e); paint302e();
+  })();
   // Volume steps (round 297 new 4): one press of the arrow keys, one swipe on the
   // gestures pad, one wheel scroll or a spoken louder/softer always moved the volume by a
   // fixed five - coarse when a night listener wants 12% not 15%, and fiddly when a
@@ -38708,67 +38774,6 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     pair[1].addEventListener("input", function () { ensureAudio(); eq[pair[0]] = Number(pair[1].value); saveLp(); eqApply(); });
   });
   eqApply();
-
-  // Remember EQ per file (round 302 new 4): the equalizer saved one global bass /
-  // middle / treble, so a bass-heavy film and a spoken podcast fought over the same
-  // three sliders - every switch meant re-tuning. A chip by the EQ presets remembers
-  // each open file's last bass/middle/treble (keyed by its file name, up to 30 files,
-  // local files only) and restores them when the file opens again. Off by default;
-  // the switch is remembered in prefs so it rides the backup, the per-file map rides
-  // the backup raw keys, and Reset all settings clears both. Hindi/Gujarati below.
-  Object.assign(TR_MSG, {
-    "Remember EQ per file": ["हर फ़ाइल की EQ याद", "દરેક ફાઇલની EQ યાદ"],
-    "Remember EQ per file: on": ["हर फ़ाइल की EQ याद: चालू", "દરેક ફાઇલની EQ યાદ: ચાલુ"],
-    "Remember EQ per file: off": ["हर फ़ाइल की EQ याद: बंद", "દરેક ફાઇલની EQ યાદ: બંધ"],
-    "Each file keeps the bass, middle and treble you last set for it.": ["हर फ़ाइल अपना आखिरी बेस, मिडल और ट्रेबल याद रखेगी.", "દરેક ફાઇલ પોતાનો છેલ્લો બેસ, મિડલ અને ટ્રેબલ યાદ રાખશે."],
-    "Per-file EQ memory off.": ["प्रति-फ़ाइल EQ याद बंद.", "ફાઇલ દીઠ EQ યાદ બંધ."],
-    "EQ for this file: {v}": ["इस फ़ाइल की EQ: {v}", "આ ફાઇલની EQ: {v}"]
-  });
-  (function () {
-    var vid302 = $("lpVideo"); if (!vid302 || !lpEqPresets || !eqB || !eqM || !eqT) return;
-    var LPEQ_KEY = "vp-lpeqs.v1", eqmem302 = {};
-    try { var rawq302 = JSON.parse(localStorage.getItem(LPEQ_KEY) || "null"); if (rawq302 && typeof rawq302 === "object" && !Array.isArray(rawq302)) eqmem302 = rawq302; } catch (e) {}
-    function eqmemSave302() {
-      try {
-        var ks = Object.keys(eqmem302);
-        while (ks.length > 30) delete eqmem302[ks.shift()];
-        localStorage.setItem(LPEQ_KEY, JSON.stringify(eqmem302));
-      } catch (e) {}
-    }
-    function fname302() { return (vid302.dataset && vid302.dataset.fileName276) || ""; }
-    var row302 = document.createElement("div"); row302.className = "row"; row302.id = "lpEqMemRow302"; row302.style.marginTop = "8px";
-    var eqBtn302 = document.createElement("button"); eqBtn302.type = "button"; eqBtn302.className = "chip"; eqBtn302.id = "lpEqMemBtn302"; eqBtn302.setAttribute("aria-pressed", "false");
-    row302.appendChild(eqBtn302);
-    lpEqPresets.parentNode.insertBefore(row302, lpEqPresets.nextSibling);
-    function paint302e() {
-      eqBtn302.textContent = "\uD83C\uDF9A " + T(prefs.lpEqMem302 ? "Remember EQ per file: on" : "Remember EQ per file: off");
-      eqBtn302.setAttribute("aria-pressed", String(prefs.lpEqMem302 === true));
-      eqBtn302.classList.toggle("active", prefs.lpEqMem302 === true);
-    }
-    eqBtn302.addEventListener("click", function () {
-      prefs.lpEqMem302 = !prefs.lpEqMem302; savePrefs(); paint302e();
-      toast(prefs.lpEqMem302 ? T("Each file keeps the bass, middle and treble you last set for it.") : T("Per-file EQ memory off."));
-    });
-    function eqmemNote302() {
-      if (!prefs.lpEqMem302) return;
-      var nm = fname302(); if (!nm) return;
-      delete eqmem302[nm]; eqmem302[nm] = [Math.round(eq.b), Math.round(eq.m), Math.round(eq.t)]; eqmemSave302();
-    }
-    [eqB, eqM, eqT].forEach(function (sl) { sl.addEventListener("input", eqmemNote302); });
-    lpEqPresets.addEventListener("click", eqmemNote302);
-    vid302.addEventListener("loadedmetadata", function () {
-      if (!prefs.lpEqMem302) return;
-      var nm = fname302(); if (!nm) return;
-      var v = eqmem302[nm];
-      if (!Array.isArray(v) || v.length !== 3 || v.some(function (x) { return typeof x !== "number" || !isFinite(x) || x < -12 || x > 12; })) return;
-      if (Math.round(eq.b) === v[0] && Math.round(eq.m) === v[1] && Math.round(eq.t) === v[2]) return;
-      eq.b = v[0]; eq.m = v[1]; eq.t = v[2];
-      eqB.value = eq.b; eqM.value = eq.m; eqT.value = eq.t;
-      saveLp(); eqApply();
-      toast(T("EQ for this file: {v}").replace("{v}", (v[0] > 0 ? "+" : "") + v[0] + "/" + (v[1] > 0 ? "+" : "") + v[1] + "/" + (v[2] > 0 ? "+" : "") + v[2]), 1800);
-    });
-    (window.__relang = window.__relang || []).push(paint302e); paint302e();
-  })();
 
   // Music visualizer (round 96): dancing glass bars under the local player that follow the
   // sound of the open file, tapped off the same audio chain as the boost and equalizer, so
