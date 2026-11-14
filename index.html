@@ -35459,6 +35459,49 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint294); paint294();
   })();
   WNEW.unshift(["Speed ceiling", "#speedCapRow294"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+  // Sort queue by channel (round 294 new 4): the queue already sorts by length, title,
+  // rating and play count, but a mixed evening queue scatters each creator's videos through
+  // the list, so the three lo-fi mixes from one channel play separated by podcasts. One
+  // chip by the other queue sorts groups the videos after the current one by channel
+  // (A to Z by creator name, ties keep their order, videos whose channel the app has not
+  // learned yet keep their order at the end); a second tap flips to Z to A. Undo restores
+  // the order, like the other queue sorts. Checked first: Search by channel filters and
+  // Group Watch later by channel groups that one list - no queue sort by channel existed.
+  // Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Sort by channel": ["चैनल से क्रम", "ચેનલથી ક્રમ"],
+    "Sort queue by channel, A to Z": ["कतार को चैनल से क्रमित करें, A से Z", "કતારને ચેનલથી ગોઠવો, A થી Z"],
+    "Sort: channels Z to A": ["क्रम: चैनल Z से A", "ક્રમ: ચેનલ Z થી A"],
+    "Queue sorted by channel, A to Z": ["कतार चैनल से क्रमित, A से Z", "કતાર ચેનલથી ગોઠવાઈ, A થી Z"],
+    "Queue sorted by channel, Z to A": ["कतार चैनल से क्रमित, Z से A", "કતાર ચેનલથી ગોઠવાઈ, Z થી A"],
+    "Channels are known for too few videos in the queue - play or open a few first.": ["कतार में बहुत कम वीडियो के चैनल ज्ञात हैं - पहले कुछ चलाएं या खोलें.", "કતારમાં બહુ ઓછા વીડિયોની ચેનલ જાણીતી છે - પહેલા થોડા ચલાવો કે ખોલો."]
+  });
+  (function () {
+    var ref294 = $("sortRateQueueBtn") || $("sortLenQueueBtn"); if (!ref294 || !ref294.parentNode) return;
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "sortChanQueueBtn294";
+    ref294.parentNode.insertBefore(btn, ref294.nextSibling);
+    var nextAz = true;
+    function chanOf(x) { var c = infoCache && infoCache[x.id]; return (c && c.author) ? String(c.author) : ""; }
+    function paint294() { btn.textContent = nextAz ? T("Sort by channel") : T("Sort: channels Z to A"); btn.setAttribute("aria-label", T("Sort queue by channel, A to Z")); }
+    btn.addEventListener("click", function () {
+      var start = qPos + 1;
+      if (lib.queue.length - start < 2) { showLibErr(T("Need at least 2 more videos after the current one to sort.")); return; }
+      var known = [], unknown = [];
+      lib.queue.slice(start).forEach(function (x) { if (chanOf(x)) known.push(x); else unknown.push(x); });
+      if (known.length < 2) { showLibErr(T("Channels are known for too few videos in the queue - play or open a few first.")); return; }
+      var snap = lib.queue.slice(), sp = qPos, dir = nextAz ? 1 : -1;
+      var idx = 0, order = {};
+      known.forEach(function (x) { order[x.id + "|" + (idx++)] = 1; });
+      var stable = known.map(function (x, i) { return { x: x, i: i }; });
+      stable.sort(function (a, b) { var ca = chanOf(a.x).toLocaleLowerCase(), cb = chanOf(b.x).toLocaleLowerCase(); return dir * (ca < cb ? -1 : ca > cb ? 1 : (a.i - b.i)); });
+      lib.queue = lib.queue.slice(0, start).concat(stable.map(function (s) { return s.x; }), unknown);
+      resetShuffle(); saveLib(); renderLib(); showLibErr("");
+      toastUndo(nextAz ? T("Queue sorted by channel, A to Z") : T("Queue sorted by channel, Z to A"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+      nextAz = !nextAz; paint294();
+    });
+    (window.__relang = window.__relang || []).push(paint294); paint294();
+  })();
+  WNEW.unshift(["Sort queue by channel", "#sortChanQueueBtn294"]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
   window.__vpPrefs = prefs;
   window.__vpSavePrefs = savePrefs;
   Object.assign(TR_MSG, {
@@ -39808,6 +39851,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Voice note on a video", "voice note record microphone spoken memo audio per video listen delete notes card", "#vnoteRow294"],
       ["My month card", "month card 30 days monthly picture share png watch stats calendar glow habit image", "#monthCardBtn294"],
       ["Speed ceiling", "speed ceiling cap top maximum fastest limit kids 2x mistake lock rate", "#speedCapRow294"],
+      ["Sort queue by channel", "sort queue channel creator group same channel together order a to z", "#sortChanQueueBtn294"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
       ["Top channels", "top channels most watched creators ranking watch time stats favourite channel who watch most", "#lhStats"],
