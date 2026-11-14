@@ -37797,7 +37797,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       // Round 303 fix 3: a pasted YouTube link used to die here with the cross-site
       // message, although the main player above plays YouTube links all day. Video-page
       // links now take the main loader instead of the local player.
-      if (/(^|\.)youtube\.com\/(watch|shorts)|(^|\.)youtu\.be\//i.test(u)) {
+      // Round 304 fix 1: the handoff test only matched a dot before the host, so the
+      // two most common shapes - https://youtu.be/... and https://youtube.com/watch?... -
+      // still fell through to the local player and showed the cross-site error. The host
+      // is now read after stripping the protocol, so www., m., bare and short links all
+      // take the main player.
+      var uHost304 = u.replace(/^https?:\/\//i, "");
+      if (/^(www\.|m\.)?youtube\.com\/(watch|shorts|live|embed)/i.test(uHost304) || /^(www\.)?youtu\.be\//i.test(uHost304)) {
         var li = $("linkInput"), lb = $("loadBtn");
         if (li && lb) {
           li.value = u; lb.click(); inp.value = "";
