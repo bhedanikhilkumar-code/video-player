@@ -14025,7 +14025,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // rotate and the Stats on video overlay - so a restore on a new phone silently reset them
   // while every other setting moved over. They export and import as validated one-word values
   // like the rest of this list.
-  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;  VP_RAW_KEYS["vp-eqcust.v1"] = /^\[[\s\S]{0,2000}\]$/;  VP_RAW_KEYS["vp-mini-size.v1"] = /^(std|lg)$/;  VP_RAW_KEYS["vp-histlen.v1"] = /^(all|u10|m30|o30)$/;  VP_RAW_KEYS["vp-favlen.v1"] = /^(all|u10|m30|o30)$/;
+  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;  VP_RAW_KEYS["vp-eqcust.v1"] = /^\[[\s\S]{0,2000}\]$/;  VP_RAW_KEYS["vp-mini-size.v1"] = /^(std|lg)$/;  VP_RAW_KEYS["vp-histlen.v1"] = /^(all|u10|m30|o30)$/;  VP_RAW_KEYS["vp-favlen.v1"] = /^(all|u10|m30|o30)$/;  VP_RAW_KEYS["vp-pllen.v1"] = /^(all|u10|m30|o30)$/;
 
 
   // Round 282 fix 1: the Rewind on resume choice (vp-rewback.v1: jump back 5, 10 or 30
@@ -22038,11 +22038,15 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       var box = document.createElement("div");
       box.className = "plv-box";
       box.setAttribute("role", "list");
+      if (typeof window.__plLenChip304 === "function") { var plc304 = window.__plLenChip304(); if (plc304) box.appendChild(plc304); }
       if (!pl.items.length) {
         var em = document.createElement("div"); em.className = "plv-empty"; em.textContent = T("No videos in this playlist yet.");
         box.appendChild(em);
       }
+      var plShown304 = 0;
       pl.items.forEach(function (x, i) {
+        if (typeof window.__plLenOk304 === "function" && !window.__plLenOk304(x)) return;
+        plShown304++;
         var row = document.createElement("div"); row.className = "plv-row"; row.setAttribute("role", "listitem");
         var num = document.createElement("span"); num.className = "plv-num"; num.textContent = (i + 1) + ".";
         var open = document.createElement("button");
@@ -22097,6 +22101,11 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         row.appendChild(num); row.appendChild(open); row.appendChild(ac);
         box.appendChild(row);
       });
+      if (typeof window.__plLenActive304 === "function" && window.__plLenActive304() && pl.items.length && !plShown304) {
+        var emL304 = document.createElement("div"); emL304.className = "plv-empty";
+        emL304.textContent = T("No videos in this playlist are in this length range - turn the length filter off to see them all.");
+        box.appendChild(emL304);
+      }
       li.appendChild(box);
     });
   }
@@ -38058,6 +38067,50 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (window.__vpWnew283) window.__vpWnew283("Favourites length filter", "#favLenBtn304");
   })();
 
+  // Playlist length filter (round 304 new 5): a long playlist's Videos box listed every
+  // entry with no way to cut it down, so finding the short videos in a 60-video playlist
+  // meant reading each row. A chip at the top of the open Videos box filters the list by
+  // length, stepping All, under 10 minutes, 10-30 and over 30 - the same ranges the three
+  // library lists use. Rows keep their real playlist numbers, and Move, Remove and
+  // play-from-here still act on the true position, so filtering never reorders or loses
+  // anything. Lengths come from the learned-duration cache with a history fallback, and
+  // rows with no known length stay visible. One choice covers every playlist, persists,
+  // survives a backup, resets with Reset all, and an emptied box says so honestly.
+  // Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Playlist length filter": ["प्लेलिस्ट लंबाई फ़िल्टर", "પ્લેલિસ્ટ લંબાઈ ફિલ્ટર"],
+    "Filter playlist videos by length": ["प्लेलिस्ट के वीडियो लंबाई से छांटें", "પ્લેલિસ્ટના વિડિયો લંબાઈ પ્રમાણે ગાળો"],
+    "No videos in this playlist are in this length range - turn the length filter off to see them all.": ["इस लंबाई में इस प्लेलिस्ट का कोई वीडियो नहीं है - सभी देखने के लिए लंबाई फ़िल्टर बंद करें.", "આ લંબાઈમાં આ પ્લેલિસ્ટનો કોઈ વિડિયો નથી - બધા જોવા લંબાઈ ફિલ્ટર બંધ કરો."]
+  });
+  (function () {
+    var mode = "all";
+    try { var m = localStorage.getItem("vp-pllen.v1"); if (m === "u10" || m === "m30" || m === "o30") mode = m; } catch (e) {}
+    window.__plLenActive304 = function () { return mode !== "all"; };
+    window.__plLenOk304 = function (x) {
+      if (mode === "all") return true;
+      var d = infoCache[x.id] && infoCache[x.id].dur;
+      if (!(typeof d === "number" && d > 0)) { var hi = findIn(lib.hist, x.id); d = hi >= 0 ? lib.hist[hi].dur : 0; }
+      if (!(typeof d === "number" && d > 0)) return true;
+      if (mode === "u10") return d < 600;
+      if (mode === "m30") return d >= 600 && d <= 1800;
+      return d > 1800;
+    };
+    window.__plLenChip304 = function () {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = "plLenBtn304";
+      b.textContent = T(mode === "u10" ? "Length: under 10 min" : (mode === "m30" ? "Length: 10-30 min" : (mode === "o30" ? "Length: over 30 min" : "Length: All")));
+      b.setAttribute("aria-label", T("Filter playlist videos by length"));
+      b.setAttribute("aria-pressed", String(mode !== "all"));
+      b.classList.toggle("active", mode !== "all");
+      b.addEventListener("click", function () {
+        mode = mode === "all" ? "u10" : (mode === "u10" ? "m30" : (mode === "m30" ? "o30" : "all"));
+        try { localStorage.setItem("vp-pllen.v1", mode); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
+        plvPaint();
+      });
+      return b;
+    };
+    if (window.__vpWnew283) window.__vpWnew283("Playlist length filter", "#plLenBtn304");
+  })();
+
 })();
 
 
@@ -40504,7 +40557,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     // Round 300 fix: the automatic backup toggle (vp-autobk.v1) and the per-file speed
     // memory (vp-lpspeeds.v1) are settings the backup carries but Reset all settings left
     // behind - they are cleared with the rest now.
-    "vp-autobk.v1", "vp-lpspeeds.v1", "vp-lpvols.v1", "vp-lpeqs.v1", "vp-eqcust.v1", "vp-mini-size.v1", "vp-histlen.v1", "vp-favlen.v1"];
+    "vp-autobk.v1", "vp-lpspeeds.v1", "vp-lpvols.v1", "vp-lpeqs.v1", "vp-eqcust.v1", "vp-mini-size.v1", "vp-histlen.v1", "vp-favlen.v1", "vp-pllen.v1"];
   btn.addEventListener("click", async function () {
     if (!await vpConfirm(T("Reset all settings to their defaults? This covers volume, speed, loop, theme, language, queue modes, the sleep timer, saver choices, downloader choices, list sort orders, fade, focus and mini player choices. Your queue, favourites, playlists, history and stats are kept."))) return;
     KEYS.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
@@ -42639,7 +42692,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Per-video quality memory", "per video quality remember this video 1080 720 480 one blurry upload exception", "#pvQualBtn299"],
       ["Remember speed per file", "remember speed per file local files lecture song own rate each file", "#lpSpdMemRow299"],
       ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
-      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],      ["Left-handed layout", "left handed lefty swap gesture pad sides double tap seek left hand thumb", "#leftHandRow303"],      ["My EQ presets", "my eq presets save custom equalizer bass middle treble own named preset local files sound", "#lpEqCustRow303"],      ["Mini player size", "mini player size large bigger floating docked video enlarge small corner standard", "#miniSizeBtn304"],      ["Sleep timer in the mini player", "sleep timer mini player floating bedtime moon chip 15 30 60 minutes off small screen", "#miniSleepBtn304"],      ["History length filter", "history length filter recently watched short long videos under 10 10-30 over 30 minutes find", "#histLenBtn304"],      ["Favourites length filter", "favourites length filter saved short long videos under 10 10-30 over 30 minutes find", "#favLenBtn304"],
+      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],      ["Left-handed layout", "left handed lefty swap gesture pad sides double tap seek left hand thumb", "#leftHandRow303"],      ["My EQ presets", "my eq presets save custom equalizer bass middle treble own named preset local files sound", "#lpEqCustRow303"],      ["Mini player size", "mini player size large bigger floating docked video enlarge small corner standard", "#miniSizeBtn304"],      ["Sleep timer in the mini player", "sleep timer mini player floating bedtime moon chip 15 30 60 minutes off small screen", "#miniSleepBtn304"],      ["History length filter", "history length filter recently watched short long videos under 10 10-30 over 30 minutes find", "#histLenBtn304"],      ["Favourites length filter", "favourites length filter saved short long videos under 10 10-30 over 30 minutes find", "#favLenBtn304"],      ["Playlist length filter", "playlist length filter videos box short long under 10 10-30 over 30 minutes find", "#plLenBtn304"],
 
 
 
