@@ -13976,7 +13976,8 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // rotate and the Stats on video overlay - so a restore on a new phone silently reset them
   // while every other setting moved over. They export and import as validated one-word values
   // like the rest of this list.
-  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;
+  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;
+
   // Round 282 fix 1: the Rewind on resume choice (vp-rewback.v1: jump back 5, 10 or 30
   // seconds when continuing a half-watched video, round 279 new 3) rode no backup - every
   // list, note and setting moved to a new phone, but this one quietly returned to 10
@@ -37484,6 +37485,100 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Search is:short / is:long": ["खोज is:short / is:long", "શોધ is:short / is:long"],
     "Sort Watch later and favourites by length": ["बाद में देखें और पसंदीदा को लंबाई से क्रम में लगाएं", "પછી જુઓ અને મનપસંદને લંબાઈ મુજબ ગોઠવો"]
   });
+  // My wallpaper (round 303 new 3): themes and accent colours dress the app, but the
+  // page itself was always the app's own backdrop. A chip beside the colour dots now
+  // takes any photo from the device, shrinks it on the device (never uploaded), and
+  // lays it behind the glass with a soft theme-matched veil so text stays readable.
+  // Off brings back the plain backdrop; High contrast keeps its clean look and skips
+  // the photo. Remembered on this device in vp-wallpaper.v1, riding the backup, and
+  // cleared by Reset look and feel / Reset all settings. Hindi and Gujarati text,
+  // What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "My wallpaper": ["मेरा वॉलपेपर", "મારો વૉલપેપર"],
+    "My wallpaper…": ["मेरा वॉलपेपर…", "મારો વૉલપેપર…"],
+    "Use one of your photos as the page backdrop, behind the glass.": ["अपनी कोई तस्वीर पेज की पृष्ठभूमि बनाएं, ग्लास के पीछे.", "તમારો કોઈ ફોટો પેજની પૃષ્ઠભૂમિ બનાવો, ગ્લાસની પાછળ."],
+    "Choose a photo for the backdrop": ["पृष्ठभूमि के लिए तस्वीर चुनें", "પૃષ્ઠભૂમિ માટે ફોટો પસંદ કરો"],
+    "Wallpaper off": ["वॉलपेपर बंद", "વૉલપેપર બંધ"],
+    "Wallpaper on - your photo is the page backdrop.": ["वॉलपेपर चालू - आपकी तस्वीर पेज की पृष्ठभूमि है.", "વૉલપેપર ચાલુ - તમારો ફોટો પેજની પૃષ્ઠભૂમિ છે."],
+    "Wallpaper off - the plain backdrop is back.": ["वॉलपेपर बंद - सादी पृष्ठभूमि वापस आ गई.", "વૉલપેપર બંધ - સાદી પૃષ્ઠભૂમિ પાછી આવી."],
+    "That photo could not be read - try another one.": ["वह तस्वीर नहीं पढ़ी जा सकी - दूसरी आज़माएं.", "તે ફોટો વંચાયો નહીં - બીજો અજમાવો."],
+    "That photo stays too large even shrunk - try a smaller one.": ["वह तस्वीर छोटी करके भी बहुत बड़ी रहती है - छोटी तस्वीर आज़माएं.", "તે ફોટો નાનો કર્યા પછી પણ બહુ મોટો રહે છે - નાનો ફોટો અજમાવો."],
+    "High contrast is on, so the photo backdrop stays off for readability.": ["हाई कॉन्ट्रास्ट चालू है, इसलिए पढ़ने के लिए फोटो पृष्ठभूमि बंद रहती है.", "હાઇ કોન્ટ્રાસ્ટ ચાલુ છે, એટલે વાંચવા માટે ફોટો પૃષ્ઠભૂમિ બંધ રહે છે."]
+  });
+  (function () {
+    var KEY = "vp-wallpaper.v1", MAXW = 1400, MAXLEN = 650000;
+    var anchor = $("accentRow");
+    if (!anchor || !anchor.parentNode) return;
+    var st = document.createElement("style");
+    st.textContent = "html.wp303 body{background-image:linear-gradient(rgba(252,252,254,.80),rgba(252,252,254,.80)),var(--wp303);background-size:auto,cover;background-position:0 0,center;background-repeat:repeat,no-repeat;background-attachment:scroll,fixed}"
+      + "html.wp303[data-theme=\"dark\"] body{background-image:linear-gradient(rgba(9,11,17,.74),rgba(9,11,17,.74)),var(--wp303)}";
+    document.head.appendChild(st);
+    var row = document.createElement("div"); row.className = "row"; row.id = "wallpaperRow303"; row.style.marginTop = "6px";
+    var pick = document.createElement("button"); pick.type = "button"; pick.className = "chip"; pick.id = "wallpaperBtn303";
+    var off = document.createElement("button"); off.type = "button"; off.className = "chip"; off.id = "wallpaperOff303"; off.hidden = true;
+    var file = document.createElement("input"); file.type = "file"; file.accept = "image/*"; file.hidden = true; file.id = "wallpaperFile303";
+    var hint = document.createElement("p"); hint.className = "hint"; hint.id = "wallpaperHint303"; hint.style.margin = "4px 0 0";
+    row.appendChild(pick); row.appendChild(off); row.appendChild(file);
+    anchor.parentNode.insertBefore(row, anchor.nextSibling);
+    anchor.parentNode.insertBefore(hint, row.nextSibling);
+    function read() { try { return localStorage.getItem(KEY) || ""; } catch (e) { return ""; } }
+    function apply() {
+      var v = read(), on = !!v && !prefs.highContrast;
+      document.documentElement.classList.toggle("wp303", on);
+      if (on) document.documentElement.style.setProperty("--wp303", "url(\"" + v + "\")");
+      else document.documentElement.style.removeProperty("--wp303");
+      off.hidden = !v;
+    }
+    function paint() {
+      pick.textContent = "🖼 " + T("My wallpaper…");
+      pick.setAttribute("aria-label", T("Choose a photo for the backdrop"));
+      off.textContent = T("Wallpaper off");
+      hint.textContent = T("Use one of your photos as the page backdrop, behind the glass.") + (prefs.highContrast && read() ? " " + T("High contrast is on, so the photo backdrop stays off for readability.") : "");
+    }
+    (window.__relang = window.__relang || []).push(paint);
+    paint(); apply();
+    pick.addEventListener("click", function () { file.click(); });
+    off.addEventListener("click", function () {
+      try { localStorage.removeItem(KEY); } catch (e) {}
+      apply(); paint(); toast(T("Wallpaper off - the plain backdrop is back."));
+    });
+    file.addEventListener("change", function () {
+      var f = file.files && file.files[0]; file.value = "";
+      if (!f || !/^image\//.test(f.type)) return;
+      var rd = new FileReader();
+      rd.onerror = function () { toast(T("That photo could not be read - try another one.")); };
+      rd.onload = function () {
+        var img = new Image();
+        img.onerror = function () { toast(T("That photo could not be read - try another one.")); };
+        img.onload = function () {
+          try {
+            var w = img.naturalWidth, h = img.naturalHeight, sc = Math.min(1, MAXW / Math.max(w, h));
+            var cw = Math.max(1, Math.round(w * sc)), ch = Math.max(1, Math.round(h * sc));
+            var cv = document.createElement("canvas"); cv.width = cw; cv.height = ch;
+            cv.getContext("2d").drawImage(img, 0, 0, cw, ch);
+            var q = 0.72, out = cv.toDataURL("image/jpeg", q);
+            while (out.length > MAXLEN && q > 0.4) { q -= 0.1; out = cv.toDataURL("image/jpeg", q); }
+            if (out.length > MAXLEN) {
+              var sc2 = Math.min(1, 900 / Math.max(w, h));
+              cv.width = Math.max(1, Math.round(w * sc2)); cv.height = Math.max(1, Math.round(h * sc2));
+              cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+              out = cv.toDataURL("image/jpeg", 0.5);
+            }
+            if (out.length > MAXLEN * 1.4) { toast(T("That photo stays too large even shrunk - try a smaller one.")); return; }
+            try { localStorage.setItem(KEY, out); } catch (e) { if (typeof storageWarn === "function") storageWarn(); toast(T("That photo stays too large even shrunk - try a smaller one.")); return; }
+            apply(); paint();
+            toast(T("Wallpaper on - your photo is the page backdrop.") + (prefs.highContrast ? " " + T("High contrast is on, so the photo backdrop stays off for readability.") : ""));
+          } catch (e) { toast(T("That photo could not be read - try another one.")); }
+        };
+        img.src = String(rd.result || "");
+      };
+      rd.readAsDataURL(f);
+    });
+    // High contrast toggles elsewhere in settings: re-check when the page repaints.
+    (window.__relang = window.__relang || []).push(apply);
+    if (window.__vpWnew283) window.__vpWnew283("My wallpaper", "#wallpaperRow303");
+  })();
+
   // Double-click full screen (round 303 new 2): on a computer every video app answers a
   // double-click on the picture with full screen, but the local player only had the F key
   // and the browser's own control. A double-click on the local video now toggles full
@@ -39997,7 +40092,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Break reminder, Keep screen awake, Fullscreen rotate and Stats on video as they were, although
   // the dialog promises settings go back to defaults. They are cleared with the rest now.
   var KEYS = ["vp-prefs.v1", "vp-keymap.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1", "vp-stillwatch.v1", "vp-ctl-use.v1",
-    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-mini-corner.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-latergroup.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1",
+    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-mini-corner.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-wallpaper.v1", "vp-latergroup.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1",
     // Round 282 fix 4: Reset all settings promised defaults but left the folded sections,
     // hidden quick-row chips, channel intro-skip picks, the four per-video memories
     // (speed, rotation, picture look, A-B loop), the rewind-on-resume choice and the
@@ -40039,7 +40134,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       LOOK_KEYS.forEach(function (k) { delete p[k]; });
       localStorage.setItem("vp-prefs.v1", JSON.stringify(p));
     } catch (e) {}
-    ["vp-look.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-lpview.v1"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
+    ["vp-look.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-lpview.v1", "vp-wallpaper.v1"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
     location.reload();
   });
 })();
@@ -42143,7 +42238,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Per-video quality memory", "per video quality remember this video 1080 720 480 one blurry upload exception", "#pvQualBtn299"],
       ["Remember speed per file", "remember speed per file local files lecture song own rate each file", "#lpSpdMemRow299"],
       ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
-      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],
+      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],
+
 
       ["Dialogue boost", "dialogue boost voice louder speech hear films lectures interviews quiet voice loud music local files", "#lpDbBtn302"],
       ["Pinch to zoom", "pinch zoom two fingers local video magnify closer read slide scoreboard drag pan", "#lpPinchHint302"],
