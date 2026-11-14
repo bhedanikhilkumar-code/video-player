@@ -37092,6 +37092,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Dialogue boost": ["डायलॉग बूस्ट", "ડાયલૉગ બૂસ્ટ"],
     "Dialogue boost on": ["डायलॉग बूस्ट चालू", "ડાયલૉગ બૂસ્ટ ચાલુ"],
     "Dialogue boost off": ["डायलॉग बूस्ट बंद", "ડાયલૉગ બૂસ્ટ બંધ"],
+    "Pinch to zoom": ["पिंच करके ज़ूम", "પિંચ કરી ઝૂમ"],
+    "Pinch with two fingers to zoom in on the video; drag with one finger while zoomed. Pinch back to 100% to recentre.": ["दो उंगलियों से पिंच करके वीडियो ज़ूम करें; ज़ूम होने पर एक उंगली से खींचें. 100% पर वापस पिंच करने से फिर केंद्र में आता है.", "બે આંગળીથી પિંચ કરી વિડિઓ ઝૂમ કરો; ઝૂમ થયેલ હોય ત્યારે એક આંગળીથી ખેંચો. 100% પર પાછું પિંચ કરતાં ફરી કેન્દ્રમાં આવે."],
+    "Zoom {n}%": ["ज़ूम {n}%", "ઝૂમ {n}%"],
     "Lifts the voice out of loud music and effects in files you open here - for films, lectures and interviews that are hard to hear. Voice cut switches off (they cancel each other), and Mono switches off because one channel has no middle. Hall and Wide still echo the voice a little. The YouTube player's sound cannot be changed (a browser security limit).": ["यहाँ खुली फ़ाइलों में तेज़ म्यूज़िक और इफ़ेक्ट के नीचे दबी आवाज़ को ऊपर उठाता है - फ़िल्म, लेक्चर और इंटरव्यू के लिए. वॉयस कट बंद हो जाता है (दोनों एक-दूसरे को काटते हैं), और Mono भी बंद हो जाता है क्योंकि एक चैनल में बीच नहीं होता. Hall और Wide आवाज़ की हल्की इको रखते हैं. YouTube प्लेयर की आवाज़ नहीं बदली जा सकती (ब्राउज़र सुरक्षा सीमा).", "અહીં ખોલેલી ફાઇલોમાં તેજ મ્યુઝિક અને ઇફેક્ટ નીચે દબાયેલો અવાજ ઉપર ઉઠાવે છે - ફિલ્મ, લેક્ચર અને ઇન્ટરવ્યૂ માટે. વૉઇસ કટ બંધ થઈ જાય છે (બંને એકબીજાને કાઢી નાખે છે), અને Mono પણ બંધ થઈ જાય છે કારણ કે એક ચેનલમાં મધ્ય નથી હોતું. Hall અને Wide અવાજની હળવી ગુંજ રાખે છે. YouTube પ્લેયરનો અવાજ બદલી શકાતો નથી (બ્રાઉઝર સુરક્ષા મર્યાદા)."],
     "Voice cut on": ["आवाज़ कट चालू", "અવાજ કટ ચાલુ"],
     "Voice cut off": ["आवाज़ कट बंद", "અવાજ કટ બંધ"],
@@ -38054,6 +38057,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var dtap300 = 0;
   vid.addEventListener("pointerup", function (e) {
     if (e.pointerType === "mouse") return;
+    if (window.__lpPinchT302 && Date.now() - window.__lpPinchT302 < 500) { dtap300 = 0; return; }
     var now = Date.now();
     if (now - dtap300 < 350) {
       dtap300 = 0;
@@ -38067,6 +38071,73 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   function dtapRender300() { dtapHint300.textContent = T300("Double-tap the video: the left or right side jumps 10 seconds, the middle plays or pauses."); }
   (window.__relang = window.__relang || []).push(dtapRender300);
   dtapRender300();
+
+  // Pinch to zoom (round 302 new 2): the Picture zoom chips set fixed steps, but a
+  // lecture slide or a scoreboard on a phone screen asks for "a little closer, right
+  // there". Two fingers on the local video zoom smoothly between 1x and 3x around the
+  // pinch; one finger while zoomed drags the picture (a small move still counts as a
+  // tap, so double-tap seek and play/pause are untouched); pinching back to 1x
+  // recentres. The zoom resets when a new file opens and Flip keeps working - the
+  // transform carries its --vp-fx/--vp-fy vars. touch-action is pan-y so the page
+  // still scrolls vertically from the video while horizontal drags and pinches are
+  // handled here. Hindi/Gujarati in the main closure, feature finder and What's new.
+  var pinchSt302 = document.createElement("style");
+  pinchSt302.textContent = "#lpVideo{touch-action:pan-y}#lpVideo{transform:translate(var(--vp-ltx,0px),var(--vp-lty,0px)) scale(calc(var(--vp-fx,1)*var(--vp-lz,1)),calc(var(--vp-fy,1)*var(--vp-lz,1)))}";
+  document.head.appendChild(pinchSt302);
+  var pzHint302 = document.createElement("p"); pzHint302.className = "hint"; pzHint302.id = "lpPinchHint302";
+  if (dtapHint300.parentNode) dtapHint300.parentNode.insertBefore(pzHint302, dtapHint300.nextSibling);
+  var pz302 = { pts: {}, n: 0, scale: 1, tx: 0, ty: 0, d0: 0, s0: 1, px: 0, py: 0, moved: false };
+  function pzApply302() {
+    vid.style.setProperty("--vp-lz", pz302.scale);
+    vid.style.setProperty("--vp-ltx", pz302.tx + "px");
+    vid.style.setProperty("--vp-lty", pz302.ty + "px");
+  }
+  function pzClamp302() {
+    var r = vid.getBoundingClientRect();
+    var mx = Math.max(0, (r.width / pz302.scale) * (pz302.scale - 1) / 2), my = Math.max(0, (r.height / pz302.scale) * (pz302.scale - 1) / 2);
+    pz302.tx = Math.max(-mx, Math.min(mx, pz302.tx)); pz302.ty = Math.max(-my, Math.min(my, pz302.ty));
+  }
+  function pzReset302() { pz302.scale = 1; pz302.tx = 0; pz302.ty = 0; pzApply302(); }
+  function pzMid302() {
+    var ks = Object.keys(pz302.pts), a = pz302.pts[ks[0]], b = pz302.pts[ks[1]];
+    return { d: Math.max(10, Math.hypot(a.x - b.x, a.y - b.y)), x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+  vid.addEventListener("pointerdown", function (e) {
+    if (e.pointerType === "mouse") return;
+    pz302.pts[e.pointerId] = { x: e.clientX, y: e.clientY }; pz302.n++;
+    if (pz302.n === 2) { var m = pzMid302(); pz302.d0 = m.d; pz302.s0 = pz302.scale; pz302.px = m.x; pz302.py = m.y; pz302.moved = false; }
+    else if (pz302.n === 1) { pz302.px = e.clientX; pz302.py = e.clientY; pz302.moved = false; }
+  });
+  vid.addEventListener("pointermove", function (e) {
+    if (e.pointerType === "mouse" || !pz302.pts[e.pointerId]) return;
+    pz302.pts[e.pointerId].x = e.clientX; pz302.pts[e.pointerId].y = e.clientY;
+    if (pz302.n === 2) {
+      var m = pzMid302();
+      pz302.scale = Math.max(1, Math.min(3, pz302.s0 * m.d / pz302.d0));
+      pz302.tx += m.x - pz302.px; pz302.ty += m.y - pz302.py; pz302.px = m.x; pz302.py = m.y;
+      if (pz302.scale === 1) { pz302.tx = 0; pz302.ty = 0; }
+      pzClamp302(); pzApply302();
+      window.__lpPinchT302 = Date.now(); pz302.moved = true;
+    } else if (pz302.n === 1 && pz302.scale > 1) {
+      var dx = e.clientX - pz302.px, dy = e.clientY - pz302.py;
+      if (pz302.moved || Math.abs(dx) + Math.abs(dy) > 8) {
+        pz302.moved = true; window.__lpPinchT302 = Date.now();
+        pz302.tx += dx; pz302.ty += dy; pz302.px = e.clientX; pz302.py = e.clientY;
+        pzClamp302(); pzApply302();
+      }
+    }
+  });
+  ["pointerup", "pointercancel"].forEach(function (ev) { vid.addEventListener(ev, function (e) {
+    if (!pz302.pts[e.pointerId]) return;
+    delete pz302.pts[e.pointerId]; pz302.n = Math.max(0, pz302.n - 1);
+    if (pz302.moved) { window.__lpPinchT302 = Date.now(); pz302.moved = false; }
+    if (pz302.n === 1) { var k = Object.keys(pz302.pts)[0]; pz302.px = pz302.pts[k].x; pz302.py = pz302.pts[k].y; }
+    if (pz302.n === 0 && pz302.scale > 1.02) toast(T300("Zoom {n}%").replace("{n}", Math.round(pz302.scale * 100)), 900);
+  }); });
+  vid.addEventListener("loadedmetadata", pzReset302);
+  function pzRender302() { pzHint302.textContent = T300("Pinch with two fingers to zoom in on the video; drag with one finger while zoomed. Pinch back to 100% to recentre."); }
+  (window.__relang = window.__relang || []).push(pzRender302);
+  pzRender302();
   }
   [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3].forEach(function (r) {
     var b = document.createElement("button"); b.className = "chip" + (r === lp.rate ? " active" : ""); b.type = "button"; b.textContent = r + "x";
@@ -41825,6 +41896,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Remember speed per file", "remember speed per file local files lecture song own rate each file", "#lpSpdMemRow299"],
       ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
       ["Dialogue boost", "dialogue boost voice louder speech hear films lectures interviews quiet voice loud music local files", "#lpDbBtn302"],
+      ["Pinch to zoom", "pinch zoom two fingers local video magnify closer read slide scoreboard drag pan", "#lpPinchHint302"],
       ["Vibe presets", "vibe presets nightcore slowed reverb mood one tap speed pitch hall local files", "#lpVibeRow300"],
       ["Double-tap seek", "double tap seek local video jump 10 seconds left right middle play pause touch phone", "#lpDtapHint300"],
       ["Save queue as .m3u", "save queue m3u export download playlist file vlc kodi import other player", "#queueM3uBtn300"],
@@ -44447,6 +44519,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Remember speed per file", "#lpSpdMemRow299");
   window.__vpWnew283("Voice cut", "#lpVcutBtn300");
   window.__vpWnew283("Dialogue boost", "#lpDbBtn302");
+  window.__vpWnew283("Pinch to zoom", "#lpPinchHint302");
   window.__vpWnew283("Vibe presets", "#lpVibeRow300");
   window.__vpWnew283("Double-tap seek", "#lpDtapHint300");
   window.__vpWnew283("Save queue as .m3u", "#queueM3uBtn300");
