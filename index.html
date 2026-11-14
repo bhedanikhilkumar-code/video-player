@@ -4827,7 +4827,26 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var ht = document.createElement("span"); ht.textContent = T("Add to playlist");
     var hx = document.createElement("button"); hx.type = "button"; hx.className = "pl-pop-x"; hx.textContent = "✕"; hx.setAttribute("aria-label", T("Close"));
     hx.addEventListener("click", plPopClose);
-    head.appendChild(ht); head.appendChild(hx); pop.appendChild(head);
+    head.appendChild(ht);
+    // Round 333 new 5: Add to many playlists - the popup closed after one playlist, so
+    // filing a song under both "gym" and "hindi" meant reopening it for each. This chip
+    // keeps the popup open: every tapped playlist takes the video (or the picked batch),
+    // its row ticks and fills in place, and the cross (or a tap outside) closes when you
+    // are done. Off keeps the old one-tap-and-done. The choice is per opening, nothing is
+    // saved. Hindi and Gujarati text, feature finder and What's new included.
+    var keepMany333 = false;
+    var keepBtn333 = document.createElement("button");
+    keepBtn333.type = "button"; keepBtn333.className = "chip"; keepBtn333.id = "plManyOpenBtn333";
+    keepBtn333.textContent = T("Add to many") + ": " + T("off");
+    keepBtn333.setAttribute("aria-pressed", "false");
+    keepBtn333.setAttribute("aria-label", T("Keep the playlist picker open to add to several playlists"));
+    keepBtn333.addEventListener("click", function () {
+      keepMany333 = !keepMany333;
+      keepBtn333.textContent = T("Add to many") + ": " + T(keepMany333 ? "on" : "off");
+      keepBtn333.setAttribute("aria-pressed", String(keepMany333));
+      keepBtn333.classList.toggle("active", keepMany333);
+    });
+    head.appendChild(keepBtn333); head.appendChild(hx); pop.appendChild(head);
     var list = document.createElement("div"); list.className = "pl-pop-list";
     (playlists || []).forEach(function (p, i) {
       var row = document.createElement("button"); row.type = "button"; row.className = "pl-pop-row";
@@ -4836,7 +4855,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var nm = document.createElement("span"); nm.textContent = (has ? "✓ " : "") + p.name;
       var nn = document.createElement("span"); nn.className = "pl-pop-n"; nn.textContent = p.items.length + "/50";
       row.appendChild(nm); row.appendChild(nn);
-      row.addEventListener("click", function () { plRowAddTo(i); });
+      row.addEventListener("click", function () { plRowAddTo(i, keepMany333 === true); });
       list.appendChild(row);
     });
     pop.appendChild(list);
@@ -4865,7 +4884,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     window.addEventListener("scroll", plPopClose, true);
     window.addEventListener("resize", plPopClose);
   }
-  function plRowAddTo(i) {
+  Object.assign(TR_MSG, {
+    "Add to many": ["कई में डालें", "ઘણાંમાં નાખો"],
+    "Keep the playlist picker open to add to several playlists": ["प्लेलिस्ट चुनने वाला खुला रखें ताकि कई प्लेलिस्टों में डाल सकें", "પ્લેલિસ્ટ પસંદગાર ખુલ્લો રાખો જેથી ઘણી પ્લેલિસ્ટોમાં નાખી શકાય"]
+  });
+  function plRowTick333(i, pl) {
+    if (!plPopEl) return;
+    var rows = plPopEl.querySelectorAll(".pl-pop-row");
+    var row = rows && rows[i];
+    if (!row) return;
+    row.classList.add("on");
+    var nm = row.firstChild;
+    if (nm && nm.textContent.indexOf("\u2713 ") !== 0) nm.textContent = "\u2713 " + nm.textContent;
+    var nn = row.querySelector(".pl-pop-n");
+    if (nn) nn.textContent = pl.items.length + "/50";
+  }
+  function plRowAddTo(i, keepOpen333) {
     var item = plPopItem; if (!item) { plPopClose(); return; }
     var pl = playlists[i]; if (!pl) { plPopClose(); return; }
     if (item.multi) {
@@ -4876,13 +4910,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       });
       if (okN) { savePlaylists(); renderPlaylists(); }
       toast(plMultiMsg(pl.name, okN, skN));
+      if (keepOpen333) { plRowTick333(i, pl); return; }
       plPopClose(); return;
     }
-    if (findIn(pl.items, item.id) >= 0) { toast("\"" + pl.name + "\" " + T("already has this video.")); plPopClose(); return; }
-    if (pl.items.length >= 50) { toast("\"" + pl.name + "\" " + T("is full (50 videos).")); plPopClose(); return; }
+    if (findIn(pl.items, item.id) >= 0) { toast("\"" + pl.name + "\" " + T("already has this video.")); if (keepOpen333) { plRowTick333(i, pl); return; } plPopClose(); return; }
+    if (pl.items.length >= 50) { toast("\"" + pl.name + "\" " + T("is full (50 videos).")); if (keepOpen333) return; plPopClose(); return; }
     pl.items.push({ id: item.id, title: item.title || titleFor(item.id) || "" });
     savePlaylists(); renderPlaylists();
     toast(T("Added to ") + "\"" + pl.name + "\".");
+    if (keepOpen333) { plRowTick333(i, pl); return; }
     plPopClose();
   }
   function plMultiMsg(name, ok, sk) {
@@ -43085,6 +43121,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Pick many in Continue watching", "#contManyBtn333"); }, 0); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Only rated in Watch later", "#laterRatedBtn333"); }, 0); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Only rated in Recently watched", "#histRatedBtn333"); }, 0); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Add to many playlists", "#lhPlaylists"); }, 0); });
   window.__vpMainOk325 = true;
 
 
@@ -47148,6 +47185,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Add to many playlists", "add video to many several playlists at once keep picker open file song multiple lists batch", "#lhPlaylists"],
       ["Only rated in Recently watched", "only rated recently watched history filter stars rating starred liked best rated hide unrated find loved", "#histRatedBtn333"],
       ["Only rated in Watch later", "only rated watch later filter stars rating starred liked best rated hide unrated backlog", "#laterRatedBtn333"],
       ["Pick many in Continue watching", "continue watching pick many several bulk select queue remove drop unfinished started half watched tidy resume checkbox", "#contManyBtn333"],
