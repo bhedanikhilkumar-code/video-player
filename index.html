@@ -10085,7 +10085,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var gpSides304 = lh303
       ? T("Gesture pad. Left-handed layout: double-tap the left side to go forward ") + st + T(" seconds, the right side to go back ") + st + T(" seconds on the swapped pad. Swipe up or down to change the volume.")
       : T("Gesture pad. Double-tap the left side to go back ") + st + T(" seconds, the right side to go forward ") + st + T(" seconds. Swipe up or down to change the volume.");
-    if (pad2) pad2.setAttribute("aria-label", gpSides304 + " " + T("Swipe left or right to jump {n} seconds.").replace("{n}", swipeStep266()) + " " + T("Press and hold for {n}x speed.").replace("{n}", typeof rushRate === "function" ? rushRate() : 2) + " " + T("Arrow keys work here too.") + (typeof pinchPadSuffix === "function" ? pinchPadSuffix() : ""));
+    if (pad2) pad2.setAttribute("aria-label", gpSides304 + " " + T("Swipe left or right to jump {n} seconds.").replace("{n}", swipeStep266()) + " " + T("Press and hold for {n}x speed.").replace("{n}", typeof rushRate === "function" ? rushRate() : 2) + " " + T("Arrow keys work here too.") + (typeof pinchPadSuffix === "function" ? pinchPadSuffix() : "") + (typeof window.__vpTripPadSuffix308 === "function" ? " " + window.__vpTripPadSuffix308() : ""));
     var dc = $("dtSeekChips");
     if (dc) [].forEach.call(dc.children, function (c) { var on = Number(c.dataset.v) === st; c.classList.toggle("active", on); c.setAttribute("aria-pressed", on ? "true" : "false"); c.setAttribute("aria-label", T("Double-tap skip") + " " + c.dataset.v + " " + T("seconds")); });
     var sc2 = $("sc2");
@@ -39082,6 +39082,45 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       btn.disabled = busy || !(curId && curId.length === 11);
     }, 1500);
     (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+
+
+  // Triple-tap Cinema mode (round 308 new 3): the gesture pad answers double-taps
+  // (seek), swipes (volume and jumps) and a hold (rush speed), but dimming the room
+  // for a film still meant leaving the pad and finding the Cinema chip. A third
+  // quick tap on the pad now toggles Cinema mode - the same as tapping the chip or
+  // pressing T - with the buzz and flash the pad's other gestures give. The two
+  // double-tap seeks on the way still land, exactly as double-tap seek has always
+  // worked; the third tap only adds the lights. Two-finger pinches are not counted,
+  // so zooming never fires it. The pad's spoken label mentions the gesture. Hindi
+  // and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Triple-tap for Cinema mode": ["ट्रिपल-टैप से सिनेमा मोड", "ટ્રિપલ-ટૅપથી સિનેમા મોડ"],
+    "Triple-tap toggles Cinema mode.": ["ट्रिपल-टैप से सिनेमा मोड बदलता है.", "ટ્રિપલ-ટૅપથી સિનેમા મોડ બદલાય."],
+    "Cinema mode": ["सिनेमा मोड", "સિનેમા મોડ"]
+  });
+  (function () {
+    var pad = $("gesturePad"); if (!pad) return;
+    var downX = 0, downY = 0, seq = [], multi = false;
+    window.__vpTripPadSuffix308 = function () { return T("Triple-tap toggles Cinema mode."); };
+    pad.addEventListener("pointerdown", function (e) {
+      if (!e.isPrimary) { multi = true; seq = []; return; }
+      downX = e.clientX; downY = e.clientY;
+    }, { passive: true });
+    pad.addEventListener("pointerup", function (e) {
+      if (!e.isPrimary) return;
+      if (multi) { multi = false; seq = []; return; }
+      if (Math.abs(e.clientX - downX) > 12 || Math.abs(e.clientY - downY) > 12) { seq = []; return; }
+      var now = Date.now();
+      seq = seq.filter(function (t) { return now - t < 800; });
+      seq.push(now);
+      if (seq.length < 3) return;
+      seq = [];
+      var cine = $("cinemaBtn"); if (!cine) return;
+      cine.click();
+      if (window.__vpBuzz) window.__vpBuzz(12);
+      if (typeof showFlash === "function") showFlash("🎬 " + T("Cinema mode"));
+    });
   })();
 
 })();
