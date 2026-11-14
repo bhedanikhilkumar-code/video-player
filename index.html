@@ -2090,7 +2090,7 @@ setTimeout(done,3000);})();
 
         <div class="ctl-card wide" id="ctl-marks">
           <h3 id="marksH">Saved moments</h3>
-          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button> <button class="chip" id="markPrevBtn" type="button" disabled>⏮ Previous</button> <button class="chip" id="markNextBtn" type="button" disabled>Next ⏭</button> <button class="chip" id="markCopyBtn" type="button" disabled>📋 Copy list</button> <button class="chip" id="markChapBtn" type="button" disabled>🎬 Copy as chapters</button> <button class="chip" id="markTxtBtn" type="button">Save all as text file</button> <button class="chip" id="markPauseBtn" type="button" aria-pressed="false">⏸ Pause at moments: off</button> <button class="chip" id="markClearBtn" type="button" disabled>🗑 Clear moments</button> <button class="chip" id="markShiftBackBtn" type="button" disabled>⏪ Moments -5s</button> <button class="chip" id="markShiftFwdBtn" type="button" disabled>Moments +5s ⏩</button> <button class="chip" id="markRandBtn" type="button" disabled>🎲 Random moment</button></div>
+          <div class="row"><button class="chip" id="markAddBtn" type="button">🔖 Save this moment</button> <button class="chip" id="markPrevBtn" type="button" disabled>⏮ Previous</button> <button class="chip" id="markNextBtn" type="button" disabled>Next ⏭</button> <button class="chip" id="markCopyBtn" type="button" disabled>📋 Copy list</button> <button class="chip" id="markChapBtn" type="button" disabled>🎬 Copy as chapters</button> <button class="chip" id="markTxtBtn" type="button">Save all as text file</button> <button class="chip" id="markPauseBtn" type="button" aria-pressed="false">⏸ Pause at moments: off</button> <button class="chip" id="markClearBtn" type="button" disabled>🗑 Clear moments</button> <button class="chip" id="markShiftBackBtn" type="button" disabled>⏪ Moments -5s</button> <button class="chip" id="markShiftFwdBtn" type="button" disabled>Moments +5s ⏩</button> <button class="chip" id="markRandBtn" type="button" disabled>🎲 Random moment</button> <button class="chip" id="markLinkBtn299" type="button" disabled>🔗 Copy moments link</button></div>
           <details class="mark-paste" id="markPasteBox">
             <summary id="markPasteSum">Add chapters from a typed list</summary>
             <textarea class="note-box" id="markPasteText" rows="4" maxlength="2000" placeholder="0:00 Intro&#10;1:23 Chorus" aria-label="Chapter list"></textarea>
@@ -7350,6 +7350,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var loop298 = null, loopRaw298 = q.get("loop");
     if (loopRaw298) { var lm298 = /^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/.exec(loopRaw298); if (lm298) { var la298 = Number(lm298[1]), lb298 = Number(lm298[2]); if (isFinite(la298) && isFinite(lb298) && la298 >= 0 && lb298 > la298) loop298 = { a: la298, b: lb298 }; } }
     if (loop298) { from = Math.floor(loop298.a); to = null; window.__vpLoopLink298 = loop298; }
+    // Copy moments link (round 299 new 2): a copied moments link carries ?marks=12,45,90
+    // (seconds, comma separated). The times are stashed here and merged into this video's
+    // saved moments by the feature block once every script has run.
+    var marksRaw299 = q.get("marks");
+    if (marksRaw299) {
+      var mp299 = [], seen299 = {};
+      marksRaw299.split(",").forEach(function (p) {
+        var n = Number(p);
+        if (!isFinite(n) || n < 0 || n > 43200) return;
+        n = Math.floor(n);
+        if (seen299[n] || mp299.length >= 30) return;
+        seen299[n] = true; mp299.push(n);
+      });
+      if (mp299.length) window.__vpMarksLink299 = mp299;
+    }
     // Round 268 fix 1: a time inside the link itself (youtu.be/ID?t=90) was dropped when the link
     // came in through ?url= or ?text= - which is what the phone Share sheet and the installed app's
     // share target use - so shared moments started at 0:00. ?from= still wins when both are given.
@@ -36670,6 +36685,54 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (curId && (!duration || pl298.b <= duration)) { abA = pl298.a; abB = pl298.b; abEnabled = true; abLoopCount = 0; updateAB(); }
     }
   })();
+  // Copy moments link (round 299 new 2): saved moments mark the chorus, the drill, the
+  // spot to show a friend - but sending them meant the link plus a typed list of times.
+  // One chip in the Saved moments card copies a link that opens this video with the same
+  // moments already marked (?v=ID&marks=12,45,90, read by the link-param reader beside
+  // ?from=/?to=). Times already saved keep their names; only new times are added, capped
+  // at the same 30 moments per video. Nothing is overwritten. Checked first: the loop link
+  // (round 298) carries one A-B pair and the timestamp link one start time - neither
+  // carries a set of moments. Hindi/Gujarati in the main closure; What's new and feature
+  // finder included.
+  Object.assign(TR_MSG, {
+    "Copy moments link": ["मोमेंट लिंक कॉपी करें", "મોમેન્ટ લિંક કૉપી કરો"],
+    "Copy a link that opens this video with these moments": ["ऐसी लिंक कॉपी करें जो इस वीडियो को इन मोमेंट के साथ खोले", "આ વીડિયોને આ મોમેન્ટ સાથે ખોલે એવી લિંક કૉપી કરો"],
+    "Load a video first, then copy the moments link.": ["पहले कोई वीडियो चलाएं, फिर मोमेंट लिंक कॉपी करें.", "પહેલા કોઈ વીડિયો ચલાવો, પછી મોમેન્ટ લિંક કૉપી કરો."],
+    "Save a moment first, then copy the link.": ["पहले कोई मोमेंट सेव करें, फिर लिंक कॉपी करें.", "પહેલા કોઈ મોમેન્ટ સેવ કરો, પછી લિંક કૉપી કરો."],
+    "Moments link copied - it opens this video with these moments marked.": ["मोमेंट लिंक कॉपी हुई - यह इस वीडियो को इन मोमेंट के साथ खोलती है.", "મોમેન્ટ લિંક કૉપી થઈ - આ વીડિયોને આ મોમેન્ટ સાથે ખોલે છે."],
+    "Moments added from the link: {n}": ["लिंक से मोमेंट जुड़े: {n}", "લિંકમાંથી મોમેન્ટ ઉમેરાયા: {n}"]
+  });
+  (function () {
+    var btn = $("markLinkBtn299"); if (!btn) return;
+    function paint299m() {
+      var n = (curId && marks[curId]) ? marks[curId].length : 0;
+      btn.disabled = !n;
+      btn.textContent = "\uD83D\uDD17 " + T("Copy moments link");
+      btn.setAttribute("aria-label", T("Copy a link that opens this video with these moments"));
+    }
+    btn.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first, then copy the moments link.")); return; }
+      var arr = marks[curId]; if (!arr || !arr.length) { toast(T("Save a moment first, then copy the link.")); return; }
+      var link = location.origin + location.pathname + "?v=" + curId + "&marks=" + arr.map(function (m) { return m.t; }).join(",");
+      vpCopySafe(link, function (ok) { if (ok) toast(T("Moments link copied - it opens this video with these moments marked.")); });
+    });
+    renderMarks = (function (orig) { return function () { var r = orig.apply(this, arguments); paint299m(); return r; }; })(renderMarks);
+    (window.__relang = window.__relang || []).push(paint299m); paint299m();
+    // Import moments that arrived in the page link (?marks=...): the reader above stashed
+    // the times and loaded the video; merge them into this video's saved moments (a time
+    // already saved keeps its name), then save and redraw.
+    if (window.__vpMarksLink299 && curId) {
+      var inc299 = window.__vpMarksLink299; window.__vpMarksLink299 = null;
+      var arr299 = marks[curId] = marks[curId] || [];
+      var added299 = 0;
+      inc299.forEach(function (t) {
+        if (arr299.some(function (m) { return m.t === t; })) return;
+        if (arr299.length >= 30) return;
+        arr299.push({ t: t, name: "" }); added299++;
+      });
+      if (added299) { marksSave(); renderMarks(); toast(T("Moments added from the link: {n}").replace("{n}", added299)); }
+    }
+  })();
   // Volume steps (round 297 new 4): one press of the arrow keys, one swipe on the
   // gestures pad, one wheel scroll or a spoken louder/softer always moved the volume by a
   // fixed five - coarse when a night listener wants 12% not 15%, and fiddly when a
@@ -41134,6 +41197,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Photo note on a video", "photo note picture image attach camera gallery page whiteboard pose diagram per video", "#vphotoRow298"],
       ["Video card", "video card share image picture thumbnail qr poster send friend png now playing", "#vidCardBtn298"],
       ["Playlist default volume", "playlist default volume per playlist loud quiet music lullaby workout level", "#plList"],
+      ["Copy moments link", "copy moments link share saved moments marks friend send url chapters spots", "#markLinkBtn299"],
       ["Alarm fade-in", "alarm fade in gentle wake soft start rising volume gradual morning light sleeper", "#alarmFadeRow297"],
       ["Finder cascade", "finder cascade search everything palette ctrl k results rise stagger entrance rows open soft cascade glass", "#palBtn"],
       ["Loop a moment", "loop a moment repeat section chorus part again and again hands free saved moment a-b between moments replay", "#markList"],
@@ -43674,6 +43738,7 @@ html.low-fx .q-pick-box:hover, html.low-fx .q-pick-box:active, html.calm-motion 
   window.__vpWnew283("Photo note on a video", "#vphotoRow298");
   window.__vpWnew283("Video card", "#vidCardBtn298");
   window.__vpWnew283("Playlist default volume", "#plList");
+  window.__vpWnew283("Copy moments link", "#markLinkBtn299");
 })();
 </script>
 </body>
