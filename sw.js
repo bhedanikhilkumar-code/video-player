@@ -1,5 +1,5 @@
 // Offline app shell is saved during install, before the first lost connection.
-var CACHE = "vp-shell-v11";
+var CACHE = "vp-shell-v12";
 var SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
 self.addEventListener("install", function(e) {
   e.waitUntil(caches.open(CACHE).then(function(cache) { return cache.addAll(SHELL); }).then(function() { return self.skipWaiting(); }));
@@ -46,6 +46,9 @@ self.addEventListener("fetch", function(e) {
       var copy = res.clone();
       e.waitUntil(caches.open(CACHE).then(function(c) { return c.put(key, copy); }));
     }
+    // HTTP failures are still resolved fetches. A saved app must win over a temporary
+    // 404/5xx page just as it wins over a disconnected network. Never cache the error.
+    if (!res.ok) return caches.open(CACHE).then(function(c) { return c.match(key); }).then(function(hit) { return hit || res; });
     return res;
   });
   e.waitUntil(net.catch(function() {}));
