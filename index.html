@@ -2247,6 +2247,8 @@ setTimeout(done,3000);})();
       <h2 id="lpHeading">Play a file with volume boost</h2>
       <input id="lpFile" type="file" multiple accept="video/*,audio/*" aria-label="Choose a video or audio file from your device" hidden>
       <div class="row" id="lpPickRow"><button class="chip" id="lpPickBtn" type="button">📁 Choose files</button><span class="hint" id="lpPickName" role="status">No file chosen</span></div>
+
+      <div class="row" id="lpLinkRow303"><input id="lpLinkIn303" type="url" inputmode="url" autocomplete="off" spellcheck="false" maxlength="2000" placeholder="https://… direct .mp4 / .mp3 link" aria-label="Direct video or audio link"><button class="chip" id="lpLinkGo303" type="button">▶ Play link</button><span class="hint" id="lpLinkMsg303" role="status"></span></div>
       <div class="row music-controls"><button class="chip" id="lpPrev" type="button" disabled>Previous file</button><button class="chip" id="lpNext" type="button" disabled>Next file</button><button class="chip" id="lpPip" type="button" hidden>PiP</button><button class="chip" id="lpCastBtn" type="button" hidden>📺 Cast</button><button class="chip" id="lpClose" type="button" disabled>Close files</button></div>
       <div id="lpQueueWrap" hidden><h3 id="lpQueueH">Selected files</h3><div class="row lp-qmodes"><button class="chip" id="lpShuffleBtn" type="button" aria-pressed="false">Shuffle: off</button><button class="chip" id="lpRepeatBtn" type="button" aria-pressed="false">Repeat all: off</button><button class="chip" id="lpCopyBtn" type="button">Copy list</button><button class="chip" id="lpTxtBtn" type="button">Save list as text file</button><button class="chip" id="lpSortBtn" type="button">Sort A to Z</button><button class="chip" id="lpSizeBtn" type="button">Sort by size</button><button class="chip" id="lpDateBtn" type="button">Sort by date</button></div><ol id="lpQueue" class="lp-filequeue"></ol><p class="hint" id="lpTotalLine" hidden></p><p class="hint" id="lpQueueHint">Files stay on this device. Pick files again after a reload.</p></div>
       <p class="hint" id="lpSessionMsg" role="status">Select one or more local files. Notification and lock-screen controls are local-file only, where supported by your browser. They do not enable screen-off YouTube playback.</p>
@@ -37482,6 +37484,56 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Search is:short / is:long": ["खोज is:short / is:long", "શોધ is:short / is:long"],
     "Sort Watch later and favourites by length": ["बाद में देखें और पसंदीदा को लंबाई से क्रम में लगाएं", "પછી જુઓ અને મનપસંદને લંબાઈ મુજબ ગોઠવો"]
   });
+  // Play a direct link (round 303 new 1): a friend sends the address of a plain media
+  // file (an …mp4 or …mp3 link) and the only way in was saving it first. The local file
+  // card now takes the link itself: paste, Play link, and it plays in the local player
+  // with its sound and picture tools. The page never downloads the file first - the host
+  // streams it straight to the player; a host that refuses cross-site playback gets an
+  // honest message pointing at the downloader. Hindi and Gujarati text, What's new and
+  // feature finder included.
+  Object.assign(TR_MSG, {
+    "Play a direct link": ["सीधा लिंक चलाएं", "સીધી લિંક ચલાવો"],
+    "Play link": ["लिंक चलाएं", "લિંક ચલાવો"],
+    "https://… direct .mp4 / .mp3 link": ["https://… सीधा .mp4 / .mp3 लिंक", "https://… સીધી .mp4 / .mp3 લિંક"],
+    "Direct video or audio link": ["वीडियो या ऑडियो की सीधी लिंक", "વીડિયો કે ઑડિયોની સીધી લિંક"],
+    "Paste a link that starts with http.": ["http से शुरू होने वाली लिंक पेस्ट करें.", "http થી શરૂ થતી લિંક પેસ્ટ કરો."],
+    "Opening the link…": ["लिंक खुल रही है…", "લિંક ખુલી રહી છે…"],
+    "Playing from the link. The sound and picture tools work on it like a picked file.": ["लिंक से चल रहा है. साउंड और पिक्चर टूल इस पर भी चुनी फ़ाइल जैसे चलते हैं.", "લિંકથી ચાલે છે. સાઉંડ અને પિક્ચર ટૂલ આ પર પણ પસંદ કરેલી ફાઇલ જેવા ચાલે છે."],
+    "This link would not play here - the site may not allow playing on other pages. Try the Downloader below instead.": ["यह लिंक यहां नहीं चली - हो सकता है साइट दूसरे पेज पर चलाने न दे. नीचे Downloader आज़माएं.", "આ લિંક અહીં ન ચાલી - કદાચ સાઇટ બીજા પેજ પર ચલાવવા ન દેતી હોય. નીચે Downloader અજમાવો."],
+    "The link player is not ready yet - pick a file once, then try the link.": ["लिंक प्लेयर अभी तैयार नहीं - एक बार फ़ाइल चुनें, फिर लिंक आज़माएं.", "લિંક પ્લેયર અંજી તૈયાર નથી - એક વાર ફાઇલ પસંદ કરો, પછી લિંક અજમાવો."]
+  });
+  (function () {
+    var row = $("lpLinkRow303"), inp = $("lpLinkIn303"), go = $("lpLinkGo303"), msg = $("lpLinkMsg303"), vid = $("lpVideo");
+    if (!row || !inp || !go || !vid) return;
+    function paint() {
+      go.textContent = "▶ " + T("Play link");
+      inp.setAttribute("placeholder", T("https://… direct .mp4 / .mp3 link"));
+      inp.setAttribute("aria-label", T("Direct video or audio link"));
+    }
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+    var watching = false;
+    function play() {
+      var u = (inp.value || "").trim();
+      if (!/^https?:\/\/\S+$/i.test(u)) { msg.textContent = T("Paste a link that starts with http."); inp.focus(); return; }
+      if (!window.__lpShowUrl303 || !window.__lpShowUrl303(u)) { msg.textContent = T("The link player is not ready yet - pick a file once, then try the link."); return; }
+      msg.textContent = T("Opening the link…");
+      watching = true;
+      try { row.scrollIntoView({ behavior: window.vpReducedMotion && window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); } catch (e) {}
+    }
+    go.addEventListener("click", play);
+    inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); play(); } });
+    vid.addEventListener("loadedmetadata", function () {
+      if (!watching) return; watching = false;
+      msg.textContent = T("Playing from the link. The sound and picture tools work on it like a picked file.");
+    });
+    vid.addEventListener("error", function () {
+      if (!watching) return; watching = false;
+      msg.textContent = T("This link would not play here - the site may not allow playing on other pages. Try the Downloader below instead.");
+    });
+    if (window.__vpWnew283) window.__vpWnew283("Play a direct link", "#lpLinkRow303");
+  })();
+
 })();
 
 
@@ -38314,6 +38366,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     $("lpClose").disabled=false; curUrl = url; vid.src = url; vid.hidden = false; ctl.hidden = false; vid.playbackRate = lp.rate;
     [].forEach.call(sp.children, function (c) { c.classList.toggle("active", c.textContent === lp.rate + "x"); });
   }
+  // Round 303 new 1 hook: the direct-link row lives in the main closure (where TR_MSG
+  // is reachable); it plays through this one bridge so the real show() path is used.
+  window.__lpShowUrl303 = function (u) { try { show(u, false); return true; } catch (e) { return false; } };
   var posKey = null, lastPos = 0;
   var localFiles = [], localIndex = -1, session = "mediaSession" in navigator ? navigator.mediaSession : null;
   var sessionMsg = $("lpSessionMsg");
@@ -42059,6 +42114,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Per-video quality memory", "per video quality remember this video 1080 720 480 one blurry upload exception", "#pvQualBtn299"],
       ["Remember speed per file", "remember speed per file local files lecture song own rate each file", "#lpSpdMemRow299"],
       ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
+      ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],
       ["Dialogue boost", "dialogue boost voice louder speech hear films lectures interviews quiet voice loud music local files", "#lpDbBtn302"],
       ["Pinch to zoom", "pinch zoom two fingers local video magnify closer read slide scoreboard drag pan", "#lpPinchHint302"],
       ["Playlist lock", "playlist lock unlock protect accidental delete rename remove videos safe", "#lhPlaylists"],
