@@ -33603,6 +33603,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     setInterval(function () {
       if (curId !== lastId) { lastId = curId; segs = []; segsFor = ""; if (curId) fetchSegs(); }
+      // Round 289 fix 3: the 20-second retry after a failed SponsorBlock fetch never fired -
+      // this interval only refetched when the video CHANGED, so after a failure segsFor stayed
+      // "" for the rest of the video and sponsor skipping stayed silently off. Retry here for
+      // the same video; fetchSegs still enforces the nextTry cooldown.
+      else if (prefs.sponsor287 && curId && !segsFor && !segs.length) fetchSegs();
       if (!prefs.sponsor287 || !curId || !ready || !segs.length || document.hidden) return;
       var t = curTime;
       for (var i = 0; i < segs.length; i++) {
