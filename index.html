@@ -11932,12 +11932,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   if ($("qPickRemoveBtn")) $("qPickRemoveBtn").addEventListener("click", function () {
     if (!qPickNeed()) return;
-    var snapQ = lib.queue.slice(), snapP = qPos, snapSel = qPicked.slice();
+    // Round 297 fix 2: Remove picked never touched the qAfter removal pointer, and
+    // removing the playing row itself left no pointer at all - unlike the single-row
+    // Remove, which remembers the row that took the playing row's place. Seen as: play a
+    // video outside the queue, pick rows above the remembered one, remove them, and Next
+    // skipped one; or pick the playing row, remove it, and Next aimed at a stale row
+    // number from an earlier removal. The pointer now follows its row, a removed playing
+    // row points at the row that took its place, and Undo restores the old pointer.
+    var snapQ = lib.queue.slice(), snapP = qPos, snapSel = qPicked.slice(), sa = qAfter;
     var cur = qPos >= 0 ? lib.queue[qPos] : null;
+    var goneBeforeCur = 0, goneBeforeAfter = 0;
+    lib.queue.forEach(function (it, i) { if (qPicked.indexOf(it) >= 0) { if (i < snapP) goneBeforeCur++; if (i < sa) goneBeforeAfter++; } });
     lib.queue = lib.queue.filter(function (it) { return qPicked.indexOf(it) < 0; });
     qPos = cur ? lib.queue.indexOf(cur) : -1;
+    if (qPos < 0) qAfter = cur ? Math.max(0, snapP - goneBeforeCur) : Math.max(-1, sa - goneBeforeAfter);
     qPicked = []; resetShuffle(); saveLib(); renderLib();
-    toastUndo(T("Removed from queue"), function () { lib.queue = snapQ; qPos = snapP; qPicked = snapSel; saveLib(); renderLib(); }, T("Queue restored"));
+    toastUndo(T("Removed from queue"), function () { lib.queue = snapQ; qPos = snapP; qAfter = sa; qPicked = snapSel; saveLib(); renderLib(); }, T("Queue restored"));
   });
   // Keep only picked (round 292 new 2): the pick bar could drop the picked rows, but
   // cleaning a long queue down to the few videos you actually chose meant picking
@@ -11952,12 +11962,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   if ($("qPickKeepBtn292")) $("qPickKeepBtn292").addEventListener("click", function () {
     if (!qPickNeed()) return;
-    var snapQ = lib.queue.slice(), snapP = qPos, snapSel = qPicked.slice();
+    // Round 297 fix 3: Keep only picked never moved the qAfter removal pointer - the same
+    // hole as Remove picked (fix 2). With the playing video outside the queue, every
+    // unpicked row above the remembered one left while the pointer stayed, so Next aimed
+    // one row late per removed row. The pointer now follows its row (and stays on the row
+    // that shifts into place when its own row leaves, like Remove duplicates), and Undo
+    // restores it.
+    var snapQ = lib.queue.slice(), snapP = qPos, snapSel = qPicked.slice(), sa = qAfter;
     var cur = qPos >= 0 ? lib.queue[qPos] : null;
+    var goneBeforeAfter = 0;
+    if (sa >= 0) lib.queue.forEach(function (it, i) { if (i < sa && qPicked.indexOf(it) < 0 && it !== cur) goneBeforeAfter++; });
     lib.queue = lib.queue.filter(function (it) { return qPicked.indexOf(it) >= 0 || it === cur; });
     qPos = cur ? lib.queue.indexOf(cur) : -1;
+    if (qPos < 0 && sa >= 0) qAfter = Math.max(0, sa - goneBeforeAfter);
     qPicked = []; resetShuffle(); saveLib(); renderLib();
-    toastUndo(T("Kept only the picked videos"), function () { lib.queue = snapQ; qPos = snapP; qPicked = snapSel; saveLib(); renderLib(); }, T("Queue restored"));
+    toastUndo(T("Kept only the picked videos"), function () { lib.queue = snapQ; qPos = snapP; qAfter = sa; qPicked = snapSel; saveLib(); renderLib(); }, T("Queue restored"));
   });
   function updateQProg() {
     if (!qProg) return;
