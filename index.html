@@ -9112,7 +9112,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var btn = $("sleepArm318Btn"), chips = $("sleepArm318Chips");
     if (!btn || !chips) return;
     var HOURS = [20, 21, 22, 23, 0, 1, 2, 3, 4];
-    function hourTxt(h) { var ap = h < 12 ? "am" : "pm", h12 = h % 12; if (h12 === 0) h12 = 12; return h12 + " " + ap; }
+    // Round 352 fix: the chips were hardcoded English ("8 pm", "12 am") even with the app in
+    // Hindi or Gujarati (seen live). In those languages the hour now reads the natural way
+    // (रात 8 / 8 રાત્રે); English keeps the short "8 pm" form.
+    function hourTxt(h) {
+      var loc = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "";
+      if (loc) { var d = new Date(); d.setHours(h, 0, 0, 0); return d.toLocaleTimeString(loc, { hour: "numeric", dayPeriod: "long" }); }
+      var ap = h < 12 ? "am" : "pm", h12 = h % 12; if (h12 === 0) h12 = 12; return h12 + " " + ap;
+    }
     function paint() {
       btn.textContent = T(prefs.sleepArm318.on ? "🌙 Auto sleep timer: on" : "🌙 Auto sleep timer: off");
       btn.setAttribute("aria-pressed", String(prefs.sleepArm318.on));
