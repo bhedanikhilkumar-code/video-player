@@ -43924,6 +43924,72 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     window.addEventListener("load", function () { setTimeout(function () { window.__vpWnew283("Local playback recovery", "#localRecovery346"); }, 1000); });
   })();
 
+  // Round 347: a reviewed M3U/text import for direct-media links, separate from the
+  // YouTube playlist importer. Parsing never fetches the pasted URLs.
+  function parseMediaImport347(text) {
+    var items = [], seen = Object.create(null), skipped = 0, title = "";
+    String(text || "").replace(/^\uFEFF/, "").split(/\r?\n/).forEach(function (line) {
+      line = line.trim(); if (!line) return;
+      if (/^#EXTINF:/i.test(line)) { var comma = line.indexOf(","); title = comma < 0 ? "" : line.slice(comma + 1).trim(); return; }
+      if (line.charAt(0) === "#") return;
+      var clean = cleanMediaShelf346([{ url: line, name: title }]); title = "";
+      if (!clean.length || seen[clean[0].url] || items.length >= 100) { skipped++; return; }
+      seen[clean[0].url] = true; items.push(clean[0]);
+    });
+    return { items: items, skipped: skipped };
+  }
+  Object.assign(TR_MSG, {
+    "Import direct-media playlists": ["सीधे मीडिया की प्लेलिस्ट आयात करें", "સીધા મીડિયાની પ્લેલિસ્ટ આયાત કરો"],
+    "Open an M3U or text file, or paste one link per line. Review before adding to Saved media links. Preview does not contact the media hosts. YouTube links and local file paths are skipped. Up to 100 preview rows; the saved shelf holds 20 links.": ["M3U या टेक्स्ट फ़ाइल खोलें, या हर पंक्ति में एक लिंक पेस्ट करें. सेव मीडिया लिंक में जोड़ने से पहले जाँचें. पूर्वावलोकन मीडिया होस्ट से संपर्क नहीं करता. YouTube लिंक और लोकल फ़ाइल पथ छोड़ दिए जाते हैं. पूर्वावलोकन में 100 पंक्तियाँ; सेव सूची में 20 लिंक आ सकते हैं.", "M3U કે ટેક્સ્ટ ફાઇલ ખોલો, અથવા દરેક લીટીમાં એક લિંક પેસ્ટ કરો. સાચવેલી મીડિયા લિંકમાં ઉમેરતાં પહેલાં તપાસો. પૂર્વદર્શન મીડિયા હોસ્ટનો સંપર્ક કરતું નથી. YouTube લિંક અને સ્થાનિક ફાઇલ પાથ છોડવામાં આવે છે. પૂર્વદર્શનમાં 100 પંક્તિ; સાચવેલી યાદીમાં 20 લિંક રહી શકે છે."],
+    "Choose playlist file": ["प्लेलिस्ट फ़ाइल चुनें", "પ્લેલિસ્ટ ફાઇલ પસંદ કરો"],
+    "Playlist text or direct links": ["प्लेलिस्ट का टेक्स्ट या सीधे लिंक", "પ્લેલિસ્ટનું લખાણ કે સીધી લિંક"],
+    "Preview media links": ["मीडिया लिंक का पूर्वावलोकन", "મીડિયા લિંકનું પૂર્વદર્શન"],
+    "Add selected to saved links": ["चुने लिंक सेव सूची में जोड़ें", "પસંદ કરેલી લિંક સાચવેલી યાદીમાં ઉમેરો"],
+    "Discard preview": ["पूर्वावलोकन हटाएँ", "પૂર્વદર્શન કાઢો"],
+    "No playlist preview yet.": ["अभी प्लेलिस्ट का पूर्वावलोकन नहीं है.", "હજુ પ્લેલિસ્ટનું પૂર્વદર્શન નથી."],
+    "No usable direct-media links found.": ["चलने लायक सीधा मीडिया लिंक नहीं मिला.", "ઉપયોગી સીધી મીડિયા લિંક મળી નથી."],
+    "Preview links": ["पूर्वावलोकन लिंक", "પૂર્વદર્શન લિંક"],
+    "Skipped lines": ["छोड़ी गई पंक्तियाँ", "છોડેલી લીટીઓ"],
+    "Links added": ["जोड़े गए लिंक", "ઉમેરેલી લિંક"],
+    "Already saved or no room": ["पहले से सेव या जगह नहीं", "પહેલેથી સાચવેલી કે જગ્યા નથી"],
+    "Choose a file or paste text under 256 KB.": ["256 KB से छोटी फ़ाइल चुनें या टेक्स्ट पेस्ट करें.", "256 KB કરતાં નાની ફાઇલ પસંદ કરો કે લખાણ પેસ્ટ કરો."],
+    "Could not read this playlist file.": ["यह प्लेलिस्ट फ़ाइल पढ़ी नहीं गई.", "આ પ્લેલિસ્ટ ફાઇલ વાંચી શકાઈ નથી."],
+    "Only a preview is loaded. Nothing has been saved yet.": ["केवल पूर्वावलोकन खुला है. अभी कुछ सेव नहीं हुआ.", "ફક્ત પૂર્વદર્શન ખુલ્યું છે. હજુ કંઈ સાચવ્યું નથી."]
+  });
+  (function () {
+    var anchor = $("mediaShelf346"); if (!anchor) return;
+    var box = document.createElement("details"); box.id = "mediaImport347"; box.className = "faq";
+    box.innerHTML = '<summary></summary><p class="hint"></p><button type="button" class="chip" id="mediaImportFileBtn347"></button><input type="file" id="mediaImportFile347" accept=".m3u,.m3u8,.txt,text/plain,audio/x-mpegurl" hidden><label for="mediaImportText347"></label><textarea id="mediaImportText347" rows="4" maxlength="262144" spellcheck="false"></textarea><div class="row"><button type="button" class="chip" id="mediaImportPreview347"></button><button type="button" class="chip" id="mediaImportDiscard347"></button></div><p id="mediaImportMsg347" class="hint" role="status"></p><ul id="mediaImportRows347"></ul><button type="button" class="chip" id="mediaImportAdd347"></button>';
+    anchor.after(box);
+    var css = document.createElement("style"); css.textContent = '#mediaImport347,#mediaLinkQueue347{padding:14px;margin:12px 0;border:1px solid var(--hairline);border-radius:20px;background:var(--soft)}#mediaImport347 label[for]{display:block;margin-top:12px}#mediaImportText347{width:100%;box-sizing:border-box;border-radius:14px;padding:10px;border:1px solid var(--hairline);color:var(--ink);background:var(--card);font:inherit;min-width:0;resize:vertical}#mediaImportRows347,#mediaLinkQueueRows347{list-style:none;padding:0;display:grid;gap:10px;max-height:380px;overflow:auto}#mediaImportRows347 label{display:flex;align-items:flex-start;gap:10px;padding:10px;border:1px solid var(--hairline);border-radius:14px;background:var(--card);overflow-wrap:anywhere}#mediaImportRows347 span{min-width:0}#mediaImport347 .row,#mediaLinkQueue347 .row{flex-wrap:wrap;gap:8px}html.vp-private #mediaImport347,html.vp-private #mediaLinkQueue347{display:none!important}'; document.head.appendChild(css);
+    var text = $("mediaImportText347"), input = $("mediaImportFile347"), rows = [], skipped = 0, state = "", result = null, request = 0;
+    function readShelf() { try { return cleanMediaShelf346(JSON.parse(localStorage.getItem("vp-media-shelf346.v1") || "[]")); } catch(e) { return []; } }
+    function paint() {
+      box.querySelector("summary").textContent = T("Import direct-media playlists");
+      box.querySelector("p").textContent = T("Open an M3U or text file, or paste one link per line. Review before adding to Saved media links. Preview does not contact the media hosts. YouTube links and local file paths are skipped. Up to 100 preview rows; the saved shelf holds 20 links.");
+      box.querySelector("label[for]").textContent = T("Playlist text or direct links");
+      [["mediaImportFileBtn347","Choose playlist file"],["mediaImportPreview347","Preview media links"],["mediaImportDiscard347","Discard preview"],["mediaImportAdd347","Add selected to saved links"]].forEach(function(x){$(x[0]).textContent=T(x[1]);});
+      $("mediaImportDiscard347").disabled = !rows.length && !text.value;
+      $("mediaImportAdd347").disabled = !rows.some(function(x){return x.picked;});
+      $("mediaImportMsg347").textContent = (result ? T("Links added") + ": " + result.added + " · " + T("Already saved or no room") + ": " + result.ignored : T(state || "No playlist preview yet.")) + (rows.length || skipped ? " · " + T("Preview links") + ": " + rows.length + " · " + T("Skipped lines") + ": " + skipped : "");
+      var ul = $("mediaImportRows347"); ul.textContent = "";
+      rows.forEach(function(item){var li=document.createElement("li"),label=document.createElement("label"),check=document.createElement("input"),span=document.createElement("span"),name=document.createElement("strong"),url=document.createElement("small");check.type="checkbox";check.checked=item.picked;name.textContent=item.name;url.textContent=item.url;url.style.display="block";span.append(name,url);label.append(check,span);li.append(label);ul.append(li);check.addEventListener("change",function(){item.picked=check.checked;$("mediaImportAdd347").disabled=!rows.some(function(x){return x.picked;});});});
+    }
+    function preview(value) {
+      result = null;
+      if (new Blob([value]).size > 262144) { rows=[]; skipped=0; state="Choose a file or paste text under 256 KB."; paint(); return; }
+      var parsed=parseMediaImport347(value); rows=parsed.items.map(function(x){return {url:x.url,name:x.name,picked:true};}); skipped=parsed.skipped;
+      state=rows.length?"Only a preview is loaded. Nothing has been saved yet.":"No usable direct-media links found.";paint();
+    }
+    $("mediaImportPreview347").onclick=function(){request++;preview(text.value);};
+    $("mediaImportDiscard347").onclick=function(){request++;rows=[];skipped=0;state="";result=null;text.value="";input.value="";paint();};
+    $("mediaImportFileBtn347").onclick=function(){input.click();};
+    input.addEventListener("change",async function(){var f=input.files[0],id=++request;input.value="";if(!f)return;if(f.size>262144){rows=[];skipped=0;state="Choose a file or paste text under 256 KB.";paint();return;}try{var raw=await f.text();if(id!==request)return;text.value=raw;preview(raw);}catch(e){if(id!==request)return;rows=[];skipped=0;state="Could not read this playlist file.";paint();}});
+    $("mediaImportAdd347").onclick=function(){var a=readShelf(),added=0,ignored=0;rows.forEach(function(x){if(!x.picked)return;if(a.length>=20||a.some(function(y){return x.url===y.url;})){ignored++;return;}a.push({url:x.url,name:x.name});added++;});try{localStorage.setItem("vp-media-shelf346.v1",JSON.stringify(a));}catch(e){state="Could not save media links. Free some browser storage and try again.";paint();return;}rows.forEach(function(x){if(a.some(function(y){return x.url===y.url;}))x.picked=false;});state="";result={added:added,ignored:ignored};paint();document.dispatchEvent(new Event("vp-media-shelf346-change"));};
+    (window.__relang=window.__relang||[]).push(paint);paint();
+    window.addEventListener("load",function(){setTimeout(function(){window.__vpWnew283("Import direct-media playlists","#mediaImport347");},1230);});
+  })();
+
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -48690,6 +48756,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Remember speed per file", "remember speed per file local files lecture song own rate each file", "#lpSpdMemRow299"],
       ["Voice cut", "voice cut karaoke remove vocals centre middle sing along local files music only instruments", "#lpVcutBtn300"],
       ["Local playback recovery", "local playback recovery retry source reload stalled file direct media error last good position connection", "#localRecovery346"],
+      ["Import direct-media playlists", "m3u m3u8 direct media audio video import playlist preview text links saved shelf review", "#mediaImport347"],
       ["Saved media links", "saved direct media links audio video streams bookmark shelf collection named source library", "#mediaShelf346"],
       ["Play a direct link", "play direct media link mp4 mp3 webm m4a ogg url http stream file address paste online hosted", "#lpLinkRow303"],      ["Double-click full screen", "double click local video full screen toggle desktop mouse picture big cinema", "#lpVideo"],      ["My wallpaper", "my wallpaper own photo picture backdrop background image behind glass personalise", "#wallpaperRow303"],      ["Left-handed layout", "left handed lefty swap gesture pad sides double tap seek left hand thumb", "#leftHandRow303"],      ["My EQ presets", "my eq presets save custom equalizer bass middle treble own named preset local files sound", "#lpEqCustRow303"],      ["Mini player size", "mini player size large bigger floating docked video enlarge small corner standard", "#miniSizeBtn304"],      ["Sleep timer in the mini player", "sleep timer mini player floating bedtime moon chip 15 30 60 minutes off small screen", "#miniSleepBtn304"],      ["History length filter", "history length filter recently watched short long videos under 10 10-30 over 30 minutes find", "#histLenBtn304"],      ["Favourites length filter", "favourites length filter saved short long videos under 10 10-30 over 30 minutes find", "#favLenBtn304"],      ["Playlist length filter", "playlist length filter videos box short long under 10 10-30 over 30 minutes find", "#plList"],
 
