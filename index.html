@@ -2479,7 +2479,7 @@ setTimeout(done,3000);})();
           <button class="chip vs-mic" id="vsMic" type="button" aria-label="Voice search" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg></button>
         </div>
         <span class="hint" id="libSearchMsg" role="status"></span>
-        <div class="row"><button class="chip" id="libNotesBtn" type="button" aria-pressed="false">Include notes: off</button><button class="chip" id="libQueueMatchBtn" type="button" hidden>➕ Queue matches</button><button class="chip" id="libCopyMatchBtn" type="button" hidden>📋 Copy matches</button><button class="chip" id="libPlMatchBtn" type="button" hidden>💾 Save matches as playlist</button></div>
+        <div class="row"><button class="chip" id="libNotesBtn" type="button" aria-pressed="false">Include notes: off</button><button class="chip" id="libQueueMatchBtn" type="button" hidden>➕ Queue matches</button><button class="chip" id="libCopyMatchBtn" type="button" hidden>📋 Copy matches</button><button class="chip" id="libPlMatchBtn" type="button" hidden>💾 Save matches as playlist</button><button class="chip" id="libLaterMatchBtn" type="button" hidden>🕒 Watch later matches</button></div>
         <div id="rsRow" hidden><span class="hint" id="rsLab">Recent:</span><span class="rs-chips" id="rsChips"></span><button class="chip" id="rsClear" type="button">Clear</button></div>
       </div>
       <div class="lib-scope" id="libScope" role="group" aria-label="Search in">
@@ -13431,6 +13431,56 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var text = pool.map(function (it, i) { return (i + 1) + ". " + (it.title || titleFor(it.id) || ("Video " + it.id)) + " - https://youtu.be/" + it.id; }).join("\n");
     (window.vpCopySafe || function (t, cb) { cb(false); })(text, function (ok) { toast(ok ? pool.length + " " + T("matches copied") : T("Could not copy. Try again.")); });
   });
+
+  // Round 358 new 2: save search matches to Watch later. Queue matches parks every hit in
+  // the queue, Copy matches shares the list and Save matches as playlist keeps it, but the
+  // everyday next step - "not now, later" - meant queueing and then Save all to Watch
+  // later. One chip next to them collects the same matches (search text, scope picker and
+  // Include-notes choice, duplicates removed, ones already saved skipped) straight into
+  // Watch later, with undo, and a full shelf says so honestly. Hidden while the search
+  // box is empty. Hindi and Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "🕒 Watch later matches": ["🕒 मिलान बाद में देखें", "🕒 મેળ પછી જુઓ"],
+    "Save search matches to Watch later": ["खोज के मिलान बाद में देखें में सेव करें", "શોધના મેળ પછી જુઓમાં સેવ કરો"],
+    "Save every video matching the search to Watch later": ["खोज से मेल खाते हर वीडियो को बाद में देखें में सेव करें", "શોધ સાથે મેળ ખાતા ੦રેક વીડિયો પછી જુઓમાં સેવ કરો"],
+    "Everything that matches is already in Watch later.": ["मेल खाता सब कुछ पहले से बाद में देखें में है.", "મેળ થતું બધું પહેલેથી પછી જુઓમાં છે."],
+    "video saved to Watch later": ["वीडियो बाद में देखें में सेव हुआ", "વીડિયો પછી જુઓમાં સેવ થયો"],
+    "videos saved to Watch later": ["वीडियो बाद में देखें में सेव हुए", "વીડિયો પછી જુઓમાં સેવ થયા"],
+    "left out - Watch later is full": ["छूट गए - बाद में देखें भरी है", "બદ ગયા - પછી જુઓ ભરાયું છે"],
+    "Watch later restored": ["बाद में देखें वापस लाया गया", "પછી જુઓ પાચું લાવાયું"]
+  });
+  var libLaterMatchBtn = $("libLaterMatchBtn");
+  function libLaterMatchPaint358() { if (libLaterMatchBtn) { libLaterMatchBtn.textContent = T("🕒 Watch later matches"); libLaterMatchBtn.setAttribute("aria-label", T("Save every video matching the search to Watch later")); } }
+  (window.__relang = window.__relang || []).push(libLaterMatchPaint358);
+  libLaterMatchPaint358();
+  function libLaterMatchSync358() { if (libLaterMatchBtn && libSearch) libLaterMatchBtn.hidden = !libSearch.value.trim(); }
+  if (libSearch) {
+    libSearch.addEventListener("input", libLaterMatchSync358);
+    libSearch.addEventListener("keydown", function (e) { if (e.key === "Escape") setTimeout(libLaterMatchSync358, 0); });
+  }
+  if (libLaterMatchBtn) libLaterMatchBtn.addEventListener("click", function () {
+    var q = libSearch ? libSearch.value.trim().toLowerCase() : "";
+    if (!q) { libLaterMatchSync358(); return; }
+    function hit358(it) { return it && it.id && libSearchHit202(it, q); }
+    var pool358 = [];
+    if (libScope === "all" || libScope === "queue") lib.queue.forEach(function (it) { if (hit358(it)) pool358.push(it); });
+    if (libScope === "all" || libScope === "favs") lib.favs.forEach(function (it) { if (hit358(it)) pool358.push(it); });
+    if (libScope === "all" || libScope === "hist") lib.hist.forEach(function (it) { if (hit358(it)) pool358.push(it); });
+    if ((libScope === "all" || libScope === "playlists") && typeof playlists !== "undefined" && playlists) playlists.forEach(function (pl) { pl.items.forEach(function (it) { if (hit358(it)) pool358.push(it); }); });
+    var snap358 = lib.later.slice(), add358 = [], seen358 = {}, full358 = 0;
+    pool358.forEach(function (it) {
+      if (seen358[it.id]) return; seen358[it.id] = 1;
+      if (findIn(lib.later, it.id) >= 0) return;
+      if (lib.later.length + add358.length >= 50) { full358++; return; }
+      add358.push({ id: it.id, title: it.title || "", ts: Date.now() });
+    });
+    if (!add358.length) { showLibErr(T(full358 ? "Watch later is full (50 videos). Remove one first." : "Everything that matches is already in Watch later.")); return; }
+    showLibErr("");
+    add358.forEach(function (x) { lib.later.push(x); if (!x.title && typeof fetchTitle === "function") fetchTitle(x.id); });
+    saveLib(); renderLib();
+    toastUndo((add358.length === 1 ? "1 " + T("video saved to Watch later") : add358.length + " " + T("videos saved to Watch later")) + (full358 ? " · " + full358 + " " + T("left out - Watch later is full") : ""), function () { lib.later = snap358; saveLib(); renderLib(); }, T("Watch later restored"));
+  });
+  setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save search matches to Watch later", "#libLaterMatchBtn"); }, 0);
 
   // Save search matches as a playlist (round 233 new 7): Queue matches parks every hit in
   // the queue and Copy matches shares the list, but keeping the find itself - "my lecture
@@ -49315,6 +49365,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Length on Watch later rows", "watch later length duration minutes how long each row pick fit break short", "#lhLater"],
       ["Length on every row", "length duration minutes how long each row queue favourites history search", "#lhQueue"],
       ["Queue search matches", "queue search results matches word filter bulk add saved videos", "#libQueueMatchBtn"],
+      ["Save search matches to Watch later", "save search matches results watch later bulk add saved videos find hits park later", "#libLaterMatchBtn"],
       ["Pin favourites to the top", "pin favourite top keep important first p pinned", "#lhFavs"],
       ["Pin in Watch later", "pin watch later top keep important first must watch next saved", "#lhLater"],
       ["Pause when headphones disconnect", "pause headphones unplug disconnect bluetooth earphones wire out", "#unplugChk"],
