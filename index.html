@@ -15727,6 +15727,13 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   var THUMB_FALLBACK = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180"><rect width="320" height="180" rx="12" fill="#e8e6f0"/><circle cx="160" cy="90" r="34" fill="#ffffff" opacity="0.85"/><path d="M148 72 L188 90 L148 108 Z" fill="#8a87a0"/></svg>');
   function thumbSet(img, id, size) {
     if (!img) return;
+    // Round 324 fix 1: every list row pointed its thumbnail straight at i.ytimg.com the
+    // moment renderLib ran, so opening Your videos with a long Favourites or Watch later
+    // list fired dozens of eager image requests at once - mobile data spent off-screen
+    // and a low-end phone janking through its first paint. Row thumbnails now load
+    // lazily (only near the viewport) and decode off the main thread; the Data saver
+    // path below is unchanged and still hides them outright.
+    img.loading = "lazy"; img.decoding = "async";
     if (prefs.dataSaver) { img.hidden = true; img.removeAttribute("src"); img.classList.remove("skel-img"); }
     else {
       img.hidden = false;
