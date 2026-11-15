@@ -23,7 +23,7 @@ const server = http.createServer((q, r) => {
     await playerEvent('onReady');await playerEvent('infoDelivery',{currentTime:0,duration:213});await playerEvent('onStateChange',1);
     await page.locator('#drillCard').evaluate(e=>e.open=true);
     await page.locator('#drRow').getByRole('button',{name:'Start drill',exact:true}).click();
-    await playerEvent('infoDelivery',{currentTime:213,duration:213});await playerEvent('onStateChange',0);
+    await page.clock.install();await playerEvent('infoDelivery',{currentTime:213,duration:213});await page.clock.fastForward(600);assert.match(await page.locator('#drMsg').textContent(),/Drill: moment/);await playerEvent('onStateChange',0);
     console.log('Drill after video end:',await page.locator('#drMsg').textContent());
     assert.match(await page.locator('#drMsg').textContent(),/Drill done - all 1 moments replayed/);
     assert.equal(await page.locator('#drRow').getByRole('button',{name:'Start drill',exact:true}).count(),1);
