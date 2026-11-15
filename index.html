@@ -12988,13 +12988,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   if ($("qPickDoneBtn")) $("qPickDoneBtn").addEventListener("click", function () { prefs.qPick = false; qPicked = []; savePrefs(); renderLib(); });
   if ($("qPickTopBtn")) $("qPickTopBtn").addEventListener("click", function () {
     if (!qPickNeed()) return;
+    // Round 415 fix 1: Move to top reordered the whole queue on a plain toast while its
+    // mirror chips on the same bar (Move to end, Play next, Remove, Keep only picked)
+    // all offer Undo - one accidental tap destroyed a carefully built order with no way
+    // back. It now snapshots the queue, its place and the picks first and offers the
+    // same Queue restored Undo toast.
+    var snapQ = lib.queue.slice(), snapP = qPos, snapSel = qPicked.slice();
     var cur = qPos >= 0 ? lib.queue[qPos] : null;
     var sel = lib.queue.filter(function (it) { return qPicked.indexOf(it) >= 0; });
     lib.queue = lib.queue.filter(function (it) { return qPicked.indexOf(it) < 0; });
     lib.queue = sel.concat(lib.queue);
     qPos = cur ? lib.queue.indexOf(cur) : -1;
     qPicked = []; resetShuffle(); saveLib(); renderLib();
-    toast(T("Moved to the top of the queue."));
+    toastUndo(T("Moved to the top of the queue."), function () { lib.queue = snapQ; qPos = snapP; qPicked = snapSel; resetShuffle(); saveLib(); renderLib(); }, T("Queue restored"));
   });
   // Move to end (round 162): the Pick many bar already has Move to top; this is its mirror.
   // Pick the videos you are not in the mood for and send them to the very end of the queue,
