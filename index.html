@@ -7384,6 +7384,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   (function showResume() {
     var r; try { r = JSON.parse(localStorage.getItem(RK) || "null"); } catch (e) {}
     if (!r || !r.id || !(r.t >= 10) || curId) return;
+    // Round 460 fix: only the playing video's own "Mark as watched" chip cleared the saved
+    // resume point. Every other path - the playlist "All watched" batch, list row marks,
+    // an import or a backup restore - left it behind, so the app opened with "Continue
+    // where you left off: ... at 1:30" for a video the library itself calls Watched, and
+    // resuming it re-finished it on the spot. A saved point for a watched video is dropped
+    // here instead, whatever path marked it.
+    var rhi460 = findIn(lib.hist, r.id);
+    if (rhi460 >= 0 && lib.hist[rhi460].done === true) { try { localStorage.removeItem(RK); } catch (e) {} return; }
     resumeRec = r;
     var box = $("resumeBox");
     resumeRender();
