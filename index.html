@@ -20211,6 +20211,20 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       if (im) { if (peek >= 0 && lib.queue[peek]) thumbSet(im, lib.queue[peek].id, "mqdefault.jpg"); else { im.hidden = true; im.removeAttribute("src"); } }
     };
     label(); bar.hidden = false;
+    // Round 413 new 1: say what is coming next. Voice announcements (round 268) read the
+    // title when a video STARTS, but with eyes off the screen an unwanted auto-next pick was
+    // only discovered once it was already playing - too late to cancel it calmly. When the
+    // countdown is long enough to hear a name and act on it (5s or 10s), the next video's
+    // name is read out as the countdown begins, ending well before the Now-playing line of
+    // round 268 reads it again at start. A shuffled pick has no knowable name, so it stays
+    // silent and the bar shows it as before. Checked first: the countdown only ever painted
+    // text (speak268 callers = title and chapter only). No new setting - it rides the Voice
+    // announcements switch. Hindi and Gujarati text inside the main closure, on the card's
+    // hint, in the feature finder and on the What's new card.
+    if (prefs.announce && uSecs >= 5 && peek >= 0 && lib.queue[peek]) {
+      var nxName413 = announceLine268(lib.queue[peek].title, T("Next up: {t}"));
+      if (nxName413) speak268(nxName413);
+    }
     clearInterval(upnextTimer);
     upnextTimer = setInterval(function () {
       if (tk !== upnextToken) { clearInterval(upnextTimer); upnextTimer = 0; return; }
@@ -32439,6 +32453,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "This browser cannot speak.": ["यह ब्राउज़र बोल नहीं सकता.", "આ બ્રાઉઝર બોલી શકતું નથી."],
     "Chapter: {c}": ["अध्याय: {c}", "પ્રકરણ: {c}"],
     "When a new chapter starts it says the chapter name too.": ["नया अध्याय शुरू होने पर अध्याय का नाम भी बोला जाता है.", "નવું પ્રકરણ શરૂ થાય ત્યારે પ્રકરણનું નામ પણ બોલાય છે."]
+    ,"Next up: {t}": ["अगला: {t}", "આગળ: {t}"],
+    "Up next, said out loud": ["अगला वीडियो, बोलकर", "આગળનો વીડિયો, બોલીને"],
+    "And when the up-next countdown is long enough, it names the next video before it starts, so an unwanted pick can be cancelled in time.": ["और जब अगले वीडियो का काउंटडाउन काफ़ी लंबा हो, तो शुरू होने से पहले अगले वीडियो का नाम बोलता है, ताकि न चाहा वीडियो समय पर रद्द किया जा सके.", "અને જ્યારે આગળના વીડિયોનો કાઉન્ટડાઉન પૂરતો લાંબો હોય, ત્યારે શરૂ થાય તે પહેલાં આગળના વીડિયોનું નામ બોલે છે, જેથી ન જોઈતો વીડિયો સમયસર રદ કરી શકાય."]
   });
   (function () {
     var card = card268("announceCard268", "Voice announcements"); if (!card) return;
@@ -32458,7 +32475,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     test.addEventListener("click", function () { if (!speak268(announceLine268(titleFor(curId) || "HD Video Player", T("Now playing: {t}")))) toast(T("This browser cannot speak.")); });
     row.appendChild(chips); row.appendChild(test);
     function paint() {
-      hint.textContent = T("Reads the title out loud when a new video starts, and lowers the video for a moment. Uses your device's voice; nothing is sent anywhere.") + " " + T("When a new chapter starts it says the chapter name too.");
+      hint.textContent = T("Reads the title out loud when a new video starts, and lowers the video for a moment. Uses your device's voice; nothing is sent anywhere.") + " " + T("When a new chapter starts it says the chapter name too.") + " " + T("And when the up-next countdown is long enough, it names the next video before it starts, so an unwanted pick can be cancelled in time.");
       btns.forEach(function (c) { var on = (c.dataset.value === "1") === !!prefs.announce; c.classList.toggle("active", on); c.setAttribute("aria-pressed", on ? "true" : "false"); c.textContent = T(c.dataset.label); });
       test.textContent = T("Hear a test");
     }
@@ -46644,6 +46661,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // the main closure above, before })(); - outside it TR_MSG is out of scope).
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search in your own words", "#palBtn"); }, 1500); });
 
+  // Round 413 new 1: announce through the deferred helper (the round 412 follow-up lesson -
+  // a synchronous unshift before load got pushed past the 10-row cap by the load-time
+  // entries and never showed). Staggered past the earlier load-timed announcements.
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Up next, said out loud", "#announceCard268"); }, 1650); });
+
   window.__vpMainOk325 = true;
 
 
@@ -51079,6 +51101,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Play range", "start end trim play only part of video skip intro outro cut limit section", "#rangeCard268"],
       ["Eye rest", "eye break rest 20-20-20 pause look away tired eyes health reminder", "#eyeCard268"],
       ["Voice announcements", "read title aloud speak announce now playing voice speech driving low vision chapter name", "#announceCard268"],
+      ["Up next, said out loud", "up next said out loud countdown names next video before starts voice announce cancel unwanted pick auto-next", "#announceCard268"],
       ["Preview mode", "sample skim each video seconds then next queue preview trailer", "#previewRow267"],
       ["Brightness swipe", "gesture pad left side swipe up down brightness screen light", "#padBrightRow267"],
       ["Start at", "skip intro cold open first seconds every video start offset", "#startAtRow267"],
@@ -51908,6 +51931,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       "Guest session": "\u092e\u0947\u0939\u092e\u093e\u0928 \u0aae\u0ab9\u0ac7\u0aae\u0abe\u0aa8 mehmaan",
       "Voice control": "\u092c\u094b\u0932\u094b \u0906\u0935\u093e\u091c \u0aac\u0acb\u0ab2\u0acb \u0a85\u0ab5\u0abe\u0a9c bolo awaaz",
       "Voice announcements": "\u092c\u094b\u0932\u0915\u0930 \u0938\u0941\u0928\u093e\u0913 \u0aac\u0acb\u0ab2\u0ac0 \u0ab8\u0a82\u0aad\u0ab3\u0abe\u0ab5\u0acb bol kar sunao",
+      "Up next, said out loud": "\u0905\u0917\u0932\u093e \u092c\u094b\u0932\u0915\u0930 \u0a86\u0a97\u0ab3 \u0aac\u0acb\u0ab2\u0ac0\u0aa8\u0ac7 agla bolkar",
       "Speed ramp": "\u0917\u0924\u093f \u0930\u092b\u094d\u0924\u093e\u0930 \u0a9d\u0aa1\u0aaa \u0a97\u0aa4\u0abf gati raftar",
       "Remember the speed per video": "\u0917\u0924\u093f \u0930\u092b\u094d\u0924\u093e\u0930 \u0a9d\u0aa1\u0aaa \u0a97\u0aa4\u0abf gati raftar",
       "Copy frame": "\u092b\u094b\u091f\u094b \u0924\u0938\u094d\u0935\u0940\u0930 \u0aab\u0acb\u0a9f\u0acb \u0aa4\u0ab8\u0ab5\u0ac0\u0ab0 photo tasvir screenshot",
