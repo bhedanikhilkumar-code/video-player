@@ -8627,8 +8627,40 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     return added;
   }
   try { mergePracticeLoops(JSON.parse(localStorage.getItem(PRACTICE_KEY) || "{}")); } catch (e) {}
+  // Round 407 fix 1: practice loops saved or removed in another tab never reached this
+  // one - the Saved practice loops list and the Loop library kept showing the
+  // start-of-session copy until a reload (the same gap round 383 fix 1 closed for lyrics
+  // and round 389 fix 3 for the Archived shelf; vp-practice-loops.v1 had no storage
+  // listener at all). A baseline-guarded listener mirrors those fixes: a tab holding an
+  // in-flight local edit keeps it for its next save instead of being silently erased;
+  // otherwise the store is re-read with the usual validation and both lists repaint.
+  var practiceBaseline407 = JSON.stringify(practiceLoops);
+  function readPracticeLoops407() {
+    var out = Object.create(null);
+    try {
+      var data = JSON.parse(localStorage.getItem(PRACTICE_KEY) || "{}");
+      if (data && typeof data === "object" && !Array.isArray(data)) Object.keys(data).slice(0, 200).forEach(function (id) {
+        if (!/^[a-zA-Z0-9_-]{11}$/.test(id) || !Array.isArray(data[id])) return;
+        var arr = [];
+        data[id].forEach(function (x) {
+          if (!validPracticeLoop(x) || arr.length >= 12 || arr.some(function (y) { return y.a === x.a && y.b === x.b; })) return;
+          arr.push({ name: x.name.trim().slice(0, 40), a: x.a, b: x.b });
+        });
+        if (arr.length) out[id] = arr;
+      });
+    } catch (e) {}
+    return out;
+  }
+  window.addEventListener("storage", function (e) {
+    if (e.key !== PRACTICE_KEY && e.key !== null) return;
+    if (JSON.stringify(practiceLoops) !== practiceBaseline407) return;
+    practiceLoops = readPracticeLoops407();
+    practiceBaseline407 = JSON.stringify(practiceLoops);
+    renderPracticeLoops();
+    if (window.__vpLoopLibPaint296) window.__vpLoopLibPaint296();
+  });
   function savePracticeLoops() {
-    try { localStorage.setItem(PRACTICE_KEY, JSON.stringify(practiceLoops)); return true; }
+    try { localStorage.setItem(PRACTICE_KEY, JSON.stringify(practiceLoops)); practiceBaseline407 = JSON.stringify(practiceLoops); return true; }
     catch (e) { toast(T("Could not save. Device storage may be full.")); return false; }
   }
   var savedPractice = document.createElement("div"); savedPractice.id = "savedPractice";
@@ -38820,6 +38852,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       });
     }
     (window.__relang = window.__relang || []).push(paint296); paint296();
+    window.__vpLoopLibPaint296 = paint296;
     var prevSave296 = savePracticeLoops;
     savePracticeLoops = function () { var ok = prevSave296(); paint296(); return ok; };
   })();
