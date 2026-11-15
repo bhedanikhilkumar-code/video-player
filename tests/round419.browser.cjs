@@ -63,7 +63,7 @@ const server = http.createServer((q, r) => {
     for (const lang of ['hi', 'gu', 'en']) {
       await languageTap(page);
       assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('vp-prefs.v1')).lang), lang);
-      assert.notEqual(await page.locator('#intervalCard419 summary').textContent(), '');
+      assert.notEqual(await page.locator('#intervalCard419 > summary').textContent(), '');
       const size = await page.locator('#intervalCard419').evaluate(e => ({ width: e.getBoundingClientRect().width, scroll: e.scrollWidth, client: e.clientWidth }));
       assert.ok(size.scroll <= size.client + 1, JSON.stringify(size));
       assert.equal(await page.locator('#ivWork419').isDisabled(), true);
