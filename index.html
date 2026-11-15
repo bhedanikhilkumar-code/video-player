@@ -18658,6 +18658,13 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   if ($("langBtn")) $("langBtn").addEventListener("click", function () { var i = LANGS.indexOf(prefs.lang); prefs.lang = LANGS[(i < 0 ? 0 : i + 1) % LANGS.length]; savePrefs(); applyLang(); });
   applyLang();
   window.__vpApplyLang = applyLang;
+  // Round 438 fix: the first-open language offer reached Gujarati by clicking the
+  // header language button twice, and every click runs a FULL applyLang - measured
+  // ~626 ms of blocked main thread on desktop-class hardware each time, so a first-time
+  // Gujarati visitor's very first tap froze the fresh page for well over a second
+  // (longer on a slow phone). Scripts outside this closure can now set the language
+  // in ONE repaint.
+  window.__vpSetLangOnce = function (lg) { if (LANGS.indexOf(lg) < 0 || prefs.lang === lg) return; prefs.lang = lg; savePrefs(); applyLang(); };
 
   // Continue watching: every video with a saved position, with progress, not just the last one.
   var continueItems;
@@ -55281,6 +55288,9 @@ html.low-fx #vpEndedCard { backdrop-filter: none; -webkit-backdrop-filter: none;
   box.hidden = false;
   function done() { try { localStorage.setItem(KEY, "1"); } catch (e) {} box.hidden = true; }
   function setLang(lg) {
+    // Round 438 fix: one direct set, one repaint - clicking the header button once per
+    // step repainted the whole page up to two times in a row on a visitor's first tap.
+    if (window.__vpSetLangOnce) { window.__vpSetLangOnce(lg); return; }
     var b = document.getElementById("langBtn"); if (!b) return;
     var order = ["en", "hi", "gu"], cur = "en";
     try { var p = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null"); if (p && p.lang) cur = p.lang; } catch (e) {}
