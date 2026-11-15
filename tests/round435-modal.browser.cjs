@@ -38,6 +38,12 @@ const server = http.createServer((q, r) => {
     await page.locator('#markAddBtn').click();await page.locator('#vpAskBg .vp-ask-row button:first-child').click();assert.equal(await page.locator('#vpAskBg').count(),0);
     await page.locator('#markAddBtn').click();await page.keyboard.press('Escape');assert.equal(await page.locator('#vpAskBg').count(),0);assert.equal(await page.locator('#markAddBtn').evaluate(e=>e===document.activeElement),true);
     assert.equal(await page.locator('#playerDock').evaluate(e=>e.matches(':popover-open')),true);
+    for(const lang of ['hi','gu']){
+      for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();
+      await page.locator('#markAddBtn').click();const message=await page.locator('.vp-ask-msg').textContent();assert.ok(message&&!message.includes('Name this moment'));
+      await page.locator('#vpAskBg .vp-ask-row button:first-child').click();
+    }
+
     assert.deepEqual(errors,[]);console.log('Dialog remains above the real mini-player popover; UI save, keyboard focus cycle, Cancel, Escape and focus restoration pass.');
   } finally { await browser.close(); server.close(); }
 })().catch(e => { console.error(e); server.close(); process.exitCode = 1; });
