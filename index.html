@@ -43255,7 +43255,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // favourites'. Hindi and Gujarati text, feature finder and What's new included.
   Object.assign(TR_MSG, {
     "Pick many in Watch later": ["बाद में देखें से कई चुनें", "પછી જુઓમાંથી ઘણાં પસંદ કરો"],
-    "Tap videos to pick them.": ["चुनने के लिए वीडियो पर टैप करें.", "પસંદ કરવા વીડિયો પર ટૅપ કરો."]
+    "Tap videos to pick them.": ["चुनने के लिए वीडियो पर टैप करें.", "પસંદ કરવા વીડિયો પર ટૅપ કરો."],
+    "Archive picked": ["चुने हुए संग्रहित करें", "પસંદ કરેલા સંગ્રહિત કરો"],
+    "Archive picked in Watch later": ["बाद में देखें से कई संग्रहित करें", "પછી જુઓમાંથી ઘણાં સંગ્રહિત કરો"],
+    "Archived rows brought back": ["संग्रहित पंक्तियाँ वापस आईं", "સંગ્રહિત પંક્તિઓ પાછી આવી"]
   });
   var laterPicked332 = [];
   (function () {
@@ -43269,7 +43272,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var count = document.createElement("span"); count.className = "q-pick-count"; count.id = "laterManyCount332";
     bar.appendChild(count);
     function mkB(id, key) { var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = id; bar.appendChild(b); return b; }
-    var bAll = mkB("laterManyAll332", "All"), bNone = mkB("laterManyNone332", "None"), bQueue = mkB("laterManyQueue332", "Queue picked"), bPl = mkB("laterManyPl332", "Add to playlist"), bRm = mkB("laterManyRm332", "Remove"), bDone = mkB("laterManyDone332", "Done");
+    var bAll = mkB("laterManyAll332", "All"), bNone = mkB("laterManyNone332", "None"), bQueue = mkB("laterManyQueue332", "Queue picked"), bPl = mkB("laterManyPl332", "Add to playlist"), bArch = mkB("laterManyArch390", "Archive picked"), bRm = mkB("laterManyRm332", "Remove"), bDone = mkB("laterManyDone332", "Done");
     var laterUl = $("laterList");
     if (laterUl && laterUl.parentNode) laterUl.parentNode.insertBefore(bar, laterUl);
     function on332() { return prefs.laterMany332 === true; }
@@ -43280,7 +43283,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       btn.setAttribute("aria-label", T("Pick many in Watch later") + ": " + T(on332() ? "on" : "off"));
       btn.classList.toggle("active", on332());
       bAll.textContent = T("All"); bNone.textContent = T("None"); bQueue.textContent = T("Queue picked");
-      bPl.textContent = T("Add to playlist"); bRm.textContent = T("Remove"); bDone.textContent = T("Done");
+      bPl.textContent = T("Add to playlist"); bArch.textContent = T("Archive picked"); bRm.textContent = T("Remove"); bDone.textContent = T("Done");
       bar.hidden = !on332();
       if (on332()) { prune332(); count.textContent = laterPicked332.length ? laterPicked332.length + " " + T("picked") : T("Tap videos to pick them."); }
     }
@@ -43340,6 +43343,37 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       var items = lib.later.filter(function (x) { return laterPicked332.indexOf(x.id) >= 0; });
       plRowOpen({ multi: items }, bPl);
     });
+    // Round 390 new 1: Archive picked. The round 388 shelf parks one Watch later row per
+    // tap, so clearing a stale corner of the backlog - ten videos you will not watch soon
+    // but will not delete - still meant ten 📥 trips with ten Undo toasts. The Pick many
+    // bar (this round-332 feature) already batches Queue, Playlist and Remove, but had no
+    // Archive, the one tidy-up the shelf was built for. Archive picked moves every picked
+    // row into the Archived shelf in one go: each entry keeps its title, pin, reason and
+    // snooze exactly like the row button's single move, the 200-entry shelf cap and the
+    // count repaint behave the same, and one Undo brings every row (and the shelf) back
+    // to exactly how they were. Rows already shelved are skipped, never duplicated. The
+    // archive store's functions are main-closure siblings (declared in the round 388
+    // block below), so this click - always after full script run - calls them directly.
+    bArch.addEventListener("click", function () {
+      if (!laterPicked332.length) { toast(T("Tap videos to pick them.")); return; }
+      var snapL = lib.later.slice(), snapA = archData388.slice(), moved = 0;
+      laterPicked332.forEach(function (id) {
+        var li = findIn(lib.later, id); if (li < 0) return;
+        if (archIdx388(id) >= 0) return;
+        var it = lib.later.splice(li, 1)[0];
+        var entry = {}; for (var k in it) if (Object.prototype.hasOwnProperty.call(it, k)) entry[k] = it[k];
+        entry.archTs = Date.now();
+        archData388.unshift(entry); moved++;
+      });
+      if (!moved) { toast(T("Tap videos to pick them.")); return; }
+      if (archData388.length > 200) archData388.length = 200;
+      laterPicked332 = [];
+      saveArch388(); saveLib(); renderLib(); renderArch388(); paintArch388();
+      toastUndo(T("Archived.") + " (" + moved + ")", function () {
+        archData388 = snapA; lib.later = snapL;
+        saveArch388(); saveLib(); renderLib(); renderArch388(); paintArch388();
+      }, T("Archived rows brought back"));
+    });
     bRm.addEventListener("click", function () {
       if (!laterPicked332.length) { toast(T("Tap videos to pick them.")); return; }
       var snapL = lib.later.slice();
@@ -43351,6 +43385,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(function () { paint332(); });
     paint332();
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Pick many in Watch later", "#laterManyBtn332"); }, 700); });
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Archive picked in Watch later", "#laterManyBtn332"); }, 1740); });
   })();
 
   // Round 332 new 2: Pick many in Recently watched. History grew the same one-tap problem
@@ -49799,6 +49834,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Watch later grouped by channel", "watch later group by channel creator folders sections tidy backlog organised", "#laterGroupBtn281"],
       ["Watch later fold", "watch later show all less fold long list 30 rows scroll heavy phone collapse expand", "#laterFoldBtn324"],
       ["Pick many in Watch later", "watch later pick many several bulk select queue playlist remove tidy backlog clean up", "#laterManyBtn332"],
+      ["Archive picked in Watch later", "archive picked many bulk shelve park watch later tidy hide keep saved clean backlog move shelf", "#laterManyBtn332"],
       ["Pick many in Recently watched", "recently watched history pick many several bulk select queue playlist remove tidy clean up", "#histManyBtn332"],
       ["Favourites grouped by channel", "favourites group by channel creator folders sections tidy organise songs lectures", "#favGroupBtn324"],
       ["Hold a row for quick actions", "hold press long press right click row quick actions play now play next add queue watch later favourite remove action sheet", "#library"],
