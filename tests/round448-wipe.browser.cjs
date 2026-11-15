@@ -1,0 +1,16 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p,pick,files,boot})=>{
+ await p.setViewportSize({width:1280,height:1500});assert.equal(await p.locator('#wipeOpen448').isDisabled(),true);
+ async function setup(){await pick(files.slice(0,1));await p.locator('#localCompare445').evaluate(e=>e.open=true);await p.locator('#lcFile445').setInputFiles(files[1]);await p.waitForFunction(()=>document.querySelector('#lcVideo445').readyState>=2);}
+ await setup();await p.locator('#wipeOpen448').click();await p.waitForFunction(()=>document.querySelector('#pairGrid446').classList.contains('wipe448'));assert.equal(await p.locator('#lpVideo').evaluate(v=>v.controls),false);assert.equal(await p.locator('#lcVideo445').evaluate(v=>v.controls),false);
+ await p.locator('#wipePosition448').fill('30');await p.locator('#wipePosition448').dispatchEvent('input');assert.match(await p.locator('#pairGrid446>div').nth(1).evaluate(e=>getComputedStyle(e).clipPath),/30%/);
+ const sizes=await p.evaluate(()=>['lpVideo','lcVideo445'].map(id=>{let r=document.getElementById(id).getBoundingClientRect();return [r.x,r.y,r.width,r.height];}));assert.deepEqual(sizes[0],sizes[1],'Both videos occupy the same frame');
+ await p.locator('#wipePlay448').click();await p.waitForFunction(()=>['lpVideo','lcVideo445'].every(id=>!document.getElementById(id).paused));await p.locator('#wipePause448').click();assert.equal(await p.locator('#lcVideo445').evaluate(v=>v.paused),true);
+ await p.locator('#lpVideo').evaluate(v=>v.currentTime=5);await p.locator('#lcVideo445').evaluate(v=>v.currentTime=18);await p.waitForFunction(()=>['lpVideo','lcVideo445'].every(id=>!document.getElementById(id).seeking));
+ await p.locator('#soundCompare448').evaluate(e=>e.open=true);await p.locator('#acRef448').click();await p.locator('#pairStage446').evaluate(e=>scrollTo({top:scrollY+e.getBoundingClientRect().top-90,behavior:'instant'}));await p.mouse.move(0,0);await p.waitForTimeout(300);await p.screenshot({path:'/downloads/round448-live-wipe-en.png'});
+ await p.locator('#wipeClose448').click();assert.equal(await p.locator('#lpVideo').evaluate(v=>v.controls),true);assert.equal(await p.locator('#lcVideo445').evaluate(v=>v.controls),true);assert.equal(await p.locator('#pairMain446 #lpVideo').count(),1,'Leaving wipe keeps normal paired viewing');
+ await p.locator('#wipeOpen448').click();await p.locator('#pairExit446').click();assert.equal(await p.locator('#pairMain446 #lpVideo').count(),0);assert.equal(await p.locator('#lpVideo').evaluate(v=>v.controls),true);assert.equal(await p.locator('#wipeControls448').isVisible(),false);
+ await p.locator('#wipeOpen448').click();await p.locator('#lcClose445').click();assert.equal(await p.locator('#lpVideo').evaluate(v=>v.controls),true);assert.equal(await p.locator('#wipeOpen448').isDisabled(),true);
+ for(let i=0;i<2;i++){await boot();assert.equal(await p.locator('#wipeControls448').isVisible(),false);assert.equal(await p.locator('#wipeOpen448').isDisabled(),true);}
+ console.log('PASS live wipe equal-frame overlap, divider, linked transport, A/B sound, both exit routes, reference close and fresh/repeat reset.');
+}).catch(e=>{console.error(e);process.exitCode=1;});
