@@ -15859,7 +15859,18 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     var size = bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + " MB" : (bytes / 1024).toFixed(bytes < 10240 ? 1 : 0) + " KB";
     el.textContent = T("App data on this device: {size}").replace("{size}", size);
     el.setAttribute("aria-label", T("How much storage this app uses on this device"));
+    // Round 460 fix: the line counted only localStorage and read "24 KB" while the offline
+    // app shell and saved library pictures quietly held 44 MB in the Cache API (measured
+    // live) - exactly the number someone checks before trusting this device with no backup.
+    // The browser's own estimate adds the cached part after the lists size.
+    if (navigator.storage && navigator.storage.estimate) navigator.storage.estimate().then(function (est) {
+      var extra = est && est.usageDetails && Number(est.usageDetails.caches);
+      if (!(extra > 0)) return;
+      var csize = extra >= 1048576 ? (extra / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(extra / 1024)) + " KB";
+      el.textContent = T("App data on this device: {size}").replace("{size}", size) + " \u00b7 " + T("offline app and pictures: {size}").replace("{size}", csize);
+    }).catch(function () {});
   }
+  Object.assign(TR_MSG, { "offline app and pictures: {size}": ["\u0911\u092b\u093c\u0932\u093e\u0907\u0928 \u0910\u092a \u0914\u0930 \u091a\u093f\u0924\u094d\u0930: {size}", "\u0a91\u0aab\u0ab2\u0abe\u0a87\u0aa8 \u0a8f\u0aaa \u0a85\u0aa8\u0ac7 \u0a9a\u0abf\u0aa4\u0acd\u0ab0\u0acb: {size}"] });
   (window.__relang = window.__relang || []).push(dataSizePaint);
   dataSizePaint();
   if ($("backupNowBtn")) $("backupNowBtn").addEventListener("click", function () { $("libExport").click(); });
