@@ -44877,6 +44877,61 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Voice notes library", "#vnoteLibCard380"); }, 1500); });
 
+  // Notes library (round 381 new 1): a typed note stays with its own video, so the notes
+  // you already wrote were invisible until you loaded each video again or happened to type
+  // a matching word into Find in all notes - the same gap the Saved lyrics (round 377),
+  // Saved moments (round 378) and Voice notes (round 380) libraries closed for their
+  // stores. This card under Find in all notes lists every video with a typed note on this
+  // device - title and the note's first line - and one tap opens that video and brings the
+  // Notes card into view; a tap on the video already loaded just scrolls there. Up to 40
+  // rows, in stored order (notes carry no timestamp); every notes save repaints the list
+  // (notesSave hook), as do a language switch and a save from another tab. The store is
+  // untouched (vp-notes.v1, backup and Reset as before) - the card only reads it. Checked
+  // first: has:note filters a library list search and Find in all notes needs a typed word
+  // - nothing listed every noted video in one place. Hindi and Gujarati text inside the
+  // main closure, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Notes library": ["नोट्स लाइब्रेरी", "નોંધ લાઇબ્રેરી"],
+    "Every video with a note on this device. Tap one to open its video and see the note.": ["इस डिवाइस पर जिन वीडियो में नोट है. किसी पर टैप करते ही उसका वीडियो खुलेगा और नोट दिखेगा.", "આ ડિવાઇસ પર જે વીડિયોમાં નોંધ છે. કોઈ પર ટૅપ કરતાં તેનો વીડિયો ખુલશે અને નોંધ દેખાશે."],
+    "No notes yet. Write one while a video plays.": ["अभी कोई नोट नहीं. वीडियो चलते समय एक लिखें.", "હજી કોઈ નોંધ નથી. વીડિયો ચાલે ત્યારે એક લખો."],
+    "Open this video and see its note": ["यह वीडियो खोलें और इसका नोट देखें", "આ વીડિયો ખોલો અને તેની નોંધ જુઓ"]
+  });
+  (function () {
+    var findBox = $("noteFindBox"); if (!findBox || !findBox.parentNode) return;
+    var NKEY381 = "vp-notes.v1";
+    function readAll381() { try { var m = JSON.parse(localStorage.getItem(NKEY381) || "null"); return (m && typeof m === "object" && !Array.isArray(m)) ? m : {}; } catch (e) { return {}; } }
+    var card = document.createElement("details"); card.className = "note-find"; card.id = "noteLibCard381"; card.style.marginTop = "10px";
+    card.innerHTML = "<summary id='noteLibSum381'></summary><div id='noteLibList381'></div><p class='hint' id='noteLibHint381'></p>";
+    findBox.parentNode.insertBefore(card, findBox.nextSibling);
+    function paintLib() {
+      $("noteLibSum381").textContent = T("Notes library");
+      $("noteLibHint381").textContent = T("Every video with a note on this device. Tap one to open its video and see the note.");
+      var box = $("noteLibList381"); box.textContent = "";
+      var all = readAll381();
+      var ids = Object.keys(all).filter(function (id) { return typeof all[id] === "string" && all[id].trim(); });
+      if (!ids.length) { var p = document.createElement("p"); p.className = "hint"; p.textContent = T("No notes yet. Write one while a video plays."); box.appendChild(p); return; }
+      ids.slice(0, 40).forEach(function (id) {
+        var firstLine = all[id].split("\n")[0].replace(/\s+/g, " ").trim();
+        if (firstLine.length > 60) firstLine = firstLine.slice(0, 60) + "\u2026";
+        var r = document.createElement("div"); r.className = "row"; r.style.marginTop = "8px";
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.style.textAlign = "left";
+        b.textContent = "\uD83D\uDCDD " + (titleFor(id) || id) + " - " + firstLine;
+        b.setAttribute("aria-label", T("Open this video and see its note") + ": " + (titleFor(id) || id));
+        b.addEventListener("click", function () {
+          if (id !== curId) { linkInput.value = "https://youtu.be/" + id; loadVideo(0, null, -1, false); }
+          var nc = $("ctl-notes"); if (nc && nc.scrollIntoView) nc.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "start" });
+        });
+        r.appendChild(b); box.appendChild(r);
+      });
+    }
+    card.addEventListener("toggle", function () { if (card.open) paintLib(); });
+    window.addEventListener("storage", function (e) { if (e && e.key === NKEY381) paintLib(); });
+    notesSave = (function (orig) { return function () { var r = orig.apply(this, arguments); try { paintLib(); } catch (e) {} return r; }; })(notesSave);
+    (window.__relang = window.__relang || []).push(paintLib); paintLib();
+    window.__vpNoteLibPaint381 = paintLib;
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Notes library", "#noteLibCard381"); }, 1500); });
+
   // Round 365 fix 1: this key was registered inside the playlist-row renderer, so on a
   // device with no playlists it never reached TR_MSG and the feature finder (and the old
   // What's new entry) showed the English label in Hindi and Gujarati - seen live as the
@@ -49832,6 +49887,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Saved lyrics library", "saved lyrics library all songs words every video play sing along list", "#lyricLibCard377"],
       ["Saved moments library", "saved moments library all marked videos every video bookmarks spots list jump first moment", "#momLibCard378"],
       ["Voice notes library", "voice notes library all spoken memos audio notes every video listen play recordings microphone", "#vnoteLibCard380"],
+      ["Notes library", "notes library all typed notes every video written list open see note card", "#noteLibCard381"],
       ["Park the playing video", "park playing video not now watch later skip save for later next queue mood", "#parkBtn296"],
       ["Welcome back", "welcome back greeting yesterday watched queue continue resume first open day hello", "#greetCard296"],
       ["Colour-blind safe look", "colour blind color safe palette accent accessibility underline active state hue vision deuteranopia", "#cbSafe296"],
