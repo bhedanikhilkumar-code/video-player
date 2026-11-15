@@ -37556,15 +37556,20 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     lab.parentNode.insertBefore(row, lab.nextSibling);
     var hint = document.createElement("p"); hint.className = "hint"; hint.id = "wakeHint289";
     row.parentNode.insertBefore(hint, row.nextSibling);
-    var chk = row.querySelector("input"), sentinel = null;
+    var chk = row.querySelector("input"), sentinel = null, pending446 = false;
     function localPlaying() { var v = $("lpVideo"); return !!(v && !v.hidden && !v.paused && !v.ended); }
-    function want() { return prefs.wake289 === true && ((window.__vpIsPlaying && window.__vpIsPlaying()) || localPlaying()); }
+    function want() { return prefs.wake289 === true && ((window.__vpIsPlaying && window.__vpIsPlaying()) || localPlaying() || referencePlaying445()); }
     function sync() {
-      if (want() && !sentinel && !document.hidden) {
+      if (want() && !sentinel && !pending446 && !document.hidden) {
+        pending446 = true;
         try {
           var p = navigator.wakeLock.request("screen");
-          if (p && p.then) p.then(function (sn) { sentinel = sn; sn.addEventListener("release", function () { if (sentinel === sn) sentinel = null; }); }, function () {});
-        } catch (e) {}
+          if (p && p.then) p.then(function (sn) {
+            pending446=false;
+            if(!want()||document.hidden){try{sn.release();}catch(e){}return;}
+            sentinel = sn; sn.addEventListener("release", function () { if (sentinel === sn) sentinel = null; });
+          }, function () { pending446=false; }); else pending446=false;
+        } catch (e) { pending446=false; }
       } else if ((!want() || document.hidden) && sentinel) {
         try { sentinel.release(); } catch (e) {}
         sentinel = null;
@@ -37572,6 +37577,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     chk.addEventListener("change", function () { prefs.wake289 = chk.checked; savePrefs(); sync(); });
     document.addEventListener("visibilitychange", function () { setTimeout(sync, 300); });
+    ["play","pause","ended","emptied"].forEach(function(event){document.addEventListener(event,function(e){if(e.target&&["lpVideo","lcVideo445"].indexOf(e.target.id)>=0)setTimeout(sync,0);},true);});
     setInterval(sync, 4000);
     function paint() {
       chk.checked = prefs.wake289 === true;
@@ -48538,6 +48544,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   Object.assign(TR_MSG, {"Reference waits for main buffering": ["संदर्भ मुख्य वीडियो के बफ़र का इंतज़ार करता है", "સંદર્ભ મુખ્ય વીડિયોના બફરની રાહ જુએ છે"]});
   window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Reference waits for main buffering","#localCompare445");},5720);});
+  Object.assign(TR_MSG, {"Screen wake lock covers reference playback": ["संदर्भ प्लेबैक पर भी स्क्रीन जागती है", "સંદર્ભ પ્લેબેકમાં પણ સ્ક્રીન જાગતી રહે છે"]});
+  window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Screen wake lock covers reference playback","#wakeChk289");},5820);});
   // Round 445 fix 2: delayed local artwork must not take back YouTube's media session.
   Object.assign(TR_MSG, {"Local artwork respects the active player": ["लोकल चित्र सक्रिय प्लेयर का ध्यान रखता है", "લોકલ ચિત્ર સક્રિય પ્લેયરનું ધ્યાન રાખે છે"]});
   window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Local artwork respects the active player","#lpVideo");},4720);});
@@ -53053,6 +53061,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Save a paired frame image", "paired frame snapshot export screenshot png reference comparison labelled image", "#pairedCapture446"],
       ["Frame difference inspector", "pixel difference heatmap compare compression edit changed frames threshold amplification local video", "#frameDiff446"],
       ["Reference waits for main buffering", "reference waits for main buffering", "#localCompare445"],
+      ["Screen wake lock covers reference playback", "screen wake lock covers reference playback", "#wakeChk289"],
       ["Compare two device videos", "local device video reference compare two files alignment offset follow main synced playback private", "#localCompare445"],
       ["Local shuffle journey", "local device file shuffle non repeating bag upcoming order previous history back forward heard next cycle music", "#localShuffleJourney445"],
       ["Cancelled file picks keep your queue", "cancel empty file picker keeps active session selected queue", "#lpPickBtn"],
