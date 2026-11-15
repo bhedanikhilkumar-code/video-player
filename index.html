@@ -19850,6 +19850,11 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // Notes: one short private note per YouTube video, saved on this device as you type.
   var NOTES_KEY = "vp-notes.v1", notes = {};
   try { var nIn = JSON.parse(localStorage.getItem(NOTES_KEY) || "null"); if (nIn && typeof nIn === "object" && !Array.isArray(nIn)) notes = nIn; } catch (e) {}
+  // Round 457 fix 2: a note that is not text (a number, list or null left by a bad import or a
+  // damaged store) made the Video task checklist call text.split on it while the main script was
+  // still starting, which stopped everything after it (no player, no queue) for that browser. Only
+  // text notes are kept; the cleaned store is written back so the other readers of vp-notes.v1 agree.
+  (function () { var dirty = false; Object.keys(notes).forEach(function (k) { if (typeof notes[k] !== "string") { delete notes[k]; dirty = true; } }); if (dirty) { try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch (e) {} } })();
   // Round 116: the first library paint ran before the notes were read, so paint the lists
   // again now that the Note pills can show.
   if (typeof renderLib === "function") renderLib();
@@ -27157,7 +27162,7 @@ sel.onchange=paint;card.addEventListener('toggle',function(){if(card.open)paint(
 Object.assign(TR_MSG, {"Video task checklist": ["वीडियो की कार्य सूची", "વીડિયોની કાર્ય યાદી"], "Turn this video into a lesson: add tasks, tick them off, and keep your progress in its private note.": ["इस वीडियो से सीखें: कार्य जोड़ें, पूरे होने पर टिक करें. प्रगति निजी नोट में रहती है.", "આ વીડિયોમાંથી શીખો: કામ ઉમેરો, પૂરું થાય ત્યારે ટિક કરો. પ્રગતિ ખાનગી નોંધમાં રહે છે."], "New task": ["नया कार्य", "નવું કામ"], "Add task": ["कार्य जोड़ें", "કામ ઉમેરો"], "No tasks yet. Add one below or write - [ ] in the note.": ["अभी कोई कार्य नहीं. नीचे जोड़ें या नोट में - [ ] लिखें.", "હજી કોઈ કામ નથી. નીચે ઉમેરો અથવા નોંધમાં - [ ] લખો."], "Tasks completed": ["कार्य पूरे", "કામ પૂરાં"], "Task is too long for this note. Shorten it or make room first.": ["इस नोट में कार्य के लिए जगह कम है. छोटा करें या पहले जगह बनाएं.", "આ નોંધમાં કામ માટે જગ્યા ઓછી છે. નાનું કરો કે પહેલાં જગ્યા બનાવો."], "Checklist uses the same 600-character note and is included in your backup.": ["यह सूची उसी 600-अक्षर के नोट का हिस्सा है और बैकअप में शामिल है.", "આ યાદી એ જ 600-અક્ષરની નોંધનો ભાગ છે અને બૅકઅપમાં સામેલ છે."], "Reopen completed tasks": ["पूरे कार्य फिर खोलें", "પૂરાં કામ ફરી ખોલો"], "Checklist reset": ["कार्य सूची फिर खुली", "કાર્ય યાદી ફરી ખૂલી"]});
 
 (function(){var host=$('notesMoreRow');if(!host)return;var card=document.createElement('details');card.id='videoTasks';card.className='r239-card';card.innerHTML='<summary></summary><p class="hint r239-desc"></p><p class="hint" id="taskProgress" role="status"></p><div id="taskRows"></div><form id="taskForm" class="row"><input class="chip" id="taskInput" maxlength="100" type="text"><button type="submit" class="chip" id="taskAdd"></button></form><button type="button" class="chip" id="taskReset"></button><p class="hint r239-foot"></p>';host.parentNode.insertBefore(card,host.nextSibling);var busy=false;
-function taskLines(){var text=(curId&&notes[curId])||'';return text.split('\n').map(function(line,i){var m=/^(\s*[-*]\s+\[)([ xX])(\]\s*)(.*)$/.exec(line);return m?{index:i,done:m[2].toLowerCase()==='x',label:m[4],prefix:m[1],suffix:m[3]}:null;}).filter(Boolean);}
+function taskLines(){var text=(curId&&notes[curId])||'';if(typeof text!=='string')text='';return text.split('\n').map(function(line,i){var m=/^(\s*[-*]\s+\[)([ xX])(\]\s*)(.*)$/.exec(line);return m?{index:i,done:m[2].toLowerCase()==='x',label:m[4],prefix:m[1],suffix:m[3]}:null;}).filter(Boolean);}
 function paint(){card.querySelector('summary').textContent=T('Video task checklist');card.querySelector('.r239-desc').textContent=T('Turn this video into a lesson: add tasks, tick them off, and keep your progress in its private note.');card.querySelector('.r239-foot').textContent=T('Checklist uses the same 600-character note and is included in your backup.');$('taskInput').placeholder=T('New task');$('taskInput').setAttribute('aria-label',T('New task'));$('taskInput').disabled=!curId;$('taskAdd').textContent=T('Add task');$('taskAdd').disabled=!curId;$('taskReset').textContent=T('Reopen completed tasks');var rows=taskLines(),done=rows.filter(function(t){return t.done;}).length;$('taskReset').hidden=!done;$('taskProgress').textContent=!curId?T('Load a video first.'):rows.length?T('Tasks completed')+': '+done+'/'+rows.length:T('No tasks yet. Add one below or write - [ ] in the note.');$('taskRows').textContent='';rows.forEach(function(t){var label=document.createElement('label');label.className='row hint';label.style.padding='8px 0';var cb=document.createElement('input');cb.type='checkbox';cb.checked=t.done;var span=document.createElement('span');span.textContent=t.label;span.style.textDecoration=t.done?'line-through':'none';label.append(cb,span);$('taskRows').appendChild(label);cb.onchange=function(){noteFlush();var latest=taskLines().filter(function(x){return x.index===t.index;})[0];if(!latest)return;var lines=notes[curId].split('\n');lines[t.index]=latest.prefix+(cb.checked?'x':' ')+latest.suffix+latest.label;write(lines.join('\n'));};});}
 function write(text){if(!curId)return;var b=$('noteBox');b.value=text;b.dispatchEvent(new Event('input'));noteFlush();renderNotes();paint();}
 $('taskForm').onsubmit=function(e){e.preventDefault();if(!curId)return;noteFlush();var text=$('taskInput').value.replace(/[\r\n]/g,' ').trim();if(!text)return;var old=notes[curId]||'',next=old+(old&&!old.endsWith('\n')?'\n':'')+'- [ ] '+text;if(next.length>600){toast(T('Task is too long for this note. Shorten it or make room first.'));return;}write(next);$('taskInput').value='';$('taskInput').focus();};
@@ -41567,7 +41572,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       $("tnoteLibHint382").textContent = T("Every video with a note at a time on this device. Tap one to open the video at its first note.");
       var box382 = $("tnoteLibList382"); box382.textContent = "";
       var all382 = readAll382();
-      var ids382 = Object.keys(all382).filter(function (id) { return Array.isArray(all382[id]) && all382[id].length; });
+      var ids382 = Object.keys(all382).filter(function (id) { return Array.isArray(all382[id]) && all382[id].some(function (n) { return n && typeof n === "object"; }); });
       if (!ids382.length) { var p382 = document.createElement("p"); p382.className = "hint"; p382.textContent = T("No notes at a time yet. Add one while a video plays."); box382.appendChild(p382); return; }
       ids382.sort(function (a, b) {
         var wa = all382[a].reduce(function (m, n) { return Math.max(m, Number(n && n.w) || 0); }, 0);
@@ -41575,7 +41580,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         return wb - wa;
       });
       ids382.slice(0, 40).forEach(function (id) {
-        var arr382 = all382[id].slice().sort(function (a, b) { return (Number(a && a.t) || 0) - (Number(b && b.t) || 0); });
+        var arr382 = all382[id].filter(function (n) { return n && typeof n === "object"; }).sort(function (a, b) { return (Number(a && a.t) || 0) - (Number(b && b.t) || 0); });
         var first382 = arr382[0];
         var r382 = document.createElement("div"); r382.className = "row"; r382.style.marginTop = "8px";
         var b382 = document.createElement("button"); b382.type = "button"; b382.className = "chip"; b382.style.textAlign = "left";
