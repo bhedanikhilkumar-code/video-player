@@ -13220,6 +13220,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // or loses text while folded, the list re-renders once with the cap opened (renderLib
   // calls back into applyLibSearch; the flag then matches, so there is no loop).
   var favSearchOpen219 = false;
+  var archAutoOpen393 = false;
   function applyLibSearch() {
     if (!libSearch) return;
     var qNow = libSearch.value.trim();
@@ -13283,6 +13284,29 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       });
       if (q && scopedC && nc) parts.push(T("Continue watching") + " " + nc);
     }
+    // Round 393 new 2: the Archived shelf joins the search. Until now a parked video was
+    // invisible to the library search box: archive a lecture, search its title later and
+    // the page answered "Nothing matches" while the video sat one tap away. With text in
+    // the box the shelf opens itself when a parked row matches (and closes again when the
+    // box clears, unless you opened it yourself), its rows filter like every other list
+    // and hits count in the summary. The shelf and its heading hide with the other Watch
+    // later parts when the scope picker narrows the search to another list.
+    var archUl393 = $("archList388"), archH393 = $("lhArch388");
+    if (archUl393 && typeof archData388 !== "undefined" && Array.isArray(archData388) && typeof archOpen388 !== "undefined") {
+      if (q && !archOpen388 && archData388.some(function (x) { return libSearchHit202(x, q); })) {
+        archAutoOpen393 = true; archOpen388 = true;
+        if (typeof renderArch388 === "function") renderArch388(); else { archUl393.hidden = false; if (archH393) archH393.hidden = false; }
+        if (typeof paintArch388 === "function") paintArch388();
+      } else if (!q && archAutoOpen393) {
+        archAutoOpen393 = false; archOpen388 = false;
+        if (typeof renderArch388 === "function") renderArch388();
+        if (typeof paintArch388 === "function") paintArch388();
+      }
+      var archScoped393 = inScope("later");
+      if (archH393) archH393.style.display = archScoped393 ? "" : "none";
+      archUl393.style.display = archScoped393 ? "" : "none";
+      if (archOpen388 && archScoped393) filt(archUl393, archData388, "later", "Archived");
+    }
     // Scope picker also narrows the visible sections, so each list heading matches what is searched.
     [["queue", "lhQueue", queueList], ["playlists", "lhPlaylists", plList], ["later", "lhLater", laterList], ["favs", "lhFavs", favList], ["hist", "lhHist", histList]].forEach(function (s) {
       var on = inScope(s[0]);
@@ -13306,7 +13330,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     libSearch.addEventListener("keydown", function (e) {
       if (e.key !== "Enter") return;
       if (!libSearch.value.trim()) return;
-      var uls = [queueList, laterList, favList, histList, $("continueList")], hit = null;
+      var uls = [queueList, laterList, $("archList388"), favList, histList, $("continueList")], hit = null;
       for (var ui = 0; ui < uls.length && !hit; ui++) {
         var ul = uls[ui]; if (!ul) continue;
         var lis = ul.children;
@@ -30322,6 +30346,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // the feature finder keywords and this What's new entry.
   Object.assign(TR_MSG, { "Search is:archived": ["खोज is:archived", "શોધ is:archived"] });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search is:archived", "#sqTip259"); }, 1535); });
+  Object.assign(TR_MSG, { "Search finds the Archived shelf": ["खोज संग्रहीत शेल्फ़ में भी देखती है", "શોધ સંગ્રહિત શેલ્ફમાં પણ જુએ છે"] });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search finds the Archived shelf", "#archList388"); }, 1545); });
   // Search operators tip (round 259 new 2): one line under the library search box that lists
   // the operators; Hindi and Gujarati text, feature finder included.
   Object.assign(TR_MSG, {
@@ -49924,6 +49950,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     }
     var FEATS = [
       ["Archive Watch later rows", "archive watch later park away hide row shelf keep saved unarchive put back clean list tidy backlog", "#laterArchBtn388"],
+      ["Search finds the Archived shelf", "archived shelf search find parked rows hidden library search box title auto open shelf visible again", "#archList388"],,
       ["Find everywhere", "find everywhere search all saved moments timed notes typed notes lyrics one box every store global words all libraries", "#findAllCard388"],
       ["Language on the first open", "language first open pick choose hindi gujarati english welcome new visitor onboarding start fresh install", "#langBtn"],
       ["Recently used in Search", "recently used in search recent actions last picks again repeat ctrl k palette history top", "#palBtn"],
