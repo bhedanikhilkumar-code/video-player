@@ -36951,9 +36951,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   });
   (function () {
     var btn = $("carBtn287"); if (!btn) return;
-    var ov = null, tick = null, on = false;
+    var ov = null, tick = null, on = false, returnFocus431 = null;
     var st = document.createElement("style");
-    st.textContent = "#vpCar287{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;background:rgba(12,16,24,.72);backdrop-filter:blur(28px) saturate(1.5);-webkit-backdrop-filter:blur(28px) saturate(1.5);color:#fff;text-align:center}"
+    st.textContent = "#vpCar287{width:100%;height:100%;max-width:none;max-height:none;margin:0;border:0;box-sizing:border-box;position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;background:rgba(12,16,24,.72);backdrop-filter:blur(28px) saturate(1.5);-webkit-backdrop-filter:blur(28px) saturate(1.5);color:#fff;text-align:center}"
       + "html.high-contrast #vpCar287{background:#000;backdrop-filter:none;-webkit-backdrop-filter:none}"
       + "#vpCar287 .car-title{font-size:clamp(18px,4.5vw,28px);font-weight:700;max-width:92vw;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}"
       + "#vpCar287 .car-row{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap}"
@@ -37004,8 +37004,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (document.activeElement !== vol) vol.value = v ? String(Math.round((v.muted ? 0 : v.volume) * 100)) : mv ? mv.value : "80";
     }
     function open() {
-      if (on) return; on = true;
-      ov = document.createElement("div"); ov.id = "vpCar287"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", T("Car mode"));
+      if (on) return; on = true; returnFocus431 = document.activeElement;
+      ov = document.createElement("dialog"); ov.id = "vpCar287"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", T("Car mode"));
       ov.innerHTML = '<div class="car-title"></div>'
         + '<div class="car-row"><button type="button" class="car-btn car-prev" aria-label="' + T("Previous video in queue") + '">⏮</button>'
         + '<button type="button" class="car-btn car-back" aria-label="' + T("Back {n} seconds").replace("{n}", 10) + '">⏪</button>'
@@ -37016,6 +37016,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         + '<p class="car-hint">' + T("Big controls for the road. Escape or the button below closes.") + '</p>'
         + '<button type="button" class="car-btn car-exit">' + T("Exit car mode") + '</button>';
       document.body.appendChild(ov);
+      ov.addEventListener("cancel", function (e) { e.preventDefault(); close(); });
+      ov.showModal(); ov.querySelector(".car-play").focus();
       ov.querySelector(".car-prev").addEventListener("click", function () { var b = $(localVid() ? "lpPrev" : "prevQueueBtn"); if (b && !b.disabled) b.click(); });
       ov.querySelector(".car-next").addEventListener("click", function () { var b = $(localVid() ? "lpNext" : "nextBtn"); if (b && !b.disabled) b.click(); });
       ov.querySelector(".car-back").addEventListener("click", function () { seekBy(-(prefs.seekStep || 10)); });
@@ -37037,7 +37039,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (!on) return; on = false;
       clearInterval(tick); tick = null;
       document.removeEventListener("keydown", escClose, true);
-      if (ov) { ov.remove(); ov = null; }
+      if (ov) { ov.close(); ov.remove(); ov = null; }
+      if (returnFocus431 && returnFocus431.isConnected) returnFocus431.focus();
+      returnFocus431 = null;
       btn.textContent = T("🚗 Car mode: off"); btn.setAttribute("aria-pressed", "false"); btn.classList.remove("active");
     }
     btn.addEventListener("click", function () { if (on) close(); else open(); });
