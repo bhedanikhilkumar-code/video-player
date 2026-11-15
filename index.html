@@ -48417,6 +48417,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Round 445 fix 2: delayed local artwork must not take back YouTube's media session.
   Object.assign(TR_MSG, {"Local artwork respects the active player": ["लोकल चित्र सक्रिय प्लेयर का ध्यान रखता है", "લોકલ ચિત્ર સક્રિય પ્લેયરનું ધ્યાન રાખે છે"]});
   window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Local artwork respects the active player","#lpVideo");},4720);});
+  Object.assign(TR_MSG, {"Local playback errors stay with their file": ["लोकल प्लेबैक की त्रुटि उसी फ़ाइल के साथ रहती है", "લોકલ પ્લેબેકની ભૂલ એ જ ફાઇલ સાથે રહે છે"]});
+  window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Local playback errors stay with their file","#lpSessionMsg");},4820);});
   // Round 445 fix 1: cancellation keeps the active device-file session intact.
   Object.assign(TR_MSG, {"Cancelled file picks keep your queue": ["फ़ाइल चुनना रद्द करने पर कतार सुरक्षित", "ફાઇલ પસંદગી રદ કરતાં કતાર સુરક્ષિત"]});
   window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Cancelled file picks keep your queue","#lpPickBtn");},4420);});
@@ -49611,7 +49613,14 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint);
     paint();
   })();
-  function localPlay() { var p = vid.play(); if (p && p.catch) p.catch(function(){ sessionMsg.textContent = T("Tap Play on the local player to continue. Your browser blocked automatic playback."); }); }
+  var localPlayRequest445 = 0;
+  function localPlay() {
+    var request=++localPlayRequest445,source=curUrl,p=vid.play();
+    if(p&&p.catch)p.catch(function(error){
+      if(request!==localPlayRequest445||source!==curUrl||vid.getAttribute("src")!==source||vid.hidden||!vid.paused||(error&&error.name==="AbortError"))return;
+      sessionMsg.textContent=T(error&&error.name==="NotAllowedError"?"Tap Play on the local player to continue. Your browser blocked automatic playback.":"This file could not be played. Try a format your browser supports or choose Next file.");
+    });
+  }
   function playLocalAt(i, auto) {
     if (i < 0 || i >= localFiles.length) return;
     saveLocalPositionNow(); localIndex = i; var f = localFiles[i]; posKey = f.name + "|" + f.size;
@@ -52900,6 +52909,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       };
     }
     var FEATS = [
+      ["Local playback errors stay with their file", "local play errors stale rejection autoplay denied unsupported aborted source close", "#lpSessionMsg"],
       ["Local artwork respects the active player", "media session lock screen artwork stale local youtube source switch", "#lpVideo"],
       ["Compare two device videos", "local device video reference compare two files alignment offset follow main synced playback private", "#localCompare445"],
       ["Local shuffle journey", "local device file shuffle non repeating bag upcoming order previous history back forward heard next cycle music", "#localShuffleJourney445"],
