@@ -8734,7 +8734,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         practiceLoops[id].splice(i, 1); if (!practiceLoops[id].length) delete practiceLoops[id];
         if (!savePracticeLoops()) { practiceLoops[id] = old; return; }
         renderPracticeLoops();
-        toastUndo(T("Practice loop removed"), function () { practiceLoops[id] = old; savePracticeLoops(); renderPracticeLoops(); });
+        toastUndo(T("Practice loop removed"), function () {
+          // Restore only this loop. Another tab may have edited this video's other loops.
+          var live421 = (practiceLoops[id] || []).slice();
+          if (live421.some(function (lp) { return lp.a === x.a && lp.b === x.b; })) { toast(T("This loop is already saved.")); return; }
+          if (live421.length >= 12 || (!practiceLoops[id] && Object.keys(practiceLoops).length >= 200)) { toast(T("You can save 12 loops per video. Remove one first.")); return; }
+          var before421 = practiceLoops[id];
+          live421.splice(Math.min(i, live421.length), 0, x); practiceLoops[id] = live421;
+          if (!savePracticeLoops()) { if (before421) practiceLoops[id] = before421; else delete practiceLoops[id]; renderPracticeLoops(); return; }
+          renderPracticeLoops(); toast(T("Practice loop restored"));
+        });
       });
       row.appendChild(play); row.appendChild(del); list.appendChild(row);
     });
