@@ -26357,12 +26357,15 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // had changed since this one loaded (theme, speed, language...). A save now keeps only what THIS tab
   // changed since its last save or load and takes every other setting from storage.
   (function () {
-    var base = {};
+    var base = {}, touched426 = {};
     function snap() { Object.keys(prefs).forEach(function (k) { try { base[k] = JSON.stringify(prefs[k]); } catch (e) {} }); }
     snap();
     var origSave = savePrefs;
     savePrefs = function () {
       try {
+        // Keys differing from the last snapshot before the merge below are this tab's own
+        // picks (round 426 fix 1) - the cross-tab adoption never overrides them.
+        Object.keys(prefs).forEach(function (k) { try { if (JSON.stringify(prefs[k]) !== base[k]) touched426[k] = 1; } catch (e) {} });
         var stored = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
         if (stored && typeof stored === "object" && !Array.isArray(stored)) {
           Object.keys(stored).forEach(function (k) {
@@ -26374,8 +26377,29 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       } catch (e) {}
       var r = origSave.apply(this, arguments); snap(); return r;
     };
+    // Round 426 fix 1: a language or theme picked in one open tab (or the installed app)
+    // never reached the other until a reload, even though lists, notes and stats already
+    // follow each other live. A prefs save from another tab is now adopted here for every
+    // setting this tab has not changed itself since it loaded; a tab's own pick always
+    // wins. Language and theme repaint in place, the rest applies on its next natural use.
+    window.addEventListener("storage", function (e) {
+      if (e.key !== "vp-prefs.v1" || !e.newValue) return;
+      try {
+        var stored = JSON.parse(e.newValue);
+        if (!stored || typeof stored !== "object" || Array.isArray(stored)) return;
+        var langWas = prefs.lang, themeWas = prefs.theme, adopted = false;
+        Object.keys(stored).forEach(function (k) {
+          if (touched426[k] || !(k in prefs) || typeof stored[k] !== typeof prefs[k]) return;
+          var mine; try { mine = JSON.stringify(prefs[k]); } catch (err) { return; }
+          if (JSON.stringify(stored[k]) !== mine) { prefs[k] = stored[k]; adopted = true; }
+        });
+        if (!adopted) return;
+        snap();
+        if (prefs.lang !== langWas) applyLang();
+        if (prefs.theme !== themeWas) applyTheme();
+      } catch (err) {}
+    });
   })();
-
   // Storage check (round 236 new 4): everything the app keeps (lists, notes, history, stats, settings) lives in
   // this browser's storage, which is small (about 5 MB) and fails silently when full. A panel under Playlists
   // adds up the app's own keys, shows the total against a 5 MB budget, lists the five biggest in plain
