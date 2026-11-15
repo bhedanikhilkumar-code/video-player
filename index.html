@@ -46871,6 +46871,98 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint();
     (window.__relang = window.__relang || []).push(paint);
   })();
+  // Round 419: work/rest interval trainer. Separate from Focus sessions: seconds,
+  // optional preparation, no playback changes, pause/resume and stage skip.
+  Object.assign(TR_MSG, {
+    "Interval trainer": ["इंटरवल ट्रेनर", "ઇન્ટરવલ ટ્રેનર"],
+    "Round": ["राउंड", "રાઉન્ડ"],
+    "Alternate timed exercise and rest beside your video. No playback changes. Session only; keep this page open. Phone sleep can delay sounds.": ["वीडियो के साथ समयबद्ध व्यायाम और आराम बारी-बारी करें. प्लेबैक नहीं बदलता. केवल इस सेशन में; पेज खुला रखें. फोन सोने पर आवाज़ देर से आ सकती है.", "વીડિયો સાથે સમયબદ્ધ કસરત અને આરામ વારાફરતી કરો. પ્લેબેક બદલાતું નથી. ફક્ત આ સેશનમાં; પેજ ખુલ્લું રાખો. ફોન સૂઈ જાય તો અવાજ મોડો આવી શકે."],
+    "Exercise seconds": ["व्यायाम के सेकंड", "કસરતની સેકન્ડ"],
+    "Rest seconds": ["आराम के सेकंड", "આરામની સેકન્ડ"],
+    "Prepare seconds": ["तैयारी के सेकंड", "તૈયારીની સેકન્ડ"],
+    "Training rounds": ["व्यायाम के राउंड", "કસરતના રાઉન્ડ"],
+    "Exercise": ["व्यायाम", "કસરત"],
+    "Recovery": ["आराम", "આરામ"],
+    "Get ready": ["तैयार हो जाएं", "તૈયાર થાઓ"],
+    "Intervals complete": ["सभी इंटरवल पूरे", "બધા ઇન્ટરવલ પૂરા"],
+    "Skip interval": ["यह इंटरवल छोड़ें", "આ ઇન્ટરવલ છોડો"],
+    "Sound at interval changes": ["इंटरवल बदलने पर आवाज़", "ઇન્ટરવલ બદલાય ત્યારે અવાજ"],
+    "Use whole seconds: exercise 5-3600, rest 0-3600, prepare 0-60, rounds 1-99.": ["पूरे सेकंड डालें: व्यायाम 5-3600, आराम 0-3600, तैयारी 0-60, राउंड 1-99.", "આખી સેકન્ડ નાખો: કસરત 5-3600, આરામ 0-3600, તૈયારી 0-60, રાઉન્ડ 1-99."],
+    "Interval progress": ["इंटरवल की प्रगति", "ઇન્ટરવલની પ્રગતિ"]
+  });
+  function intervalPlan419(work, rest, prepare, rounds) {
+    if (![work, rest, prepare, rounds].every(Number.isInteger) || work < 5 || work > 3600 || rest < 0 || rest > 3600 || prepare < 0 || prepare > 60 || rounds < 1 || rounds > 99) return null;
+    var stages = [], end = 0;
+    function add(kind, seconds, round) { if (seconds) { end += seconds * 1000; stages.push({ kind: kind, end: end, round: round }); } }
+    add("Get ready", prepare, 0);
+    for (var r = 1; r <= rounds; r++) { add("Exercise", work, r); if (r < rounds) add("Recovery", rest, r); }
+    return stages;
+  }
+  (function () {
+    var host = $("ctl-sound"); if (!host) return;
+    var card = document.createElement("details"); card.id = "intervalCard419"; card.className = "r239-card";
+    card.innerHTML = '<summary></summary><p class="hint r239-desc"></p><div class="interval-grid419">'
+      + '<label><span data-iv419="Exercise seconds"></span><input class="chip" id="ivWork419" type="number" min="5" max="3600" step="1" value="30" inputmode="numeric"></label>'
+      + '<label><span data-iv419="Rest seconds"></span><input class="chip" id="ivRest419" type="number" min="0" max="3600" step="1" value="15" inputmode="numeric"></label>'
+      + '<label><span data-iv419="Prepare seconds"></span><input class="chip" id="ivPrepare419" type="number" min="0" max="60" step="1" value="5" inputmode="numeric"></label>'
+      + '<label><span data-iv419="Training rounds"></span><input class="chip" id="ivRounds419" type="number" min="1" max="99" step="1" value="4" inputmode="numeric"></label></div>'
+      + '<label class="hint" style="display:flex;align-items:center;gap:8px;margin-top:12px"><input id="ivSound419" type="checkbox" checked><span data-iv419="Sound at interval changes"></span></label>'
+      + '<p id="ivStage419" role="status" style="text-align:center;font-weight:750"></p>'
+      + '<div id="ivFace419" role="timer" aria-live="off" style="font-size:2.5rem;font-weight:800;font-variant-numeric:tabular-nums;text-align:center">00:00</div>'
+      + '<progress id="ivProgress419" max="1" value="0" style="width:100%;accent-color:var(--teal)"></progress>'
+      + '<div class="row" style="justify-content:center;flex-wrap:wrap;gap:8px;margin-top:12px"><button type="button" class="chip" id="ivGo419"></button><button type="button" class="chip" id="ivSkip419" disabled></button><button type="button" class="chip" id="ivReset419" disabled></button></div>'
+      + '<p id="ivError419" role="alert" class="hint"></p>';
+    host.appendChild(card);
+    var style = document.createElement("style"); style.textContent = '.interval-grid419{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.interval-grid419 label{display:grid;gap:5px;min-width:0;font-size:.85rem}.interval-grid419 input{width:100%;min-width:0}#ivError419:empty{display:none}'; document.head.appendChild(style);
+    var go = $("ivGo419"), skip = $("ivSkip419"), reset = $("ivReset419"), face = $("ivFace419"), stage = $("ivStage419"), progress = $("ivProgress419");
+    var inputs = [$("ivWork419"), $("ivRest419"), $("ivPrepare419"), $("ivRounds419")];
+    var plan = null, running = false, base = 0, began = 0, timer = null, index = -1, audio = null, totalRounds = 0;
+    function elapsed() { return base + (running ? Math.max(0, Date.now() - began) : 0); }
+    function fmt(ms) { var s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60).toString().padStart(2, "0") + ":" + (s % 60).toString().padStart(2, "0"); }
+    function unlockSound() { if (!$("ivSound419").checked) return; try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); if (audio.state === "suspended") { var p = audio.resume(); if (p && p.catch) p.catch(function () {}); } } catch (e) {} }
+    function cue(done) { if (!$("ivSound419").checked || !audio || audio.state !== "running" || document.hidden) return; try { var o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = done ? 1046 : 784; g.gain.setValueAtTime(0.16, audio.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.3); o.connect(g); g.connect(audio.destination); o.start(); o.stop(audio.currentTime + 0.32); o.onended = function () { o.disconnect(); g.disconnect(); }; } catch (e) {} }
+    function stopTick() { if (timer) clearInterval(timer); timer = null; }
+    function tick(silent) {
+      var spent = elapsed(), next = -1, total = plan ? plan[plan.length - 1].end : 0;
+      if (plan) { next = 0; while (next < plan.length && spent >= plan[next].end) next++; }
+      var complete = !!plan && next === plan.length;
+      if (complete && running) { base = total; running = false; stopTick(); }
+      if (next !== index) { if (index >= 0 && !silent) cue(complete); index = next; }
+      var text = !plan ? T("Ready") : complete ? T("Intervals complete") : T(plan[index].kind) + (plan[index].round ? " · " + T("Round") + " " + plan[index].round + " / " + totalRounds : "");
+      if (plan && !running && !complete) text += " · " + T("Paused");
+      if (stage.textContent !== text) stage.textContent = text;
+      var timeText = fmt(plan && !complete ? plan[index].end - spent : 0); if (face.textContent !== timeText) face.textContent = timeText;
+      progress.max = total || 1; progress.value = Math.min(total, spent);
+      go.textContent = T(running ? "Pause" : plan && !complete ? "Resume" : "Start"); go.setAttribute("aria-pressed", String(running));
+      skip.disabled = !plan || complete; reset.disabled = !plan;
+      inputs.forEach(function (input) { input.disabled = !!plan && !complete; });
+    }
+    function paint() {
+      card.querySelector("summary").textContent = T("Interval trainer");
+      card.querySelector(".r239-desc").textContent = T("Alternate timed exercise and rest beside your video. No playback changes. Session only; keep this page open. Phone sleep can delay sounds.");
+      card.querySelectorAll("[data-iv419]").forEach(function (el) { el.textContent = T(el.dataset.iv419); });
+      skip.textContent = T("Skip interval"); reset.textContent = T("Reset"); progress.setAttribute("aria-label", T("Interval progress"));
+      if ($("ivError419").textContent) $("ivError419").textContent = T("Use whole seconds: exercise 5-3600, rest 0-3600, prepare 0-60, rounds 1-99.");
+      tick(true);
+    }
+    go.addEventListener("click", function () {
+      if (running) { base = elapsed(); running = false; stopTick(); tick(true); return; }
+      if (!plan || index === plan.length) {
+        var values = inputs.map(function (input) { return input.value.trim() === "" ? NaN : Number(input.value); });
+        var next = intervalPlan419.apply(null, values);
+        if (!next) { $("ivError419").textContent = T("Use whole seconds: exercise 5-3600, rest 0-3600, prepare 0-60, rounds 1-99."); return; }
+        plan = next; totalRounds = values[3]; base = 0; index = -1;
+      }
+      $("ivError419").textContent = ""; unlockSound(); began = Date.now(); running = true; stopTick(); timer = setInterval(tick, 200); tick(true);
+    });
+    skip.addEventListener("click", function () { if (!plan || index >= plan.length) return; base = plan[index].end; began = Date.now(); tick(); });
+    reset.addEventListener("click", function () { running = false; stopTick(); plan = null; base = 0; index = -1; $("ivError419").textContent = ""; tick(true); });
+    $("ivSound419").addEventListener("change", function () { if (this.checked) unlockSound(); });
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) tick(true); });
+    window.addEventListener("pagehide", function () { if (audio) { audio.close().catch(function () {}); audio = null; } });
+    paint(); (window.__relang = window.__relang || []).push(paint);
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Interval trainer", "#intervalCard419"); }, 3120); });
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -51242,6 +51334,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var FEATS = [
       ["Stopwatch", "stopwatch timer lap laps split time workout practice measure seconds clock count up timing", "#swCard417"],
       ["Countdown timer", "countdown timer count down minutes beep kitchen cook recipe workout rest break tea egg", "#tmCard418"],
+      ["Interval trainer", "interval workout exercise recovery tabata hiit training seconds rounds rest timer", "#intervalCard419"],
       ["Copy list with lengths", "copy list lengths durations total known length queue watch later favourites history clipboard share plan how long watch time", "#copyQueueBtn"],
       ["Archive Watch later rows", "archive watch later park away hide row shelf keep saved unarchive put back clean list tidy backlog", "#laterArchBtn388"],
       ["Search finds the Archived shelf", "archived shelf search find parked rows hidden library search box title auto open shelf visible again", "#archList388"],
