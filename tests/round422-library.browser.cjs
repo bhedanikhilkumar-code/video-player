@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -29,7 +30,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#clResults422').getByRole('button',{name:'Remove: Guitar warmup',exact:true}).click();assert.equal(await page.locator('#clResults422 article').count(),1);await page.locator('#vpToast button').click();assert.equal(await page.locator('#clResults422 article').count(),2);
     await page.reload();await page.waitForFunction(()=>window.__vpMainOk325);await page.locator('#circuitLibrary422').evaluate(e=>e.open=true);assert.equal(await page.locator('#clResults422 article').count(),2);assert.equal(await page.locator('#controls').evaluate(e=>e.hidden),true);
     await page.reload();await page.waitForFunction(()=>window.__vpMainOk325);await page.locator('#circuitLibrary422').evaluate(e=>e.open=true);assert.equal(await page.locator('#clResults422 article').count(),2);
-    for(const lang of ['en','hi','gu']){for(let i=0;i<3&&await page.locator('html').getAttribute('lang')!==lang;i++)await page.locator('#langBtn').click();await page.setViewportSize({width:390,height:844});await page.locator('#circuitLibrary422').screenshot({path:'/downloads/422-library-'+lang+'.png'});if(lang!=='en')assert.ok(!(await page.locator('#circuitLibrary422 > summary').textContent()).startsWith('Circuit library'));}
+    for(const lang of ['en','hi','gu']){for(let i=0;i<3&&await page.locator('html').getAttribute('lang')!==lang;i++)await languageTap(page);await page.setViewportSize({width:390,height:844});await page.locator('#circuitLibrary422').screenshot({path:'/downloads/422-library-'+lang+'.png'});if(lang!=='en')assert.ok(!(await page.locator('#circuitLibrary422 > summary').textContent()).startsWith('Circuit library'));}
     assert.deepEqual(errors,[]);console.log('Circuit library: available before video load; all-video search, preview, paused open, replacement cancel/confirm, remove Undo, persistence and 390px languages pass.');
   } finally { await browser.close(); server.close(); }
 })().catch(e => { console.error(e); server.close(); process.exitCode = 1; });

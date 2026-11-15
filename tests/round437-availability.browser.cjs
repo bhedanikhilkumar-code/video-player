@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -24,7 +25,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#offlineSessionAll435').click();await page.locator('#offlineSaved435 > summary').click();await page.locator('#offlineSavedName435').fill('Saved warmup');await page.locator('#offlineSavedSave435').click();
     for(const size of [null,7]){
       await corrupt(size);await page.locator('#offlineShelf432 > summary').click();await page.locator('#offlineShelf432 > summary').click();await page.waitForFunction(()=>!document.querySelector('.offline-health437').hidden);assert.match(await page.locator('#offlineSavedRows435 article').textContent(),/Missing or incomplete saved copies: 1/);
-      for(const lang of ['hi','gu','en']){for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();assert.equal(await page.locator('.offline-health437').isVisible(),true);if(lang!=='en')assert.ok(!(await page.locator('.offline-health437').textContent()).includes('Saved copy'));}
+      for(const lang of ['hi','gu','en']){for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await languageTap(page);assert.equal(await page.locator('.offline-health437').isVisible(),true);if(lang!=='en')assert.ok(!(await page.locator('.offline-health437').textContent()).includes('Saved copy'));}
       await page.locator('#offlineFiles432').setInputFiles(fixture);await page.waitForFunction(()=>document.querySelector('.offline-health437').hidden);assert.deepEqual(await bytes(),[wav.length]);assert.ok(!(await page.locator('#offlineSavedRows435 article').textContent()).includes('incomplete saved copies'));
     }
     for(let i=0;i<2;i++){await page.reload();await page.waitForFunction(()=>window.__vpMainOk325);await page.locator('#offlineShelf432').evaluate(e=>e.open=true);await page.waitForFunction(()=>document.querySelectorAll('.offline-health437').length===1);assert.equal(await page.locator('.offline-health437').isVisible(),false);assert.deepEqual(await bytes(),[wav.length]);}

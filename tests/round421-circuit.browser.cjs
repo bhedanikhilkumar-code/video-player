@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -43,7 +44,7 @@ const server = http.createServer((q, r) => {
     assert.match(await page.locator('#circuitStatus421').textContent(),/loop 2 of 2/);
     await page.locator('#abToggle').click();assert.equal(await page.evaluate(()=>window.__vpCircuitActive421()),false);
     await page.locator('#circuitGo421').click();
-    for(const lang of ['hi','gu','en']) {await page.locator('#langBtn').click();await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('html').getAttribute('lang'),lang);assert.notEqual(await page.locator('#circuit421 > summary').textContent(),'');const size=await page.locator('#circuit421').evaluate(e=>({scroll:e.scrollWidth,client:e.clientWidth}));assert.ok(size.scroll<=size.client+1,JSON.stringify(size));}
+    for(const lang of ['hi','gu','en']) {await languageTap(page);await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('html').getAttribute('lang'),lang);assert.notEqual(await page.locator('#circuit421 > summary').textContent(),'');const size=await page.locator('#circuit421').evaluate(e=>({scroll:e.scrollWidth,client:e.clientWidth}));assert.ok(size.scroll<=size.client+1,JSON.stringify(size));}
     await page.evaluate(()=>document.documentElement.classList.add('high-contrast','low-fx','calm-motion'));
     await page.locator('#circuitGo421').click();await page.locator('#circuitGo421').click();await page.locator('#circuitNext421').click();
     await page.reload();await page.waitForFunction(()=>window.__vpMainOk325);assert.equal(await page.evaluate(()=>window.__vpCircuitActive421()),false);

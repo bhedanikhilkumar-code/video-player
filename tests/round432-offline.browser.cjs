@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -30,14 +31,14 @@ const server = http.createServer((q, r) => {
     await page.locator('#lpVideo').evaluate(async v=>{await v.play();});await page.waitForFunction(()=>document.getElementById('lpVideo').currentTime>.1);await page.locator('#lpVideo').evaluate(v=>v.pause());
     await context.setOffline(false);
     await page.setViewportSize({width:390,height:844});
-    for(const lang of ['en','hi','gu']){for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();assert.ok(await page.locator('#offlineShelf432').evaluate(e=>e.scrollWidth<=e.clientWidth+1));if(lang!=='en')assert.ok(!(await page.locator('#offlineShelf432 > summary').textContent()).includes('Offline'));await page.locator('#offlineShelf432').screenshot({path:'/downloads/432-offline-'+lang+'.png'});}
+    for(const lang of ['en','hi','gu']){for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await languageTap(page);assert.ok(await page.locator('#offlineShelf432').evaluate(e=>e.scrollWidth<=e.clientWidth+1));if(lang!=='en')assert.ok(!(await page.locator('#offlineShelf432 > summary').textContent()).includes('Offline'));await page.locator('#offlineShelf432').screenshot({path:'/downloads/432-offline-'+lang+'.png'});}
     // Fail the actual transaction write. No saved row or successful count may leak out.
     await page.evaluate(()=>{window.originalPut432=IDBObjectStore.prototype.put;IDBObjectStore.prototype.put=function(){if(this.name==='files')throw new DOMException('Full','QuotaExceededError');return window.originalPut432.apply(this,arguments);};});
     await page.locator('#offlineFiles432').setInputFiles([{name:'Second.wav',mimeType:'audio/wav',buffer:wav}]);
     await page.waitForFunction(()=>document.getElementById('offlinePick432').disabled===false);await page.waitForTimeout(200);
     assert.equal(await page.locator('.offline-row432').count(),1,'failed transaction must not leave metadata without a file');
     await page.evaluate(()=>{IDBObjectStore.prototype.put=window.originalPut432;});
-    for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!=='en';n++)await page.locator('#langBtn').click();
+    for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!=='en';n++)await languageTap(page);
     await page.locator('.offline-delete432').click();await page.locator('#vpAskBg .vp-ask-row button:first-child').click();assert.equal(await page.locator('.offline-row432').count(),1);
     await page.locator('.offline-delete432').click();await page.locator('#vpAskBg .vp-ask-row button:last-child').click();await page.waitForFunction(()=>!document.querySelector('.offline-row432'));
     assert.match(await page.locator('#offlineStatus432').textContent(),/removed/);

@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -24,7 +25,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#frameBox iframe').evaluate(e=>{window.originalCarFrame432=e;window.originalCarWindow432=e.contentWindow;});
     for(const lang of ['en','hi','gu']){
       await page.setViewportSize({width:390,height:844});
-      for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();
+      for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await languageTap(page);
       await page.locator('#carBtn287').click();
       await page.waitForFunction(()=>document.documentElement.classList.contains('car-video432'));
       assert.equal(await page.locator('#frameBox iframe').evaluate(e=>e===window.originalCarFrame432&&e.contentWindow===window.originalCarWindow432),true,'iframe stays alive, not reparented');

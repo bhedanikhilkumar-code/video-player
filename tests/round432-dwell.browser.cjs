@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -42,7 +43,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#dwellCard432 > summary').click();await page.waitForFunction(()=>document.getElementById('dwellEnable432').getAttribute('aria-pressed')==='false');
     await page.setViewportSize({width:390,height:844});await page.locator('#dwellCard432 > summary').click();
     for(const lang of ['en','hi','gu']){
-      for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();
+      for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await languageTap(page);
       assert.ok(await page.locator('#dwellCard432').evaluate(e=>e.scrollWidth<=e.clientWidth+1));
       if(lang!=='en')assert.ok(!(await page.locator('#dwellCard432 > summary').textContent()).includes('Pointer'));
       await page.locator('#dwellCard432').screenshot({path:'/downloads/432-dwell-local-'+lang+'.png'});

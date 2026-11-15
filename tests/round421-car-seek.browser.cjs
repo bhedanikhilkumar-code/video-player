@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -24,7 +25,7 @@ const server = http.createServer((q, r) => {
     assert.equal(await page.locator('.car-back').getAttribute('aria-label'),'Back 30 seconds');assert.equal(await page.locator('.car-fwd').getAttribute('aria-label'),'Forward 30 seconds');
     assert.match(await page.locator('.car-back').textContent(),/30/);assert.match(await page.locator('.car-fwd').textContent(),/30/);
     await page.locator('.car-exit').click();
-    for(const lang of ['hi','gu']){await page.locator('#langBtn').click();await page.locator('#carBtn287').click();assert.match(await page.locator('.car-back').getAttribute('aria-label'),/30/);assert.match(await page.locator('.car-fwd').getAttribute('aria-label'),/30/);await page.locator('.car-exit').click();}
+    for(const lang of ['hi','gu']){await languageTap(page);await page.locator('#carBtn287').click();assert.match(await page.locator('.car-back').getAttribute('aria-label'),/30/);assert.match(await page.locator('.car-fwd').getAttribute('aria-label'),/30/);await page.locator('.car-exit').click();}
     assert.deepEqual(errors,[]);console.log('Car seek buttons announce/show the selected 30-second step in English, Hindi and Gujarati.');
   } finally { await browser.close(); server.close(); }
 })().catch(e => { console.error(e); server.close(); process.exitCode = 1; });

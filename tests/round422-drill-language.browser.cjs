@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -23,10 +24,10 @@ const server = http.createServer((q, r) => {
     await playerEvent('onReady');await playerEvent('infoDelivery',{currentTime:0,duration:213});await playerEvent('onStateChange',1);
     await page.locator('#drillCard').evaluate(e=>e.open=true);
     await page.locator('#drRow').getByRole('button',{name:'Start drill',exact:true}).click();
-    await page.locator('#langBtn').click();assert.equal(await page.locator('html').getAttribute('lang'),'hi');assert.match(await page.locator('#drMsg').textContent(),/ड्रिल: मोमेंट/);
-    await page.locator('#langBtn').click();assert.equal(await page.locator('html').getAttribute('lang'),'gu');assert.match(await page.locator('#drMsg').textContent(),/ડ્રિલ: મોમેન્ટ/);
-    await page.locator('#langBtn').click();await playerEvent('onStateChange',0);assert.match(await page.locator('#drMsg').textContent(),/Drill done - all 1/);
-    await page.locator('#langBtn').click();assert.match(await page.locator('#drMsg').textContent(),/ड्रिल पूरी/);await page.locator('#langBtn').click();assert.match(await page.locator('#drMsg').textContent(),/ડ્રિલ પૂરી/);
+    await languageTap(page);assert.equal(await page.locator('html').getAttribute('lang'),'hi');assert.match(await page.locator('#drMsg').textContent(),/ड्रिल: मोमेंट/);
+    await languageTap(page);assert.equal(await page.locator('html').getAttribute('lang'),'gu');assert.match(await page.locator('#drMsg').textContent(),/ડ્રિલ: મોમેન્ટ/);
+    await languageTap(page);await playerEvent('onStateChange',0);assert.match(await page.locator('#drMsg').textContent(),/Drill done - all 1/);
+    await languageTap(page);assert.match(await page.locator('#drMsg').textContent(),/ड्रिल पूरी/);await languageTap(page);assert.match(await page.locator('#drMsg').textContent(),/ડ્રિલ પૂરી/);
     assert.deepEqual(errors,[]);console.log('Moment drill live progress and completion translate when switching languages mid-session.');
   } finally { await browser.close(); server.close(); }
 })().catch(e => { console.error(e); server.close(); process.exitCode = 1; });

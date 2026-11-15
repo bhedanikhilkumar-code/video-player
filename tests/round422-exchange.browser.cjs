@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -36,7 +37,7 @@ const server = http.createServer((q, r) => {
     // Two identical keys/names in one file must reject the whole import, not silently drop one.
     await page.locator('#ceFile422').setInputFiles(file([good,good]));await page.waitForFunction(()=>document.querySelector('#ceStatus422').textContent.includes('not a valid'));assert.equal(await page.locator('#ceAdd422').isDisabled(),true);
     await page.locator('#ceFile422').setInputFiles(file([{...good,key:'other',name:'Finger drill'}]));await page.waitForFunction(()=>!document.querySelector('#ceAdd422').disabled);
-    for(const lang of ['en','hi','gu']){for(let i=0;i<3&&await page.locator('html').getAttribute('lang')!==lang;i++)await page.locator('#langBtn').click();await page.setViewportSize({width:390,height:844});await page.locator('#circuitExchange422').screenshot({path:'/downloads/422-exchange-'+lang+'.png'});if(lang!=='en')assert.notEqual(await page.locator('#circuitExchange422 > summary').textContent(),'Circuit exchange');}
+    for(const lang of ['en','hi','gu']){for(let i=0;i<3&&await page.locator('html').getAttribute('lang')!==lang;i++)await languageTap(page);await page.setViewportSize({width:390,height:844});await page.locator('#circuitExchange422').screenshot({path:'/downloads/422-exchange-'+lang+'.png'});if(lang!=='en')assert.notEqual(await page.locator('#circuitExchange422 > summary').textContent(),'Circuit exchange');}
     assert.deepEqual(errors,[]);console.log('Circuit exchange: file preview, cancel, malformed/duplicate rejection, safe merge, Undo, fresh/repeat loads, export round-trip and 390px languages pass.');
   } finally { await browser.close(); server.close(); }
 })().catch(e => { console.error(e); server.close(); process.exitCode = 1; });

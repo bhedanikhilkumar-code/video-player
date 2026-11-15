@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -51,7 +52,7 @@ const server = http.createServer((q, r) => {
     assert.equal(await page.locator('#offlineSessionOpen435').isDisabled(),false);
     await page.setViewportSize({width:390,height:844});
     for(const lang of ['en','hi','gu']){
-      for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();
+      for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await languageTap(page);
       assert.ok(await page.locator('#offlineSession435').evaluate(e=>e.scrollWidth<=e.clientWidth+1));
       assert.match(await page.locator('#faq10a').textContent(),/YouTube/);if(lang!=='en'){assert.ok(!(await page.locator('#offlineSessionTitle435').textContent()).includes('Offline'));assert.ok(!(await article('First.wav').locator('label').textContent()).includes('Include'));}
       await page.locator('#offlineSession435').screenshot({path:'/downloads/435-session-'+lang+'.png'});

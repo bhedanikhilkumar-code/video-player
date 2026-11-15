@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -31,7 +32,7 @@ const server = http.createServer((q, r) => {
     // Keyboard/touch remain ordinary one-action buttons, not hover activation.
     await page.locator('.dwell-action432').nth(5).dispatchEvent('pointerenter',{pointerType:'touch',clientX:1,clientY:1});await page.waitForTimeout(1200);assert.equal(await page.locator('#vol').inputValue(),'75');
     await page.keyboard.press('Escape');assert.equal(await page.locator('#dwellEnable432').getAttribute('aria-pressed'),'false');
-    for(const lang of ['hi','gu']){await page.locator('#langBtn').click();await page.locator('#dwellCard432 > summary').click();await page.locator('#dwellCard432 > summary').click();await page.waitForFunction(()=>document.getElementById('dwellEnable432').getBoundingClientRect().top>=document.getElementById('playerDock').getBoundingClientRect().bottom+12);assert.ok(await page.locator('#dwellCard432').evaluate(e=>e.scrollWidth<=e.clientWidth+1));}
+    for(const lang of ['hi','gu']){await languageTap(page);await page.locator('#dwellCard432 > summary').click();await page.locator('#dwellCard432 > summary').click();await page.waitForFunction(()=>document.getElementById('dwellEnable432').getBoundingClientRect().top>=document.getElementById('playerDock').getBoundingClientRect().bottom+12);assert.ok(await page.locator('#dwellCard432').evaluate(e=>e.scrollWidth<=e.clientWidth+1));}
     assert.deepEqual(errors,[]);console.log('Pointer rest: simulated YouTube volume control, one-shot mouse dwell, no touch hover action, Escape off and toolbar below mini video in Hindi/Gujarati at 390px pass.');
   } finally { await browser.close(); server.close(); }
 })().catch(e => { console.error(e); server.close(); process.exitCode = 1; });

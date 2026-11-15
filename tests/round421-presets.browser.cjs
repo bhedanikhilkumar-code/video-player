@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -49,7 +50,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#circuitPresetName421').fill('guitar warmup');await page.locator('#circuitPresetSave421').click();assert.match(await page.locator('#circuitPresetStatus421').textContent(),/different/);
     await page.locator('#circuitPresets421').scrollIntoViewIfNeeded();if(await page.locator('#miniClose').isVisible())await page.locator('#miniClose').click();
     for(const lang of ['en','hi','gu']) {
-      for(let i=0;i<3&&await page.locator('html').getAttribute('lang')!==lang;i++) await page.locator('#langBtn').click();
+      for(let i=0;i<3&&await page.locator('html').getAttribute('lang')!==lang;i++) await languageTap(page);
       await page.setViewportSize({width:390,height:844});
       const name=await page.locator('#circuitPresets421 > summary').textContent();console.log(lang,name);if(lang!=='en')assert.ok(!name.startsWith('Saved circuit'));
       await page.locator('#circuitPresets421').screenshot({path:'/downloads/421-presets-'+lang+'.png'});

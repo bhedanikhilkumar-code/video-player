@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -53,7 +54,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#switchStop431').focus();assert.equal(await page.locator('#switchStop431').evaluate(e=>e.firstChild===window.switchStopText431),true);
     await page.locator('#switchStop431').click();assert.equal(await page.locator('#switchChoose431').isDisabled(),true);
     await page.locator('#switchStart431').click();await page.keyboard.press('Escape');assert.equal(await page.locator('#switchChoose431').isDisabled(),true);
-    for(const lang of ['hi','gu']){await page.locator('#langBtn').click();assert.ok(!(await page.locator('#switchCard431 > summary').textContent()).includes('Single-switch'));await page.setViewportSize({width:390,height:844});await page.locator('#switchCard431').screenshot({path:'/downloads/431-switch-'+lang+'.png'});}
+    for(const lang of ['hi','gu']){await languageTap(page);assert.ok(!(await page.locator('#switchCard431 > summary').textContent()).includes('Single-switch'));await page.setViewportSize({width:390,height:844});await page.locator('#switchCard431').screenshot({path:'/downloads/431-switch-'+lang+'.png'});}
     await page.reload();await page.waitForFunction(()=>window.__vpMainOk325);assert.equal(await page.locator('#switchChoose431').isDisabled(),true);
     await page.reload();await page.waitForFunction(()=>window.__vpMainOk325);assert.equal(await page.locator('#switchChoose431').isDisabled(),true);
     assert.deepEqual(errors,[]);console.log('Single switch: real local play/pause, seek, volume, mute, next, pause/resume, focus-away, Escape, Hindi/Gujarati at 390px, fresh and repeat load pass.');

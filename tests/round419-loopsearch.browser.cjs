@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -39,7 +40,7 @@ const server = http.createServer((q, r) => {
     assert.equal(await page.locator('#loopLibList296 > .row').count(), 1);
     await page.setViewportSize({ width:390,height:844 });
     for (const lang of ['hi','gu','en']) {
-      await page.locator('#langBtn').click();
+      await languageTap(page);
       assert.equal(await page.evaluate(()=>window.__vpPrefs.lang),lang);
       assert.equal(await page.locator('#loopVideo419').inputValue(),'aqz-KE-bpKQ');
       assert.equal(await page.locator('#loopSearch419').inputValue(),'Drill 49');

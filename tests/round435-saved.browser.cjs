@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -49,7 +50,7 @@ const server = http.createServer((q, r) => {
     // Concurrent changes while a removal dialog is open must not delete a replacement.
     await page.locator('.offline-saved-remove435').click();await page.evaluate(k=>{const a=JSON.parse(localStorage.getItem(k));a[0].name='Changed elsewhere';localStorage.setItem(k,JSON.stringify(a));},key);await page.locator('#vpAskBg .vp-ask-row button:last-child').click();assert.equal(await count(),1);assert.match(await page.locator('#offlineSavedStatus435').textContent(),/another tab/);
     await page.setViewportSize({width:390,height:844});
-    for(const lang of ['en','hi','gu']){for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();assert.ok(await page.locator('#offlineSaved435').evaluate(e=>e.scrollWidth<=e.clientWidth+1));if(lang!=='en')assert.ok(!(await page.locator('#offlineSaved435 > summary').textContent()).includes('Saved'));}
+    for(const lang of ['en','hi','gu']){for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await languageTap(page);assert.ok(await page.locator('#offlineSaved435').evaluate(e=>e.scrollWidth<=e.clientWidth+1));if(lang!=='en')assert.ok(!(await page.locator('#offlineSaved435 > summary').textContent()).includes('Saved'));}
     await page.evaluate(()=>{document.documentElement.dataset.theme='dark';document.documentElement.classList.add('high-contrast','calm-motion','low-fx');});
     // Remove only a saved recipe; copies and current draft remain.
     await page.locator('.offline-saved-remove435').click();await page.locator('#vpAskBg .vp-ask-row button:last-child').click();assert.equal(await count(),0);assert.equal(await page.locator('#offlineRows432 article').count(),2);assert.equal(await page.locator('#offlineSessionRows435 li').count(),2);

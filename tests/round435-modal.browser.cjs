@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -40,7 +41,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#markAddBtn').click();await page.keyboard.press('Escape');assert.equal(await page.locator('#vpAskBg').count(),0);assert.equal(await page.locator('#markAddBtn').evaluate(e=>e===document.activeElement),true);
     assert.equal(await page.locator('#playerDock').evaluate(e=>e.matches(':popover-open')),true);
     for(const lang of ['hi','gu']){
-      for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();
+      for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await languageTap(page);
       await page.locator('#markAddBtn').click();const message=await page.locator('#vpAskMessage').textContent();assert.ok(message&&!message.includes('Name this moment'));
       assert.equal(await page.getByRole('dialog',{name:message,exact:true}).count(),1);assert.equal(await page.getByRole('textbox',{name:message,exact:true}).count(),1);
       await page.locator('#vpAskBg .vp-ask-row button:first-child').click();

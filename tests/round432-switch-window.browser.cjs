@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -45,7 +46,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#switchStop431').click();
     await page.setViewportSize({width:390,height:844});
     for(const lang of ['en','hi','gu']){
-      for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();
+      for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await languageTap(page);
       await page.locator('#switchStart431').click();
       await page.locator('#switchCard431').evaluate(e=>e.scrollIntoView({block:'start',behavior:'instant'}));
       await page.locator('#switchStop431').click();await page.locator('#switchStart431').click();

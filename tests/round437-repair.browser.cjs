@@ -1,3 +1,4 @@
+const languageTap = require('./language-tap.cjs');
 // Run with Playwright and local Chrome: node tests/round419.browser.cjs
 const { chromium } = require('playwright');
 const fs = require('fs'), http = require('http'), assert = require('node:assert/strict'), path = require('path');
@@ -43,7 +44,7 @@ const server = http.createServer((q, r) => {
     await page.evaluate(()=>Storage.prototype.setItem=window.originalSet437);
     // Preview persists through language reflow and both 390px themes.
     await page.setViewportSize({width:390,height:844});
-    for(const lang of ['hi','gu','en']){for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();assert.ok(await page.locator('#offlineRepair437').evaluate(e=>e.scrollWidth<=e.clientWidth+1));assert.equal(await page.locator('#offlineRepairSave437').isVisible(),true);}
+    for(const lang of ['hi','gu','en']){for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await languageTap(page);assert.ok(await page.locator('#offlineRepair437').evaluate(e=>e.scrollWidth<=e.clientWidth+1));assert.equal(await page.locator('#offlineRepairSave437').isVisible(),true);}
     await page.evaluate(()=>{document.documentElement.dataset.theme='dark';document.documentElement.classList.add('high-contrast','calm-motion','low-fx');});
     await page.locator('#offlineRepair437').scrollIntoViewIfNeeded();await page.screenshot({path:'/downloads/437-repair-local.png'});
     await page.locator('#offlineRepairSave437').click();await page.locator('#offlineRepair437').waitFor({state:'hidden'});
