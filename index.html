@@ -20143,6 +20143,13 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   }
   function upnextBegin() {
     if (!lib.queue.length) { if (qFeedPull()) playQueueAt(lib.queue.length - 1); else if (window.__vpPlaybackEnded355) window.__vpPlaybackEnded355("queue"); return; }
+    // Round 412 fix 1: adopt the playing video's row before the qPos < 0 branch - the same
+    // hole round 292 fix 1 closed for Next. A video loaded from the link box, a share link
+    // or the Continue banner ENDS with qPos = -1 even when its row sits in the queue, so the
+    // branch below played queue[0]: when that row was the video that just ended, auto-next
+    // replayed the very same video instead of moving on. Adopting sets qPos to its row, and
+    // a video that is not in the queue still falls through to playQueueAt(0) as before.
+    qAdoptPlaying292();
     if (qPos < 0) { playQueueAt(0); return; }
     // Watch later feed (round 160): a failed playNext tries the feed once before giving up.
     var tryNext = function () { if (playNext()) return true; if (qFeedPull()) return playNext(); return false; };
