@@ -42,7 +42,7 @@ const server = http.createServer((q, r) => {
     // Import validates metadata and updates the saved list in-place, without a reload.
     const importBackup={settings:{[key]:expected.concat([{key:'bad',name:'Invalid',files:[null]}])}};
     await page.evaluate(k=>localStorage.removeItem(k),key);
-    await page.locator('#libImportFile').setInputFiles({name:'sessions-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(importBackup))});
+    const reloaded=page.waitForEvent('load');await page.locator('#libImportFile').setInputFiles({name:'sessions-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(importBackup))});await reloaded;await page.waitForFunction(()=>window.__vpMainOk325);await page.locator('#offlineShelf432').evaluate(e=>e.open=true);await page.locator('#offlineSaved435').evaluate(e=>e.open=true);await page.waitForFunction(()=>document.querySelectorAll('#offlineRows432 article').length===2);await page.locator('.offline-saved-load435').click();
     await page.waitForFunction(k=>!!localStorage.getItem(k),key);
     assert.deepEqual(await page.evaluate(k=>JSON.parse(localStorage.getItem(k)),key),expected);
     assert.equal(await count(),1);
