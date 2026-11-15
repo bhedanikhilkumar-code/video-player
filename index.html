@@ -34885,31 +34885,19 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // built-in one, and one key can only run one action - picking a key you already gave
   // another action moves it. Saved in prefs (so it rides the backup), re-painted on
   // every language switch, in the feature finder and the What's new card.
-  // Round 405 new 1: jump to the next saved moment from the keyboard. Saved moments
-  // (the Moments card, the seek-bar dots, the mini player save chip) could only be
-  // reached by tapping a row or a dot - from the keyboard there was no way to hop
-  // from one marked spot to the one after it. This seeks straight to the moment
-  // after the current second through the same manualSeek the moment rows use, so
-  // the Undo-jump bar arms exactly as a tap does.
+  // Round 405 fix 1: the first cut of these two actions carried its own hop
+  // (vpMarkJump405) beside the Moments card's own hop - same job, different edge
+  // thresholds (1s vs the card's 2s back), no resume-play after the seek, and two
+  // toast spellings for "nothing saved". The actions now click the same Previous /
+  // Next buttons the "," and "." keys use, so a custom key behaves EXACTLY like the
+  // card: same thresholds, same auto-play, same toasts. The helper is gone; the
+  // actions only add the "no video / no moments" toasts the disabled buttons cannot
+  // say themselves.
   Object.assign(TR_MSG, {
     "Previous saved moment": ["\u092a\u093f\u091b\u0932\u093e \u0938\u0947\u0935 \u092a\u0932", "\u0aaa\u0abe\u0a9b\u0ab2\u0ac0 \u0ab8\u0abe\u0a9a\u0ab5\u0ac7\u0ab2\u0acb \u0aaa\u0ab3"],
     "Next saved moment": ["\u0905\u0917\u0932\u093e \u0938\u0947\u0935 \u092a\u0932", "\u0a86\u0a97\u0ab3 \u0ab8\u0abe\u0a9a\u0ab5\u0ac7\u0ab2\u0acb \u0aaa\u0ab3"],
     "No saved moments on this video yet.": ["\u0907\u0938 \u0935\u0940\u0921\u093f\u092f\u094b \u092a\u0930 \u0905\u092d\u0940 \u0915\u094b\u0908 \u0938\u0947\u0935 \u092a\u0932 \u0928\u0939\u0940\u0902.", "\u0a86 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aaa\u0ab0 \u0ab9\u0a9c\u0ac0 \u0a95\u0acb\u0a88 \u0ab8\u0abe\u0a9a\u0ab5\u0ac7\u0ab2\u0ac0 \u0a95\u0acd\u0ab7\u0aa3 \u0aa8\u0aa5\u0ac0."],
-    "No moment after this point.": ["\u0907\u0938 \u091c\u0917\u0939 \u0915\u0947 \u092c\u093e\u0926 \u0915\u094b\u0908 \u092a\u0932 \u0928\u0939\u0940\u0902.", "\u0a86 \u0ab8\u0acd\u0aa5\u0ab3 \u0aaa\u0a9b\u0ac0 \u0a95\u0acb\u0a88 \u0a95\u0acd\u0ab7\u0aa3 \u0aa8\u0aa5\u0ac0."],
-    "No moment before this point.": ["\u0907\u0938 \u091c\u0917\u0939 \u0938\u0947 \u092a\u0939\u0932\u0947 \u0915\u094b\u0908 \u092a\u0932 \u0928\u0939\u0940\u0902.", "\u0a86 \u0ab8\u0acd\u0aa5\u0ab3 \u0aaa\u0ab9\u0ac7\u0ab2\u0abe\u0a82 \u0a95\u0acb\u0a88 \u0a95\u0acd\u0ab7\u0aa3 \u0aa8\u0aa5\u0ac0."]
   });
-  function vpMarkJump405(dir) {
-    if (!curId) { toast(T("Load a video first.")); return; }
-    var src = (typeof marks === "object" && marks && marks[curId]) ? marks[curId] : [];
-    if (!src.length) { toast(T("No saved moments on this video yet.")); return; }
-    var arr = src.slice().sort(function (a, b) { return a.t - b.t; });
-    var now = curTime || 0, hit = null, i;
-    if (dir > 0) { for (i = 0; i < arr.length; i++) { if (arr[i].t > now + 1) { hit = arr[i]; break; } } }
-    else { for (i = arr.length - 1; i >= 0; i--) { if (arr[i].t < now - 1) { hit = arr[i]; break; } } }
-    if (!hit) { toast(T(dir > 0 ? "No moment after this point." : "No moment before this point.")); return; }
-    manualSeek(hit.t);
-    toast(fmt(hit.t) + (hit.name ? " - " + hit.name : ""));
-  }
   function xkReserved280(ch) {
     return " kjlmfrabxnpcts,ywhgudqizeo".indexOf(ch) >= 0 || "KJLMFRABXNPCTSYWHGUDQIZEO".indexOf(ch) >= 0 ||
       ch === "/" || ch === "?" || ch === "," || ch === "." || ch === "<" || ch === ">" || ch === "`" ||
@@ -34932,8 +34920,14 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       return true;
     }
     if (lpOn403 && act !== "speed" && act !== "sleep") return false;
-    if (act === "marknext") { vpMarkJump405(1); return true; }
-    if (act === "markprev") { vpMarkJump405(-1); return true; }
+    // Round 405 fix 1: run the existing Moments buttons, not a parallel hop (below).
+    if (act === "marknext" || act === "markprev") {
+      var mb405 = $(act === "marknext" ? "markNextBtn" : "markPrevBtn");
+      if (mb405 && !mb405.disabled) mb405.click();
+      else if (!curId) toast(T("Load a video first."));
+      else toast(T("No saved moments on this video yet."));
+      return true;
+    }
     if (act === "speed") { vpSpeedCycle401(); return true; }
     if (act === "sleep") { vpSleepCycle401(); return true; }
     if (act === "fav") { if (curId) toggleFav(curId); else toast(T("Load a video first.")); return true; }
