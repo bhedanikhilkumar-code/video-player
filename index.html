@@ -39046,12 +39046,27 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Practice loop restored": ["\u092a\u094d\u0930\u0948\u0915\u094d\u091f\u093f\u0938 \u0932\u0942\u092a \u0935\u093e\u092a\u0938 \u0906\u092f\u093e", "\u0aaa\u0acd\u0ab0\u0ac7\u0a95\u0acd\u0a9f\u0abf\u0ab8 \u0ab2\u0ac2\u0aaa \u0aaa\u0abe\u0a9b\u0acb \u0a86\u0ab5\u0acd\u0aaf\u0acb"],
     "Manage saved loops": ["\u0938\u0947\u0935 \u0915\u093f\u090f \u0932\u0942\u092a \u092e\u0948\u0928\u0947\u091c \u0915\u0930\u0947\u0902", "\u0ab8\u0abe\u0a9a\u0ab5\u0ac7\u0ab2\u0abe \u0ab2\u0ac2\u0aaa \u0aae\u0ac7\u0aa8\u0ac7\u0a9c \u0a95\u0ab0\u0acb"]
   });
+  Object.assign(TR_MSG, {
+    "Search saved loops": ["सेव किए लूप खोजें", "સાચવેલા લૂપ શોધો"],
+    "Find a drill by loop name, video title, ID or time. All saved loops are searchable; show more results without loading a video.": ["लूप के नाम, वीडियो शीर्षक, ID या समय से अभ्यास खोजें. सभी सेव लूप खोजे जा सकते हैं; वीडियो खोले बिना और नतीजे देखें.", "લૂપના નામ, વીડિયોના શીર્ષક, ID કે સમયથી અભ્યાસ શોધો. બધા સાચવેલા લૂપ શોધી શકાય છે; વીડિયો ખોલ્યા વગર વધુ પરિણામ જુઓ."],
+    "All loop videos": ["लूप वाले सभी वीडियो", "લૂપવાળા બધા વીડિયો"],
+    "Filter loops by video": ["वीडियो के अनुसार लूप चुनें", "વીડિયો પ્રમાણે લૂપ પસંદ કરો"],
+    "Showing {shown} of {total} loops": ["{total} में से {shown} लूप दिख रहे हैं", "{total}માંથી {shown} લૂપ દેખાય છે"],
+    "No loops match this search.": ["इस खोज से कोई लूप नहीं मिला.", "આ શોધમાં કોઈ લૂપ મળ્યો નહીં."],
+    "Show 40 more loops": ["40 और लूप दिखाएं", "વધુ 40 લૂપ બતાવો"]
+  });
   (function () {
     var sp = $("savedPractice"); if (!sp || !sp.parentNode) return;
     var card = document.createElement("details"); card.className = "note-find"; card.id = "loopLibCard296"; card.style.marginTop = "10px";
-    card.innerHTML = "<summary id='loopLibSum296'></summary><div id='loopLibList296'></div><p class='hint' id='loopLibHint296'></p>";
+    card.innerHTML = "<summary id='loopLibSum296'></summary><p class='hint' id='loopLibHint296'></p>"
+      + "<div style='display:grid;gap:8px;margin:10px 0'><input type='search' class='chip' id='loopSearch419' style='width:100%;min-width:0'><select class='chip' id='loopVideo419' style='width:100%;min-width:0'></select><button type='button' class='chip' id='loopClear419'></button></div>"
+      + "<p id='loopCount419' class='hint' role='status'></p><div id='loopLibList296'></div><button type='button' class='chip' id='loopMore419' hidden></button>";
     sp.parentNode.insertBefore(card, sp.nextSibling);
-    var pend296 = null;
+    var pend296 = null, loopLimit419 = 40, loopSearch419 = $("loopSearch419"), loopVideo419 = $("loopVideo419");
+    loopSearch419.addEventListener("input", function () { loopLimit419 = 40; paint296(); });
+    loopVideo419.addEventListener("change", function () { loopLimit419 = 40; paint296(); });
+    $("loopClear419").addEventListener("click", function () { loopSearch419.value = ""; loopVideo419.value = ""; loopLimit419 = 40; paint296(); loopSearch419.focus(); });
+    $("loopMore419").addEventListener("click", function () { loopLimit419 += 40; paint296(); });
     setInterval(function () {
       if (!pend296) return;
       if (curId !== pend296.id || !(duration > 0)) { if (--pend296.tries <= 0) pend296 = null; return; }
@@ -39060,15 +39075,26 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }, 700);
     function paint296() {
       $("loopLibSum296").textContent = T("Loop library");
-      $("loopLibHint296").textContent = T("Every saved loop on this device, across all videos. Tap one to load its video straight into the loop.");
+      $("loopLibHint296").textContent = T("Find a drill by loop name, video title, ID or time. All saved loops are searchable; show more results without loading a video.");
+      loopSearch419.placeholder = T("Search saved loops"); loopSearch419.setAttribute("aria-label", T("Search saved loops"));
+      loopVideo419.setAttribute("aria-label", T("Filter loops by video"));
+      $("loopClear419").textContent = T("Clear"); $("loopClear419").disabled = !loopSearch419.value && !loopVideo419.value;
+      $("loopMore419").textContent = T("Show 40 more loops"); $("loopMore419").hidden = true;
       var box = $("loopLibList296"); box.textContent = "";
       var ids = Object.keys(practiceLoops).filter(function (id) { return Array.isArray(practiceLoops[id]) && practiceLoops[id].length; });
-      if (!ids.length) { var p = document.createElement("p"); p.className = "hint"; p.textContent = T("No saved loops yet. Set A and B on a video and save a practice loop first."); box.appendChild(p); return; }
+      var picked419 = loopVideo419.value; loopVideo419.textContent = "";
+      var all419 = document.createElement("option"); all419.value = ""; all419.textContent = T("All loop videos"); loopVideo419.appendChild(all419);
+      ids.forEach(function (id) { var opt = document.createElement("option"); opt.value = id; opt.textContent = titleFor(id) || id; loopVideo419.appendChild(opt); });
+      loopVideo419.value = ids.indexOf(picked419) >= 0 ? picked419 : "";
+      var terms419 = loopSearch419.value.trim().toLowerCase().split(/\s+/).filter(Boolean), matched419 = 0;
+      function matches419(id, lp) { if (loopVideo419.value && loopVideo419.value !== id) return false; var hay = [lp.name, titleFor(id), id, fmt(lp.a), fmt(lp.b)].join(" ").toLowerCase(); return terms419.every(function (term) { return hay.indexOf(term) >= 0; }); }
+      if (!ids.length) { var p = document.createElement("p"); p.className = "hint"; p.textContent = T("No saved loops yet. Set A and B on a video and save a practice loop first."); box.appendChild(p); $("loopCount419").textContent = ""; return; }
       var rows = 0;
       ids.forEach(function (id) {
         practiceLoops[id].forEach(function (lp) {
-          if (rows >= 40) return;
-          if (!lp || typeof lp.a !== "number" || typeof lp.b !== "number") return;
+          if (!lp || typeof lp.a !== "number" || typeof lp.b !== "number" || !matches419(id, lp)) return;
+          matched419++;
+          if (rows >= loopLimit419) return;
           rows++;
           var r = document.createElement("div"); r.className = "row"; r.style.marginTop = "8px";
           var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.style.textAlign = "left";
@@ -39129,6 +39155,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
           box.appendChild(r);
         });
       });
+      $("loopCount419").textContent = T("Showing {shown} of {total} loops").replace("{shown}", rows).replace("{total}", matched419);
+      $("loopMore419").hidden = matched419 <= rows;
+      if (!matched419) { var empty419 = document.createElement("p"); empty419.className = "hint"; empty419.textContent = T("No loops match this search."); box.appendChild(empty419); }
     }
     (window.__relang = window.__relang || []).push(paint296); paint296();
     window.__vpLoopLibPaint296 = paint296;
@@ -46968,6 +46997,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     paint(); (window.__relang = window.__relang || []).push(paint);
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Interval trainer", "#intervalCard419"); }, 3120); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search saved loops", "#loopLibCard296"); }, 3220); });
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -52004,6 +52034,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Loop library", "loop library all saved loops every video a-b practice play jump across videos list", "#loopLibCard296"],
       ["Share a saved loop", "share saved loop link copy send friend practice a-b library loop", "#loopLibCard296"],
       ["Manage saved loops", "manage saved loops rename remove delete practice loop library clean up edit name old drill", "#loopLibCard296"],
+      ["Search saved loops", "search loop library drills filter video title name time browse all more results practice", "#loopLibCard296"],
       ["Now in chapter", "now in chapter current chapter name now playing which part section live position seek bar restart community", "#chapNow408"],
       ["QR for handoff", "qr handoff continue another device scan code phone laptop tv move watching queue position camera", "#handoffQr410"],
       ["Share from this chapter", "share from this chapter link starts chapter beginning send friend lecture tutorial part section copy", "#chapShare410"],
