@@ -45895,6 +45895,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   }
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Your own sleep timer key", "#xkRow280"); }, 1980); });
 
+  // Round 402 new 1: Enter jumps to the next subtitle match. The local player's subtitle
+  // search (round 296) lists the first 12 matches, but every jump needed the mouse - a
+  // keyboard flow for lecture files: Enter steps to the next match (wrapping), Shift+Enter
+  // to the previous one, and the message line names the place ("4 / 27 matches").
+  // Checked first: grep "next match" and the search block - matches were click-only.
+  // Hindi and Gujarati text inside the main closure, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Enter jumps to the next one": ["\u090f\u0902\u091f\u0930 \u0905\u0917\u0932\u0947 \u092a\u0930 \u091c\u093e\u090f\u0902", "\u0a8f\u0aa8\u0acd\u0a9f\u0ab0 \u0a86\u0a97\u0ab2\u0abe \u0aaa\u0ab0 \u0a9c\u0abe\u0a93"],
+    "Enter jumps to the next subtitle match": ["\u090f\u0902\u091f\u0930 \u0905\u0917\u0932\u0947 \u0938\u092c\u091f\u093e\u0907\u091f\u0932 \u092e\u0948\u091a \u092a\u0930 \u091c\u093e\u090f\u0902", "\u0a8f\u0aa8\u0acd\u0a9f\u0ab0 \u0a86\u0a97\u0ab2\u0ac0 \u0ab8\u0aac\u0a9f\u0abe\u0a87\u0a9f\u0ab2 \u0aae\u0ac7\u0ab3 \u0aaa\u0ab0 \u0a9c\u0abe\u0a93"]
+  });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Enter jumps to the next subtitle match", "#lpSubSearchQ"); }, 2000); });
+
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -48717,6 +48729,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
 #lpSubSearchList{max-height:230px;overflow:auto}
 #lpSubSearchList:empty{display:none}
 #lpSubSearchList .ch-go{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+#lpSubSearchList .ch-nav .ch-go{outline:2px solid var(--teal);outline-offset:1px}
 </style>
 <script>
 /* Subtitle search (round 92): find a word in the loaded .srt/.vtt and jump straight to that
@@ -48756,17 +48769,21 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   }
   function fmtT(t) { t = Math.max(0, Math.floor(t)); var m = Math.floor(t / 60), s = t % 60, h = Math.floor(m / 60); m = m % 60; return h > 0 ? h + ":" + (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s : m + ":" + (s < 10 ? "0" : "") + s; }
 
+  // Round 402 new 1: keyboard flow. The list showed the first 12 matches, but reaching
+  // match 13, or hopping from one match to the one after it, meant the mouse every time.
+  // Enter in the search box now jumps to the next match (wrapping at the end), Shift+Enter
+  // to the one before, and the message line names the place: "4 / 27 matches". The full
+  // match list is kept for navigation while the rendered rows still cap at 12.
+  var navHits = [], navIdx = -1;
   function searchRender() {
     var q = (inp.value || "").trim().toLowerCase();
-    listBox.textContent = "";
+    listBox.textContent = ""; navHits = []; navIdx = -1;
     if (!cues.length) { msg.textContent = T("Load a subtitle file first, then search."); return; }
     if (!q) { msg.textContent = ""; return; }
-    var hits = [];
-    for (var i = 0; i < cues.length && hits.length < 12; i++) { if (cues[i].text.toLowerCase().indexOf(q) >= 0) hits.push(cues[i]); }
-    var total = 0;
-    for (var j = 0; j < cues.length; j++) { if (cues[j].text.toLowerCase().indexOf(q) >= 0) total++; }
-    msg.textContent = total ? String(total) + T(" matches") : T("No matches.");
-    hits.forEach(function (c) {
+    for (var j = 0; j < cues.length; j++) { if (cues[j].text.toLowerCase().indexOf(q) >= 0) navHits.push(cues[j]); }
+    var total = navHits.length;
+    msg.textContent = total ? String(total) + T(" matches") + " - " + T("Enter jumps to the next one") : T("No matches.");
+    navHits.slice(0, 12).forEach(function (c) {
       var li = document.createElement("li"); li.className = "ch-item";
       var go = document.createElement("button"); go.type = "button"; go.className = "chip ch-go";
       go.textContent = fmtT(c.t) + " \u00b7 " + c.text;
@@ -48776,6 +48793,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     });
   }
   inp.addEventListener("input", searchRender);
+  inp.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" || !navHits.length) return;
+    e.preventDefault();
+    navIdx = e.shiftKey ? (navIdx <= 0 ? navHits.length - 1 : navIdx - 1) : (navIdx + 1) % navHits.length;
+    var c = navHits[navIdx];
+    try { vid.currentTime = c.t; } catch (err) {}
+    var p = vid.play(); if (p && p.catch) p.catch(function () {});
+    msg.textContent = String(navIdx + 1) + " / " + String(navHits.length) + T(" matches");
+    [].forEach.call(listBox.children, function (li, i) { li.classList.toggle("ch-nav", i === navIdx); });
+    var cur = listBox.children[navIdx];
+    if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: "nearest" });
+  });
 
   function grab() {
     var tr = track();
@@ -48793,8 +48822,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   function relang() {
     lab.textContent = T("Search subtitles");
     inp.setAttribute("placeholder", T("Type a word from the subtitles"));
-    inp.setAttribute("aria-label", T("Search subtitles"));
+    inp.setAttribute("aria-label", T("Search subtitles") + " - " + T("Enter jumps to the next one"));
     if (!cues.length) msg.textContent = T("Load a subtitle file first, then search.");
+    else if (navIdx < 0) searchRender();
   }
   (window.__relang = window.__relang || []).push(relang);
   relang();
@@ -50258,6 +50288,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Your own shortcut keys", "your own keys custom shortcut extra key rebind personal keyboard letter mute fullscreen loop next previous subtitles", "#xkRow280"],
       ["Your own speed key", "speed key shortcut cycle next step own custom keyboard your own keys faster slower wrap ceiling", "#xkRow280"],
       ["Your own sleep timer key", "sleep timer key shortcut custom keyboard your own keys minutes off step bed night", "#xkRow280"],
+      ["Enter jumps to the next subtitle match", "subtitle search next match enter keyboard jump lecture local file find word", "#lpSubSearchQ"],
       ["Remember the A-B loop", "remember ab loop per video save practice points restore pinned", "#abMemBtn278"],
       ["Remember the speed per video", "remember speed per video pin playback rate lecture music", "#speedMemBtn278"],
       ["Remember the rotation per video", "remember rotation per video sideways phone clip turned picture rotate memory", "#rotMemBtn279"],
