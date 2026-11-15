@@ -47497,14 +47497,22 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function blocked() { return !!document.querySelector('dialog[open],#vpLock288'); }
     function pause() { if(!running)return;paused=true;clear();lastStatus="Scanning is paused. Press the large button to resume.";paint(); }
     function schedule() { clear();if(!running||paused)return;timer=setTimeout(function(){timer=null;if(document.hidden||blocked()||!card.open||document.activeElement!==choose){pause();return;}for(var n=0;n<actions.length;n++){index=(index+1)%actions.length;if(actions[index].ok())break;}paint();if($("switchSpeak431").checked)$("switchLive431").textContent=actions[index].name();schedule();},Number($("switchRate431").value)||2000); }
-    function begin() { if(!hasSource()||blocked())return;running=true;paused=false;index=0;lastAction=-1;lastStatus="";paint();choose.focus();schedule(); }
+    function revealControls() {
+      requestAnimationFrame(function () {
+        var dock=$("playerDock");if(!dock||!dock.classList.contains("is-mini"))return;
+        var video=dock.getBoundingClientRect(), cells=grid.getBoundingClientRect();
+        if(cells.left<video.right&&cells.right>video.left&&cells.top<video.bottom+16)
+          window.scrollBy({top:cells.top-video.bottom-16,behavior:"instant"});
+      });
+    }
+    function begin() { if(!hasSource()||blocked())return;running=true;paused=false;index=0;lastAction=-1;lastStatus="";paint();choose.focus({preventScroll:true});revealControls();schedule(); }
     function end() { clear();running=false;paused=false;lastAction=-1;lastStatus="Scanning is off. Playback is unchanged.";paint(); }
     start.addEventListener("click",begin);stop.addEventListener("click",function(){end();start.focus();});
     choose.addEventListener("keydown",function(e){if(e.repeat&&(e.key==="Enter"||e.key===" ")){e.preventDefault();e.stopImmediatePropagation();}});
     choose.addEventListener("click",function(){if(!running||blocked())return;if(paused){paused=false;lastStatus="";paint();schedule();return;}var a=actions[index];if(!a.ok()){paint();return;}lastAction=index;a.run();if(!paused){lastStatus="";paint();schedule();}});
     card.addEventListener("keydown",function(e){if(e.key==="Escape"&&running){e.preventDefault();e.stopPropagation();end();start.focus();}});
     choose.addEventListener("blur",function(){if(running)pause();});
-    card.addEventListener("toggle",function(){document.documentElement.classList.toggle("switch-open431",card.open);if(!card.open)end();else paint();});
+    card.addEventListener("toggle",function(){document.documentElement.classList.toggle("switch-open431",card.open);if(!card.open)end();else {paint();revealControls();}});
     $("switchRate431").addEventListener("change",function(){if(running)pause();});
     document.addEventListener("visibilitychange",function(){if(document.hidden)pause();});
     document.addEventListener("vp-youtube-selected",function(){selectedYT=true;paint();});

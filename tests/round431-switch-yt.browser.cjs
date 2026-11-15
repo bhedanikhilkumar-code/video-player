@@ -35,9 +35,11 @@ const server = http.createServer((q, r) => {
       for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();
       await page.locator('#switchStart431').click();
       await page.locator('#switchCard431').evaluate(e=>e.scrollIntoView({block:'start',behavior:'instant'}));
+      await page.locator('#switchStop431').click();await page.locator('#switchStart431').click();
       await page.waitForFunction(()=>document.getElementById('playerDock').classList.contains('is-mini'));
       assert.ok(await page.locator('#switchCard431').evaluate(e=>e.scrollWidth<=e.clientWidth+1));
       assert.ok(await page.locator('#switchChoose431').isVisible());
+      await page.waitForFunction(()=>{const g=document.querySelector('.switch-grid431').getBoundingClientRect(),v=document.getElementById('playerDock').getBoundingClientRect();return g.top>=v.bottom+12;});
       assert.ok(await page.locator('#switchChoose431').evaluate(e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),'the docked iframe must not intercept the Choose button');
       await page.locator('#switchStop431').click();
     }
