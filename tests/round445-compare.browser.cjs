@@ -11,6 +11,8 @@ require('./round445-harness.cjs')(async({p,pick,files,boot})=>{
  await p.locator('#lpVideo').evaluate(v=>v.pause());await p.waitForFunction(()=>document.querySelector('#lcVideo445').paused);
  await p.locator('#lpVideo').evaluate(v=>{v.currentTime=15;v.playbackRate=1.5;});await p.waitForFunction(()=>Math.abs(document.querySelector('#lcVideo445').currentTime-18)<.3);
  assert.equal(await p.locator('#lcVideo445').evaluate(v=>v.playbackRate),1.5);
+ // One-shot alignment does not change an independently playing reference's transport.
+ await p.locator('#lcFollow445').uncheck();await p.locator('#lcVideo445').evaluate(v=>v.play());await p.locator('#lcAlign445').click();assert.equal(await p.locator('#lcVideo445').evaluate(v=>v.paused),false);await p.locator('#lcFollow445').check();
  // Out-of-range offsets pause, not wrap or leak sound. A source change unlinks.
  await p.locator('#lcOffset445').fill('-100');await p.locator('#lcOffset445').dispatchEvent('change');assert.equal(await p.locator('#lcVideo445').evaluate(v=>v.paused),true);assert.match(await p.locator('#lcStatus445').textContent(),/outside/);
  await p.locator('#lcOffset445').fill('0');await p.locator('#lcOffset445').dispatchEvent('change');
