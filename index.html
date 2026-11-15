@@ -48228,6 +48228,53 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang=window.__relang||[]).push(paint);paint();
     window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Single-switch player","#switchCard431");},3720);});
   })();
+  // Round 443: edit the active device-file playlist, not a separate offline draft.
+  (function () {
+    var video = $("lpVideo"); if (!video) return;
+    Object.assign(TR_MSG, {
+      "Edit playing file queue": ["चलती फ़ाइल कतार बदलें", "ચાલતી ફાઇલ કતાર ગોઠવો"],
+      "Edit this session without restarting playback. The playing file is protected. Undo: 20 edits until files change. Choose files again after a reload.": ["प्लेबैक फिर शुरू किए बिना कतार बदलें. चलती फ़ाइल सुरक्षित है. फ़ाइलें बदलने तक 20 बदलाव वापस लें. पेज फिर खोलने पर फ़ाइलें दोबारा चुनें.", "પ્લેબેક ફરી શરૂ કર્યા વિના કતાર ગોઠવો. ચાલતી ફાઇલ સુરક્ષિત છે. ફાઇલો બદલાય ત્યાં સુધી 20 ફેરફારો પાછા લો. પેજ ફરી ખોલતાં ફાઇલો ફરી પસંદ કરો."],
+      "Open device files to edit their playing queue.": ["चलती कतार बदलने के लिए डिवाइस फ़ाइलें खोलें.", "ચાલતી કતાર ગોઠવવા ડિવાઇસ ફાઇલો ખોલો."],
+      "Move file earlier": ["फ़ाइल पहले लाएं", "ફાઇલ વહેલી મૂકો"],
+      "Move file later": ["फ़ाइल बाद में रखें", "ફાઇલ પછી મૂકો"],
+      "Remove queued file": ["कतार से फ़ाइल हटाएं", "કતારમાંથી ફાઇલ દૂર કરો"],
+      "Undo queue edit": ["कतार का बदलाव वापस लें", "કતારનો ફેરફાર પાછો લો"],
+      "Playing file - kept safe": ["चलती फ़ाइल - सुरक्षित", "ચાલતી ફાઇલ - સુરક્ષિત"],
+      "File queue updated. Playback was not restarted.": ["फ़ाइल कतार बदल गई. प्लेबैक फिर शुरू नहीं किया गया.", "ફાઇલ કતાર બદલાઈ. પ્લેબેક ફરી શરૂ કર્યો નથી."],
+      "The queue changed. Review it before editing again.": ["कतार बदल गई. फिर बदलाव करने से पहले जांचें.", "કતાર બદલાઈ. ફરી ફેરફાર કરતાં પહેલાં તપાસો."],
+      "Undo is unavailable because a newly added file is playing.": ["नई जोड़ी फ़ाइल चल रही है इसलिए अभी वापस नहीं ले सकते.", "નવી ઉમેરેલી ફાઇલ ચાલે છે તેથી હમણાં પાછું લઈ શકાતું નથી."]
+    });
+    var card = document.createElement("details"); card.id = "localQueueEditor443"; card.className = "lp-workbench";
+    card.innerHTML = '<summary id="lqeTitle443"></summary><p class="hint" id="lqeHint443"></p><button type="button" class="chip" id="lqeUndo443"></button><p class="hint" id="lqeEmpty443"></p><ol id="lqeList443" style="padding:0;list-style:none;max-height:340px;overflow-y:auto;overscroll-behavior:contain"></ol><p class="hint" role="status" id="lqeStatus443"></p>';
+    video.after(card);
+    var state = "";
+    function api() { return window.__vpLocalQueue443; }
+    function paint() {
+      $("lqeTitle443").textContent = T("Edit playing file queue"); $("lqeHint443").textContent = T("Edit this session without restarting playback. The playing file is protected. Undo: 20 edits until files change. Choose files again after a reload.");
+      var snap = api() ? api().snapshot() : { files: [], index: -1, undo: false };
+      $("lqeUndo443").textContent = T("Undo queue edit"); $("lqeUndo443").disabled = !snap.undo;
+      $("lqeEmpty443").textContent = snap.files.length ? "" : T("Open device files to edit their playing queue."); $("lqeEmpty443").hidden = !!snap.files.length;
+      $("lqeStatus443").textContent = state ? T(state) : "";
+      var list = $("lqeList443"); if (!card.open) { list.textContent = ""; return; }
+      var focus = document.activeElement, focusIndex = focus && focus.dataset.lqeIndex, focusAction = focus && focus.dataset.lqeAction;
+      list.textContent = "";
+      snap.files.forEach(function (name, i) {
+        var li = document.createElement("li"); li.className = "lp-workbench"; li.style.cssText = "margin:10px 0;padding:10px;min-width:0";
+        var title = document.createElement("strong"); title.style.cssText = "display:block;overflow-wrap:anywhere"; title.textContent = (i + 1) + ". " + name;
+        var row = document.createElement("div"); row.className = "row"; row.style.marginTop = "8px";
+        [["up", "Move file earlier", i === 0], ["down", "Move file later", i === snap.files.length - 1], ["remove", "Remove queued file", i === snap.index]].forEach(function (a) {
+          var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = T(a[1]); b.setAttribute("aria-label", T(a[1]) + ": " + name); b.disabled = a[2]; b.dataset.lqeIndex = i; b.dataset.lqeAction = a[0];
+          b.addEventListener("click", function () { var result = api().edit(a[0], i, snap.revision); state = result ? "File queue updated. Playback was not restarted." : "The queue changed. Review it before editing again."; paint(); var next = list.querySelector('[data-lqe-index="' + Math.min(a[0] === "up" ? i - 1 : a[0] === "down" ? i + 1 : i, list.children.length - 1) + '"][data-lqe-action="' + a[0] + '"]'); if (next && !next.disabled) next.focus(); else $("lqeUndo443").focus(); });
+          row.appendChild(b);
+        });
+        li.append(title); if (i === snap.index) { var current = document.createElement("p"); current.className = "hint"; current.textContent = T("Playing file - kept safe"); li.append(current); } li.append(row); list.append(li);
+      });
+      if (focusIndex != null && focusAction && !list.contains(document.activeElement)) { var restore = list.querySelector('[data-lqe-index="' + focusIndex + '"][data-lqe-action="' + focusAction + '"]'); if (restore && !restore.disabled) restore.focus({preventScroll:true}); }
+    }
+    $("lqeUndo443").addEventListener("click", function () { state = api() && api().undo() ? "File queue updated. Playback was not restarted." : "Undo is unavailable because a newly added file is playing."; paint(); $("lqeUndo443").focus(); });
+    card.addEventListener("toggle", paint); document.addEventListener("vp-local-queue443", paint); (window.__relang = window.__relang || []).push(paint); paint();
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Edit playing file queue", "#localQueueEditor443"); }, 4120); });
+  })();
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -49223,6 +49270,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   function renderLocalQueue() {
     var wrap = $("lpQueueWrap"), list = $("lpQueue"); wrap.hidden = !localFiles.length; list.textContent = "";
     lpTotalPaint();
+    document.dispatchEvent(new Event("vp-local-queue443"));
     $("lpQueueH").textContent = T("Selected files") + " (" + localFiles.length + ")";
     $("lpQueueHint").textContent = T("Files stay on this device. Pick files again after a reload.");
     localFiles.forEach(function(f,i){
@@ -50345,6 +50393,31 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   });
   (window.__relang=window.__relang||[]).push(function(){$("lpClose").textContent=T("Close files");});$("lpClose").textContent=T("Close files");
 
+  // File references stay in memory. Editing never calls show(), load() or play().
+  (function () {
+    var expected = [], history = [], revision = 0;
+    function sync() {
+      if (localFiles.length !== expected.length || localFiles.some(function(f, i) { return f !== expected[i]; })) { expected = localFiles.slice(); history = []; revision++; }
+    }
+    function current() { return localIndex >= 0 ? localFiles[localIndex] : null; }
+    function commit(list, playing) {
+      localFiles = list; expected = list.slice(); localIndex = playing ? list.indexOf(playing) : -1; revision++;
+      lpPickCount = list.length; lpPickPaint(); updateLocalButtons();
+    }
+    window.__vpLocalQueue443 = {
+      snapshot: function () { sync(); return {files:localFiles.map(function(f){return f.name;}),index:localIndex,revision:revision,undo:!!history.length && (!current() || history[history.length-1].indexOf(current()) >= 0)}; },
+      edit: function (action, i, version) {
+        sync(); if (version !== revision || !Number.isInteger(i) || i < 0 || i >= localFiles.length) return false;
+        var playing = current(), next = localFiles.slice();
+        if (action === "remove") { if (i === localIndex) return false; next.splice(i,1); }
+        else if (action === "up" || action === "down") { var to = i + (action === "up" ? -1 : 1); if (to < 0 || to >= next.length) return false; var f = next.splice(i,1)[0]; next.splice(to,0,f); }
+        else return false;
+        history.push(localFiles.slice()); if (history.length > 20) history.shift(); commit(next,playing); return true;
+      },
+      undo: function () { sync(); if (!history.length) return false; var playing = current(), previous = history[history.length-1]; if (playing && previous.indexOf(playing)<0) return false; history.pop();commit(previous,playing);return true; }
+    };
+    document.dispatchEvent(new Event("vp-local-queue443"));
+  })();
   var lpRelang = function () { if (!curUrl) sessionMsg.textContent = T(LP_DEF); subChipText(); eqPresetText(); chRender(); renderLocalQueue(); };
   (window.__relang = window.__relang || []).push(lpRelang);
   lpRelang();
@@ -52610,6 +52683,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Repair saved session", "repair relink missing offline files copies replace session migrate restored backup choose review reconnect", "#offlineSaved435"],
       ["Download saved device copy", "export recover download original offline shelf saved local device file bytes keep copy backup", "#offlineShelf432"],
       ["Saved offline sessions", "named offline sessions save playlists local copies reuse backup draft files device", "#offlineSaved435"],
+      ["Edit playing file queue", "edit playing device file queue reorder remove undo active local playlist without restart", "#localQueueEditor443"],
       ["Offline session builder", "offline session playlist arrange saved files choose order local queue music copies no internet", "#offlineSession435"],
       ["Offline file shelf", "offline local file save device copies audio music video storage shelf no internet", "#offlineShelf432"],
       ["Pointer rest player", "dwell gaze eye tracker head pointer hover click free motor accessibility mouse pen playback controls", "#dwellCard432"],
