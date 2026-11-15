@@ -49912,7 +49912,14 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     } catch (e) {}
     try { return new TextDecoder("windows-1252").decode(u); } catch (e2) { return ""; }
   }
+  var subReadVersion443 = 0, subReader443 = null;
+  function cancelSubRead443() {
+    subReadVersion443++;
+    var old = subReader443; subReader443 = null;
+    if (old && old.readyState === 1) try { old.abort(); } catch (e) {}
+  }
   function clearSub() {
+    cancelSubRead443();
     if (subTrack) { try { subTrack.remove(); } catch (e) {} subTrack = null; }
     if (subUrl) { URL.revokeObjectURL(subUrl); subUrl = null; }
     if (subOff) subOff.hidden = true;
@@ -50032,11 +50039,14 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   if (subFile) subFile.addEventListener("change", function () {
     var f = this.files && this.files[0]; this.value = "";
     if (!f) return;
+    cancelSubRead443();
     if (f.size > 2 * 1024 * 1024) { subMsg.textContent = T("That subtitle file is too large (over 2 MB)."); return; }
-    var rd = new FileReader(), sourceAtRead = curUrl;
+    var rd = new FileReader(), sourceAtRead = curUrl, versionAtRead443 = subReadVersion443;
+    subReader443 = rd;
+    function stillCurrent443() { return subReader443 === rd && versionAtRead443 === subReadVersion443 && !!curUrl && curUrl === sourceAtRead; }
     rd.onload = function () {
-      if (!curUrl || curUrl !== sourceAtRead) return;
-      clearSub();
+      if (!stillCurrent443()) return;
+      subReader443 = null; clearSub();
       var vtt = srtToVtt(subDecode(rd.result));
       subUrl = URL.createObjectURL(new Blob([vtt], { type: "text/vtt" }));
       subTrack = document.createElement("track");
@@ -50048,7 +50058,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       toast(T("Subtitles loaded"));
       subMsg.textContent = T("Subtitles loaded: ") + f.name;
     };
-    rd.onerror = function () { subMsg.textContent = T("That subtitle file could not be read."); };
+    rd.onerror = function () { if (!stillCurrent443()) return; subReader443 = null; subMsg.textContent = T("That subtitle file could not be read."); };
     rd.readAsArrayBuffer(f);
   });
   var baseShowSub = show;
