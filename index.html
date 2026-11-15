@@ -45311,6 +45311,80 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
 
   TR_MSG["Search in your own words"] = ["\u0905\u092a\u0928\u0947 \u0936\u092c\u094d\u0926\u094b\u0902 \u092e\u0947\u0902 \u0916\u094b\u091c\u0947\u0902", "\u0aaa\u0acb\u0aa4\u0abe\u0aa8\u0abe \u0ab6\u0aac\u0acd\u0aa6\u0acb\u0aae\u0abe\u0a82 \u0ab6\u0acb\u0aa7\u0acb"];
 
+  // Archive for Watch later (round 388 new 2): a parked backlog fills Watch later with
+  // rows you are not ready to watch and not ready to delete - Pin, Snooze and a saved
+  // reason all keep the row on the list, and Remove throws it away for good. Archive is
+  // the middle step that was missing: the 📥 button on a Watch later row moves the video
+  // (title, pin, reason and all) out of the list into an Archived shelf under it, with
+  // Undo on the toast. The Archived chip in the Watch later heading opens the shelf; a
+  // shelf row unarchives back to the end of Watch later (an honest message when the list
+  // is full at 50) or is removed for good, also with Undo. Because the video leaves
+  // lib.later, every bulk chip, count, badge and the library search automatically treat
+  // it as gone until it returns - no hidden rows inside the live list and nothing
+  // counted twice. The shelf keeps at most 200 entries in vp-archive388.v1 on this
+  // device. Checked first: no archive, shelve or park-away feature exists anywhere in
+  // the app (FEATS list, code and git log all show zero hits). Hindi and Gujarati text
+  // inside the main closure, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Archived": ["संग्रहीत", "સંગ્રહિત"],
+    "Archive - hide from Watch later, keep it saved": ["संग्रहित करें - बाद में देखें से हटाएं, सेव रखें", "સંગ્રહિત કરો - પછી જુઓ માંથી હટાવો, સાચવેલું રહે"],
+    "Unarchive": ["वापस लाएं", "પાછું લાવો"],
+    "Archived.": ["संग्रहित किया.", "સંગ્રહિત કર્યું."],
+    "Back in Watch later": ["बाद में देखें में वापस", "પછી જુઓ માં પાછું"],
+    "Watch later row brought back": ["बाद में देखें की पंक्ति वापस आई", "પછી જુઓ ની પંક્તિ પાછી આવી"],
+    "Remove from the archive for good": ["संग्रह से हमेशा के लिए हटाएं", "સંગ્રહમાંથી કાયમ માટે કાઢો"],
+    "Removed from the archive.": ["संग्रह से हटाया गया.", "સંગ્રહમાંથી કાઢી નાખ્યું."],
+    "Archive entry restored": ["संग्रह की प्रविष्टि वापस आई", "સંગ્રહ ની એન્ટ્રી પાછી આવી"],
+    "Nothing archived yet. Tap 📥 on a Watch later row to park a video here.": ["अभी कुछ संग्रहीत नहीं. किसी बाद में देखें पंक्ति पर 📥 दबाकर वीडियो यहां रखें.", "હજી કંઈ સંગ્રહિત નથી. પછી જુઓ પંક્તિ પર 📥 દબાવી વીડિયો અહીં મૂકો."],
+    "Show or hide the archived shelf": ["संग्रहीत शेल्फ दिखाएं या छिपाएं", "સંગ્રહિત શેલ્ફ બતાવો કે છુપાવો"]
+  });
+  var archData388 = [];
+  try { var aRaw388 = JSON.parse(localStorage.getItem("vp-archive388.v1") || "null"); if (Array.isArray(aRaw388)) archData388 = aRaw388.filter(function (x) { return x && validItem(x); }).slice(0, 200); } catch (e) {}
+  function saveArch388() { try { localStorage.setItem("vp-archive388.v1", JSON.stringify(archData388)); } catch (e) {} }
+  function archIdx388(id) { for (var ai = 0; ai < archData388.length; ai++) if (archData388[ai].id === id) return ai; return -1; }
+  var archOpen388 = false;
+  function paintArch388() {
+    var b = $("laterArchBtn388"); if (b) { b.textContent = "📥 " + T("Archived") + (archData388.length ? " (" + archData388.length + ")" : ""); b.setAttribute("aria-label", T("Show or hide the archived shelf")); b.setAttribute("aria-pressed", archOpen388 ? "true" : "false"); }
+    var h = $("lhArch388"); if (h) h.textContent = T("Archived") + (archData388.length ? " (" + archData388.length + ")" : "");
+  }
+  function renderArch388() {
+    var ul = $("archList388"), h = $("lhArch388"); if (!ul || !h) return;
+    h.hidden = !archOpen388; ul.hidden = !archOpen388;
+    if (!archOpen388) return;
+    fillList(ul, archData388, T("Nothing archived yet. Tap 📥 on a Watch later row to park a video here."), T("Unarchive"), function (item) {
+      var i = archIdx388(item.id); if (i < 0) return;
+      if (findIn(lib.later, item.id) < 0 && lib.later.length >= 50) { toast(T("Watch later is full (50 videos). Remove one first.")); return; }
+      var it = archData388.splice(i, 1)[0]; delete it.archTs; saveArch388();
+      if (findIn(lib.later, it.id) < 0) { lib.later.push(it); saveLib(); }
+      renderLib(); renderArch388(); paintArch388();
+      toast(T("Back in Watch later"));
+    }, null, [{ label: "🗑", aria: function () { return T("Remove from the archive for good"); }, cls: "", fn: function (item) {
+      var i = archIdx388(item.id); if (i < 0) return;
+      var it = archData388.splice(i, 1)[0]; saveArch388(); renderArch388(); paintArch388();
+      toastUndo(T("Removed from the archive."), function () { archData388.splice(Math.min(i, archData388.length), 0, it); saveArch388(); renderArch388(); paintArch388(); }, T("Archive entry restored"));
+    } }, plRowAction(), favRowAction(), queueRowAction()], undefined, undefined, false);
+  }
+  function archRowAction388() {
+    return { label: "📥", aria: function () { return T("Archive - hide from Watch later, keep it saved"); }, cls: "", fn: function (item) {
+      var lIdx = findIn(lib.later, item.id); if (lIdx < 0) return;
+      var snapLat = lib.later.slice();
+      var moved = lib.later.splice(lIdx, 1)[0];
+      var entry = {}; for (var k in moved) if (Object.prototype.hasOwnProperty.call(moved, k)) entry[k] = moved[k];
+      entry.archTs = Date.now();
+      archData388.unshift(entry); if (archData388.length > 200) archData388.length = 200;
+      saveArch388(); saveLib(); renderLib(); renderArch388(); paintArch388();
+      toastUndo(T("Archived."), function () { var di = archIdx388(moved.id); if (di >= 0) { archData388.splice(di, 1); saveArch388(); } lib.later = snapLat; saveLib(); renderLib(); renderArch388(); paintArch388(); }, T("Watch later row brought back"));
+    } };
+  }
+  (function () {
+    var chip388 = $("laterArchBtn388");
+    if (chip388) chip388.addEventListener("click", function () { archOpen388 = !archOpen388; renderArch388(); paintArch388(); if (archOpen388) { var h = $("lhArch388"); if (h && h.scrollIntoView) h.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "start" }); } });
+    (window.__relang = window.__relang || []).push(function () { paintArch388(); renderArch388(); });
+    paintArch388();
+    if (window.MutationObserver && $("laterList")) new MutationObserver(function () { paintArch388(); if (archOpen388) renderArch388(); }).observe($("laterList"), { childList: true });
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Archive Watch later rows", "#laterArchBtn388"); }, 1710); });
+
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -53568,79 +53642,6 @@ summary{min-height:28px;box-sizing:border-box}
     }).observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ["aria-label"] });
     (window.__relang = window.__relang || []).push(function () { setTimeout(function () { scan(document.body); }, 300); });
   }
-  // Archive for Watch later (round 388 new 2): a parked backlog fills Watch later with
-  // rows you are not ready to watch and not ready to delete - Pin, Snooze and a saved
-  // reason all keep the row on the list, and Remove throws it away for good. Archive is
-  // the middle step that was missing: the 📥 button on a Watch later row moves the video
-  // (title, pin, reason and all) out of the list into an Archived shelf under it, with
-  // Undo on the toast. The Archived chip in the Watch later heading opens the shelf; a
-  // shelf row unarchives back to the end of Watch later (an honest message when the list
-  // is full at 50) or is removed for good, also with Undo. Because the video leaves
-  // lib.later, every bulk chip, count, badge and the library search automatically treat
-  // it as gone until it returns - no hidden rows inside the live list and nothing
-  // counted twice. The shelf keeps at most 200 entries in vp-archive388.v1 on this
-  // device. Checked first: no archive, shelve or park-away feature exists anywhere in
-  // the app (FEATS list, code and git log all show zero hits). Hindi and Gujarati text
-  // inside the main closure, What's new and feature finder included.
-  Object.assign(TR_MSG, {
-    "Archived": ["संग्रहीत", "સંગ્રહિત"],
-    "Archive - hide from Watch later, keep it saved": ["संग्रहित करें - बाद में देखें से हटाएं, सेव रखें", "સંગ્રહિત કરો - પછી જુઓ માંથી હટાવો, સાચવેલું રહે"],
-    "Unarchive": ["वापस लाएं", "પાછું લાવો"],
-    "Archived.": ["संग्रहित किया.", "સંગ્રહિત કર્યું."],
-    "Back in Watch later": ["बाद में देखें में वापस", "પછી જુઓ માં પાછું"],
-    "Watch later row brought back": ["बाद में देखें की पंक्ति वापस आई", "પછી જુઓ ની પંક્તિ પાછી આવી"],
-    "Remove from the archive for good": ["संग्रह से हमेशा के लिए हटाएं", "સંગ્રહમાંથી કાયમ માટે કાઢો"],
-    "Removed from the archive.": ["संग्रह से हटाया गया.", "સંગ્રહમાંથી કાઢી નાખ્યું."],
-    "Archive entry restored": ["संग्रह की प्रविष्टि वापस आई", "સંગ્રહ ની એન્ટ્રી પાછી આવી"],
-    "Nothing archived yet. Tap 📥 on a Watch later row to park a video here.": ["अभी कुछ संग्रहीत नहीं. किसी बाद में देखें पंक्ति पर 📥 दबाकर वीडियो यहां रखें.", "હજી કંઈ સંગ્રહિત નથી. પછી જુઓ પંક્તિ પર 📥 દબાવી વીડિયો અહીં મૂકો."],
-    "Show or hide the archived shelf": ["संग्रहीत शेल्फ दिखाएं या छिपाएं", "સંગ્રહિત શેલ્ફ બતાવો કે છુપાવો"]
-  });
-  var archData388 = [];
-  try { var aRaw388 = JSON.parse(localStorage.getItem("vp-archive388.v1") || "null"); if (Array.isArray(aRaw388)) archData388 = aRaw388.filter(function (x) { return x && validItem(x); }).slice(0, 200); } catch (e) {}
-  function saveArch388() { try { localStorage.setItem("vp-archive388.v1", JSON.stringify(archData388)); } catch (e) {} }
-  function archIdx388(id) { for (var ai = 0; ai < archData388.length; ai++) if (archData388[ai].id === id) return ai; return -1; }
-  var archOpen388 = false;
-  function paintArch388() {
-    var b = $("laterArchBtn388"); if (b) { b.textContent = "📥 " + T("Archived") + (archData388.length ? " (" + archData388.length + ")" : ""); b.setAttribute("aria-label", T("Show or hide the archived shelf")); b.setAttribute("aria-pressed", archOpen388 ? "true" : "false"); }
-    var h = $("lhArch388"); if (h) h.textContent = T("Archived") + (archData388.length ? " (" + archData388.length + ")" : "");
-  }
-  function renderArch388() {
-    var ul = $("archList388"), h = $("lhArch388"); if (!ul || !h) return;
-    h.hidden = !archOpen388; ul.hidden = !archOpen388;
-    if (!archOpen388) return;
-    fillList(ul, archData388, T("Nothing archived yet. Tap 📥 on a Watch later row to park a video here."), T("Unarchive"), function (item) {
-      var i = archIdx388(item.id); if (i < 0) return;
-      if (findIn(lib.later, item.id) < 0 && lib.later.length >= 50) { toast(T("Watch later is full (50 videos). Remove one first.")); return; }
-      var it = archData388.splice(i, 1)[0]; delete it.archTs; saveArch388();
-      if (findIn(lib.later, it.id) < 0) { lib.later.push(it); saveLib(); }
-      renderLib(); renderArch388(); paintArch388();
-      toast(T("Back in Watch later"));
-    }, null, [{ label: "🗑", aria: function () { return T("Remove from the archive for good"); }, cls: "", fn: function (item) {
-      var i = archIdx388(item.id); if (i < 0) return;
-      var it = archData388.splice(i, 1)[0]; saveArch388(); renderArch388(); paintArch388();
-      toastUndo(T("Removed from the archive."), function () { archData388.splice(Math.min(i, archData388.length), 0, it); saveArch388(); renderArch388(); paintArch388(); }, T("Archive entry restored"));
-    } }, plRowAction(), favRowAction(), queueRowAction()], undefined, undefined, false);
-  }
-  function archRowAction388() {
-    return { label: "📥", aria: function () { return T("Archive - hide from Watch later, keep it saved"); }, cls: "", fn: function (item) {
-      var lIdx = findIn(lib.later, item.id); if (lIdx < 0) return;
-      var snapLat = lib.later.slice();
-      var moved = lib.later.splice(lIdx, 1)[0];
-      var entry = {}; for (var k in moved) if (Object.prototype.hasOwnProperty.call(moved, k)) entry[k] = moved[k];
-      entry.archTs = Date.now();
-      archData388.unshift(entry); if (archData388.length > 200) archData388.length = 200;
-      saveArch388(); saveLib(); renderLib(); renderArch388(); paintArch388();
-      toastUndo(T("Archived."), function () { var di = archIdx388(moved.id); if (di >= 0) { archData388.splice(di, 1); saveArch388(); } lib.later = snapLat; saveLib(); renderLib(); renderArch388(); paintArch388(); }, T("Watch later row brought back"));
-    } };
-  }
-  (function () {
-    var chip388 = $("laterArchBtn388");
-    if (chip388) chip388.addEventListener("click", function () { archOpen388 = !archOpen388; renderArch388(); paintArch388(); if (archOpen388) { var h = $("lhArch388"); if (h && h.scrollIntoView) h.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "start" }); } });
-    (window.__relang = window.__relang || []).push(function () { paintArch388(); renderArch388(); });
-    paintArch388();
-    if (window.MutationObserver && $("laterList")) new MutationObserver(function () { paintArch388(); if (archOpen388) renderArch388(); }).observe($("laterList"), { childList: true });
-  })();
-  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Archive Watch later rows", "#laterArchBtn388"); }, 1710); });
   if (document.readyState === "complete") setTimeout(start, 0); else window.addEventListener("load", function () { setTimeout(start, 600); });
 })();
 </script>
