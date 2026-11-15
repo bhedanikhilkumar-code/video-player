@@ -28954,38 +28954,39 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var card=document.createElement('details');card.id='drillCard';card.className='r239-card';
   card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="row" id="drRow" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0"></div><p class="hint" id="drMsg" role="status"></p>';
   host.parentNode.insertBefore(card,host);
-  var span=30,timer=null,idx=0,list=[],drillId=null;
+  var span=30,timer=null,idx=0,list=[],drillId=null,notice422="",finished422=0;
   function curMoments(){return (typeof marks==='object'&&marks&&curId&&Array.isArray(marks[curId]))?marks[curId].filter(function(m){return m&&typeof m.t==='number'&&m.t>=0;}).slice().sort(function(a,b){return a.t-b.t;}):[];}
-  function stop(msg){if(timer){clearInterval(timer);timer=null;}drillId=null;if(msg)$('drMsg').textContent=msg;paint();}
+  function stop(msg,n){if(timer){clearInterval(timer);timer=null;}drillId=null;notice422=msg||'';finished422=n||0;paint();}
   function advance421(restart){
     idx++;
-    if(idx>=list.length){var n=list.length;stop(T('Drill done - all {n} moments replayed.').replace('{n}',n));send('pauseVideo');return;}
+    if(idx>=list.length){var n=list.length;stop('Drill done - all {n} moments replayed.',n);send('pauseVideo');return;}
     send('seekTo',[list[idx].t,true]);curTime=list[idx].t;if(restart)send('playVideo');
     $('drMsg').textContent=T('Drill: moment {a} of {b}').replace('{a}',idx+1).replace('{b}',list.length);
   }
   function tick(){if(drillId===null)return;
-    if(drillId!==curId||sleepPaused||playbackCovered345()){stop(T('Drill stopped.'));return;}
+    if(drillId!==curId||sleepPaused||playbackCovered345()){stop('Drill stopped.');return;}
     // Let the ended event own a span truncated by the video boundary. Finishing on
     // the timer first would release ownership and let the later ended event auto-next.
     if(playing&&typeof curTime==='number'&&list[idx]&&list[idx].t+span<duration&&curTime>=list[idx].t+span)advance421(false);
   }
-  window.__vpDrillEnded421=function(){if(drillId===null||drillId!==curId)return false;if(sleepPaused||playbackCovered345()){stop(T('Drill stopped.'));return false;}advance421(true);return true;};
+  window.__vpDrillEnded421=function(){if(drillId===null||drillId!==curId)return false;if(sleepPaused||playbackCovered345()){stop('Drill stopped.');return false;}advance421(true);return true;};
   function start(){
-    if(!ready||!(duration>0)){ $('drMsg').textContent=T('Play a little first, then replay a section.');return; }
+    if(!ready||!(duration>0)){ notice422='Play a little first, then replay a section.';paint();return; }
     list=curMoments().filter(function(m){return m.t<duration;});
-    if(!curId||!list.length){$('drMsg').textContent=T('Load a video that has saved moments first.');return;}
+    if(!curId||!list.length){notice422='Load a video that has saved moments first.';paint();return;}
     document.dispatchEvent(new Event('vp-moment-drill-start421'));
     idx=0;drillId=curId;send('seekTo',[list[0].t,true]);send('playVideo');
     $('drMsg').textContent=T('Drill: moment {a} of {b}').replace('{a}',1).replace('{b}',list.length);
     if(timer)clearInterval(timer);timer=setInterval(tick,500);
     if(frameBox&&frameBox.scrollIntoView)frameBox.scrollIntoView({behavior:window.vpReducedMotion()?'auto':'smooth',block:'center'});paint();}
   function paint(){card.querySelector('summary').textContent=T('Moment drill');card.querySelector('.r239-desc').textContent=T('Replays each saved moment of the loaded video for a short span, one after another - made for practice.');
+    $('drMsg').textContent=drillId?T('Drill: moment {a} of {b}').replace('{a}',idx+1).replace('{b}',list.length):T(notice422).replace('{n}',finished422);
     var R=$('drRow');if(!R)return;R.textContent='';
     var lab=document.createElement('span');lab.className='hint';lab.textContent=T('Span')+':';R.appendChild(lab);
     [15,30,60].forEach(function(s){var b=document.createElement('button');b.type='button';b.className='chip'+(span===s?' active':'');b.textContent=s+'s';b.setAttribute('aria-pressed',span===s?'true':'false');b.addEventListener('click',function(){span=s;paint();});R.appendChild(b);});
     var go=document.createElement('button');go.type='button';go.className='chip';go.textContent=drillId?T('Stop drill'):T('Start drill');
-    go.addEventListener('click',function(){if(drillId)stop(T('Drill stopped.'));else start();});R.appendChild(go);}
-  document.addEventListener('vp-practice-circuit-start421',function(){if(drillId)stop(T('Drill stopped.'));});
+    go.addEventListener('click',function(){if(drillId)stop('Drill stopped.');else start();});R.appendChild(go);}
+  document.addEventListener('vp-practice-circuit-start421',function(){if(drillId)stop('Drill stopped.');});
   card.addEventListener('toggle',function(){if(card.open)paint();});
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
