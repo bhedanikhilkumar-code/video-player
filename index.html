@@ -1333,7 +1333,11 @@ img.skel-img {
 #vpPalIn{width:100%;box-sizing:border-box;padding:14px 16px;font:inherit;font-size:16px;border:0;border-bottom:1px solid var(--hairline,rgba(0,0,0,.12));background:transparent;color:inherit;outline:none;}
 .vp-pal-list{max-height:46vh;overflow:auto;padding:6px;}
 .vp-pal-grp{padding:8px 12px 2px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2,#666);}
-.vp-pal-item{padding:10px 12px;border-radius:12px;cursor:pointer;font-size:15px;}
+.vp-pal-item{padding:10px 12px;border-radius:12px;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.vp-pal-item>span{flex:1 1 auto;min-width:0;}
+.vp-pal-pin{border:0;background:transparent;cursor:pointer;font-size:13px;line-height:1;padding:4px 6px;border-radius:8px;color:var(--ink2,#666);flex:0 0 auto;font-family:inherit;}
+.vp-pal-pin:hover{background:var(--soft,rgba(0,0,0,.08));}
+.vp-pal-item.is-act .vp-pal-pin{color:#fff;}
 .vp-pal-item.is-act{background:var(--teal,#0a8);color:#fff;}
 .vp-pal-empty{padding:18px;text-align:center;color:var(--ink2,#666);font-size:14px;}
 </style><style id="r52-find">
@@ -3464,6 +3468,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "Actions": ["एक्शन", "ક્રિયાઓ"],
    "Recently used": ["हाल में इस्तेमाल किए गए", "તાજેતરમાં વપરાયેલ"],
    "Recently used in Search": ["खोज में हाल में इस्तेमाल किए गए", "શોધમાં તાજેતરમાં વપરાયેલ"],
+   "Pinned actions in Search": ["खोज में पिन किए गए एक्शन", "શોધમાં પિન કરેલા એક્શન"],
+   "Pin this action": ["इस एक्शन को पिन करें", "આ એક્શન પિન કરો"],
+   "Unpin this action": ["इस एक्शन की पिन हटाएं", "આ એક્શનની પિન હટાવો"],
+   "Up to 8 pinned actions.": ["ज़्यादा से ज़्यादा 8 एक्शन पिन किए जा सकते हैं.", "વધુમાં વધુ 8 એક્શન પિન કરી શકાય."],
    "No matches.": ["कुछ नहीं मिला.", "કંઈ મળ્યું નહીં."],
    "Type a word from the subtitles": ["सबटाइटल का कोई शब्द लिखें", "સબટાઇટલનો કોઈ શબ્દ લખો"],
    "Load a subtitle file first, then search.": ["पहले सबटाइटल फ़ाइल लोड करें, फिर खोजें.", "પહેલા સબટાઇટલ ફાઇલ લોડ કરો, પછી શોધો."],
@@ -48822,28 +48830,58 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   // device only. Typing any letter hides the group and filters as before. Checked first:
   // the finder had keyword aliases and translated labels, but nothing remembered picks.
   var RECKEY = "vp-pal-recent.v1";
-  function readRec() { try { var r = JSON.parse(localStorage.getItem(RECKEY) || "[]"); return Array.isArray(r) ? r.filter(function (x) { return typeof x === "string"; }).slice(0, 5) : []; } catch (e) { return []; } }
-  function writeRec(lab) { try { var r = readRec().filter(function (x) { return x !== lab; }); r.unshift(lab); localStorage.setItem(RECKEY, JSON.stringify(r.slice(0, 5))); } catch (e) {} }
+  // Round 371 fix 1: round 368 stored the pick's TRANSLATED label, so every language
+  // switch (this app cycles English-Hindi-Gujarati in the header) left a label that
+  // matched nothing and the Recently used group silently lost the pick - seen live:
+  // "स्लीप टाइमर सत्र सार" recorded in Hindi was gone after switching to Gujarati.
+  // Picks now store the item's stable key (its anchor or button id, same in every
+  // language); a stored label from before this fix still matches in its own language
+  // once and is rewritten as a key on the next read.
+  function readRecRaw() { try { var r = JSON.parse(localStorage.getItem(RECKEY) || "[]"); return Array.isArray(r) ? r.filter(function (x) { return typeof x === "string"; }).slice(0, 5) : []; } catch (e) { return []; } }
+  function readRec() {
+    var out = [], legacy = false, keys = [];
+    readRecRaw().forEach(function (s) {
+      var m = null;
+      if (/^(sec|act|feat):/.test(s)) m = items.filter(function (it) { return it.key === s; })[0];
+      else { m = items.filter(function (it) { return it.label === s; })[0]; legacy = true; }
+      if (m && out.indexOf(m) < 0) { out.push(m); keys.push(m.key || s); }
+    });
+    if (legacy) { try { localStorage.setItem(RECKEY, JSON.stringify(keys.slice(0, 5))); } catch (e) {} }
+    return out;
+  }
+  function writeRec(lab) {
+    try {
+      var m = items.filter(function (it) { return it.label === lab; })[0];
+      var k = (m && m.key) || lab;
+      var r = readRecRaw().map(function (s) {
+        if (/^(sec|act|feat):/.test(s)) return s;
+        var mm = items.filter(function (it) { return it.label === s; })[0];
+        return mm && mm.key ? mm.key : s;
+      }).filter(function (x) { return x !== k; });
+      r.unshift(k);
+      localStorage.setItem(RECKEY, JSON.stringify(r.slice(0, 5)));
+    } catch (e) {}
+  }
 
   function buildItems() {
     var out = [];
     document.querySelectorAll(".feat-nav a.feat").forEach(function (a) {
       if (document.documentElement.classList.contains("simple-mode") && a.offsetParent === null) return;
       var label = (a.textContent || "").replace(/\s+/g, " ").trim();
-      if (label) out.push({ label: label, group: "Sections", run: function () { a.click(); } });
+      if (label) out.push({ label: label, group: "Sections", key: "sec:" + (a.getAttribute("href") || label), run: function () { a.click(); } });
     });
     function click(id) { return function () { var b = document.getElementById(id); if (b) b.click(); }; }
-    out.push({ label: T("Change theme"), kw: "theme dark light \u0930\u0902\u0917 \u0ab0\u0a82\u0a97 theme rang andhera roshni", group: "Actions", run: click("themeBtn") });
-    out.push({ label: T("Switch language"), kw: "language hindi gujarati english \u092d\u093e\u0937\u093e \u0aad\u0abe\u0ab7\u0abe bhasha", group: "Actions", run: click("langBtn") });
-    out.push({ label: T("Cinema mode on / off"), group: "Actions", run: click("cinemaBtn") });
-    out.push({ label: T("Night volume"), group: "Player", run: jump("#nightVolRow") });
-    out.push({ label: T("Leave full screen when the video ends"), group: "Player", run: click("fsExitBtn") });
-    out.push({ label: T("Per-video volume"), group: "Player", run: click("pvVolBtn") });
-    out.push({ label: T("Fade in"), group: "Player", run: jump("#fadeInRow") });
-    out.push({ label: T("Collapse or expand all sections"), group: "Actions", run: click("secAllBtn") });
+    out.push({ label: T("Change theme"), kw: "theme dark light \u0930\u0902\u0917 \u0ab0\u0a82\u0a97 theme rang andhera roshni", group: "Actions", key: "act:themeBtn", run: click("themeBtn") });
+    out.push({ label: T("Switch language"), kw: "language hindi gujarati english \u092d\u093e\u0937\u093e \u0aad\u0abe\u0ab7\u0abe bhasha", group: "Actions", key: "act:langBtn", run: click("langBtn") });
+    out.push({ label: T("Cinema mode on / off"), group: "Actions", key: "act:cinemaBtn", run: click("cinemaBtn") });
+    out.push({ label: T("Night volume"), group: "Player", key: "feat:#nightVolRow", run: jump("#nightVolRow") });
+    out.push({ label: T("Leave full screen when the video ends"), group: "Player", key: "act:fsExitBtn", run: click("fsExitBtn") });
+    out.push({ label: T("Per-video volume"), group: "Player", key: "act:pvVolBtn", run: click("pvVolBtn") });
+    out.push({ label: T("Fade in"), group: "Player", key: "feat:#fadeInRow", run: jump("#fadeInRow") });
+    out.push({ label: T("Collapse or expand all sections"), group: "Actions", key: "act:secAllBtn", run: click("secAllBtn") });
     var inst = document.getElementById("installBtn");
-    if (inst && !inst.hidden) out.push({ label: T("Install app"), group: "Actions", run: click("installBtn") });
-    out.push({ label: T("Back to top"), group: "Actions", run: function () { window.scrollTo({ top: 0, behavior: window.vpReducedMotion() ? "auto" : "smooth" }); } });
+    if (inst && !inst.hidden) out.push({ label: T("Install app"), group: "Actions", key: "act:installBtn", run: click("installBtn") });
+    out.push({ label: T("Back to top"), group: "Actions", key: "act:backTop", run: function () { window.scrollTo({ top: 0, behavior: window.vpReducedMotion() ? "auto" : "smooth" }); } });
     // Feature finder (round 52): jump straight to a control anywhere on this long page.
     // Picking one opens its folded section if needed, scrolls it into view and flashes it.
     function jump(sel) {
@@ -49836,7 +49874,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
       if (simpleOn) { var fel = null; try { fel = document.querySelector(f[2]); } catch (e) {} if (fel && fel.offsetParent === null) return; }
-      out.push({ label: T(f[0]), kw: f[1] + (WORDS361[f[0]] ? " " + WORDS361[f[0]] : ""), group: "Features", run: jump(f[2]) });
+      out.push({ label: T(f[0]), kw: f[1] + (WORDS361[f[0]] ? " " + WORDS361[f[0]] : ""), group: "Features", key: "feat:" + f[2], run: jump(f[2]) });
     });
     return out;
   }
@@ -49854,9 +49892,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     shown = items.filter(function (it) { return !q || it.label.toLowerCase().indexOf(q) >= 0 || (it.kw && it.kw.indexOf(q) >= 0); });
     if (!q) {
       var ritems = [];
-      readRec().forEach(function (lab) {
-        var m = items.filter(function (it) { return it.label === lab; })[0];
-        if (m && ritems.indexOf(m) < 0) ritems.push({ label: m.label, group: "Recently used", run: m.run });
+      readRec().forEach(function (m) {
+        if (ritems.indexOf(m) < 0) ritems.push({ label: m.label, group: "Recently used", run: m.run, key: m.key });
       });
       if (ritems.length) shown = ritems.concat(shown);
     }
