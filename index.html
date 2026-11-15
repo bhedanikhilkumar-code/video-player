@@ -4479,7 +4479,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var el = $("queueTime"); if (!el) return;
     if (!lib.queue.length) { el.textContent = ""; return; }
     var known = 0, secs = 0;
-    lib.queue.forEach(function (x) { var d = infoCache[x.id] && infoCache[x.id].dur; if (typeof d === "number" && d > 0) { known++; secs += d; } });
+    // Round 461 fix: the total counted only lengths learned this session (infoCache), so
+    // a queue of videos the app had already timed in earlier sessions read "1/50 lengths
+    // known" and hid its "ends ~" clock (seen live) - while the Watch-later total
+    // (round 232), the picked-videos total and the row "starts ~" tags (queueRowDur)
+    // all fall back to the history row's learned length. Same fallback here.
+    lib.queue.forEach(function (x) {
+      var d = infoCache[x.id] && infoCache[x.id].dur;
+      if (!(typeof d === "number" && d > 0)) { var hiQ = findIn(lib.hist, x.id); if (hiQ >= 0 && typeof lib.hist[hiQ].dur === "number" && lib.hist[hiQ].dur > 0) d = lib.hist[hiQ].dur; }
+      if (typeof d === "number" && d > 0) { known++; secs += d; }
+    });
     // Round 209 fix: the total and the "ends ~" clock counted the video that is
     // playing right now at its FULL length, so halfway through a 10-minute video
     // the clock said 10 minutes for it instead of the 5 that are actually left.
@@ -4493,6 +4502,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (qTPos < 0 && curId) { var qTIx = findIn(lib.queue, curId); if (qTIx >= 0) qTPos = qTIx; }
     if (qTPos >= 0 && qTPos < lib.queue.length && curId && lib.queue[qTPos] && lib.queue[qTPos].id === curId && curTime > 0) {
       var dCur = infoCache[curId] && infoCache[curId].dur;
+      if (!(typeof dCur === "number" && dCur > 0)) { var hiC = findIn(lib.hist, curId); if (hiC >= 0 && typeof lib.hist[hiC].dur === "number" && lib.hist[hiC].dur > 0) dCur = lib.hist[hiC].dur; }
       if (typeof dCur === "number" && dCur > 0) secs = Math.max(0, secs - Math.min(Math.floor(curTime), dCur));
     }
     var sp = prefs.speed > 0 ? prefs.speed : 1;
