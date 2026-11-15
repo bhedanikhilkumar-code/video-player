@@ -48933,15 +48933,132 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       setTimeout(function () { try { URL.revokeObjectURL(a.href); } catch (e) {} }, 4000);
       toast(T("Passport saved - it carries this video's moments, note, remembered settings and lyrics."));
     });
+    Object.assign(TR_MSG, {
+  "Review video passport": [
+    "वीडियो पासपोर्ट की समीक्षा",
+    "વીડિયો પાસપોર્ટની સમીક્ષા"
+  ],
+  "Choose what to bring in. Existing items stay unchanged. Nothing is saved until you import.": [
+    "क्या लाना है चुनें. पहले से मौजूद चीज़ें नहीं बदलेंगी. आयात करने तक कुछ सेव नहीं होता.",
+    "શું લાવવું તે પસંદ કરો. પહેલેથી રહેલી વસ્તુઓ બદલાશે નહીં. આયાત કરો ત્યાં સુધી કંઈ સાચવાતું નથી."
+  ],
+  "Import selected items": [
+    "चुनी चीज़ें आयात करें",
+    "પસંદ કરેલી વસ્તુઓ આયાત કરો"
+  ],
+  "Already here or full - kept unchanged.": [
+    "पहले से मौजूद या जगह भरी है - कोई बदलाव नहीं.",
+    "પહેલેથી છે અથવા જગ્યા ભરેલી છે - કોઈ ફેરફાર નહીં."
+  ],
+  "Ready to add": [
+    "जोड़ने के लिए तैयार",
+    "ઉમેરવા માટે તૈયાર"
+  ],
+  "No new valid items in this section.": [
+    "इस भाग में कोई नई मान्य चीज़ नहीं.",
+    "આ ભાગમાં કોઈ નવી માન્ય વસ્તુ નથી."
+  ],
+  "Passport playback settings": [
+    "पासपोर्ट की प्लेबैक सेटिंग्स",
+    "પાસપોર્ટની પ્લેબૅક સેટિંગ્સ"
+  ]
+});
+    TR_MSG["Passport caption language"] = ["पासपोर्ट की सबटाइटल भाषा", "પાસપોર્ટની સબટાઇટલ ભાષા"];
+    // Round 453: an inspected, selective import. Preview text is always plain text.
+    var passportRead453 = 0;
+    function reviewPassport453(data) {
+      return new Promise(function (resolve) {
+        var older = $("passportReview453"); if (older && older.__cancel453) older.__cancel453();
+        var previous = document.activeElement, pending = true, parts453 = [];
+        var dlg = document.createElement("dialog"); dlg.id = "passportReview453";
+        dlg.setAttribute("aria-labelledby", "passportReviewTitle453");
+        var title = document.createElement("h2"); title.id = "passportReviewTitle453";
+        var hint453 = document.createElement("p"); hint453.className = "hint";
+        var identity = document.createElement("p"); identity.className = "passport-identity453";
+        identity.textContent = String(data.title || titleOf449(data.id) || data.id).slice(0, 200) + " · " + data.id;
+        var body = document.createElement("div"); body.className = "passport-body453";
+        var foot = document.createElement("div"); foot.className = "row passport-foot453";
+        var cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "chip"; cancel.id = "passportCancel453";
+        var apply = document.createElement("button"); apply.type = "button"; apply.className = "chip active"; apply.id = "passportApply453";
+        foot.append(cancel, apply); dlg.append(title, hint453, identity, body, foot);
+        var seen453 = Object.create(null), existing453 = marks[data.id] || [];
+        existing453.forEach(function (m) { seen453[m.t] = true; });
+        var fresh453 = (Array.isArray(data.marks) ? data.marks : []).filter(function (m) {
+          if (!m || typeof m.t !== "number" || !isFinite(m.t) || m.t < 0 || seen453[Math.floor(m.t)]) return false;
+          seen453[Math.floor(m.t)] = true; return true;
+        }).map(function (m) { return {t: Math.floor(m.t), name: typeof m.name === "string" ? m.name.slice(0, 40) : ""}; }).slice(0, Math.max(0, 30 - existing453.length));
+        function section(key, label, value, preview, available, kept) {
+          var sec = document.createElement("section"), line = document.createElement("label"), check = document.createElement("input"), name = document.createElement("strong");
+          sec.className = "passport-section453"; check.type = "checkbox"; check.id = "passportPick453-" + key; check.checked = !!available; check.disabled = !available;
+          line.append(check, name); sec.appendChild(line);
+          var state = document.createElement("p"); state.className = "hint"; sec.appendChild(state);
+          var pre = document.createElement("pre"); pre.textContent = preview; pre.hidden = !preview; sec.appendChild(pre); body.appendChild(sec);
+          parts453.push({key:key, label:label, value:value, check:check, name:name, state:state, pre:pre, kept:kept, available:available});
+          check.addEventListener("change", paint453);
+        }
+        section("marks", "Moments", fresh453, fresh453.map(function (m) { return fmt(m.t) + (m.name ? " · " + m.name : ""); }).join("\n"), fresh453.length > 0, Array.isArray(data.marks) && data.marks.length > 0 && !fresh453.length);
+        var note453 = typeof data.note === "string" ? data.note.slice(0, 600) : "", noteKept453 = !!(typeof notes[data.id] === "string" && notes[data.id].trim());
+        section("note", "Note", note453, note453, !!note453.trim() && !noteKept453, !!note453.trim() && noteKept453);
+        var vm453 = {}, raw453 = data.memory;
+        if (raw453 && typeof raw453 === "object" && !Array.isArray(raw453)) {
+          if (typeof raw453.speed === "number" && isFinite(raw453.speed) && raw453.speed >= 0.25 && raw453.speed <= 2) vm453.speed = raw453.speed;
+          if (typeof raw453.vol === "number" && isFinite(raw453.vol) && raw453.vol >= 0 && raw453.vol <= 100) vm453.vol = Math.round(raw453.vol);
+          if (typeof raw453.cc === "boolean") vm453.cc = raw453.cc;
+          if (typeof raw453.ccLang === "string") vm453.ccLang = raw453.ccLang.slice(0, 10);
+          ["intro", "outro"].forEach(function (k) { if (typeof raw453[k] === "number" && isFinite(raw453[k]) && raw453[k] >= 1) vm453[k] = Math.floor(raw453[k]); });
+        }
+        var hasVM453 = Object.keys(vm453).length > 0;
+        section("memory", "Passport playback settings", vm453, hasVM453 ? JSON.stringify(vm453, null, 2) : "", hasVM453 && !vmem[data.id], hasVM453 && !!vmem[data.id]);
+        var lyric453 = typeof data.lyrics === "string" ? data.lyrics.slice(0, 20000) : "", lyricKept453 = !!(typeof lyrics[data.id] === "string" && lyrics[data.id].trim());
+        section("lyrics", "Lyrics", lyric453, lyric453, !!lyric453.trim() && !lyricKept453, !!lyric453.trim() && lyricKept453);
+        function paint453() {
+          title.textContent = T("Review video passport");
+          hint453.textContent = T("Choose what to bring in. Existing items stay unchanged. Nothing is saved until you import.");
+          cancel.textContent = T("Cancel"); apply.textContent = T("Import selected items");
+          apply.disabled = !parts453.some(function (p) { return p.check.checked && !p.check.disabled; });
+          parts453.forEach(function (p) { p.name.textContent = T(p.label);
+            if (p.key === "memory") {
+              var settings453 = [], labels453 = {speed:"Speed", vol:"Volume", cc:"CC subtitles", ccLang:"Passport caption language", intro:"Skip intro", outro:"Skip outro"};
+              Object.keys(vm453).forEach(function (k) { settings453.push(T(labels453[k]) + ": " + (k === "cc" ? T(vm453[k] ? "On" : "Off") : String(vm453[k]) + (k === "speed" ? "×" : k === "vol" ? "%" : k === "intro" || k === "outro" ? " s" : ""))); });
+              p.pre.textContent = settings453.join("\n");
+            }
+            p.state.textContent = T(p.kept ? "Already here or full - kept unchanged." : p.available ? "Ready to add" : "No new valid items in this section."); });
+        }
+        function finish453(result) {
+          if (!pending) return; pending = false;
+          var hooks = window.__relang || [], ix = hooks.indexOf(paint453); if (ix >= 0) hooks.splice(ix, 1);
+          if (dlg.open) dlg.close(); dlg.remove();
+          if (previous && previous.isConnected && previous.focus) previous.focus();
+          window.dispatchEvent(new Event("vp-ask-closed435")); resolve(result);
+        }
+        dlg.__cancel453 = function () { finish453(null); };
+        cancel.addEventListener("click", function () { finish453(null); });
+        dlg.addEventListener("cancel", function (e) { e.preventDefault(); finish453(null); });
+        apply.addEventListener("click", function () {
+          if (apply.disabled) return;
+          var selected = {kind:"vp-video-passport", v:1, id:data.id};
+          parts453.forEach(function (p) { if (p.check.checked && !p.check.disabled) selected[p.key] = p.value; });
+          finish453(selected);
+        });
+        (window.__relang = window.__relang || []).push(paint453); paint453(); document.body.appendChild(dlg);
+        dlg.showModal(); cancel.focus();
+      });
+    }
+    var previewCSS453 = document.createElement("style");
+    previewCSS453.textContent = '#passportReview453{box-sizing:border-box;width:min(680px,calc(100vw - 24px));max-height:86dvh;padding:20px;border:1px solid var(--line);border-radius:24px;background:var(--card);color:var(--ink);box-shadow:0 24px 80px #0005;backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);overflow:auto}#passportReview453::backdrop{background:#07142666}#passportReview453 h2{margin:0 0 8px;font-size:1.25rem}#passportReview453 .passport-identity453{overflow-wrap:anywhere;font-weight:600}#passportReview453 .passport-section453{border:1px solid var(--line);border-radius:16px;padding:12px;margin:10px 0}#passportReview453 label{display:flex;gap:10px;align-items:center;min-height:36px;cursor:pointer}#passportReview453 input{width:20px;height:20px;flex:0 0 20px;accent-color:var(--accent)}#passportReview453 pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:160px;overflow:auto;font:inherit;font-size:.9rem;margin:8px 0 0;padding:10px;border-radius:10px;background:var(--bg)}#passportReview453 [hidden]{display:none!important}#passportReview453 .passport-foot453{position:sticky;bottom:-20px;margin:0 -4px -4px;padding:14px 4px 4px;background:var(--card);flex-wrap:wrap;justify-content:flex-end}#passportReview453 .chip{min-height:44px;white-space:normal;text-align:center}';
+    document.head.appendChild(previewCSS453);
     impB.addEventListener("click", function () { file.click(); });
     file.addEventListener("change", function () {
       var f = file.files && file.files[0]; file.value = "";
       if (!f) return;
       if (f.size > 1048576) { toast(T("That file is not a video passport.")); return; }
+      var generation453 = ++passportRead453;
       var rd = new FileReader();
-      rd.onload = function () {
+      rd.onload = async function () {
+        if (generation453 !== passportRead453) return;
         var d; try { d = JSON.parse(String(rd.result || "")); } catch (e) { toast(T("That file is not a video passport.")); return; }
         if (!d || d.kind !== "vp-video-passport" || !/^[A-Za-z0-9_-]{11}$/.test(d.id || "")) { toast(T("That file is not a video passport.")); return; }
+        d = await reviewPassport453(d); if (!d || generation453 !== passportRead453) return;
         var id = d.id, parts = [], added = 0;
         if (Array.isArray(d.marks) && d.marks.length) {
           var clean = d.marks.filter(function (m) { return m && typeof m.t === "number" && isFinite(m.t) && m.t >= 0; })
@@ -48999,6 +49116,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       };
       rd.readAsText(f);
     });
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Review video passport", "#passportRow449"); }, 7120); });
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Video passport", "#passportRow449"); }, 6720); });
   })();
 
@@ -53594,6 +53712,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Start over or queue from Continue watching", "start over queue continue watching row rewatch from beginning zero play again line up behind current add to queue without opening", "#continueWrap"],
       ["Open files with the app", "open with installed app pwa right click file video audio default player file handler launch device queue", "#lp"],
       ["One tab at a time", "one tab at a time another tab window pause two videos playing together second window pwa broadcast", "#oneTabCard450"],
+      ["Review video passport", "passport preview review selective import choose moments note lyrics settings inspect cancel before save", "#passportRow449"],
       ["Video passport", "video passport export import one single video moments note remembered settings lyrics move another device backup share file", "#passportRow449"],
       ["Playing-only sleep timer works without YouTube", "sleep timer count down only while playing local file paused freeze reference error", "#sleepPlayOnly"],
       ["Cancelled locating keeps recipe matches", "local playlist exchange recipe locate files cancelled picker keep reviewed matches restore", "#localExchange276"],
