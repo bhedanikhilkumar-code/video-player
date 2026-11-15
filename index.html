@@ -6142,6 +6142,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   var clearUpcomingBtn = $("clearUpcomingBtn");
   if (clearUpcomingBtn) clearUpcomingBtn.addEventListener("click", function () {
+    // Round 406 fix 2: adopt the playing row first, or a video loaded outside the queue
+    // leaves qPos = -1 and the chip wrongly answers "Nothing upcoming" with a full queue
+    // waiting behind the playing row.
+    qAdoptPlaying292();
     if (qPos < 0 || qPos >= lib.queue.length - 1) { toast(T("Nothing upcoming in the queue")); return; }
     var snap = lib.queue.slice(), sp = qPos;
     // Round 297 new 3: pinned queue rows survive clean-up chips.
@@ -6178,6 +6182,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var clearPlayedBtn = $("clearPlayedBtn");
   if (clearPlayedBtn) clearPlayedBtn.addEventListener("click", function () {
     // Watched = everything before the queue position of the video playing now.
+    // Round 406 fix 2: adopt the playing row first, or qPos = -1 wrongly answers
+    // "No watched videos" when earlier rows really did play.
+    qAdoptPlaying292();
     if (!(qPos > 0)) { showLibErr(T("No watched videos before the current one.")); return; }
     var snap = lib.queue.slice(), sp = qPos;
     // Round 297 new 3: pinned queue rows survive clean-up chips.
@@ -25495,6 +25502,10 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     function paint() { btn.textContent = T("\u2702\uFE0F Keep next 10"); btn.setAttribute("aria-label", T("Keep next 10 in the queue")); }
     (window.__relang = window.__relang || []).push(paint); paint();
     btn.addEventListener("click", function () {
+      // Round 406 fix 2: adopt the playing row first (round 292 fix 1), or a video loaded
+      // outside the queue leaves qPos = -1 and the trim counts the PLAYING row as
+      // upcoming - Keep next 10 could cut the very video that is on.
+      qAdoptPlaying292();
       var start = qPos + 1, extra = lib.queue.length - start - KEEP;
       if (extra <= 0) { toast(T("The queue already has 10 or fewer upcoming videos.")); return; }
       var snap = lib.queue.slice(), sp = qPos, sa = qAfter;
@@ -25973,6 +25984,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     function paint() { btn.textContent = T("\u23F1\uFE0F Drop 30+ min"); btn.setAttribute("aria-label", T("Drop long videos from the queue")); }
     (window.__relang = window.__relang || []).push(paint); paint();
     btn.addEventListener("click", function () {
+      // Round 406 fix 2: adopt the playing row first, or qPos = -1 lets the drop reach
+      // the PLAYING row when its learned length passes 30 minutes.
+      qAdoptPlaying292();
       var start = qPos + 1, n = 0, snap = lib.queue.slice(), sp = qPos, sa = qAfter;
       // Round 296 fix 3: dropped rows never moved the qAfter removal pointer - the same
       // hole Remove duplicates had (round 292 fix 5). When the playing video is not in the
