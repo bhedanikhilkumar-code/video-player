@@ -48964,6 +48964,105 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   ]
 });
     TR_MSG["Passport caption language"] = ["पासपोर्ट की सबटाइटल भाषा", "પાસપોર્ટની સબટાઇટલ ભાષા"];
+    Object.assign(TR_MSG, {
+  "Reversible passport imports": [
+    "पासपोर्ट आयात वापस लें",
+    "પાસપોર્ટ આયાત પાછી લો"
+  ],
+  "Last five imports in this tab only. Undo removes only what that import added and leaves newer edits alone. Closing or reloading this tab clears these receipts, not your saved items.": [
+    "सिर्फ़ इस टैब के आखिरी पांच आयात. वापस लेने पर उस आयात की जोड़ी चीज़ें ही हटेंगी; बाद के बदलाव सुरक्षित रहेंगे. टैब बंद या रीलोड करने पर ये रसीदें हटती हैं, सेव की हुई चीज़ें नहीं.",
+    "ફક્ત આ ટૅબની છેલ્લી પાંચ આયાત. પાછું લેતાં તે આયાતે ઉમેરેલી વસ્તુઓ જ દૂર થશે; પછીના ફેરફાર સુરક્ષિત રહેશે. ટૅબ બંધ કે રીલોડ કરતાં આ રસીદો દૂર થાય છે, સાચવેલી વસ્તુઓ નહીં."
+  ],
+  "No passport imports in this tab yet.": [
+    "इस टैब में अभी कोई पासपोर्ट आयात नहीं हुआ.",
+    "આ ટૅબમાં હજી કોઈ પાસપોર્ટ આયાત થયો નથી."
+  ],
+  "Undo unchanged imported items": [
+    "आयात की अपरिवर्तित चीज़ें वापस लें",
+    "આયાતની ન બદલાયેલી વસ્તુઓ પાછી લો"
+  ],
+  "Passport undo reviewed": [
+    "पासपोर्ट की वापसी जांची गई",
+    "પાસપોર્ટ પાછો લેવાની તપાસ થઈ"
+  ],
+  "Reverted {n} imported items; kept {m} newer edits.": [
+    "आयात की {n} चीज़ें वापस लीं; बाद के {m} बदलाव रखे.",
+    "આયાતની {n} વસ્તુઓ પાછી લીધી; પછીના {m} ફેરફાર રાખ્યા."
+  ]
+});
+    // Round 453: bounded, session-only receipts undo only this import's unchanged data.
+    var receipts453 = [], receiptSeq453 = 0;
+    var ledger453 = document.createElement("details"); ledger453.id = "passportReceipts453"; ledger453.className = "passport-ledger453";
+    var ledgerTitle453 = document.createElement("summary"), ledgerHint453 = document.createElement("p"), ledgerBody453 = document.createElement("div");
+    ledgerHint453.className = "hint"; ledger453.append(ledgerTitle453, ledgerHint453, ledgerBody453); host.appendChild(ledger453);
+    function passportSnapshot453(id) {
+      var out = {}; ["vp-marks.v1", "vp-notes.v1", "vp-vmem.v1", "vp-lyrics.v1"].forEach(function (k) { var value = read449(k)[id]; if (value !== undefined) out[k] = JSON.parse(JSON.stringify(value)); }); return out;
+    }
+    function same453(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+    function rememberImport453(id, before, fileTitle) {
+      var after = passportSnapshot453(id), changed = Object.keys(after).filter(function (k) { return !same453(before[k], after[k]); });
+      if (!changed.length) return;
+      receipts453.unshift({seq:++receiptSeq453, id:id, title:titleOf449(id) || fileTitle || id, time:Date.now(), before:before, after:after, changed:changed, done:false, status:null});
+      receipts453.length = Math.min(receipts453.length, 5); paintReceipts453(); ledger453.open = true;
+    }
+    function undoPassport453(receipt) {
+      if (receipt.done) return;
+      if (noteTimer) noteFlush();
+      var removed = 0, kept = 0, failed = false, id = receipt.id;
+      receipt.changed.forEach(function (key) {
+        var live = read449(key), before = receipt.before[key], after = receipt.after[key];
+        if (key === "vp-marks.v1") {
+          var additions = (Array.isArray(after) ? after : []).filter(function (m) { return !(before || []).some(function (b) { return b.t === m.t; }); });
+          var current = Array.isArray(live[id]) ? live[id] : [], toRemove = [];
+          additions.forEach(function (m) { var found = current.find(function (n) { return n.t === m.t; }); if (!found) return; if (found.name === m.name) toRemove.push(m.t); else kept++; });
+          if (!toRemove.length) return;
+          marks = cleanMarks261(live); marksBaseline261 = JSON.parse(JSON.stringify(marks));
+          marks[id] = current.filter(function (m) { return toRemove.indexOf(m.t) < 0; }); if (!marks[id].length) delete marks[id];
+          if (marksSave()) removed += toRemove.length; else failed = true;
+          return;
+        }
+        if (!same453(live[id], after)) { if (!same453(live[id], before)) kept++; return; }
+        if (before === undefined) delete live[id]; else live[id] = before;
+        var ok = false;
+        if (key === "vp-notes.v1") {
+          notesBaseline239 = Object.assign({}, read449(key)); notes = live; ok = notesSave();
+        } else if (key === "vp-vmem.v1") {
+          try { localStorage.setItem(key, JSON.stringify(live)); vmem = live; ok = true; } catch (e) { storageWarn(); }
+        } else if (key === "vp-lyrics.v1") { lyrics = live; ok = lyricsSave(); }
+        if (ok) removed++; else failed = true;
+      });
+      if (typeof renderMarks === "function") renderMarks();
+      if (typeof renderNotes === "function") renderNotes();
+      if (typeof renderLyrics === "function") renderLyrics();
+      if (typeof renderLib === "function") renderLib();
+      if (window.__vpMomLibPaint378) window.__vpMomLibPaint378();
+      receipt.done = !failed; receipt.status = {n:removed, m:kept, failed:failed}; paintReceipts453();
+      toast(failed ? T("Not saved - export a backup before closing.") : T("Reverted {n} imported items; kept {m} newer edits.").replace("{n}", removed).replace("{m}", kept));
+    }
+    function paintReceipts453() {
+      ledgerTitle453.textContent = T("Reversible passport imports");
+      ledgerHint453.textContent = T("Last five imports in this tab only. Undo removes only what that import added and leaves newer edits alone. Closing or reloading this tab clears these receipts, not your saved items.");
+      ledgerBody453.textContent = "";
+      if (!receipts453.length) { var empty453 = document.createElement("p"); empty453.className = "hint"; empty453.textContent = T("No passport imports in this tab yet."); ledgerBody453.appendChild(empty453); return; }
+      receipts453.forEach(function (r) {
+        var item = document.createElement("section"); item.className = "passport-receipt453"; item.dataset.receipt = r.seq;
+        var label = document.createElement("strong"); label.textContent = r.title;
+        var meta = document.createElement("p"); meta.className = "hint"; meta.textContent = new Date(r.time).toLocaleTimeString(prefs.lang || "en", {hour:"2-digit",minute:"2-digit"}) + " · " + r.id;
+        var types = document.createElement("p"); types.className = "hint";
+        var labels = {"vp-marks.v1":"Moments", "vp-notes.v1":"Note", "vp-vmem.v1":"Passport playback settings", "vp-lyrics.v1":"Lyrics"};
+        types.textContent = r.changed.map(function (k) { return T(labels[k]); }).join(" · ");
+        var btn453 = document.createElement("button"); btn453.type = "button"; btn453.className = "chip"; btn453.dataset.undoPassport = r.seq;
+        btn453.textContent = T(r.done ? "Passport undo reviewed" : "Undo unchanged imported items"); btn453.disabled = r.done;
+        btn453.addEventListener("click", function () { undoPassport453(r); });
+        item.append(label, meta, types, btn453);
+        if (r.status) { var status453 = document.createElement("p"); status453.className = "hint"; status453.setAttribute("role", "status"); status453.textContent = r.status.failed ? T("Not saved - export a backup before closing.") : T("Reverted {n} imported items; kept {m} newer edits.").replace("{n}", r.status.n).replace("{m}", r.status.m); item.appendChild(status453); }
+        ledgerBody453.appendChild(item);
+      });
+    }
+    (window.__relang = window.__relang || []).push(paintReceipts453); paintReceipts453();
+    var ledgerCSS453 = document.createElement("style"); ledgerCSS453.textContent = '#passportReceipts453{margin-top:14px;padding:14px;border:1px solid var(--line);border-radius:18px;background:var(--card)}#passportReceipts453 summary{cursor:pointer;font-weight:650;min-height:28px}#passportReceipts453 .passport-receipt453{padding:12px;margin-top:10px;border:1px solid var(--line);border-radius:14px;overflow-wrap:anywhere}#passportReceipts453 .chip{white-space:normal;min-height:44px}'; document.head.appendChild(ledgerCSS453);
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Reversible passport imports", "#passportReceipts453"); }, 7220); });
+
     // Round 453: an inspected, selective import. Preview text is always plain text.
     var passportRead453 = 0;
     function reviewPassport453(data) {
@@ -49036,7 +49135,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         dlg.addEventListener("cancel", function (e) { e.preventDefault(); finish453(null); });
         apply.addEventListener("click", function () {
           if (apply.disabled) return;
-          var selected = {kind:"vp-video-passport", v:1, id:data.id};
+          var selected = {kind:"vp-video-passport", v:1, id:data.id, title:String(data.title || "").slice(0, 200)};
           parts453.forEach(function (p) { if (p.check.checked && !p.check.disabled) selected[p.key] = p.value; });
           finish453(selected);
         });
@@ -49059,7 +49158,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         var d; try { d = JSON.parse(String(rd.result || "")); } catch (e) { toast(T("That file is not a video passport.")); return; }
         if (!d || d.kind !== "vp-video-passport" || !/^[A-Za-z0-9_-]{11}$/.test(d.id || "")) { toast(T("That file is not a video passport.")); return; }
         d = await reviewPassport453(d); if (!d || generation453 !== passportRead453) return;
-        var id = d.id, parts = [], added = 0;
+        var id = d.id, before453 = passportSnapshot453(d.id), parts = [], added = 0;
         if (Array.isArray(d.marks) && d.marks.length) {
           var clean = d.marks.filter(function (m) { return m && typeof m.t === "number" && isFinite(m.t) && m.t >= 0; })
             .map(function (m) { return { t: Math.floor(m.t), name: typeof m.name === "string" ? m.name.slice(0, 40) : "" }; });
@@ -49108,6 +49207,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
             parts.push(T("Lyrics added.")); added++;
           }
         }
+        if (added) rememberImport453(id, before453, d.title);
         if (id !== curId) parts.push(T("This passport is for a different video - it is saved under that video."));
         msg.textContent = (added ? T("Passport imported.") : T("Nothing new in this passport - everything in it is already here.")) + (parts.length ? " " + parts.join(" ") : "");
         toast(added ? T("Passport imported.") : T("Nothing new in this passport - everything in it is already here."));
@@ -53710,6 +53810,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Start over or queue from Continue watching", "start over queue continue watching row rewatch from beginning zero play again line up behind current add to queue without opening", "#continueWrap"],
       ["Open files with the app", "open with installed app pwa right click file video audio default player file handler launch device queue", "#lp"],
       ["One tab at a time", "one tab at a time another tab window pause two videos playing together second window pwa broadcast", "#oneTabCard450"],
+      ["Reversible passport imports", "passport undo revert imported moments note settings lyrics receipt recent imports keep newer edits", "#passportReceipts453"],
       ["Review video passport", "passport preview review selective import choose moments note lyrics settings inspect cancel before save", "#passportRow449"],
       ["Video passport", "video passport export import one single video moments note remembered settings lyrics move another device backup share file", "#passportRow449"],
       ["Playing-only sleep timer works without YouTube", "sleep timer count down only while playing local file paused freeze reference error", "#sleepPlayOnly"],
