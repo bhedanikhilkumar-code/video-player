@@ -12618,16 +12618,30 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!queueList || !queueList.children) return;
     var sp = prefs.speed > 0 ? prefs.speed : 1;
     var acc = 0, known = true;
-    if (qPos >= 0 && qPos < lib.queue.length) {
-      var cur = lib.queue[qPos], dCur = cur ? queueRowDur(cur.id) : 0;
+    // Round 411 fix 4: with the video loaded from the link box, a share link or the
+    // Continue banner, qPos = -1 even when its row sits in the queue - the accumulator
+    // skipped the playing video's remaining time AND the idx <= qPos guard hid no row,
+    // so the PLAYING row wore a "starts ~" tag in its own future (seen live: Rick
+    // Astley playing, his row tagged ~1:54 pm) and the next row's clock ignored what
+    // was left of the video on. Find the row the same non-moving way fix 3 does; a
+    // playing video outside the queue still seeds its remaining time, or the tags stay
+    // hidden honestly when that length is not learned yet.
+    var sPos = qPos;
+    if (sPos < 0 && curId) { var sIx = findIn(lib.queue, curId); if (sIx >= 0) sPos = sIx; }
+    if (sPos >= 0 && sPos < lib.queue.length) {
+      var cur = lib.queue[sPos], dCur = cur ? queueRowDur(cur.id) : 0;
       if (dCur > 0) {
         if (curId && cur.id === curId && curTime > 0) dCur = Math.max(0, dCur - Math.min(Math.floor(curTime), dCur));
         acc += dCur;
       } else known = false;
+    } else if (curId) {
+      var dOut = queueRowDur(curId);
+      if (dOut > 0) acc += Math.max(0, dOut - Math.min(Math.floor(curTime), dOut));
+      else known = false;
     }
     Array.prototype.forEach.call(queueList.children, function (li, idx) {
       var oldTag = li.querySelector(".q-start"); if (oldTag) oldTag.remove();
-      if (!known || idx <= qPos || idx >= lib.queue.length) return;
+      if (!known || idx <= sPos || idx >= lib.queue.length) return;
       var d = queueRowDur(lib.queue[idx].id);
       var ts = window.__vpDoneBy(new Date(Date.now() + Math.round(acc / sp) * 1000));
       var tag = document.createElement("span");
