@@ -9810,6 +9810,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!on) playerSlot.style.height = "";
   }
   function updateMini() {
+    if(window.__vpCarVideo432){setMini(true);return;}
     var rect = playerSlot.getBoundingClientRect();
     if (miniBackLock) { if (rect.bottom >= 90) miniBackLock = false; else return; }
     setMini(!!iframe && !miniDismissed && !document.fullscreenElement && rect.bottom < 90);
@@ -36945,6 +36946,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "🚗 Car mode: off": ["🚗 कार मोड: बंद", "🚗 કાર મોડ: બંધ"],
     "🚗 Car mode: on": ["🚗 कार मोड: चालू", "🚗 કાર મોડ: ચાલુ"],
     "Car mode": ["कार मोड", "કાર મોડ"],
+    "Car mode keeps YouTube visible": ["कार मोड में YouTube दिखता रहता है", "કાર મોડમાં YouTube દેખાતું રહે છે"],
     "Big controls for the road. Escape or the button below closes.": ["सड़क के लिए बड़े कंट्रोल. बंद करने के लिए Escape या नीचे का बटन.", "રસ્તા માટે મોટા કંટ્રોલ. બંધ કરવા Escape કે નીચેનું બટન."],
     "Exit car mode": ["कार मोड से बाहर निकलें", "કાર મોડમાંથી બહાર નિકળો"],
     "Nothing is playing yet - start a video first.": ["अभी कुछ नहीं चल रहा - पहले एक वीडियो चलाएं.", "હજી કંઈ ચાલતું નથી - પહેલા એક વીડિયો ચલાવો."]
@@ -36965,6 +36967,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       + "#vpCar287 .car-hint{opacity:.75;font-size:14px;margin:0}"
       + "@media (prefers-reduced-motion:reduce){#vpCar287 .car-btn:active{transform:none}}";
     document.head.appendChild(st);
+    // Keep the original YouTube iframe visible above Car mode without reparenting or
+    // recreating it. The dock already supports the browser top layer.
+    st.textContent += '#vpCar287 .car-content432{display:flex;flex-direction:column;align-items:center;gap:18px;width:100%}#vpCar287.car-with-video432{padding:264px 16px 12px;justify-content:flex-start}#vpCar287.car-with-video432 .car-content432{max-height:calc(100dvh - 280px);overflow:auto;padding:4px;box-sizing:border-box;gap:12px}html.car-video432 #playerDock.is-mini{inset:12px auto auto 50%!important;transform:translateX(-50%)!important;width:min(440px,calc(100vw - 32px))!important;max-width:calc(100vw - 32px)!important}html.car-video432 #playerDock.is-mini>:not(#frameBox){display:none!important}html.car-video432 #playerDock.is-mini #frameBox{min-height:200px!important;margin:0!important}@media(max-width:480px){#vpCar287.car-with-video432{padding-top:228px}#vpCar287.car-with-video432 .car-content432{max-height:calc(100dvh - 244px)}}';
+    window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Car mode keeps YouTube visible","#carBtn287");},3920);});
+    var carVideo432 = false, carMiniWas432 = false;
+    function showCarVideo432(show) {
+      if(!ov || carVideo432===show)return;
+      if(show && (!playerDock || !playerDock.showPopover)) { send("pauseVideo"); return; }
+      carVideo432=show;window.__vpCarVideo432=show;ov.classList.toggle("car-with-video432",show);document.documentElement.classList.toggle("car-video432",show);
+      if(show){carMiniWas432=miniActive;setMini(true);playerDock.hidePopover();playerDock.showPopover();}
+      else {setMini(carMiniWas432);updateMini();}
+    }
     var ytSel287 = false;
     document.addEventListener("vp-youtube-selected", function () { ytSel287 = true; });
     document.addEventListener("vp-local-playing", function () { ytSel287 = false; });
@@ -36990,6 +37004,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function paint() {
       if (!ov) return;
       var v = localVid();
+      showCarVideo432(!v && !!iframe && !controls.hidden);
       var t = v ? (v.dataset.fileName276 || "") : (infoTitle && infoTitle.textContent) || "";
       ov.querySelector(".car-title").textContent = t || T("Nothing is playing yet - start a video first.");
       ov.querySelector(".car-play").textContent = isPlaying() ? "⏸" : "▶";
@@ -37009,7 +37024,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function open() {
       if (on) return; on = true; returnFocus431 = document.activeElement;
       ov = document.createElement("dialog"); ov.id = "vpCar287"; ov.setAttribute("role", "dialog"); ov.setAttribute("aria-label", T("Car mode"));
-      ov.innerHTML = '<div class="car-title"></div>'
+      ov.innerHTML = '<div class="car-content432"><div class="car-title"></div>'
         + '<div class="car-row"><button type="button" class="car-btn car-prev" aria-label="' + T("Previous video in queue") + '">⏮</button>'
         + '<button type="button" class="car-btn car-back" aria-label="' + T("Back {n} seconds").replace("{n}", 10) + '">⏪</button>'
         + '<button type="button" class="car-btn car-play" aria-label="' + T("Play or pause") + '">▶</button>'
@@ -37017,7 +37032,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         + '<button type="button" class="car-btn car-next" aria-label="' + T("Next video in queue") + '">⏭</button></div>'
         + '<input type="range" class="car-vol" min="0" max="100" step="1" aria-label="' + T("Volume") + '">'
         + '<p class="car-hint">' + T("Big controls for the road. Escape or the button below closes.") + '</p>'
-        + '<button type="button" class="car-btn car-exit">' + T("Exit car mode") + '</button>';
+        + '<button type="button" class="car-btn car-exit">' + T("Exit car mode") + '</button></div>';
       document.body.appendChild(ov);
       ov.addEventListener("cancel", function (e) { e.preventDefault(); close(); });
       ov.showModal(); ov.querySelector(".car-play").focus();
@@ -37040,6 +37055,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function escClose(e) { if (e.key === "Escape") { e.stopPropagation(); close(); } }
     function close() {
       if (!on) return; on = false;
+      showCarVideo432(false);
       clearInterval(tick); tick = null;
       document.removeEventListener("keydown", escClose, true);
       if (ov) { ov.close(); ov.remove(); ov = null; }
