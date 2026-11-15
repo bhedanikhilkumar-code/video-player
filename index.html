@@ -46746,6 +46746,123 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint);
     window.__vpSw417 = { get running() { return running; }, get elapsed() { return elapsed(); } };
   })();
+
+  // Round 418 new 1: Countdown timer. Every countdown in the app until now drives
+  // playback (sleep timer, up-next, premiere) - a plain "tell me when 10 minutes
+  // pass" for a recipe step, a workout rest or a steeping tea meant leaving the
+  // page for the phone's clock app. A card next to the Stopwatch in Sound adds
+  // one: quick chips (1/5/10/15/30 min) start at once, a custom minutes box with
+  // Start, Pause/Resume and Reset, and three short beeps plus a toast when the
+  // time is up. It never touches playback - that is the sleep timer's job. The
+  // remaining time is worked out from the clock, not from counting ticks, so it
+  // stays exact while the tab is hidden. Session-only: nothing saved or sent.
+  // Checked first: grep countdown = sleep/up-next/premiere only (no standalone
+  // timer), grep timer cards = stopwatch only. Hindi and Gujarati text inside the
+  // main closure, feature finder and What's new (deferred helper, staggered at
+  // 3020ms past round 417's 2920ms) included.
+  Object.assign(TR_MSG, {
+    "Countdown timer": ["\u0915\u093e\u0909\u0902\u091f\u0921\u093e\u0909\u0928 \u091f\u093e\u0907\u092e\u0930", "\u0a95\u0abe\u0a89\u0aa8\u0acd\u0a9f\u0aa1\u0abe\u0a89\u0aa8 \u0a9f\u0abe\u0a87\u0aae\u0ab0"],
+    "A plain countdown for a recipe step, a workout rest or a break - it beeps when the time is up and never pauses the video.": ["\u0930\u0947\u0938\u093f\u092a\u0940 \u0938\u094d\u091f\u0947\u092a, \u0935\u0930\u094d\u0915\u0906\u0909\u091f \u0930\u0947\u0938\u094d\u091f \u092f\u093e \u092c\u094d\u0930\u0947\u0915 \u0915\u0947 \u0932\u093f\u090f \u0938\u0940\u0927\u093e \u0915\u093e\u0909\u0902\u091f\u0921\u093e\u0909\u0928 - \u0938\u092e\u092f \u092a\u0942\u0930\u093e \u0939\u094b\u0924\u0947 \u0939\u0940 \u092c\u0940\u092a \u092c\u091c\u0924\u093e \u0939\u0948 \u0914\u0930 \u0935\u0940\u0921\u093f\u092f\u094b \u0915\u092d\u0940 \u0928\u0939\u0940\u0902 \u0930\u094b\u0915\u0924\u093e.", "\u0ab0\u0ac7\u0ab8\u0abf\u0aaa\u0ac0 \u0ab8\u0acd\u0a9f\u0ac7\u0aaa, \u0ab5\u0ab0\u0acd\u0a95\u0a86\u0a89\u0a9f \u0ab0\u0ac7\u0ab8\u0acd\u0a9f \u0a95\u0ac7 \u0aac\u0acd\u0ab0\u0ac7\u0a95 \u0aae\u0abe\u0a9f\u0ac7 \u0ab8\u0ac0\u0aa7\u0acb \u0a95\u0abe\u0a89\u0aa8\u0acd\u0a9f\u0aa1\u0abe\u0a89\u0aa8 - \u0ab8\u0aae\u0aaf \u0aaa\u0ac2\u0ab0\u0acb \u0aa5\u0aa4\u0abe\u0a82 \u0a9c \u0aac\u0ac0\u0aaa \u0ab5\u0abe\u0a97\u0ac7 \u0a9b\u0ac7 \u0a85\u0aa8\u0ac7 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a95\u0acd\u0aaf\u0abe\u0ab0\u0ac7\u0aaf \u0ab0\u0acb\u0a95\u0aa4\u0acb \u0aa8\u0aa5\u0ac0."],
+    "Time's up!": ["\u0938\u092e\u092f \u092a\u0942\u0930\u093e!", "\u0ab8\u0aae\u0aaf \u0aaa\u0ac2\u0ab0\u0acb!"],
+    "Timer running": ["\u091f\u093e\u0907\u092e\u0930 \u091a\u0932 \u0930\u0939\u093e \u0939\u0948", "\u0a9f\u0abe\u0a87\u0aae\u0ab0 \u0a9a\u0abe\u0ab2\u0ac7 \u0a9b\u0ac7"],
+    "Timer paused": ["\u091f\u093e\u0907\u092e\u0930 \u0930\u0941\u0915\u093e", "\u0a9f\u0abe\u0a87\u0aae\u0ab0 \u0a85\u0a9f\u0a95\u0acd\u0aaf\u0ac1\u0a82"],
+    "Timer reset": ["\u091f\u093e\u0907\u092e\u0930 \u0930\u0940\u0938\u0947\u091f", "\u0a9f\u0abe\u0a87\u0aae\u0ab0 \u0ab0\u0ac0\u0ab8\u0ac7\u0a9f"],
+    "Minutes": ["\u092e\u093f\u0928\u091f", "\u0aae\u0abf\u0aa8\u0abf\u0a9f"],
+    "Start a": ["", ""],
+    "minute timer": ["\u092e\u093f\u0928\u091f \u0915\u093e \u091f\u093e\u0907\u092e\u0930 \u0936\u0941\u0930\u0942 \u0915\u0930\u0947\u0902", "\u0aae\u0abf\u0aa8\u0abf\u0a9f\u0aa8\u0acb \u0a9f\u0abe\u0a87\u0aae\u0ab0 \u0ab6\u0ab0\u0ac2 \u0a95\u0ab0\u0acb"],
+    "Enter minutes first": ["\u092a\u0939\u0932\u0947 \u092e\u093f\u0928\u091f \u0921\u093e\u0932\u0947\u0902", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe \u0aae\u0abf\u0aa8\u0abf\u0a9f \u0aa8\u0abe\u0a96\u0acb"]
+  });
+  (function () {
+    var host = $("ctl-sound"); if (!host) return;
+    var card = document.createElement("details"); card.id = "tmCard418"; card.className = "r239-card";
+    card.innerHTML = '<summary></summary><p class="hint r239-desc"></p>'
+      + '<div id="tmFace418" role="timer" aria-live="polite" style="font-size:2.4rem;font-weight:800;font-variant-numeric:tabular-nums;text-align:center;margin:8px 0 4px">00:00</div>'
+      + '<div class="row" id="tmChips418" style="margin-top:6px;gap:6px;justify-content:center;flex-wrap:wrap"></div>'
+      + '<div class="row" style="margin-top:6px;gap:8px;justify-content:center;flex-wrap:wrap">'
+      + '<input type="number" min="1" max="720" class="chip" id="tmMin418" inputmode="numeric" style="width:110px">'
+      + '<button type="button" class="chip" id="tmGo418" aria-pressed="false"></button>'
+      + '<button type="button" class="chip" id="tmReset418" disabled></button></div>';
+    host.appendChild(card);
+    var face = $("tmFace418"), goBtn = $("tmGo418"), resetBtn = $("tmReset418"), minIn = $("tmMin418"), chipRow = $("tmChips418");
+    var leftMs = 0, running = false, endAt = 0, timer = null, actx = null;
+    function p2(n) { return (n < 10 ? "0" : "") + n; }
+    function fmt(ms) {
+      var s = Math.max(0, Math.ceil(ms / 1000)), h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = s % 60;
+      return (h > 0 ? h + ":" + p2(m) : p2(m)) + ":" + p2(ss);
+    }
+    function tick() {
+      if (running) leftMs = Math.max(0, endAt - Date.now());
+      face.textContent = fmt(leftMs);
+      if (running && leftMs <= 0) finish();
+    }
+    function beep() {
+      try {
+        actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+        if (actx.state === "suspended") actx.resume();
+        [0, 350, 700].forEach(function (d) {
+          var o = actx.createOscillator(), g = actx.createGain();
+          o.type = "sine"; o.frequency.value = 880; g.gain.value = 0.18;
+          o.connect(g); g.connect(actx.destination);
+          o.start(actx.currentTime + d / 1000); o.stop(actx.currentTime + d / 1000 + 0.25);
+        });
+      } catch (e) {}
+    }
+    function paint() {
+      card.querySelector("summary").textContent = T("Countdown timer");
+      card.querySelector(".r239-desc").textContent = T("A plain countdown for a recipe step, a workout rest or a break - it beeps when the time is up and never pauses the video.");
+      goBtn.textContent = (running ? "\u23f8 " : "\u25b6 ") + T(running ? "Pause" : (leftMs > 0 ? "Resume" : "Start"));
+      goBtn.setAttribute("aria-pressed", running ? "true" : "false");
+      resetBtn.textContent = T("Reset");
+      resetBtn.disabled = !(running || leftMs > 0);
+      minIn.placeholder = T("Minutes");
+      minIn.setAttribute("aria-label", T("Minutes"));
+      Array.prototype.forEach.call(chipRow.children, function (chip) {
+        chip.textContent = chip._min + " " + T("min");
+        chip.setAttribute("aria-label", T("Start a") + (T("Start a") ? " " : "") + chip._min + "-" + T("minute timer"));
+      });
+      tick();
+    }
+    function start(ms) {
+      leftMs = ms; endAt = Date.now() + ms; running = true;
+      if (timer) clearInterval(timer); timer = setInterval(tick, 250);
+      paint(); toast(T("Timer running"));
+    }
+    function pause() {
+      leftMs = Math.max(0, endAt - Date.now()); running = false;
+      if (timer) { clearInterval(timer); timer = null; }
+      paint(); toast(T("Timer paused"));
+    }
+    function finish() {
+      running = false; leftMs = 0;
+      if (timer) { clearInterval(timer); timer = null; }
+      paint(); beep(); toast(T("Time's up!"));
+    }
+    [1, 5, 10, 15, 30].forEach(function (m) {
+      var c = document.createElement("button"); c.type = "button"; c.className = "chip"; c._min = m;
+      c.addEventListener("click", function () { start(m * 60000); });
+      chipRow.appendChild(c);
+    });
+    goBtn.addEventListener("click", function () {
+      if (running) { pause(); return; }
+      if (leftMs > 0) {
+        endAt = Date.now() + leftMs; running = true;
+        if (timer) clearInterval(timer); timer = setInterval(tick, 250);
+        paint(); toast(T("Timer running")); return;
+      }
+      var m = Math.round(Number(minIn.value));
+      if (!(m >= 1 && m <= 720)) { toast(T("Enter minutes first")); minIn.focus(); return; }
+      start(m * 60000);
+    });
+    resetBtn.addEventListener("click", function () {
+      running = false; leftMs = 0;
+      if (timer) { clearInterval(timer); timer = null; }
+      paint(); toast(T("Timer reset"));
+    });
+    minIn.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); goBtn.click(); } });
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) tick(); });
+    paint();
+    (window.__relang = window.__relang || []).push(paint);
+  })();
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -46801,6 +46918,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Round 417 new 1: announced through the deferred helper, staggered at 2920ms, past the
   // latest load-time announcement (round 414's at 2820ms) so it stays on the card.
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Stopwatch", "#swCard417"); }, 2920); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Countdown timer", "#tmCard418"); }, 3020); });
 
   window.__vpMainOk325 = true;
 
@@ -51115,6 +51233,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     }
     var FEATS = [
       ["Stopwatch", "stopwatch timer lap laps split time workout practice measure seconds clock count up timing", "#swCard417"],
+      ["Countdown timer", "countdown timer count down minutes beep kitchen cook recipe workout rest break tea egg", "#tmCard418"],
       ["Copy list with lengths", "copy list lengths durations total known length queue watch later favourites history clipboard share plan how long watch time", "#copyQueueBtn"],
       ["Archive Watch later rows", "archive watch later park away hide row shelf keep saved unarchive put back clean list tidy backlog", "#laterArchBtn388"],
       ["Search finds the Archived shelf", "archived shelf search find parked rows hidden library search box title auto open shelf visible again", "#archList388"],
