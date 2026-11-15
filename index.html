@@ -34976,15 +34976,27 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       });
       list.hidden = !any;
     }
-    setB.addEventListener("click", function () {
-      var act = sel.value, name = "";
-      ACTS.forEach(function (a) { if (a[0] === act) name = T(a[1]); });
-      setB.textContent = T("Press any key for ") + name;
-      setB.classList.add("active");
-      function cap(e) {
+    // Round 404 fix 2: the picker's capture listener used to stay armed until a key
+    // arrived - click "Set key", change your mind, tap the link box and the next letter
+    // you typed was silently bound as the shortcut AND swallowed by preventDefault, so
+    // it never reached the field (seen live: arm it, type a v into the link box, the v
+    // vanished and V became a shortcut). A tap anywhere outside the button now disarms
+    // the picker, a second tap on it while armed no longer stacks a second listener,
+    // and Escape or a bound key cleans up the outside-tap listener too.
+    var armed404 = false, act404 = "", name404 = "";
+    function disarm404(e) {
+      if (e && e.target === setB) return;
+      armed404 = false;
+      document.removeEventListener("keydown", cap404, true);
+      document.removeEventListener("pointerdown", disarm404, true);
+      setB.classList.remove("active"); paint();
+    }
+    function cap404(e) {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
         e.preventDefault(); e.stopPropagation();
-        document.removeEventListener("keydown", cap, true);
+        armed404 = false;
+        document.removeEventListener("keydown", cap404, true);
+        document.removeEventListener("pointerdown", disarm404, true);
         setB.classList.remove("active"); paint();
         var k = e.key;
         if (k === "Escape") return;
@@ -34992,10 +35004,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         if (typeof k !== "string" || k.length !== 1 || k === " ") { toast(T("That key is already used by the app.")); return; }
         if (xkReserved280(k)) { toast(T("That key is already used by the app.")); return; }
         Object.keys(prefs.xkeys280).forEach(function (a) { if (prefs.xkeys280[a] === k) delete prefs.xkeys280[a]; });
-        prefs.xkeys280[act] = k; savePrefs(); paint();
-        toast(k.toUpperCase() + " " + T("now runs") + " " + name + ".");
-      }
-      document.addEventListener("keydown", cap, true);
+        prefs.xkeys280[act404] = k; savePrefs(); paint();
+        toast(k.toUpperCase() + " " + T("now runs") + " " + name404 + ".");
+    }
+    setB.addEventListener("click", function () {
+      if (armed404) return;
+      armed404 = true;
+      act404 = sel.value; name404 = "";
+      ACTS.forEach(function (a) { if (a[0] === act404) name404 = T(a[1]); });
+      setB.textContent = T("Press any key for ") + name404;
+      setB.classList.add("active");
+      document.addEventListener("keydown", cap404, true);
+      document.addEventListener("pointerdown", disarm404, true);
     });
     (window.__relang = window.__relang || []).push(paint);
     paint();
