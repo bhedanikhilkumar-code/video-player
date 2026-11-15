@@ -49613,12 +49613,15 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       }
     }
     function build(f) {
+      cur = f || null; cvs.width = 0;
       if (!f) return;
       if (cache.has(f)) { draw(cache.get(f)); return; }
-      if (f.size > 25 * 1048576) { cvs.width = 0; return; }
-      cur = f; cvs.width = 0;
+      if (f.size > 25 * 1048576) return;
+      var source443 = curUrl;
+      function isCurrent443() { return cur === f && curUrl === source443 && localIndex >= 0 && localFiles[localIndex] === f; }
       var rd = new FileReader();
       rd.onload = function () {
+        if (!isCurrent443()) return;
         var dc; try { dc = new ACw(); } catch (e) { return; }
         decodeAudioSafe345(dc, rd.result, function (buf) {
           try { dc.close(); } catch (e) {}
@@ -49631,15 +49634,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
               peaks.push(Math.min(1, m * 0.85));
             }
             cache.set(f, peaks);
-            if (cur === f) draw(peaks);
+            if (isCurrent443()) draw(peaks);
           } catch (e) {}
         }, function () { try { dc.close(); } catch (e) {} });
       };
       rd.onerror = function () {};
       rd.readAsArrayBuffer(f);
     }
+    function clearWave443() { cur = null; cvs.width = 0; }
+    vid.addEventListener("emptied", clearWave443);
+    document.addEventListener("vp-local-closed", clearWave443);
     vid.addEventListener("loadedmetadata", function () {
-      cvs.width = 0;
+      clearWave443();
       if (localIndex >= 0 && localFiles[localIndex]) build(localFiles[localIndex]);
     });
     window.addEventListener("resize", function () {
