@@ -32297,7 +32297,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   }
   function announceLine268(title, tmpl) { title = String(title || "").replace(/\s+/g, " ").trim(); return title ? tmpl.replace("{t}", title.slice(0, 140)) : ""; }
   function speechLang268() { return prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-US"; }
-  var annId268 = null, annTries268 = 0, annBusy268 = false;
+  var annId268 = null, annTries268 = 0, annBusy268 = false, annChap268 = "";
   function speak268(text) {
     if (!window.speechSynthesis || !window.SpeechSynthesisUtterance || !text) return false;
     try {
@@ -32313,11 +32313,33 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   setInterval(function () {
     try {
       if (!prefs.announce || !playing || !curId || !ready) return;
-      if (annId268 !== curId) { annId268 = curId; annTries268 = 0; }
+      if (annId268 !== curId) { annId268 = curId; annTries268 = 0; annChap268 = ""; }
       else if (annTries268 >= 0 && annTries268 < 12) {
         var ln = announceLine268(titleFor(curId), T("Now playing: {t}"));
         annTries268++;
         if (ln) { annTries268 = -1; speak268(ln); }
+      }
+      // Round 410 new 2: say the chapter too. The announcements only named the video,
+      // so with eyes off the screen a lecture's move from "Intro" to "Derivation" went
+      // past unheard even though the app already knows the chapter (round 408 shows it
+      // under the seek bar). Once the title has been read, a chapter change is spoken
+      // through the same voice, ducking the video the same way. The first chapter seen
+      // after a load is not spoken - the title is still being read - and A-B loops
+      // inside one chapter never re-trigger it (the key only changes on a real move).
+      if (annTries268 === -1 && window.__vpChap308get && duration > 0) {
+        var g410 = window.__vpChap308get();
+        var rows410 = g410 && g410.id && g410.id === curId ? g410.rows : [];
+        if (rows410.length) {
+          var ci410 = -1;
+          for (var i410 = 0; i410 < rows410.length; i410++) { if (rows410[i410].a >= duration) continue; if (curTime >= rows410[i410].a) ci410 = i410; else break; }
+          var ck410 = ci410 >= 0 ? curId + ":" + ci410 : "";
+          if (ck410 && !annChap268) annChap268 = ck410;
+          else if (ck410 && ck410 !== annChap268) {
+            annChap268 = ck410;
+            var r410 = rows410[ci410];
+            speak268(T("Chapter: {c}").replace("{c}", r410.name || (T("Chapter") + " " + (ci410 + 1))));
+          }
+        }
       }
     } catch (e) {}
   }, 700);
@@ -32329,7 +32351,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Test voice": ["टेस्ट आवाज़", "ટેસ્ટ અવાજ"],
     "Voice announcements are on.": ["आवाज़ से घोषणा चालू.", "અવાજથી જાહેરાત ચાલુ."],
     "Voice announcements are off.": ["आवाज़ से घोषणा बंद.", "અવાજથી જાહેરાત બંધ."],
-    "This browser cannot speak.": ["यह ब्राउज़र बोल नहीं सकता.", "આ બ્રાઉઝર બોલી શકતું નથી."]
+    "This browser cannot speak.": ["यह ब्राउज़र बोल नहीं सकता.", "આ બ્રાઉઝર બોલી શકતું નથી."],
+    "Chapter: {c}": ["अध्याय: {c}", "પ્રકરણ: {c}"],
+    "When a new chapter starts it says the chapter name too.": ["नया अध्याय शुरू होने पर अध्याय का नाम भी बोला जाता है.", "નવું પ્રકરણ શરૂ થાય ત્યારે પ્રકરણનું નામ પણ બોલાય છે."]
   });
   (function () {
     var card = card268("announceCard268", "Voice announcements"); if (!card) return;
@@ -32349,7 +32373,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     test.addEventListener("click", function () { if (!speak268(announceLine268(titleFor(curId) || "HD Video Player", T("Now playing: {t}")))) toast(T("This browser cannot speak.")); });
     row.appendChild(chips); row.appendChild(test);
     function paint() {
-      hint.textContent = T("Reads the title out loud when a new video starts, and lowers the video for a moment. Uses your device's voice; nothing is sent anywhere.");
+      hint.textContent = T("Reads the title out loud when a new video starts, and lowers the video for a moment. Uses your device's voice; nothing is sent anywhere.") + " " + T("When a new chapter starts it says the chapter name too.");
       btns.forEach(function (c) { var on = (c.dataset.value === "1") === !!prefs.announce; c.classList.toggle("active", on); c.setAttribute("aria-pressed", on ? "true" : "false"); c.textContent = T(c.dataset.label); });
       test.textContent = T("Hear a test");
     }
@@ -50869,7 +50893,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Skip by title words", "skip title words keyword filter live trailer reaction shorts unwanted queue next block", "#wordCard271"],
       ["Play range", "start end trim play only part of video skip intro outro cut limit section", "#rangeCard268"],
       ["Eye rest", "eye break rest 20-20-20 pause look away tired eyes health reminder", "#eyeCard268"],
-      ["Voice announcements", "read title aloud speak announce now playing voice speech driving low vision", "#announceCard268"],
+      ["Voice announcements", "read title aloud speak announce now playing voice speech driving low vision chapter name", "#announceCard268"],
       ["Preview mode", "sample skim each video seconds then next queue preview trailer", "#previewRow267"],
       ["Brightness swipe", "gesture pad left side swipe up down brightness screen light", "#padBrightRow267"],
       ["Start at", "skip intro cold open first seconds every video start offset", "#startAtRow267"],
