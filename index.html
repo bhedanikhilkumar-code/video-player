@@ -9746,8 +9746,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       else if (k === "f" || k === "F") { if (document.fullscreenElement) document.exitFullscreen(); else if (lpv319.requestFullscreen) lpv319.requestFullscreen().catch(function () {}); }
       else if (k === "n" || k === "N") { var lpN319 = $("lpNext"); if (lpN319 && !lpN319.disabled) lpN319.click(); else lpH = false; }
       else if (k === "p" || k === "P") { var lpPv319 = $("lpPrev"); if (lpPv319 && !lpPv319.disabled) lpPv319.click(); else lpH = false; }
+      // Round 384 fix 1: < and > had no local case above, so with a YouTube video loaded
+      // behind the file they fell through to the YouTube branch and changed the hidden
+      // video's speed instead of the file's; only with no YouTube video loaded at all did
+      // the round 274 handler reach them. The file's own speed chips answer them now,
+      // same as the round 274 fallback does.
+      else if (k === "<" || k === ">") { var lpSteps384 = [0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3], lpI384 = 0, lpD384 = Infinity; lpSteps384.forEach(function (s, n) { var dx = Math.abs(s - lpv319.playbackRate); if (dx < lpD384) { lpD384 = dx; lpI384 = n; } }); lpI384 = Math.max(0, Math.min(lpSteps384.length - 1, lpI384 + (k === ">" ? 1 : -1))); var lpChips384 = document.querySelectorAll("#lpSpeeds .chip"); if (lpChips384[lpI384]) lpChips384[lpI384].click(); else lpv319.playbackRate = lpSteps384[lpI384]; }
       else lpH = false;
       if (lpH) { e.preventDefault(); return; }
+      // Round 384 fix 1: a key the local player does not use used to fall through to the
+      // YouTube handlers below and act on the hidden video behind the file - R silently
+      // flipped its repeat, S offered to save a moment on it, A/B/X armed its loop, C
+      // toggled its captions and W/H/E/I/O/Y/Z touched its library rows (seen live).
+      // Only true app-wide keys pass through now: D theme, T cinema, Q find in queue.
+      if (typeof k === "string" && k.length === 1 && !(k === "d" || k === "D" || k === "t" || k === "T" || k === "q" || k === "Q")) { e.preventDefault(); return; }
       if (!iframe || controls.hidden) return;
     }
     var handled = true;
