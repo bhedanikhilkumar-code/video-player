@@ -24,6 +24,8 @@ const server = http.createServer((q, r) => {
     await page.locator('#lpVideo').evaluate(async v=>{await v.play();v.pause();v.volume=.8;});
     await page.locator('#switchCard431').evaluate(e=>e.open=true);
     assert.equal(await page.locator('#switchStart431').isEnabled(),true);
+    await page.locator('.switch-instructions431 > summary').click();assert.equal(await page.locator('.switch-help431').isVisible(),true);await page.locator('.switch-instructions431 > summary').click();assert.equal(await page.locator('.switch-help431').isVisible(),false);
+    await page.locator('#switchSpeak431').check();assert.equal(await page.locator('#switchSpeak431').isChecked(),true);
     await page.locator('#switchRate431').selectOption('1000');
     await page.locator('#switchStart431').click();
     assert.match(await page.locator('#switchChoose431').textContent(),/Choose: Play or pause/);
