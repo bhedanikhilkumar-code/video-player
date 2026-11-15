@@ -49,6 +49,8 @@ const server = http.createServer((q, r) => {
     await page.keyboard.press('Space');assert.equal(await page.locator('#switchChoose431').textContent(),'Resume scanning');
     await page.keyboard.press('Space');assert.match(await page.locator('#switchChoose431').textContent(),/Choose/);
     await page.keyboard.press('Tab');assert.equal(await page.locator('#switchChoose431').textContent(),'Resume scanning');
+    await page.locator('#switchStop431').evaluate(e=>{window.switchStopText431=e.firstChild;});
+    await page.locator('#switchStop431').focus();assert.equal(await page.locator('#switchStop431').evaluate(e=>e.firstChild===window.switchStopText431),true);
     await page.locator('#switchStop431').click();assert.equal(await page.locator('#switchChoose431').isDisabled(),true);
     await page.locator('#switchStart431').click();await page.keyboard.press('Escape');assert.equal(await page.locator('#switchChoose431').isDisabled(),true);
     for(const lang of ['hi','gu']){await page.locator('#langBtn').click();assert.ok(!(await page.locator('#switchCard431 > summary').textContent()).includes('Single-switch'));await page.setViewportSize({width:390,height:844});await page.locator('#switchCard431').screenshot({path:'/downloads/431-switch-'+lang+'.png'});}
