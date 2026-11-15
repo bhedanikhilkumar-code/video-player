@@ -39103,7 +39103,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
               if (nm == null) return;
               nm = String(nm).trim().slice(0, 40);
               if (!nm || nm === lp.name) return;
-              lp.name = nm; savePracticeLoops(); renderPracticeLoops(); toast(T("Loop renamed"));
+              var oldName419 = lp.name; lp.name = nm;
+              if (!savePracticeLoops()) { lp.name = oldName419; paint296(); renderPracticeLoops(); return; }
+              renderPracticeLoops(); toast(T("Loop renamed"));
             });
           });
           r.appendChild(rn407);
@@ -39112,13 +39114,16 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
           rm407.setAttribute("aria-label", T("Remove this loop") + ": " + (lp.name || ""));
           rm407.addEventListener("click", function () {
             var arr407 = practiceLoops[id] || [], ix407 = arr407.indexOf(lp); if (ix407 < 0) return;
+            var before419 = arr407.slice();
             arr407.splice(ix407, 1); if (!arr407.length) delete practiceLoops[id];
-            savePracticeLoops(); renderPracticeLoops();
+            if (!savePracticeLoops()) { practiceLoops[id] = before419; paint296(); renderPracticeLoops(); return; }
+            renderPracticeLoops();
             toastUndo(T("Practice loop removed"), function () {
-              var back407 = practiceLoops[id] || [];
+              var back407 = (practiceLoops[id] || []).slice(), undoBefore419 = practiceLoops[id];
               back407.splice(Math.min(ix407, back407.length), 0, lp); practiceLoops[id] = back407;
-              savePracticeLoops(); renderPracticeLoops();
-            }, T("Practice loop restored"));
+              if (!savePracticeLoops()) { if (undoBefore419) practiceLoops[id] = undoBefore419; else delete practiceLoops[id]; paint296(); renderPracticeLoops(); return; }
+              renderPracticeLoops(); toast(T("Practice loop restored"));
+            });
           });
           r.appendChild(rm407);
           box.appendChild(r);
