@@ -46524,6 +46524,9 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     });
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("QR for handoff", "#handoffQr410"); }, 2190); });
+  Object.assign(TR_MSG, {
+    "Current chapter marked on local files": ["\u0932\u094b\u0915\u0932 \u092b\u093c\u093e\u0907\u0932\u094b\u0902 \u092e\u0947\u0902 \u092e\u094c\u091c\u0942\u0926\u093e \u091a\u0948\u092a\u094d\u091f\u0930 \u0939\u093e\u0907\u0932\u093e\u0907\u091f", "\u0ab2\u0acb\u0a95\u0ab2 \u0aab\u0abe\u0a87\u0ab2\u0acb\u0aae\u0abe\u0a82 \u0ab5\u0ab0\u0acd\u0aa4\u0aae\u0abe\u0aa8 \u0a9a\u0ac7\u0aaa\u0acd\u0a9f\u0ab0 \u0ab9\u0abe\u0a87\u0ab2\u0abe\u0a87\u0a9f"]
+  });
 
 })();
 
@@ -48266,6 +48269,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       var li = document.createElement("li"); li.className = "ch-item";
       var go = document.createElement("button"); go.type = "button"; go.className = "chip ch-go";
       go.textContent = chFmt(ch.t) + " \u00b7 " + (ch.n || (T("Chapter") + " " + (i + 1)));
+      go.dataset.t411 = String(ch.t);
       go.addEventListener("click", function () { vid.currentTime = ch.t; localPlay(); });
       var rn = document.createElement("button"); rn.type = "button"; rn.className = "chip ch-mini"; rn.textContent = "\u270e";
       rn.setAttribute("aria-label", T("Rename chapter") + " " + chFmt(ch.t));
@@ -48296,6 +48300,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       li.appendChild(go); li.appendChild(lp307); li.appendChild(rn); li.appendChild(del); chList.appendChild(li);
     });
     chTicks();
+    if (typeof chNowPaint411 === "function") chNowPaint411(true);
   }
   function chTicks() {
     var bar = $("lpSeekBar"); if (!bar) return;
@@ -48308,6 +48313,35 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       bar.appendChild(tick);
     });
   }
+  // Round 411 new 1: Current chapter marked on local files. Community chapters on YouTube
+  // show a live "Now in chapter" line (round 408), but a local file's own chapter list -
+  // the one you built yourself - gave no sign of which chapter you were in: on a long
+  // movie or lecture with a dozen chapters you had to compare times in your head. The row
+  // for the part playing now is now outlined and announced to screen readers, and the
+  // mark follows playback and seeks on its own.
+  var chNowLastT411 = null;
+  function chNowPaint411(force) {
+    if (!chList) return;
+    var list = chCur(), curT = null;
+    if (list && list.length && isFinite(vid.duration) && vid.duration) {
+      list.forEach(function (ch) { if (ch.t < vid.duration && vid.currentTime >= ch.t && (curT === null || ch.t > curT)) curT = ch.t; });
+    }
+    if (!force && curT === chNowLastT411) return;
+    chNowLastT411 = curT;
+    [].forEach.call(chList.querySelectorAll(".ch-go"), function (b) {
+      var on = curT !== null && Number(b.dataset.t411) === curT;
+      b.classList.toggle("ch-now411", on);
+      if (on) b.setAttribute("aria-current", "true"); else b.removeAttribute("aria-current");
+    });
+  }
+  vid.addEventListener("timeupdate", function () { chNowPaint411(false); });
+  vid.addEventListener("seeked", function () { chNowPaint411(false); });
+  (function () {
+    var st = document.createElement("style");
+    st.textContent = ".ch-go.ch-now411{outline:2px solid var(--teal);outline-offset:1px;font-weight:700}\nhtml.high-contrast .ch-go.ch-now411{outline-width:3px}";
+    document.head.appendChild(st);
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Current chapter marked on local files", "#lpChH"); }, 2260); });
   if (chAdd) chAdd.addEventListener("click", function () {
     var list = chCur(); if (!list) return;
     if (list.length >= 20) { sessionMsg.textContent = T("A file can hold up to 20 chapters. Delete one first."); return; }
@@ -51326,6 +51360,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Frame step and jump to time", "frame step precise jump", "#lpPrecise"],
       ["Local practice loop", "practice loop local ab", "#lpLoopBox"],
       ["Local file chapters", "chapters local", "#lpChH"],
+      ["Current chapter marked on local files", "current chapter local file now playing which chapter highlight", "#lpChH"],
       ["Picture in picture (local file)", "pip picture floating", "#lpPip"],
       ["Add playlist to queue", "playlist youtube import", "#plBtn"],
       ["Paste a list of links", "paste many links bulk", "#plPasteBtn"],
