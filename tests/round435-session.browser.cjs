@@ -36,7 +36,7 @@ const server = http.createServer((q, r) => {
     const exportEvent=page.waitForEvent('download');await article('First.wav').locator('.offline-export435').click();const exported=await exportEvent;
     assert.equal(exported.suggestedFilename(),'First.wav');assert.deepEqual(fs.readFileSync(await exported.path()),wav);assert.equal(await page.locator('#offlineRows432 article').count(),3);assert.match(await page.locator('#offlineStatus432').textContent(),/Download requested/);
     const order=await page.locator('#offlineSessionRows435 li > strong').allTextContents();
-    await context.setOffline(true);await page.locator('#offlineSessionOpen435').click();
+    await context.setOffline(true);await page.locator('#offlineBanner').waitFor({state:'visible'});assert.match(await page.locator('#offlineBanner').textContent(),/Device files and saved offline copies can play without internet/);await page.locator('#offlineSessionOpen435').click();
     await page.waitForFunction(()=>document.getElementById('lpVideo').readyState>=2);
     assert.deepEqual(await page.evaluate(()=>window.vpLocalPlan276().files.map(f=>f.name)),order);
     await page.locator('#lpNext').click();await page.waitForFunction(()=>document.getElementById('lpVideo').dataset.fileName276!=="First.wav");
@@ -53,7 +53,7 @@ const server = http.createServer((q, r) => {
     for(const lang of ['en','hi','gu']){
       for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();
       assert.ok(await page.locator('#offlineSession435').evaluate(e=>e.scrollWidth<=e.clientWidth+1));
-      if(lang!=='en'){assert.ok(!(await page.locator('#offlineSessionTitle435').textContent()).includes('Offline'));assert.ok(!(await article('First.wav').locator('label').textContent()).includes('Include'));}
+      assert.match(await page.locator('#faq10a').textContent(),/YouTube/);if(lang!=='en'){assert.ok(!(await page.locator('#offlineSessionTitle435').textContent()).includes('Offline'));assert.ok(!(await article('First.wav').locator('label').textContent()).includes('Include'));}
       await page.locator('#offlineSession435').screenshot({path:'/downloads/435-session-'+lang+'.png'});
     }
     // Draft controls do not delete copies or change the playing queue.
