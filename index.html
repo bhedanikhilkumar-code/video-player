@@ -38824,6 +38824,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Play this loop": ["\u092f\u0939 \u0932\u0942\u092a \u091a\u0932\u093e\u090f\u0902", "\u0a86 \u0ab2\u0ac2\u0aaa \u0ab5\u0a97\u0abe\u0aa1\u0acb"],
     "Loop ready: ": ["\u0932\u0942\u092a \u0924\u0948\u092f\u093e\u0930: ", "\u0ab2\u0ac2\u0aaa \u0aa4\u0ac8\u0aaf\u0abe\u0ab0: "]
   });
+  Object.assign(TR_MSG, {
+    "Rename this loop": ["\u0907\u0938 \u0932\u0942\u092a \u0915\u093e \u0928\u093e\u092e \u092c\u0926\u0932\u0947\u0902", "\u0a86 \u0ab2\u0ac2\u0aaa\u0aa8\u0ac1\u0a82 \u0aa8\u0abe\u0aae \u0aac\u0aa6\u0ab2\u0acb"],
+    "Remove this loop": ["\u092f\u0939 \u0932\u0942\u092a \u0939\u091f\u093e\u090f\u0902", "\u0a86 \u0ab2\u0ac2\u0aaa \u0a95\u0abe\u0aa2\u0acb"],
+    "Loop renamed": ["\u0932\u0942\u092a \u0915\u093e \u0928\u093e\u092e \u092c\u0926\u0932 \u0917\u092f\u093e", "\u0ab2\u0ac2\u0aaa\u0aa8\u0ac1\u0a82 \u0aa8\u0abe\u0aae \u0aac\u0aa6\u0ab2\u0abe\u0aaf\u0ac1\u0a82"],
+    "Practice loop restored": ["\u092a\u094d\u0930\u0948\u0915\u094d\u091f\u093f\u0938 \u0932\u0942\u092a \u0935\u093e\u092a\u0938 \u0906\u092f\u093e", "\u0aaa\u0acd\u0ab0\u0ac7\u0a95\u0acd\u0a9f\u0abf\u0ab8 \u0ab2\u0ac2\u0aaa \u0aaa\u0abe\u0a9b\u0acb \u0a86\u0ab5\u0acd\u0aaf\u0acb"],
+    "Manage saved loops": ["\u0938\u0947\u0935 \u0915\u093f\u090f \u0932\u0942\u092a \u092e\u0948\u0928\u0947\u091c \u0915\u0930\u0947\u0902", "\u0ab8\u0abe\u0a9a\u0ab5\u0ac7\u0ab2\u0abe \u0ab2\u0ac2\u0aaa \u0aae\u0ac7\u0aa8\u0ac7\u0a9c \u0a95\u0ab0\u0acb"]
+  });
   (function () {
     var sp = $("savedPractice"); if (!sp || !sp.parentNode) return;
     var card = document.createElement("details"); card.className = "note-find"; card.id = "loopLibCard296"; card.style.marginTop = "10px";
@@ -38866,6 +38873,39 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
             vpCopySafe(link406, function (ok) { if (ok) toast(T("Loop link copied - it opens this video with the same A-B loop.")); });
           });
           r.appendChild(sh406);
+          // Round 407 new 1: manage saved loops right from the library. The rows could
+          // only play or share a loop - renaming a badly named drill or clearing an old
+          // one meant loading its video first and finding the per-video list. Each row
+          // now also carries a rename chip (through the same vpAsk dialog the moment
+          // rename uses) and a remove chip with the usual Undo toast, both writing
+          // through savePracticeLoops so the per-video list and every open tab repaint.
+          var rn407 = document.createElement("button"); rn407.type = "button"; rn407.className = "chip";
+          rn407.textContent = "\u270F\uFE0F";
+          rn407.setAttribute("aria-label", T("Rename this loop") + ": " + (lp.name || ""));
+          rn407.addEventListener("click", function () {
+            if (!window.vpAsk) return;
+            window.vpAsk(T("Rename this loop"), lp.name || "", {}).then(function (nm) {
+              if (nm == null) return;
+              nm = String(nm).trim().slice(0, 40);
+              if (!nm || nm === lp.name) return;
+              lp.name = nm; savePracticeLoops(); renderPracticeLoops(); toast(T("Loop renamed"));
+            });
+          });
+          r.appendChild(rn407);
+          var rm407 = document.createElement("button"); rm407.type = "button"; rm407.className = "chip";
+          rm407.textContent = "\u2715";
+          rm407.setAttribute("aria-label", T("Remove this loop") + ": " + (lp.name || ""));
+          rm407.addEventListener("click", function () {
+            var arr407 = practiceLoops[id] || [], ix407 = arr407.indexOf(lp); if (ix407 < 0) return;
+            arr407.splice(ix407, 1); if (!arr407.length) delete practiceLoops[id];
+            savePracticeLoops(); renderPracticeLoops();
+            toastUndo(T("Practice loop removed"), function () {
+              var back407 = practiceLoops[id] || [];
+              back407.splice(Math.min(ix407, back407.length), 0, lp); practiceLoops[id] = back407;
+              savePracticeLoops(); renderPracticeLoops();
+            }, T("Practice loop restored"));
+          });
+          r.appendChild(rm407);
           box.appendChild(r);
         });
       });
@@ -46153,6 +46193,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Share a saved loop": ["\u0938\u0947\u0935 \u0915\u0940 \u0932\u0942\u092a \u0936\u0947\u092f\u0930 \u0915\u0930\u0947\u0902", "\u0ab8\u0abe\u0a9a\u0ab5\u0ac7\u0ab2\u0ac0 \u0ab2\u0ac2\u0aaa \u0ab6\u0ac7\u0ab0 \u0a95\u0ab0\u0acb"]
   });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Share a saved loop", "#loopLibCard296"); }, 2120); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Manage saved loops", "#loopLibCard296"); }, 2140); });
 
 })();
 
@@ -51133,6 +51174,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Playback error log", "playback error log history recent errors code copy report problem diagnose failed videos record", "#errCard295"],
       ["Loop library", "loop library all saved loops every video a-b practice play jump across videos list", "#loopLibCard296"],
       ["Share a saved loop", "share saved loop link copy send friend practice a-b library loop", "#loopLibCard296"],
+      ["Manage saved loops", "manage saved loops rename remove delete practice loop library clean up edit name old drill", "#loopLibCard296"],
       ["Saved lyrics library", "saved lyrics library all songs words every video play sing along list", "#lyricLibCard377"],
       ["Saved moments library", "saved moments library all marked videos every video bookmarks spots list jump first moment", "#momLibCard378"],
       ["Voice notes library", "voice notes library all spoken memos audio notes every video listen play recordings microphone", "#vnoteLibCard380"],
