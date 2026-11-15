@@ -38879,7 +38879,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var anchor = $("vnoteRow294"), card294b = $("ctl-notes"); if (!card294b) return;
     var VP_KEY = "vp-vphotos.v1", vphotos = {};
     try { var vpIn = JSON.parse(localStorage.getItem(VP_KEY) || "null"); if (vpIn && typeof vpIn === "object" && !Array.isArray(vpIn)) vphotos = vpIn; } catch (e) {}
-    function vpSave() { try { localStorage.setItem(VP_KEY, JSON.stringify(vphotos)); return true; } catch (e) { return false; } }
+    function vpSave() { var ok381; try { localStorage.setItem(VP_KEY, JSON.stringify(vphotos)); ok381 = true; } catch (e) { ok381 = false; } if (window.__vpVphotoLibPaint381) { try { window.__vpVphotoLibPaint381(); } catch (e) {} } return ok381; }
     var row = document.createElement("div"); row.className = "row"; row.id = "vphotoRow298"; row.style.cssText = "margin-top:6px;flex-wrap:wrap;gap:8px;align-items:center";
     if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(row, anchor.nextSibling);
     else card294b.appendChild(row);
@@ -38951,6 +38951,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       sheetImg.src = m.d; sheetImg.alt = T("Photo note");
       sheet.style.display = "flex";
     });
+    window.__vpVphotoShow298 = function (id) { var m = id ? vphotos[id] : memoP(); if (!m) return; sheetImg.src = m.d; sheetImg.alt = T("Photo note"); sheet.style.display = "flex"; };
     delB.addEventListener("click", function () { if (!curId || !vphotos[curId]) return; delete vphotos[curId]; vpSave(); closeSheet(); toast(T("Photo note deleted.")); paint298p(); });
     setInterval(function () { if (curId !== lastPaintId) paint298p(); }, 1500);
     (window.__relang = window.__relang || []).push(paint298p); paint298p();
@@ -44932,6 +44933,61 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Notes library", "#noteLibCard381"); }, 1500); });
 
+  // Photo notes library (round 381 new 2): a photo note (round 298) stays with its own
+  // video, so the textbook pages and whiteboards you already snapped were invisible until
+  // you loaded each video again - the same gap the Saved lyrics (round 377), Saved moments
+  // (round 378), Voice notes (round 380) and Notes (this round) libraries closed for their
+  // stores. This card under the photo-note row lists every video with a photo note on this
+  // device - title and the day it was saved, newest first - and one tap shows the photo
+  // full size (through the round 298 sheet, loading the video first when it is another
+  // one). Up to 40 rows; adding, replacing or deleting a photo repaints the list (hook in
+  // vpSave), as do a language switch and a save from another tab. The store is untouched
+  // (vp-vphotos.v1, backup and Reset as before) - the card only reads it. Checked first:
+  // has:photo (round 379) filters a library list search - nothing listed every photo-noted
+  // video in one place. Hindi and Gujarati text inside the main closure, What's new and
+  // feature finder included.
+  Object.assign(TR_MSG, {
+    "Photo notes library": ["फोटो नोट लाइब्रेरी", "ફોટો નોંધ લાઇબ્રેરી"],
+    "Every video with a photo note on this device. Tap one to see the photo full size.": ["इस डिवाइस पर जिन वीडियो में फोटो नोट है. किसी पर टैप करते ही फोटो बड़ा खुलेगा.", "આ ડિવાઇસ પર જે વીડિયોમાં ફોટો નોંધ છે. કોઈ પર ટૅપ કરતાં ફોટો મોટો ખુલશે."],
+    "No photo notes yet. Add one from the Notes card while a video plays.": ["अभी कोई फोटो नोट नहीं. वीडियो चलते समय नोट्स कार्ड से एक जोड़ें.", "હજી કોઈ ફોટો નોંધ નથી. વીડિયો ચાલે ત્યારે નોંધ કાર્ડમાંથી એક ઉમેરો."],
+    "Open this video's photo note": ["इस वीडियो का फोटो नोट खोलें", "આ વીડિયોની ફોટો નોંધ ખોલો"]
+  });
+  (function () {
+    var row298 = $("vphotoRow298"); if (!row298 || !row298.parentNode) return;
+    var PKEY381 = "vp-vphotos.v1";
+    function readAll381p() { try { var m = JSON.parse(localStorage.getItem(PKEY381) || "null"); return (m && typeof m === "object" && !Array.isArray(m)) ? m : {}; } catch (e) { return {}; } }
+    var card = document.createElement("details"); card.className = "note-find"; card.id = "vphotoLibCard381"; card.style.marginTop = "10px";
+    card.innerHTML = "<summary id='vphotoLibSum381'></summary><div id='vphotoLibList381'></div><p class='hint' id='vphotoLibHint381'></p>";
+    row298.parentNode.insertBefore(card, row298.nextSibling);
+    function paintLib() {
+      $("vphotoLibSum381").textContent = T("Photo notes library");
+      $("vphotoLibHint381").textContent = T("Every video with a photo note on this device. Tap one to see the photo full size.");
+      var box = $("vphotoLibList381"); box.textContent = "";
+      var all = readAll381p();
+      var ids = Object.keys(all).filter(function (id) { return all[id] && typeof all[id].d === "string" && all[id].d; });
+      if (!ids.length) { var p = document.createElement("p"); p.className = "hint"; p.textContent = T("No photo notes yet. Add one from the Notes card while a video plays."); box.appendChild(p); return; }
+      ids.sort(function (a, b) { return (all[b].t || 0) - (all[a].t || 0); });
+      ids.slice(0, 40).forEach(function (id) {
+        var m = all[id], when = "";
+        try { if (m.t) when = new Date(m.t).toLocaleDateString(); } catch (e) {}
+        var r = document.createElement("div"); r.className = "row"; r.style.marginTop = "8px";
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.style.textAlign = "left";
+        b.textContent = "\uD83D\uDDBC " + (titleFor(id) || id) + (when ? " (" + when + ")" : "");
+        b.setAttribute("aria-label", T("Open this video's photo note") + ": " + (titleFor(id) || id));
+        b.addEventListener("click", function () {
+          if (id !== curId) { linkInput.value = "https://youtu.be/" + id; loadVideo(0, null, -1, false); }
+          if (window.__vpVphotoShow298) window.__vpVphotoShow298(id);
+        });
+        r.appendChild(b); box.appendChild(r);
+      });
+    }
+    card.addEventListener("toggle", function () { if (card.open) paintLib(); });
+    window.addEventListener("storage", function (e) { if (e && e.key === PKEY381) paintLib(); });
+    (window.__relang = window.__relang || []).push(paintLib); paintLib();
+    window.__vpVphotoLibPaint381 = paintLib;
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Photo notes library", "#vphotoLibCard381"); }, 1500); });
+
   // Round 365 fix 1: this key was registered inside the playlist-row renderer, so on a
   // device with no playlists it never reached TR_MSG and the feature finder (and the old
   // What's new entry) showed the English label in Hindi and Gujarati - seen live as the
@@ -49888,6 +49944,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Saved moments library", "saved moments library all marked videos every video bookmarks spots list jump first moment", "#momLibCard378"],
       ["Voice notes library", "voice notes library all spoken memos audio notes every video listen play recordings microphone", "#vnoteLibCard380"],
       ["Notes library", "notes library all typed notes every video written list open see note card", "#noteLibCard381"],
+      ["Photo notes library", "photo notes library all picture image notes every video textbook whiteboard view gallery", "#vphotoLibCard381"],
       ["Park the playing video", "park playing video not now watch later skip save for later next queue mood", "#parkBtn296"],
       ["Welcome back", "welcome back greeting yesterday watched queue continue resume first open day hello", "#greetCard296"],
       ["Colour-blind safe look", "colour blind color safe palette accent accessibility underline active state hue vision deuteranopia", "#cbSafe296"],
