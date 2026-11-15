@@ -1,0 +1,7 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p,pick,files})=>{
+ await pick(files.slice(0,1));await p.locator('#localCompare445').evaluate(e=>e.open=true);await p.locator('#lcFile445').setInputFiles(files[1]);await p.waitForFunction(()=>document.querySelector('#lcVideo445').readyState>=2);await p.locator('#lcFollow445').check();await p.locator('#lpVideo').evaluate(v=>v.play());await p.waitForFunction(()=>!document.querySelector('#lcVideo445').paused);
+ await p.locator('#lpVideo').dispatchEvent('waiting');await p.waitForTimeout(100);assert.equal(await p.locator('#lcVideo445').evaluate(v=>v.paused),true,'Following reference must pause when main buffers');await p.locator('#lcAlign445').click();assert.equal(await p.locator('#lcVideo445').evaluate(v=>v.paused),true,'Align cannot restart the reference while main is buffering');
+ await p.locator('#lpVideo').dispatchEvent('playing');await p.waitForFunction(()=>!document.querySelector('#lcVideo445').paused);await p.locator('#lpVideo').evaluate(v=>v.pause());await p.waitForFunction(()=>document.querySelector('#lcVideo445').paused);
+ console.log('PASS following reference pauses for main waiting/stalled and resumes on playing; Align does not defeat the buffer guard.');
+}).catch(e=>{console.error(e);process.exitCode=1;});
