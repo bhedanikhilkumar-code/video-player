@@ -45790,6 +45790,44 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Bigger history", "#histKeepBtn395"); }, 1850); });
 
+  // Round 400 new 1: Ends at for local files. The YouTube player has shown the wall-clock
+  // finish time beside its readout for hundreds of rounds (paintEndsAt, "Ends at"), and
+  // the queue rows carry their own start estimates - but a local file (a recorded lecture,
+  // a downloaded clip) had no finish clock at all: planning around a 90-minute recording
+  // at 1.5x meant doing the speed maths in your head. A small line under the local seek
+  // bar now reads "Ends at H:MM" from the file's length, its current place and its speed -
+  // through the same doneByClock the YouTube clock uses, so app language and the next-day
+  // wording match exactly. It repaints with every time update, speed change and language
+  // switch, and every 20 seconds while paused (the wall clock moves on during a break).
+  // Checked first: grep lpEnds/endsAt showed the clock only existed for the YouTube curId.
+  // Hindi and Gujarati text inside the main closure; feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Ends at for local files": ["\u0932\u094b\u0915\u0932 \u092b\u093c\u093e\u0907\u0932 \u0916\u093c\u0924\u094d\u092e \u0939\u094b\u0928\u0947 \u0915\u093e \u0938\u092e\u092f", "\u0ab2\u0acb\u0a95\u0ab2 \u0aab\u0abe\u0a87\u0ab2 \u0aaa\u0ac2\u0ab0\u0ac0 \u0aa5\u0ab5\u0abe\u0aa8\u0acb \u0ab8\u0aae\u0aaf"]
+  });
+  (function () {
+    var wrap400 = $("lpSeekWrap"), vid400 = $("lpVideo");
+    if (!wrap400 || !vid400) return;
+    var row400 = document.createElement("div");
+    row400.id = "lpEndsAtRow400"; row400.hidden = true; row400.style.marginTop = "6px";
+    var el400 = document.createElement("span");
+    el400.className = "ends-at"; el400.id = "lpEndsAt400";
+    row400.appendChild(el400); wrap400.appendChild(row400);
+    function paintEnds400() {
+      if (!(vid400.duration > 0) || vid400.readyState < 1) { row400.hidden = true; el400.textContent = ""; return; }
+      var rate400 = vid400.playbackRate > 0 ? vid400.playbackRate : 1;
+      var left400 = Math.max(0, (vid400.duration - (vid400.currentTime || 0)) / rate400);
+      el400.textContent = T("Ends at") + " " + doneByClock(new Date(Date.now() + left400 * 1000));
+      row400.hidden = false;
+    }
+    vid400.addEventListener("timeupdate", paintEnds400);
+    vid400.addEventListener("ratechange", paintEnds400);
+    vid400.addEventListener("loadedmetadata", paintEnds400);
+    vid400.addEventListener("emptied", paintEnds400);
+    setInterval(function () { if (!row400.hidden && !document.hidden && vid400.paused) paintEnds400(); }, 20000);
+    (window.__relang = window.__relang || []).push(paintEnds400);
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Ends at for local files", "#lpSeekWrap"); }, 1870); });
+
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -50994,6 +51032,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Keep first 10 in favourites", "keep first ten trim favourites shorten cut limit long list tidy scissors downsize", "#favKeepBtn317"],
       ["Keep first 10 in Watch later", "keep first ten trim watch later shorten cut limit long list tidy scissors downsize fresh", "#laterKeepBtn317"],
       ["Search in your own words", "search own words hindi gujarati hinglish native language finder palette \u0916\u094b\u091c \u0ab6\u0acb\u0aa7 khoj shodh", "#palBtn"],
+      ["Ends at for local files", "ends at for local files finish time clock when will this file end recording lecture speed wall clock done by", "#lpSeekWrap"],
     ];
     // Search in your own words (round 361 new 1): the finder's labels are translated, so a
     // Hindi phone finds the Sleep timer by typing the transliterated name - but nobody types
