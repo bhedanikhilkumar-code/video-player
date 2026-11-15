@@ -46661,6 +46661,91 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Current chapter marked on local files": ["\u0932\u094b\u0915\u0932 \u092b\u093c\u093e\u0907\u0932\u094b\u0902 \u092e\u0947\u0902 \u092e\u094c\u091c\u0942\u0926\u093e \u091a\u0948\u092a\u094d\u091f\u0930 \u0939\u093e\u0907\u0932\u093e\u0907\u091f", "\u0ab2\u0acb\u0a95\u0ab2 \u0aab\u0abe\u0a87\u0ab2\u0acb\u0aae\u0abe\u0a82 \u0ab5\u0ab0\u0acd\u0aa4\u0aae\u0abe\u0aa8 \u0a9a\u0ac7\u0aaa\u0acd\u0a9f\u0ab0 \u0ab9\u0abe\u0a87\u0ab2\u0abe\u0a87\u0a9f"]
   });
 
+  // Round 417 new 1: Stopwatch with laps. Timing a set while a workout video plays,
+  // measuring a practice drill, timing a recipe step while the recipe video runs - the
+  // phone's own clock app means leaving the page. A card in Sound adds a stopwatch:
+  // Start/Pause/Resume, up to 20 laps (newest on top, each with its split and the total),
+  // and Reset. The time is worked out from the clock, not from counting ticks, so it
+  // stays exact when the tab is hidden or the phone dozes; nothing is saved or sent.
+  // Checked first: the app had timers that count DOWN (sleep timer, alarm, countdown)
+  // but nothing that counts UP (grep stopwatch = 0). Hindi and Gujarati text inside the
+  // main closure, feature finder and What's new (deferred helper, staggered at 2920ms)
+  // included. Session-only on purpose - no prefs key, nothing to restore.
+  Object.assign(TR_MSG, {
+    "Stopwatch": ["स्टॉपवॉच", "સ્ટૉપવૉચ"],
+    "A stopwatch with laps for workouts, practice and timing along a video. It keeps exact time even while the tab is hidden.": ["वर्कआउट, प्रैक्टिस और वीडियो के साथ समय मापने के लिए लैप वाली स्टॉपवॉच. टैब छिपा होने पर भी सही समय रखती है.", "વર્કઆઉટ, પ્રેક્ટિસ અને વીડિયો સાથે સમય માપવા લૅપ વાળી સ્ટૉપવૉચ. ટૅબ છુપાયેલું હોય ત્યારે પણ ચોક્કસ સમય રાખે છે."],
+    "Pause": ["रोकें", "થોભાવો"],
+    "Lap": ["लैप", "લૅપ"],
+    "No laps yet.": ["अभी कोई लैप नहीं.", "હજુ કોઈ લૅપ નથી."],
+    "Stopwatch running": ["स्टॉपवॉच चल रही है", "સ્ટૉપવૉચ ચાલે છે"],
+    "Stopwatch paused": ["स्टॉपवॉच रुकी", "સ્ટૉપવૉચ અટકી"],
+    "Stopwatch reset": ["स्टॉपवॉच रीसेट", "સ્ટૉપવૉચ રીસેટ"],
+    "split": ["स्प्लिट", "સ્પ્લિટ"]
+  });
+  (function () {
+    var host = $("ctl-sound"); if (!host) return;
+    var card = document.createElement("details"); card.id = "swCard417"; card.className = "r239-card";
+    card.innerHTML = '<summary></summary><p class="hint r239-desc"></p>'
+      + '<div id="swFace417" role="timer" aria-live="off" style="font-size:2.4rem;font-weight:800;font-variant-numeric:tabular-nums;text-align:center;margin:8px 0 4px">00:00.0</div>'
+      + '<div class="row" style="margin-top:6px;gap:8px;justify-content:center;flex-wrap:wrap">'
+      + '<button type="button" class="chip" id="swGo417" aria-pressed="false"></button>'
+      + '<button type="button" class="chip" id="swLap417" disabled></button>'
+      + '<button type="button" class="chip" id="swReset417" disabled></button></div>'
+      + '<p class="hint" id="swLapH417" style="text-align:center;margin-top:8px"></p>'
+      + '<ol id="swLaps417" style="list-style:none;margin:6px 0 0;padding:0;display:grid;gap:4px"></ol>';
+    host.appendChild(card);
+    var face = $("swFace417"), goBtn = $("swGo417"), lapBtn = $("swLap417"), resetBtn = $("swReset417"), lapList = $("swLaps417"), lapHint = $("swLapH417");
+    var running = false, base = 0, startAt = 0, timer = null, laps = [];
+    function elapsed() { return base + (running ? Date.now() - startAt : 0); }
+    function p2(n) { return (n < 10 ? "0" : "") + n; }
+    function fmt(ms) {
+      var cs = Math.floor(ms / 100) % 10, s = Math.floor(ms / 1000) % 60, m = Math.floor(ms / 60000) % 60, h = Math.floor(ms / 3600000);
+      return (h > 0 ? h + ":" + p2(m) : p2(m)) + ":" + p2(s) + "." + cs;
+    }
+    function tick() { face.textContent = fmt(elapsed()); }
+    function paint() {
+      card.querySelector("summary").textContent = T("Stopwatch");
+      card.querySelector(".r239-desc").textContent = T("A stopwatch with laps for workouts, practice and timing along a video. It keeps exact time even while the tab is hidden.");
+      goBtn.textContent = (running ? "⏸ " : "▶ ") + T(running ? "Pause" : (base > 0 ? "Resume" : "Start"));
+      goBtn.setAttribute("aria-pressed", running ? "true" : "false");
+      lapBtn.textContent = T("Lap");
+      resetBtn.textContent = T("Reset");
+      lapBtn.disabled = !running;
+      resetBtn.disabled = !(running || base > 0 || laps.length);
+      lapHint.textContent = laps.length ? "" : T("No laps yet.");
+      Array.prototype.forEach.call(lapList.children, function (li, i) {
+        var n = laps.length - i;
+        li.querySelector(".sw-n").textContent = T("Lap") + " " + n;
+        li.setAttribute("aria-label", T("Lap") + " " + n + " - " + T("split") + " " + li._split + ", " + T("total") + " " + li._total);
+      });
+      tick();
+    }
+    function start() { running = true; startAt = Date.now(); timer = setInterval(tick, 53); paint(); toast(T("Stopwatch running")); }
+    function pause() { running = false; base = elapsed(); if (timer) { clearInterval(timer); timer = null; } paint(); toast(T("Stopwatch paused")); }
+    goBtn.addEventListener("click", function () { if (running) pause(); else start(); });
+    lapBtn.addEventListener("click", function () {
+      if (!running) return;
+      var total = elapsed(), prev = laps.length ? laps[0].total : 0;
+      laps.unshift({ total: total, split: total - prev });
+      if (laps.length > 20) laps.pop();
+      var li = document.createElement("li");
+      li._split = fmt(total - prev); li._total = fmt(total);
+      li.style.cssText = "display:flex;justify-content:space-between;gap:8px;padding:6px 10px;border-radius:12px;border:1px solid var(--hairline);background:var(--soft);font-variant-numeric:tabular-nums";
+      li.innerHTML = '<span class="sw-n" style="font-weight:700"></span><span>' + li._split + '</span><span style="opacity:.65">' + li._total + '</span>';
+      lapList.insertBefore(li, lapList.firstChild);
+      while (lapList.children.length > 20) lapList.removeChild(lapList.lastChild);
+      paint();
+    });
+    resetBtn.addEventListener("click", function () {
+      running = false; base = 0; laps = []; lapList.innerHTML = "";
+      if (timer) { clearInterval(timer); timer = null; }
+      paint(); toast(T("Stopwatch reset"));
+    });
+    document.addEventListener("visibilitychange", function () { if (!document.hidden && running) tick(); });
+    paint();
+    (window.__relang = window.__relang || []).push(paint);
+    window.__vpSw417 = { get running() { return running; }, get elapsed() { return elapsed(); } };
+  })();
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -46712,6 +46797,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // main closure with the tags card's own strings (outside the closure TR_MSG is out of
   // scope - the round 361 note).
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Rename a tag", "#tagsCard"); }, 2820); });
+
+  // Round 417 new 1: announced through the deferred helper, staggered at 2920ms, past the
+  // latest load-time announcement (round 414's at 2820ms) so it stays on the card.
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Stopwatch", "#swCard417"); }, 2920); });
 
   window.__vpMainOk325 = true;
 
@@ -51025,6 +51114,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Stopwatch", "stopwatch timer lap laps split time workout practice measure seconds clock count up timing", "#swCard417"],
       ["Copy list with lengths", "copy list lengths durations total known length queue watch later favourites history clipboard share plan how long watch time", "#copyQueueBtn"],
       ["Archive Watch later rows", "archive watch later park away hide row shelf keep saved unarchive put back clean list tidy backlog", "#laterArchBtn388"],
       ["Search finds the Archived shelf", "archived shelf search find parked rows hidden library search box title auto open shelf visible again", "#archList388"],
