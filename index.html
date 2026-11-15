@@ -49571,12 +49571,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   });
   vid.addEventListener("timeupdate", function () {
     if (!posKey || Date.now() - lastPos < 5000) return; lastPos = Date.now();
-    try {
-      var m = JSON.parse(localStorage.getItem(PK) || "{}"), keys = Object.keys(m);
-      if (vid.duration && vid.currentTime >= vid.duration - 10) delete m[posKey]; else m[posKey] = Math.floor(vid.currentTime);
-      if (keys.length > 30 && !(posKey in m)) delete m[keys[0]];
-      localStorage.setItem(PK, JSON.stringify(m));
-    } catch (e) {}
+    saveLocalPositionNow();
   });
   // Seekbar preview for local files: the thin bar under the player shows the real frame
   // of the moment under your finger or mouse. Frames are drawn on this device, never uploaded.
@@ -50420,7 +50415,15 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
 
   function saveLocalPositionNow(){
     if(!posKey||!isFinite(vid.duration)||vid.duration<=0)return;
-    try{var m=JSON.parse(localStorage.getItem(PK)||"{}");if(vid.currentTime>=vid.duration-10)delete m[posKey];else m[posKey]=Math.floor(vid.currentTime);localStorage.setItem(PK,JSON.stringify(m));}catch(e){}
+    try {
+      var m = JSON.parse(localStorage.getItem(PK) || "{}");
+      if (!m || typeof m !== "object" || Array.isArray(m)) return;
+      // Refresh insertion order so the least recently saved file leaves first.
+      delete m[posKey];
+      if (vid.currentTime < vid.duration - 10) m[posKey] = Math.floor(vid.currentTime);
+      var keys = Object.keys(m); while (keys.length > 30) delete m[keys.shift()];
+      localStorage.setItem(PK, JSON.stringify(m));
+    } catch (e) {}
   }
   vid.addEventListener("pause",saveLocalPositionNow);window.addEventListener("pagehide",saveLocalPositionNow);
   $("lpClose").addEventListener("click",function(){
