@@ -47461,6 +47461,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var host=$("lp"), playerInput=$("lpFile");if(!host||!playerInput)return;
     Object.assign(TR_MSG,{
       "Offline file shelf": ["ऑफ़लाइन फ़ाइल शेल्फ़", "ઑફલાઇન ફાઇલ શેલ્ફ"],
+      "Download saved device copy": ["सेव डिवाइस कॉपी डाउनलोड करें", "સાચવેલી ડિવાઇસ નકલ ડાઉનલોડ કરો"],
+      "Download requested. Check your browser downloads. The shelf copy was kept.": ["डाउनलोड का अनुरोध भेजा. ब्राउज़र के डाउनलोड देखें. शेल्फ़ कॉपी रखी गई है.", "ડાઉનલોડની વિનંતી મોકલી. બ્રાઉઝરના ડાઉનલોડ જુઓ. શેલ્ફની નકલ રાખી છે."],
+      "This saved copy could not be downloaded. It may be missing or storage may be unavailable.": ["यह सेव कॉपी डाउनलोड नहीं हो सकी. यह गायब हो सकती है या स्टोरेज अनुपलब्ध है.", "આ સાચવેલી નકલ ડાઉનલોડ થઈ શકી નહીં. તે ગાયબ હોઈ શકે અથવા સ્ટોરેજ ઉપલબ્ધ નથી."],
+
       "Offline session builder": ["ऑफ़लाइन सत्र बनाएं", "ઑફલાઇન સત્ર બનાવો"],
       "Saved offline sessions": ["सेव किए ऑफ़लाइन सत्र", "સાચવેલા ઑફલાઇન સત્રો"],
       "Save up to 20 named sessions. Names and file references are included in JSON backups, not media files. A restored session needs the same saved copies on this device. Loading only replaces the draft, never starts playback.": ["नाम वाले 20 सत्र तक सेव करें. JSON बैकअप में नाम और फ़ाइल संदर्भ हैं, मीडिया फ़ाइलें नहीं. बहाल सत्र को इस डिवाइस पर वही सेव कॉपियाँ चाहिए. लोड करने पर सिर्फ़ ड्राफ़्ट बदलता है, प्लेबैक शुरू नहीं होता.", "નામવાળા 20 સત્ર સુધી સાચવો. JSON બૅકઅપમાં નામ અને ફાઇલ સંદર્ભો છે, મીડિયા ફાઇલો નહીં. પુનઃસ્થાપિત સત્ર માટે આ ડિવાઇસ પર એ જ સાચવેલી નકલો જોઈએ. લોડ કરતાં ફક્ત ડ્રાફ્ટ બદલાય છે, પ્લેબેક શરૂ થતું નથી."],
@@ -47626,7 +47630,14 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         del.addEventListener('click',async function(){if(busy)return;if(!window.vpConfirm||!await window.vpConfirm(T("Remove this offline copy? The original file stays on your device."),T("Remove offline copy")))return;if(busy)return;busy=true;paint();try{await remove(row.id);session435=session435.filter(function(x){return x.id!==row.id;});status("Offline copy removed.");await refresh();}catch(e){status("The offline copy could not be removed. Try again; nothing was reported as deleted.");}finally{busy=false;paint();}});
         var label=document.createElement('label');label.className='offline-select435';var select=document.createElement('input');select.type='checkbox';select.className='offline-choose435';select.checked=session435.some(function(x){return x.id===row.id;});select.disabled=busy;select.setAttribute('aria-label',T('Include in offline session')+': '+row.name);var selectText=document.createElement('span');selectText.textContent=T('Include in offline session');label.append(select,selectText);
         select.addEventListener('change',function(){if(busy)return;if(select.checked){if(!session435.some(function(x){return x.id===row.id;}))session435.push({id:row.id,name:row.name});}else session435=session435.filter(function(x){return x.id!==row.id;});paintSession435();});
-        actions.append(open,del);article.append(name,size,label,actions);list.appendChild(article);
+        var download=document.createElement('button');download.type='button';download.className='chip offline-export435';download.textContent=T('Download saved device copy');download.setAttribute('aria-label',T('Download saved device copy')+': '+row.name);download.disabled=busy;
+        download.addEventListener('click',async function(){
+          if(busy)return;busy=true;paint();var url=null;
+          try{var blob=await fileFor(row.id);if(!(blob instanceof Blob)||!blob.size)throw Error('missing');url=URL.createObjectURL(blob);var link=document.createElement('a');link.href=url;link.download=row.name;document.body.appendChild(link);link.click();link.remove();status('Download requested. Check your browser downloads. The shelf copy was kept.');}
+          catch(e){status('This saved copy could not be downloaded. It may be missing or storage may be unavailable.');}
+          finally{if(url)setTimeout(function(){URL.revokeObjectURL(url);},30000);busy=false;paint();}
+        });
+        actions.append(open,download,del);article.append(name,size,label,actions);list.appendChild(article);
       });paintStatus();paintSession435();paintSaved435();
     }
     pick.addEventListener('click',function(){if(!busy)input.click();});
@@ -47640,6 +47651,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Offline session builder","#offlineSession435");},4120);});
   window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Saved offline sessions","#offlineSaved435");},4220);});
+  window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Download saved device copy","#offlineShelf432");},4320);});
   // Round 431: a single switch can scan real playback actions without needing a mouse,
   // touch gestures or a different key for every action. Session-only, opt-in, never auto-start.
   (function () {
@@ -52188,6 +52200,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Download saved device copy", "export recover download original offline shelf saved local device file bytes keep copy backup", "#offlineShelf432"],
       ["Saved offline sessions", "named offline sessions save playlists local copies reuse backup draft files device", "#offlineSaved435"],
       ["Offline session builder", "offline session playlist arrange saved files choose order local queue music copies no internet", "#offlineSession435"],
       ["Offline file shelf", "offline local file save device copies audio music video storage shelf no internet", "#offlineShelf432"],

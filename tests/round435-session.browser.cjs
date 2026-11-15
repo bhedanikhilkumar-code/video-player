@@ -33,6 +33,8 @@ const server = http.createServer((q, r) => {
     assert.equal(await article('Third.wav').locator('input').isChecked(),false);
     await page.locator('#offlineSessionAll435').click();
     assert.equal(await page.locator('#offlineSessionRows435 li').count(),3);
+    const exportEvent=page.waitForEvent('download');await article('First.wav').locator('.offline-export435').click();const exported=await exportEvent;
+    assert.equal(exported.suggestedFilename(),'First.wav');assert.deepEqual(fs.readFileSync(await exported.path()),wav);assert.equal(await page.locator('#offlineRows432 article').count(),3);assert.match(await page.locator('#offlineStatus432').textContent(),/Download requested/);
     const order=await page.locator('#offlineSessionRows435 li > strong').allTextContents();
     await context.setOffline(true);await page.locator('#offlineSessionOpen435').click();
     await page.waitForFunction(()=>document.getElementById('lpVideo').readyState>=2);
