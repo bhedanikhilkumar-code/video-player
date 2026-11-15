@@ -47252,6 +47252,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     function paintRoutines440() {
       var all = readRoutines440(), list = $("ivRoutineList440");
+      var active440 = document.activeElement, focusKind440 = active440 && active440.hasAttribute("data-iv-load440") ? "data-iv-load440" : active440 && active440.hasAttribute("data-iv-remove440") ? "data-iv-remove440" : null;
+      var focusKey440 = focusKind440 ? active440.getAttribute(focusKind440) : null;
       routines440.querySelector("summary").textContent = T("Saved interval routines") + (all ? " (" + all.length + "/20)" : "");
       $("ivRoutineHint440").textContent = T("Keep up to 20 named work/rest routines on this device, included in backup. Loading only fills the trainer; it never starts playback or the timer. Reset a running or paused trainer before loading.");
       $("ivRoutineLabel440").textContent = T("Interval routine name");
@@ -47266,7 +47268,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         [["Exercise seconds", routine.work], ["Rest seconds", routine.rest], ["Prepare seconds", routine.prepare], ["Training rounds", routine.rounds]].forEach(function (pair) { var dt = document.createElement("dt"), dd = document.createElement("dd"); dt.textContent = T(pair[0]); dd.textContent = pair[1]; preview.append(dt, dd); });
         item.appendChild(preview);
         var actions = document.createElement("div"); actions.className = "row";
-        var load = document.createElement("button"); load.type = "button"; load.className = "chip"; load.dataset.ivLoad440 = ""; load.textContent = T("Load interval routine"); load.setAttribute("aria-label", T("Load interval routine") + ": " + routine.name);
+        var load = document.createElement("button"); load.type = "button"; load.className = "chip"; load.dataset.ivLoad440 = routine.key; load.textContent = T("Load interval routine"); load.setAttribute("aria-label", T("Load interval routine") + ": " + routine.name);
         load.addEventListener("click", function () {
           if (plan && index < plan.length) return;
           var latest = readRoutines440(), live = latest && latest.find(function (p) { return p.key === routine.key; });
@@ -47275,7 +47277,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
           $("ivSound419").checked = live.sound; $("ivRoutineName440").value = live.name;
           routineStatus440 = "Interval routine loaded. Press Start when ready."; $("ivError419").textContent = ""; paintRoutines440();
         });
-        var remove = document.createElement("button"); remove.type = "button"; remove.className = "chip"; remove.textContent = T("Remove"); remove.setAttribute("aria-label", T("Remove") + ": " + routine.name);
+        var remove = document.createElement("button"); remove.type = "button"; remove.className = "chip"; remove.dataset.ivRemove440 = routine.key; remove.textContent = T("Remove"); remove.setAttribute("aria-label", T("Remove") + ": " + routine.name);
         remove.addEventListener("click", function () {
           var latest = readRoutines440(), saved = latest && latest.find(function (p) { return p.key === routine.key; }); if (!saved) { paintRoutines440(); return; }
           if (!writeRoutines440(latest.filter(function (p) { return p.key !== saved.key; }))) return;
@@ -47290,6 +47292,12 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         actions.append(load, remove); item.appendChild(actions); list.appendChild(item);
       });
       syncRoutineControls440();
+      // Rebuilding the saved rows must not throw keyboard focus back to the page.
+      if (focusKind440) {
+        var candidates440 = Array.prototype.slice.call(list.querySelectorAll("[" + focusKind440 + "]"));
+        var next440 = candidates440.find(function (button) { return button.getAttribute(focusKind440) === focusKey440; }) || candidates440[0] || $("ivRoutineSave440");
+        if (next440 && !next440.disabled) next440.focus({preventScroll:true});
+      }
     }
     $("ivRoutineSave440").addEventListener("click", function () {
       var latest = readRoutines440(); if (!latest) { paintRoutines440(); return; }
