@@ -18644,18 +18644,42 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   var LANGS = ["en", "hi", "gu"];
   var LANG_BTN = { en: "हिंदी", hi: "ગુજરાતી", gu: "EN" };
   var LANG_ARIA = { en: "Switch language to Hindi", hi: "गुजराती में बदलें", gu: "અંગ્રેજીમાં બદલો" };
-  function applyLang() {
+  // Round 439 fix: keep startup/API repaints synchronous, but let interactive
+  // language changes yield between small groups of rows and dynamic renderers.
+  // A newer choice cancels the old pass, including its captured static strings.
+  var langPass439 = 0, langTimer439 = 0;
+  function applyLang(deferred439) {
+    var pass439 = ++langPass439;
+    if (langTimer439) { clearTimeout(langTimer439); langTimer439 = 0; }
     var lg = LANGS.indexOf(prefs.lang) >= 0 ? prefs.lang : "en";
     document.documentElement.lang = lg;
+    var lb = $("langBtn");
+    if (lb) { lb.textContent = LANG_BTN[lg]; lb.setAttribute("aria-label", LANG_ARIA[lg]); lb.setAttribute("aria-busy", deferred439 === true ? "true" : "false"); }
     function pick(row, gu) { return lg === "hi" ? row[2] : (lg === "gu" ? (gu[row[0]] || row[1]) : row[1]); }
-    I18N.forEach(function (row) { var el = document.querySelector(row[0]); if (el) el.textContent = pick(row, I18N_GU); });
-    I18N_PH.forEach(function (row) { var el = document.querySelector(row[0]); if (el) el.setAttribute("placeholder", pick(row, I18N_GU_PH)); });
-    I18N_HTML.forEach(function (row) { var el = document.querySelector(row[0]); if (el) el.innerHTML = pick(row, I18N_GU_HTML); });
-    I18N_ARIA.forEach(function (row) { var el = document.querySelector(row[0]); if (el) el.setAttribute("aria-label", lg === "hi" ? row[2] : (lg === "gu" ? row[3] : row[1])); });
-    (window.__relang || []).forEach(function (f) { try { f(); } catch (e) {} });
-    var lb = $("langBtn"); if (lb) { lb.textContent = LANG_BTN[lg]; lb.setAttribute("aria-label", LANG_ARIA[lg]); }
+    var jobs439 = [];
+    I18N.forEach(function (row) { jobs439.push(function () { var el = document.querySelector(row[0]); if (el) el.textContent = pick(row, I18N_GU); }); });
+    I18N_PH.forEach(function (row) { jobs439.push(function () { var el = document.querySelector(row[0]); if (el) el.setAttribute("placeholder", pick(row, I18N_GU_PH)); }); });
+    I18N_HTML.forEach(function (row) { jobs439.push(function () { var el = document.querySelector(row[0]); if (el) el.innerHTML = pick(row, I18N_GU_HTML); }); });
+    I18N_ARIA.forEach(function (row) { jobs439.push(function () { var el = document.querySelector(row[0]); if (el) el.setAttribute("aria-label", lg === "hi" ? row[2] : (lg === "gu" ? row[3] : row[1])); }); });
+    (window.__relang || []).slice().forEach(function (f) { jobs439.push(function () { try { f(); } catch (e) {} }); });
+    if (deferred439 !== true) { jobs439.forEach(function (f) { f(); }); return; }
+    var at439 = 0;
+    function step439() {
+      langTimer439 = 0;
+      if (pass439 !== langPass439) return;
+      var began439 = performance.now(), count439 = 0;
+      // A renderer is atomic; preserve registration order and isolate its errors.
+      // The count cap also yields on fast devices, not just slow phones.
+      do { jobs439[at439++](); count439++; }
+      while (at439 < jobs439.length && count439 < 24 && performance.now() - began439 < 6 && pass439 === langPass439);
+      if (pass439 !== langPass439) return;
+      if (at439 < jobs439.length) langTimer439 = setTimeout(step439, 0);
+      else if (lb) lb.setAttribute("aria-busy", "false");
+    }
+    if (jobs439.length) langTimer439 = setTimeout(step439, 0);
+    else if (lb) lb.setAttribute("aria-busy", "false");
   }
-  if ($("langBtn")) $("langBtn").addEventListener("click", function () { var i = LANGS.indexOf(prefs.lang); prefs.lang = LANGS[(i < 0 ? 0 : i + 1) % LANGS.length]; savePrefs(); applyLang(); });
+  if ($("langBtn")) $("langBtn").addEventListener("click", function () { var i = LANGS.indexOf(prefs.lang); prefs.lang = LANGS[(i < 0 ? 0 : i + 1) % LANGS.length]; savePrefs(); applyLang(true); });
   applyLang();
   window.__vpApplyLang = applyLang;
   // Round 438 fix: the first-open language offer reached Gujarati by clicking the
@@ -18663,8 +18687,8 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // ~626 ms of blocked main thread on desktop-class hardware each time, so a first-time
   // Gujarati visitor's very first tap froze the fresh page for well over a second
   // (longer on a slow phone). Scripts outside this closure can now set the language
-  // in ONE repaint.
-  window.__vpSetLangOnce = function (lg) { if (LANGS.indexOf(lg) < 0 || prefs.lang === lg) return; prefs.lang = lg; savePrefs(); applyLang(); };
+  // in ONE repaint (yielded in small batches after round 439).
+  window.__vpSetLangOnce = function (lg) { if (LANGS.indexOf(lg) < 0 || prefs.lang === lg) return; prefs.lang = lg; savePrefs(); applyLang(true); };
 
   // Continue watching: every video with a saved position, with progress, not just the last one.
   var continueItems;
@@ -21423,6 +21447,12 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   (window.__relang = window.__relang || []).push(waveRender);
 
   settleRender(); waveRender(); settleApply(); waveApply();
+  Object.assign(TR_MSG, {
+    "Responsive language switching": ["बिना लंबे ठहराव के भाषा बदलें", "લાંબા વિરામ વિના ભાષા બદલો"]
+  });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Responsive language switching", "#langBtn"); }, 3220); });
+
+
 })();
 
 (function () {
@@ -26432,7 +26462,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         });
         if (!adopted) return;
         snap();
-        if (prefs.lang !== langWas) applyLang();
+        if (prefs.lang !== langWas) applyLang(true);
         if (prefs.theme !== themeWas) applyTheme();
         // Round 426 fix 2: an accent picked in the other tab repaints here too, not only after a reload.
         if (prefs.accent + "|" + prefs.accentCustom !== accentWas) { applyAccent(); applyTheme(); }
@@ -45878,7 +45908,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     function pick360(lg) {
       prefs.lang = lg; savePrefs();
-      if (window.__vpApplyLang) window.__vpApplyLang();
+      if (window.__vpApplyLang) window.__vpApplyLang(true);
       toast(T("Language set - the whole app now speaks your pick."));
       close360();
     }
@@ -52971,6 +53001,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Trim old Watch later videos", "trim old watch later 30 days clean backlog tidy stale", "#laterTrimBtn"],
       ["Copy the current lyric line", "copy lyric line current sing along karaoke clipboard share quote", "#lyrLineBtn"],
       ["Rename a saved moment", "rename moment bookmark saved timestamp name edit pencil", "#markAddBtn"],
+      ["Responsive language switching", "language hindi gujarati switch responsive batching", "#langBtn"],
       ["What's new", "new latest recent additions updates features whats new", "#whatsNewCard"],
       ["Start view", "start view open opens landing scroll section on launch visit home", "#startViewRow318"],
       ["Watch later added date", "watch later added date when saved how old days ago", "#lhLater"],
