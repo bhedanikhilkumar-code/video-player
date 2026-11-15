@@ -20234,7 +20234,26 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     }
     (window.__relang = window.__relang || []).push(paint377); paint377();
     var prevSave377 = lyricsSave;
-    lyricsSave = function () { var ok = prevSave377(); paint377(); return ok; };
+    var lyrBaseline383 = JSON.stringify(lyrics);
+    lyricsSave = function () { var ok = prevSave377(); if (ok) lyrBaseline383 = JSON.stringify(lyrics); paint377(); return ok; };
+    // Round 383 fix 1: lyrics saved in another tab never reached this one. Every other
+    // cross-video library repaints on the storage event (moments since round 378 fix 1,
+    // voice notes, typed notes, photo notes, timestamped notes), but the lyrics store
+    // (vp-lyrics.v1) had no listener at all - the Saved lyrics library and the Lyrics
+    // card itself kept showing this tab's start-of-session copy until a reload. This
+    // mirrors the moments handler: a baseline updated by the save wrapper above keeps an
+    // in-flight local edit from being erased, then the store is re-read and both the
+    // lyrics view and the library repaint.
+    window.addEventListener("storage", function (e) {
+      if (e && e.key !== LYR_KEY && e.key !== null) return;
+      if (JSON.stringify(lyrics) !== lyrBaseline383) return;
+      try {
+        var fresh383 = JSON.parse(localStorage.getItem(LYR_KEY) || "null");
+        lyrics = (fresh383 && typeof fresh383 === "object" && !Array.isArray(fresh383)) ? fresh383 : {};
+        lyrBaseline383 = JSON.stringify(lyrics);
+        renderLyrics(); paint377();
+      } catch (err) {}
+    });
   })();
   // Saved lyrics (round 377 new 2): What's new announce and feature finder entry.
   Object.assign(TR_MSG, {
