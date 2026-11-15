@@ -47785,7 +47785,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     $('offlineSessionClear435').addEventListener('click',function(){if(busy)return;session435=[];paint();$('offlineSessionAll435').focus();});
     $('offlineSessionOpen435').addEventListener('click',async function(){
       if(busy||!session435.length)return;var chosen=session435.slice();busy=true;status('Opening offline session...');paint();
-      try{var files=[];for(var i=0;i<chosen.length;i++){var blob=await fileFor(chosen[i].id);if(!(blob instanceof Blob)||!blob.size)throw Error('missing');files.push(new File([blob],chosen[i].name,{type:blob.type,lastModified:blob.lastModified||0}));}
+      try{var files=[];for(var i=0;i<chosen.length;i++){var copy=await checkedCopy437(chosen[i].id);files.push(new File([copy.blob],copy.meta.name,{type:copy.meta.type,lastModified:copy.meta.modified}));}
         if(!window.vpOpenFiles||!window.vpOpenFiles(files))throw Error('open');status('Offline session opened. Use Previous and Next in the local player. Press Play when ready.');
       }catch(e){status('The session could not open. A saved copy may be missing or storage may be unavailable. Your current local queue was not replaced.');}finally{busy=false;paint();}
     });
@@ -47817,6 +47817,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       });
     }
     async function fileFor(id){var d=await db();return new Promise(function(resolve,reject){var tx=d.transaction('files','readonly'),r=tx.objectStore('files').get(id);tx.oncomplete=function(){resolve(r.result);};tx.onerror=tx.onabort=function(){reject(tx.error||Error('read'));};});}
+    async function checkedCopy437(id){var d=await db();return new Promise(function(resolve,reject){
+      var tx=d.transaction(['meta','files'],'readonly'),meta=tx.objectStore('meta').get(id),file=tx.objectStore('files').get(id);
+      tx.oncomplete=function(){var r=meta.result,blob=file.result;if(!validBundleMeta437(r)||!(blob instanceof Blob)||blob.size!==r.size){reject(Error('incomplete'));return;}resolve({meta:r,blob:blob});};tx.onerror=tx.onabort=function(){reject(tx.error||Error('read'));};
+    });}
     async function remove(id){var d=await db();return new Promise(function(resolve,reject){var tx=d.transaction(['meta','files'],'readwrite');tx.objectStore('meta').delete(id);tx.objectStore('files').delete(id);tx.oncomplete=function(){resolve();};tx.onerror=tx.onabort=function(){reject(tx.error||Error('delete'));};});}
     async function refresh(){var mine=++revision;try{var found=await all();if(mine!==revision)return;rows=found.sort(function(a,b){return b.added-a.added;});paint();}catch(e){if(mine===revision)status('This browser cannot read the offline shelf right now. Your original files are unchanged.');}}
     function paint(){
