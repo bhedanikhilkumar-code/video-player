@@ -47232,6 +47232,85 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (writePresets421(all)) { presetState421 = "Circuit preset saved."; $("circuitPresetName421").value = ""; paintPresets421(); }
     });
     $("circuitPresetName421").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); $("circuitPresetSave421").click(); } });
+    // Round 422: portable circuits, separate from a full personal-data backup.
+    // Imported files are previews only until Add is tapped, never playback instructions.
+    Object.assign(TR_MSG, {
+      "Circuit exchange": ["सर्किट लाएं और भेजें", "સર્કિટ લાવો અને મોકલો"],
+      "Move practice routines without sharing your history, notes or settings. Export saves all named circuits; import previews the file and only adds new names. Nothing plays automatically.": ["इतिहास, नोट्स या सेटिंग्स दिए बिना प्रैक्टिस रूटीन ले जाएं. एक्सपोर्ट सभी नाम वाले सर्किट सेव करता है; इम्पोर्ट पहले फ़ाइल दिखाता है और केवल नए नाम जोड़ता है. कुछ भी अपने आप नहीं चलता.", "ઇતિહાસ, નોંધો કે સેટિંગ્સ આપ્યા વગર પ્રેક્ટિસ રૂટિન લઈ જાઓ. નિકાસ બધા નામવાળા સર્કિટ સાચવે છે; આયાત પહેલાં ફાઇલ બતાવે છે અને ફક્ત નવા નામ ઉમેરે છે. કંઈ આપમેળે ચાલતું નથી."],
+      "Export circuit file": ["सर्किट फ़ाइल निकालें", "સર્કિટ ફાઇલ નિકાસ કરો"],
+      "Preview circuit file": ["सर्किट फ़ाइल जांचें", "સર્કિટ ફાઇલ તપાસો"],
+      "Add previewed circuits": ["जांचे हुए सर्किट जोड़ें", "તપાસેલા સર્કિટ ઉમેરો"],
+      "Choose a circuit JSON file, up to 128 KB.": ["128 KB तक की सर्किट JSON फ़ाइल चुनें.", "128 KB સુધીની સર્કિટ JSON ફાઇલ પસંદ કરો."],
+      "This is not a valid circuit file. Nothing was added.": ["यह सही सर्किट फ़ाइल नहीं है. कुछ नहीं जोड़ा गया.", "આ માન્ય સર્કિટ ફાઇલ નથી. કંઈ ઉમેરાયું નથી."],
+      "Circuit file ready to review": ["सर्किट फ़ाइल जांचने के लिए तैयार", "સર્કિટ ફાઇલ તપાસવા તૈયાર"],
+      "Already saved with this name": ["इस नाम से पहले से सेव है", "આ નામથી પહેલેથી સાચવેલું છે"],
+      "New circuit": ["नया सर्किट", "નવું સર્કિટ"],
+      "Not enough space for these circuits. Remove some presets first.": ["इन सर्किट के लिए जगह नहीं है. पहले कुछ प्रीसेट हटाएं.", "આ સર્કિટ માટે જગ્યા નથી. પહેલાં થોડા પ્રીસેટ કાઢો."],
+      "Circuits added: {n}. Existing names were kept.": ["{n} सर्किट जुड़े. पुराने नाम रखे गए.", "{n} સર્કિટ ઉમેરાયા. જૂના નામ રાખ્યાં."],
+      "No new circuits to add.": ["जोड़ने के लिए नए सर्किट नहीं हैं.", "ઉમેરવા નવા સર્કિટ નથી."],
+      "Circuit import undone.": ["सर्किट इम्पोर्ट वापस लिया.", "સર્કિટ આયાત પાછી લીધી."],
+      "Circuit file exported.": ["सर्किट फ़ाइल निकाली गई.", "સર્કિટ ફાઇલ નિકાસ થઈ."],
+      "Could not read that circuit file.": ["वह सर्किट फ़ाइल नहीं पढ़ सके.", "તે સર્કિટ ફાઇલ વાંચી શકાઈ નહીં."]
+    });
+    var exchange422 = document.createElement("details"); exchange422.id = "circuitExchange422"; exchange422.className = "r239-card";
+    exchange422.innerHTML = '<summary></summary><p class="hint" id="ceHint422"></p><div class="row" style="gap:8px;flex-wrap:wrap"><button type="button" class="chip" id="ceExport422"></button><label class="chip" for="ceFile422" id="ceFileLabel422"></label></div><input type="file" id="ceFile422" accept=".json,application/json" style="display:block;width:100%;max-width:100%;margin:10px 0"><p class="hint" id="ceLimit422"></p><div id="cePreview422" style="overflow-wrap:anywhere"></div><p class="hint" role="status" id="ceStatus422"></p><div class="row" style="flex-wrap:wrap;gap:8px"><button type="button" class="chip" id="ceAdd422" disabled></button><button type="button" class="chip" id="ceCancel422" hidden></button></div>';
+    card.appendChild(exchange422);
+    var importDraft422 = null, importMessage422 = "", importGeneration422 = 0;
+    function candidates422(all) { return (importDraft422 || []).filter(function (p) { return !all.some(function (x) { return x.video === p.video && x.name.toLowerCase() === p.name.toLowerCase(); }); }); }
+    function paintExchange422() {
+      var all = readPresets421(), incoming = candidates422(all), box = $("cePreview422");
+      exchange422.querySelector("summary").textContent = T("Circuit exchange");
+      $("ceHint422").textContent = T("Move practice routines without sharing your history, notes or settings. Export saves all named circuits; import previews the file and only adds new names. Nothing plays automatically.");
+      $("ceExport422").textContent = T("Export circuit file"); $("ceExport422").disabled = !all.length;
+      $("ceFileLabel422").textContent = T("Preview circuit file"); $("ceFile422").setAttribute("aria-label", T("Preview circuit file"));
+      $("ceLimit422").textContent = T("Choose a circuit JSON file, up to 128 KB.");
+      $("ceAdd422").textContent = T("Add previewed circuits") + (importDraft422 ? " (" + incoming.length + ")" : ""); $("ceAdd422").disabled = active || !incoming.length;
+      $("ceCancel422").textContent = T("Cancel"); $("ceCancel422").hidden = !importDraft422;
+      $("ceStatus422").textContent = importMessage422 ? T(importMessage422) : "";
+      box.textContent = "";
+      (importDraft422 || []).forEach(function (p) {
+        var article = document.createElement("div"); article.style.cssText = "padding:12px;border:1px solid var(--hairline);border-radius:16px;background:var(--soft);margin:8px 0";
+        var title = document.createElement("strong"); title.textContent = p.name; var meta = document.createElement("p"); meta.className = "hint";
+        meta.textContent = p.video + " · " + T(incoming.indexOf(p) >= 0 ? "New circuit" : "Already saved with this name");
+        var steps = document.createElement("ol"); steps.style.paddingLeft = "24px";
+        p.steps.forEach(function (step) { var li = document.createElement("li"); li.textContent = step.name + " · " + fmt(step.a) + " - " + fmt(step.b) + " × " + step.passes; steps.appendChild(li); });
+        article.append(title, meta, steps); box.appendChild(article);
+      });
+    }
+    $("ceExport422").addEventListener("click", function () {
+      var all = readPresets421(); if (!all.length) return;
+      var blob = new Blob([JSON.stringify({format:"vp-circuits",version:1,circuits:all}, null, 2)], {type:"application/json"}), url = URL.createObjectURL(blob), link = document.createElement("a");
+      link.href = url; link.download = "video-player-circuits.json"; document.body.appendChild(link); link.click(); link.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+      importMessage422 = "Circuit file exported."; paintExchange422();
+    });
+    $("ceFile422").addEventListener("change", async function () {
+      var file = this.files && this.files[0], generation = ++importGeneration422; this.value = ""; importDraft422 = null; importMessage422 = ""; paintExchange422(); if (!file) return;
+      try {
+        if (file.size > 131072) throw new Error("size");
+        var value = JSON.parse(await file.text()); if (generation !== importGeneration422) return;
+        if (!value || value.format !== "vp-circuits" || value.version !== 1 || !Array.isArray(value.circuits) || !value.circuits.length || value.circuits.length > 20) throw new Error("format");
+        var cleaned = cleanCircuitPresets421(value.circuits);
+        // All-or-nothing validation: do not silently discard malformed or duplicate rows.
+        if (cleaned.length !== value.circuits.length) throw new Error("rows");
+        importDraft422 = cleaned; importMessage422 = "Circuit file ready to review";
+      } catch (e) { if (generation !== importGeneration422) return; importMessage422 = "This is not a valid circuit file. Nothing was added."; }
+      paintExchange422();
+    });
+    $("ceCancel422").addEventListener("click", function () { importGeneration422++; importDraft422 = null; importMessage422 = ""; paintExchange422(); });
+    $("ceAdd422").addEventListener("click", function () {
+      if (active || !importDraft422) return;
+      var all = readPresets421(), incoming = candidates422(all);
+      if (!incoming.length) { importMessage422 = "No new circuits to add."; paintExchange422(); return; }
+      if (all.length + incoming.length > 20) { importMessage422 = "Not enough space for these circuits. Remove some presets first."; paintExchange422(); return; }
+      var added = incoming.map(function (p, i) { var copy = JSON.parse(JSON.stringify(p)); copy.key = "import-" + Date.now().toString(36) + "-" + i + "-" + Math.random().toString(36).slice(2, 10); return copy; });
+      if (!writePresets421(all.concat(added))) { importMessage422 = "Could not save. Device storage may be full."; paintExchange422(); return; }
+      importDraft422 = null; importMessage422 = ""; paintPresets421(); paintExchange422();
+      toastUndo(T("Circuits added: {n}. Existing names were kept.").replace("{n}", added.length), function () {
+        var latest = readPresets421().filter(function (p) { return !added.some(function (a) { return a.key === p.key && JSON.stringify(a) === JSON.stringify(p); }); });
+        if (writePresets421(latest)) { importMessage422 = "Circuit import undone."; paintPresets421(); paintExchange422(); }
+      });
+    });
+    var beforeExchangePaint422 = paintPresets421; paintPresets421 = function () { beforeExchangePaint422(); paintExchange422(); };
     window.addEventListener("storage", function (e) { if (e.key === presetKey421 || e.key === null) paintPresets421(); });
     document.addEventListener("vp-circuit-presets421-change", paintPresets421);
     var oldCircuitPaint421 = paint; paint = function () { oldCircuitPaint421(); paintPresets421(); };
@@ -47239,6 +47318,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Practice circuit", "#circuit421"); }, 3320); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Saved circuit presets", "#circuitPresets421"); }, 3420); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Circuit exchange", "#circuitExchange422"); }, 3520); });
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -51610,6 +51690,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var FEATS = [
       ["Stopwatch", "stopwatch timer lap laps split time workout practice measure seconds clock count up timing", "#swCard417"],
       ["Countdown timer", "countdown timer count down minutes beep kitchen cook recipe workout rest break tea egg", "#tmCard418"],
+      ["Circuit exchange", "circuit exchange import export portable routines file transfer merge preview", "#circuitExchange422"],
       ["Saved circuit presets", "saved circuit presets named routines reuse backup practice loops passes workout sessions", "#circuitPresets421"],
       ["Practice circuit", "practice circuit saved loops sequence passes repetitions workout guitar drills ordered training", "#circuit421"],
       ["Interval trainer", "interval workout exercise recovery tabata hiit training seconds rounds rest timer", "#intervalCard419"],
