@@ -29,6 +29,7 @@ const server = http.createServer((q, r) => {
     await page.screenshot({path:'/downloads/435-modal-'+(process.env.BEFORE?'before':'after')+'.png'});
     if(process.env.BEFORE){assert.equal(visible.clickable,false);await page.keyboard.press('Escape');return;}
     assert.equal(visible.clickable,true);assert.equal(visible.popover,true);
+    assert.equal(await page.getByRole('dialog',{name:'Name this moment',exact:true}).count(),1);assert.equal(await page.getByRole('textbox',{name:'Name this moment',exact:true}).count(),1);
     await page.locator('#vpAskBg input').fill('A real moment');
     await page.keyboard.press('Tab');await page.keyboard.press('Tab');assert.equal(await page.locator('#vpAskBg .vp-ask-row button:last-child').evaluate(e=>e===document.activeElement),true);
     await page.keyboard.press('Enter');await page.locator('#vpAskBg').waitFor({state:'detached'});
@@ -40,7 +41,8 @@ const server = http.createServer((q, r) => {
     assert.equal(await page.locator('#playerDock').evaluate(e=>e.matches(':popover-open')),true);
     for(const lang of ['hi','gu']){
       for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await page.locator('#langBtn').click();
-      await page.locator('#markAddBtn').click();const message=await page.locator('.vp-ask-msg').textContent();assert.ok(message&&!message.includes('Name this moment'));
+      await page.locator('#markAddBtn').click();const message=await page.locator('#vpAskMessage').textContent();assert.ok(message&&!message.includes('Name this moment'));
+      assert.equal(await page.getByRole('dialog',{name:message,exact:true}).count(),1);assert.equal(await page.getByRole('textbox',{name:message,exact:true}).count(),1);
       await page.locator('#vpAskBg .vp-ask-row button:first-child').click();
     }
 
