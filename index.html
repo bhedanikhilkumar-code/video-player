@@ -15388,7 +15388,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // rotate and the Stats on video overlay - so a restore on a new phone silently reset them
   // while every other setting moved over. They export and import as validated one-word values
   // like the rest of this list.
-  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;  VP_RAW_KEYS["vp-eqcust.v1"] = /^\[[\s\S]{0,2000}\]$/;  VP_RAW_KEYS["vp-mini-size.v1"] = /^(std|lg)$/;  VP_RAW_KEYS["vp-histlen.v1"] = /^(all|u10|m30|o30)$/;  VP_RAW_KEYS["vp-favlen.v1"] = /^(all|u10|m30|o30)$/;  VP_RAW_KEYS["vp-pllen.v1"] = /^(all|u10|m30|o30)$/;
+  VP_RAW_KEYS["vp-look.v1"] = /^[a-z0-9-]{1,24}$/;  VP_RAW_KEYS["vp-wallpaper.v1"] = /^data:image\/[a-z]{3,5};base64,[A-Za-z0-9+/=]{100,950000}$/;  VP_RAW_KEYS["vp-eqcust.v1"] = /^\[[\s\S]{0,2000}\]$/;  VP_RAW_KEYS["vp-mini-size.v1"] = /^(std|lg|cmp)$/;  VP_RAW_KEYS["vp-histlen.v1"] = /^(all|u10|m30|o30)$/;  VP_RAW_KEYS["vp-favlen.v1"] = /^(all|u10|m30|o30)$/;  VP_RAW_KEYS["vp-pllen.v1"] = /^(all|u10|m30|o30)$/;
 
 
   // Round 282 fix 1: the Rewind on resume choice (vp-rewback.v1: jump back 5, 10 or 30
@@ -40880,32 +40880,56 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Large": ["बड़ा", "મોટું"],
     "Make the floating mini player bigger or back to usual.": ["तैरते मिनी प्लेयर को बड़ा करें या फिर सामान्य करें.", "તરતો મિનિ પ્લેયર મોટો કરો કે ફરી સામાન્ય કરો."]
   });
+  // Round 455 new 1: a third size - Compact. On a phone the docked player still stands
+  // half a screen tall (200px video, two tool rows, up-next strip, time and queue pills),
+  // covering the very list you opened it to browse. The same size chip now cycles
+  // Standard -> Large -> Compact: compact shrinks the video to 120px (it keeps playing and
+  // stays visible - no hidden playback) and keeps one transport row (back 10, play,
+  // forward 10, back to player, pause/close and this size chip), hiding the volume slider,
+  // secondary chips, the up-next strip and the time/queue pills. The choice is remembered
+  // in the same vp-mini-size.v1 key (backup regex widened to accept "cmp"), so it rides
+  // the backup and goes with Reset all settings like the other two sizes. Hindi and
+  // Gujarati text, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Mini: compact": ["मिनी: कॉम्पैक्ट", "મિનિ: કોમ્પેક્ટ"],
+    "Compact": ["कॉम्पैक्ट", "કોમ્પેક્ટ"],
+    "Compact mini player": ["कॉम्पैक्ट मिनी प्लेयर", "કોમ્પેક્ટ મિનિ પ્લેયર"],
+    "Tap to cycle standard, large and compact sizes.": ["सामान्य, बड़ा और कॉम्पैक्ट आकार बदलने के लिए टैप करें.", "સામાન્ય, મોટું અને કોમ્પેક્ટ કદ બદલવા ટૅપ કરો."]
+  });
   (function () {
     var tools = $("miniTools"), dock = $("playerDock");
     if (!tools || !dock) return;
     var KEY = "vp-mini-size.v1";
     var st304 = document.createElement("style");
-    st304.textContent = "#playerDock.is-mini.mini-lg304{width:min(560px,calc(100vw - 32px))}@media(max-width:480px){#playerDock.is-mini.mini-lg304{width:min(430px,calc(100vw - 16px))}}";
+    st304.textContent = "#playerDock.is-mini.mini-lg304{width:min(560px,calc(100vw - 32px))}@media(max-width:480px){#playerDock.is-mini.mini-lg304{width:min(430px,calc(100vw - 16px))}}"
+      + "#playerDock.is-mini.mini-cmp455 #frameBox{min-height:0;aspect-ratio:auto;height:120px}"
+      + "#playerDock.is-mini.mini-cmp455 #miniTools .chip:not(#miniPlay):not(#miniRew):not(#miniFwd):not(#miniBack):not(#miniClose):not(#miniSizeBtn304){display:none}"
+      + "#playerDock.is-mini.mini-cmp455 #miniVol{display:none}"
+      + "#playerDock.is-mini.mini-cmp455 #miniSizeBtn304{font-size:0;min-width:40px;padding-left:6px;padding-right:6px}"
+      + "#playerDock.is-mini.mini-cmp455 #miniSizeBtn304::after{content:\"\\25A4\";font-size:15px}"
+      + "#playerDock.is-mini.mini-cmp455 #miniUpNext291,#playerDock.is-mini.mini-cmp455 #miniTime,#playerDock.is-mini.mini-cmp455 #miniQPos356{display:none!important}";
     document.head.appendChild(st304);
     var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.id = "miniSizeBtn304";
     tools.insertBefore(b, $("miniBack") || null);
-    function cur() { try { return localStorage.getItem(KEY) === "lg" ? "lg" : "std"; } catch (e) { return "std"; } }
+    function cur() { try { var v = localStorage.getItem(KEY); return (v === "lg" || v === "cmp") ? v : "std"; } catch (e) { return "std"; } }
     function paint() {
-      var lg = cur() === "lg";
-      dock.classList.toggle("mini-lg304", lg);
-      b.textContent = "▤ " + T(lg ? "Mini: large" : "Mini: standard");
-      b.setAttribute("aria-pressed", lg ? "true" : "false");
-      b.setAttribute("aria-label", T("Mini player size") + ": " + T(lg ? "Large" : "Standard") + ". " + T("Make the floating mini player bigger or back to usual."));
+      var m = cur();
+      dock.classList.toggle("mini-lg304", m === "lg");
+      dock.classList.toggle("mini-cmp455", m === "cmp");
+      b.textContent = "▤ " + T(m === "lg" ? "Mini: large" : m === "cmp" ? "Mini: compact" : "Mini: standard");
+      b.setAttribute("aria-pressed", m === "std" ? "false" : "true");
+      b.setAttribute("aria-label", T("Mini player size") + ": " + T(m === "lg" ? "Large" : m === "cmp" ? "Compact" : "Standard") + ". " + T("Tap to cycle standard, large and compact sizes."));
     }
     b.addEventListener("click", function () {
-      var nx = cur() === "lg" ? "std" : "lg";
+      var order = ["std", "lg", "cmp"], nx = order[(order.indexOf(cur()) + 1) % 3];
       try { localStorage.setItem(KEY, nx); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
       paint();
-      toast(T("Mini player size") + ": " + T(nx === "lg" ? "Large" : "Standard"));
+      toast(T("Mini player size") + ": " + T(nx === "lg" ? "Large" : nx === "cmp" ? "Compact" : "Standard"));
     });
     (window.__relang = window.__relang || []).push(paint);
     paint();
     if (window.__vpWnew283) window.__vpWnew283("Mini player size", "#miniSizeBtn304");
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Compact mini player", "#miniSizeBtn304"); }, 7100); });
   })();
 
   // Sleep timer from the mini player (round 304 new 2): the mini player is the bedtime
@@ -53839,6 +53863,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       };
     }
     var FEATS = [
+      ["Compact mini player", "mini player compact smaller tiny shrink collapse short dock floating less space phone screen video keeps playing one row", "#miniSizeBtn304"],
       ["Start over or queue from Continue watching", "start over queue continue watching row rewatch from beginning zero play again line up behind current add to queue without opening", "#continueWrap"],
       ["Open files with the app", "open with installed app pwa right click file video audio default player file handler launch device queue", "#lp"],
       ["One tab at a time", "one tab at a time another tab window pause two videos playing together second window pwa broadcast", "#oneTabCard450"],
