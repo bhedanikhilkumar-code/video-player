@@ -40424,17 +40424,30 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function left304() { return sleepEnd > Date.now() ? Math.max(1, Math.round((sleepEnd - Date.now()) / 60000)) : 0; }
     function paint() {
       var m = left304();
+      if (!m) lastArm304 = 0;
       b.textContent = m ? "😴 " + m + " " + T("min") : "😴 " + T("Sleep: off");
       b.setAttribute("aria-pressed", m ? "true" : "false");
       b.setAttribute("aria-label", T("Sleep timer in the mini player") + (m ? ": " + m + " " + T("min") : "") + ". " + T("Sleep timer: tap for 15, 30 or 60 minutes, then Off."));
       b.classList.toggle("active", !!m);
     }
+    // Round 408 fix 1: the tap-through cycle read the minutes LEFT instead of the armed
+    // preset, so tapping later in a timer re-armed it upward - 60 minutes armed, 25 left,
+    // one tap silently started a fresh hour (m <= 30 -> sleepSet(60)) and a 30 armed down
+    // to 14 re-armed 30, both when the promised cycle (15 -> 30 -> 60 -> Off) says the next
+    // tap should move forward. The chip now remembers the preset IT armed and always cycles
+    // 15 -> 30 -> 60 -> Off from it; a timer armed elsewhere (main card, Goodnight, clock
+    // time) keeps the old minutes-left behaviour, and any timer reaching 0 or switched off
+    // anywhere resets the memory.
+    var lastArm304 = 0;
     b.addEventListener("click", function () {
       var m = left304();
-      if (!m) sleepSet(15);
-      else if (m <= 15) sleepSet(30);
-      else if (m <= 30) sleepSet(60);
-      else sleepSet(0);
+      if (!m) { lastArm304 = 15; sleepSet(15); }
+      else if (lastArm304 === 15) { lastArm304 = 30; sleepSet(30); }
+      else if (lastArm304 === 30) { lastArm304 = 60; sleepSet(60); }
+      else if (lastArm304 === 60) { lastArm304 = 0; sleepSet(0); }
+      else if (m <= 15) { lastArm304 = 30; sleepSet(30); }
+      else if (m <= 30) { lastArm304 = 60; sleepSet(60); }
+      else { lastArm304 = 0; sleepSet(0); }
       paint();
     });
     setInterval(function () { if (dockMini304Visible()) paint(); }, 5000);
