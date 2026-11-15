@@ -46903,7 +46903,17 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       var cs = Math.floor(ms / 100) % 10, s = Math.floor(ms / 1000) % 60, m = Math.floor(ms / 60000) % 60, h = Math.floor(ms / 3600000);
       return (h > 0 ? h + ":" + p2(m) : p2(m)) + ":" + p2(s) + "." + cs;
     }
-    function tick() { face.textContent = fmt(elapsed()); }
+    function tick() { var text = fmt(elapsed()); if (face.textContent !== text) face.textContent = text; }
+    // A hidden stopwatch still measures from the clock. Only its visible face
+    // needs a repaint timer, at the same tenths-of-a-second precision it shows.
+    var faceVisible440 = !("IntersectionObserver" in window);
+    function refreshTicks440() {
+      if (timer) { clearInterval(timer); timer = null; }
+      if (running && !document.hidden && faceVisible440) { tick(); timer = setInterval(tick, 100); }
+    }
+    if ("IntersectionObserver" in window) new IntersectionObserver(function (entries) {
+      faceVisible440 = entries[0].isIntersecting; refreshTicks440();
+    }).observe(face);
     function paint() {
       card.querySelector("summary").textContent = T("Stopwatch");
       card.querySelector(".r239-desc").textContent = T("A stopwatch with laps for workouts, practice and timing along a video. It keeps exact time even while the tab is hidden.");
@@ -46921,7 +46931,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       });
       tick();
     }
-    function start() { running = true; startAt = Date.now(); timer = setInterval(tick, 53); paint(); toast(T("Stopwatch running")); }
+    function start() { running = true; startAt = Date.now(); refreshTicks440(); paint(); toast(T("Stopwatch running")); }
     function pause() { base = elapsed(); running = false; if (timer) { clearInterval(timer); timer = null; } paint(); toast(T("Stopwatch paused")); }
     goBtn.addEventListener("click", function () { if (running) pause(); else start(); });
     lapBtn.addEventListener("click", function () {
@@ -46943,12 +46953,16 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (timer) { clearInterval(timer); timer = null; }
       paint(); toast(T("Stopwatch reset"));
     });
-    document.addEventListener("visibilitychange", function () { if (!document.hidden && running) tick(); });
+    document.addEventListener("visibilitychange", refreshTicks440);
     paint();
     (window.__relang = window.__relang || []).push(paint);
     window.__vpSw417 = { get running() { return running; }, get elapsed() { return elapsed(); } };
   })();
 
+  Object.assign(TR_MSG, {
+    "Stopwatch rests off screen": ["स्क्रीन से बाहर स्टॉपवॉच का डिस्प्ले आराम करता है", "સ્ક્રીન બહાર સ્ટૉપવૉચનું ડિસ્પ્લે આરામ કરે છે"]
+  });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Stopwatch rests off screen", "#swCard417"); }, 5020); });
   // Round 418 new 1: Countdown timer. Every countdown in the app until now drives
   // playback (sleep timer, up-next, premiere) - a plain "tell me when 10 minutes
   // pass" for a recipe step, a workout rest or a steeping tea meant leaving the
@@ -52583,7 +52597,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Offline file shelf", "offline local file save device copies audio music video storage shelf no internet", "#offlineShelf432"],
       ["Pointer rest player", "dwell gaze eye tracker head pointer hover click free motor accessibility mouse pen playback controls", "#dwellCard432"],
       ["Single-switch player", "single switch scan scanning motor accessibility one key space enter adaptive keyboard playback controls local files", "#switchCard431"],
-      ["Stopwatch", "stopwatch timer lap laps split time workout practice measure seconds clock count up timing", "#swCard417"],
+      ["Stopwatch", "stopwatch timer lap laps split time workout practice measure seconds clock count up timing offscreen battery repaint", "#swCard417"],
       ["Countdown timer", "countdown timer count down minutes beep kitchen cook recipe workout rest break tea egg expiry pause alarm", "#tmCard418"],
       ["Circuit library", "circuit library routines all videos search open paused browse practice guitar workout", "#circuitLibrary422"],
       ["Circuit exchange", "circuit exchange import export portable routines file transfer merge preview", "#circuitExchange422"],
