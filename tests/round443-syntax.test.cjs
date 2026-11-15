@@ -1,0 +1,3 @@
+const fs=require('fs'),os=require('os'),path=require('path'),cp=require('child_process');
+const html=fs.readFileSync(path.join(__dirname,'..','index.html'),'utf8');let count=0;const dir=fs.mkdtempSync(path.join(os.tmpdir(),'vp-syntax-'));
+try{for(const m of html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)){if(/type=["'](?:application\/ld\+json|importmap)/i.test(m[1]))continue;const p=path.join(dir,`${count++}.js`);fs.writeFileSync(p,m[2]);cp.execFileSync(process.execPath,['--check',p]);}console.log(`PASS: ${count} script blocks parse`);}finally{fs.rmSync(dir,{recursive:true,force:true});}
