@@ -48693,6 +48693,73 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var lc447 = $("lpClose"); if (lc447) lc447.addEventListener("click", function () { dismissed447 = false; undock447(); });
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Mini player for device files", "#lp"); }, 5220); });
+  // Round 448: reversible A/B soundtrack audition for two device-owned files.
+  (function () {
+    var main = $("lpVideo"), ref = $("lcVideo445"), host = $("localCompare445");
+    if (!main || !ref || !host) return;
+    Object.assign(TR_MSG, {
+      "Compare soundtracks": ["दो साउंडट्रैक सुनकर तुलना करें", "બે સાઉન્ડટ્રેક સાંભળીને સરખાવો"],
+      "Switch between the two soundtracks without changing their timing. Blend reduces each track before mixing. Use Follow main local video for linked playback. Nothing is uploaded or saved.": ["समय बदले बिना दोनों साउंडट्रैक बदलकर सुनें. मिलाते समय हर ट्रैक की आवाज़ घटती है. जुड़े प्लेबैक के लिए मुख्य लोकल वीडियो का अनुसरण करें. कुछ अपलोड या सहेजा नहीं जाता.", "સમય બદલ્યા વિના બંને સાઉન્ડટ્રેક બદલીને સાંભળો. ભેળવતી વખતે દરેક ટ્રેકનો અવાજ ઘટે છે. જોડાયેલા પ્લેબેક માટે મુખ્ય લોકલ વીડિયોને અનુસરો. કંઈ અપલોડ કે સાચવાતું નથી."],
+      "Listen to main": ["मुख्य साउंडट्रैक सुनें", "મુખ્ય સાઉન્ડટ્રેક સાંભળો"],
+      "Listen to reference": ["संदर्भ साउंडट्रैक सुनें", "સંદર્ભ સાઉન્ડટ્રેક સાંભળો"],
+      "Blend soundtracks": ["साउंडट्रैक मिलाकर सुनें", "સાઉન્ડટ્રેક ભેળવીને સાંભળો"],
+      "Restore original sound": ["पहले जैसी आवाज़ लौटाएं", "પહેલાં જેવો અવાજ પાછો લાવો"],
+      "Reference share of the blend": ["मिश्रण में संदर्भ का हिस्सा", "મિશ્રણમાં સંદર્ભનો ભાગ"],
+      "Original sound settings": ["पहले वाली आवाज़ सेटिंग", "પહેલાંની અવાજ સેટિંગ"],
+      "Open both device files to compare their soundtracks.": ["साउंडट्रैक की तुलना के लिए दोनों डिवाइस फ़ाइलें खोलें.", "સાઉન્ડટ્રેકની સરખામણી માટે બંને ડિવાઇસ ફાઇલો ખોલો."],
+      "Main soundtrack selected": ["मुख्य साउंडट्रैक चुना गया", "મુખ્ય સાઉન્ડટ્રેક પસંદ થયો"],
+      "Reference soundtrack selected": ["संदर्भ साउंडट्रैक चुना गया", "સંદર્ભ સાઉન્ડટ્રેક પસંદ થયો"],
+      "Soundtrack blend active": ["साउंडट्रैक मिश्रण चालू", "સાઉન્ડટ્રેક મિશ્રણ ચાલુ"]
+    });
+    var box = document.createElement("details"); box.id = "soundCompare448"; box.className = "lp-workbench";
+    box.innerHTML = '<summary data-ac="Compare soundtracks"></summary><p class="hint" data-ac="Switch between the two soundtracks without changing their timing. Blend reduces each track before mixing. Use Follow main local video for linked playback. Nothing is uploaded or saved."></p><div class="row" style="flex-wrap:wrap"><button type="button" class="chip" id="acMain448" data-ac="Listen to main"></button><button type="button" class="chip" id="acRef448" data-ac="Listen to reference"></button><button type="button" class="chip" id="acBlend448" data-ac="Blend soundtracks"></button></div><label for="acMix448" data-ac="Reference share of the blend" style="display:block;margin-top:14px"></label><div class="row"><input type="range" min="0" max="100" step="1" value="50" id="acMix448" style="width:100%;min-width:0;min-height:44px"><output id="acValue448" for="acMix448">50%</output></div><button type="button" class="chip" id="acRestore448" data-ac="Restore original sound"></button><p class="hint" id="acStatus448" role="status"></p>';
+    host.insertBefore(box, $("frameMatch446"));
+    var css = document.createElement("style"); css.textContent = '#soundCompare448 button[aria-pressed="true"]{border:2px solid var(--accent,#168c80);background:var(--card);font-weight:700}#soundCompare448 [hidden]{display:none!important}'; document.head.append(css);
+    var mode = "", snapshot = null, applied = null;
+    var videos = [main, ref];
+    function ready() { return videos.every(function(v) { return !v.hidden && /^blob:/.test(v.getAttribute("src") || "") && v.readyState >= 1 && !v.error; }); }
+    function values(v) { return {src:v.getAttribute("src"), volume:v.volume, muted:v.muted}; }
+    function restore() {
+      if (snapshot && applied) videos.forEach(function(v,i) {
+        // Never overwrite a different file or a user's newer native volume change.
+        if (v.getAttribute("src") !== snapshot[i].src) return;
+        if (Math.abs(v.volume - applied[i].volume) < .0001) v.volume = snapshot[i].volume;
+        if (v.muted === applied[i].muted) v.muted = snapshot[i].muted;
+      });
+      snapshot = applied = null; mode = ""; paint();
+    }
+    function apply(next) {
+      if (!ready()) { restore(); return; }
+      if (!snapshot) snapshot = videos.map(values);
+      mode = next;
+      var mix = Number($("acMix448").value) / 100;
+      videos.forEach(function(v,i) {
+        var share = mode === "blend" ? (i ? mix : 1-mix) : ((mode === "reference") === !!i ? 1 : 0);
+        v.volume = snapshot[i].volume * share;
+        v.muted = share === 0;
+      });
+      applied = videos.map(values); paint();
+    }
+    function paint() {
+      box.querySelectorAll("[data-ac]").forEach(function(e) { e.textContent = T(e.dataset.ac); });
+      [["acMain448","main"],["acRef448","reference"],["acBlend448","blend"]].forEach(function(x) { $(x[0]).disabled = !ready(); $(x[0]).setAttribute("aria-pressed", String(mode === x[1])); });
+      $("acMix448").disabled = !ready(); $("acRestore448").disabled = !snapshot;
+      $("acValue448").textContent = $("acMix448").value + "%";
+      $("acStatus448").textContent = T(!ready() ? "Open both device files to compare their soundtracks." : mode === "main" ? "Main soundtrack selected" : mode === "reference" ? "Reference soundtrack selected" : mode === "blend" ? "Soundtrack blend active" : "Original sound settings");
+    }
+    $("acMain448").addEventListener("click", function() { apply("main"); });
+    $("acRef448").addEventListener("click", function() { apply("reference"); });
+    $("acBlend448").addEventListener("click", function() { apply("blend"); });
+    $("acMix448").addEventListener("input", function() { apply("blend"); });
+    $("acRestore448").addEventListener("click", restore);
+    videos.forEach(function(v) { ["emptied","error"].forEach(function(e) { v.addEventListener(e, restore); }); v.addEventListener("loadedmetadata", paint); });
+    $("lcClose445").addEventListener("click", restore);
+    host.addEventListener("toggle", function() { if (!host.open) restore(); });
+    document.addEventListener("vp-youtube-selected", restore);
+    window.addEventListener("pagehide", restore);
+    (window.__relang = window.__relang || []).push(paint); paint();
+    window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Compare soundtracks","#soundCompare448");},6220);});
+  })();
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -53198,6 +53265,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Watching a reference is not idle", "watching a reference is not idle", "#lockIdle345"],
       ["Close warning includes reference playback", "close warning includes reference playback", "#warnCloseChk312"],
       ["Focus breaks pause the reference too", "focus breaks pause the reference too", "#ctl-focus"],
+      ["Compare soundtracks", "audio audition ab sound compare reference main blend mix listen soundtrack", "#soundCompare448"],
       ["Compare two device videos", "local device video reference compare two files alignment offset follow main synced playback private", "#localCompare445"],
       ["Local shuffle journey", "local device file shuffle non repeating bag upcoming order previous history back forward heard next cycle music", "#localShuffleJourney445"],
       ["Cancelled file picks keep your queue", "cancel empty file picker keeps active session selected queue", "#lpPickBtn"],

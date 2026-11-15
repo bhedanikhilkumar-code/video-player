@@ -1,0 +1,13 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p,pick,files,boot})=>{
+ async function setup(){await pick(files.slice(0,1));await p.locator('#localCompare445').evaluate(e=>e.open=true);await p.locator('#lcFile445').setInputFiles(files[1]);await p.waitForFunction(()=>document.querySelector('#lcVideo445').readyState>=2);await p.locator('#soundCompare448').evaluate(e=>e.open=true);await p.locator('#lpVideo').evaluate(v=>{v.volume=.8;v.muted=false;});await p.locator('#lcVideo445').evaluate(v=>{v.volume=.6;v.muted=true;});}
+ const state=()=>p.evaluate(()=>['lpVideo','lcVideo445'].map(id=>{let v=document.getElementById(id);return [Math.round(v.volume*100),v.muted,v.currentTime];}));
+ await setup();await p.locator('#acRef448').click();let a=await state();assert.deepEqual(a.map(x=>x.slice(0,2)),[[0,true],[60,false]]);await p.locator('#acMain448').click();a=await state();assert.deepEqual(a.map(x=>x.slice(0,2)),[[80,false],[0,true]]);
+ await p.locator('#acMix448').fill('25');await p.locator('#acMix448').dispatchEvent('input');a=await state();assert.deepEqual(a.map(x=>x.slice(0,2)),[[60,false],[15,false]]);await p.locator('#acRestore448').click();a=await state();assert.deepEqual(a.map(x=>x.slice(0,2)),[[80,false],[60,true]]);
+ await p.locator('#acRef448').click();await p.locator('#lcVideo445').evaluate(v=>v.volume=.4);await p.locator('#acRestore448').click();a=await state();assert.equal(a[1][0],40,'Restore preserves newer native volume');
+ await p.locator('#acBlend448').click();await p.locator('#lcClose445').click();a=await state();assert.deepEqual(a[0].slice(0,2),[80,false]);assert.equal(await p.locator('#acMain448').isDisabled(),true);
+ await setup();await p.locator('#lcFollow445').check();await p.locator('#lpVideo').evaluate(v=>v.play());await p.waitForFunction(()=>!document.querySelector('#lcVideo445').paused);await p.locator('#acRef448').click();assert.equal(await p.locator('#lcVideo445').evaluate(v=>v.paused),false);await p.locator('#acMain448').click();assert.equal(await p.locator('#lpVideo').evaluate(v=>v.paused),false);await p.locator('#lpVideo').evaluate(v=>v.pause());
+ await p.setViewportSize({width:390,height:844});await p.locator('#acBlend448').click();await p.locator('#soundCompare448').scrollIntoViewIfNeeded();await p.screenshot({path:'/downloads/round448-audio-en.png'});
+ for(let i=0;i<2;i++){await boot();assert.equal(await p.locator('#acRestore448').isDisabled(),true);assert.equal(await p.locator('#acMain448').getAttribute('aria-pressed'),'false');}
+ console.log('PASS A/B, weighted blend, exact restore, native-volume preservation, close cleanup, running linked media, phone UI and fresh/repeat reset.');
+}).catch(e=>{console.error(e);process.exitCode=1;});
