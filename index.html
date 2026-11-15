@@ -47513,7 +47513,12 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     card.addEventListener("toggle",function(){document.documentElement.classList.toggle("switch-open431",card.open);if(!card.open)end();else {paint();revealControls();}});
     $("switchRate431").addEventListener("change",function(){if(running)pause();});
     document.addEventListener("visibilitychange",function(){if(document.hidden)pause();});
-    document.addEventListener("vp-youtube-selected",function(){selectedYT=true;paint();});
+    // Source selection fires before loadVideo unhides controls and creates the iframe.
+    // Also follow asynchronous Ready changes while this card is already open.
+    var sourceWatch432 = new MutationObserver(function(){paint();});
+    sourceWatch432.observe(controls,{attributes:true,attributeFilter:["hidden"]});
+    sourceWatch432.observe(playBtn,{attributes:true,attributeFilter:["disabled"]});
+    document.addEventListener("vp-youtube-selected",function(){selectedYT=true;requestAnimationFrame(paint);});
     document.addEventListener("vp-local-playing",function(){selectedYT=false;paint();});
     document.addEventListener("vp-local-closed",function(){selectedYT=true;if(!hasSource())end();else paint();});
     ["loadedmetadata","emptied"].forEach(function(event){var v=$("lpVideo");if(v)v.addEventListener(event,function(){if(event==="loadedmetadata"&&v.currentSrc)selectedYT=false;paint();});});
