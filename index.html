@@ -17170,11 +17170,30 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     + ".chan-chip-x{margin-left:2px;padding:2px 7px}";
   document.head.appendChild(chansSt);
   var CHANS_KEY = "vp-chans.v1", vpChans = [];
+  function vpChansValid407(c) { return c && typeof c.n === "string" && c.n.trim() && typeof c.u === "string"; }
   try {
     var _vc = JSON.parse(localStorage.getItem(CHANS_KEY) || "[]");
-    if (Array.isArray(_vc)) vpChans = _vc.filter(function (c) { return c && typeof c.n === "string" && c.n.trim() && typeof c.u === "string"; }).slice(0, 30);
+    if (Array.isArray(_vc)) vpChans = _vc.filter(vpChansValid407).slice(0, 30);
   } catch (e) {}
-  function vpChansSave() { try { localStorage.setItem(CHANS_KEY, JSON.stringify(vpChans.slice(0, 30))); } catch (e) { if (typeof storageWarn === "function") storageWarn(); } }
+  // Round 407 fix 2: saved channels changed in another tab never reached this one. The
+  // Saved channels row and the info-card star read vp-chans.v1 once at load, so a channel
+  // starred or removed in a second tab left this tab's chips and star state stale until a
+  // reload - the same cross-tab gap round 407 fix 1 closes for practice loops (lyrics,
+  // moments, notes and the Archived shelf already sync). A baseline-guarded storage
+  // listener mirrors them: an in-flight local change keeps priority for its next save,
+  // otherwise the list is re-read with the same validation and both views repaint.
+  var chansBaseline407 = JSON.stringify(vpChans);
+  window.addEventListener("storage", function (e) {
+    if (e.key !== CHANS_KEY && e.key !== null) return;
+    if (JSON.stringify(vpChans) !== chansBaseline407) return;
+    try {
+      var fresh407 = JSON.parse(localStorage.getItem(CHANS_KEY) || "[]");
+      vpChans = Array.isArray(fresh407) ? fresh407.filter(vpChansValid407).slice(0, 30) : [];
+    } catch (e2) { vpChans = []; }
+    chansBaseline407 = JSON.stringify(vpChans);
+    chanRowRender(); chanStarRender();
+  });
+  function vpChansSave() { try { localStorage.setItem(CHANS_KEY, JSON.stringify(vpChans.slice(0, 30))); chansBaseline407 = JSON.stringify(vpChans); } catch (e) { if (typeof storageWarn === "function") storageWarn(); } }
   function chanCur() {
     if (!infoChannel || !curId) return null;
     var n = (infoChannel.textContent || "").replace(/\s+/g, " ").trim();
