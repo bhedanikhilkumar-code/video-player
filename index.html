@@ -27639,7 +27639,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Tags restored": ["टैग वापस आए", "ટેગ પાછા આવ્યા"],
     "Remove tag from": ["से टैग हटाएँ", "માંથી ટેગ કાઢો"],
     "Tag added to the queue:": ["टैग के वीडियो कतार में:", "ટેગના વીડિયો કતારમાં:"],
-    "Tag replaced the queue:": ["टैग ने कतार बदली:", "ટેગે કતાર બદલી:"]
+    "Tag replaced the queue:": ["टैग ने कतार बदली:", "ટેગે કતાર બદલી:"],
+    "Rename tag": ["टैग का नाम बदलें", "ટેગનું નામ બદલો"],
+    "New name for the tag": ["टैग का नया नाम", "ટેગનું નવું નામ"],
+    "Tag renamed:": ["टैग का नाम बदला:", "ટેગનું નામ બદલાયું:"],
+    "Tags merged:": ["टैग मिलाए गए:", "ટેગ ભેગા થયા:"]
   });
   (function(){var host=$('plList');if(!host)return;var KEY='vp-tags.v1';
   var tags={};try{var t0=JSON.parse(localStorage.getItem(KEY)||'{}');if(t0&&typeof t0==='object'&&!Array.isArray(t0))Object.keys(t0).forEach(function(id){if(/^[a-zA-Z0-9_-]{11}$/.test(id)&&Array.isArray(t0[id])){var a=t0[id].filter(function(x){return typeof x==='string'&&x;}).map(function(x){return x.slice(0,20);}).slice(0,8);if(a.length)tags[id]=a;}});}catch(e){}
@@ -27670,6 +27674,16 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function items(){return idsOf(sel).map(function(id){return {id:id,title:titleOf(id)===id?'':titleOf(id)};});}
     ab('Play tag',function(){var it=items().slice(0,50);if(!it.length)return;var snap=lib.queue.slice();lib.queue=it;qPos=-1;saveLib();renderLib();toastUndo(T('Tag replaced the queue:')+' '+it.length,function(){lib.queue=snap;qPos=-1;saveLib();renderLib();},T('Queue restored'));playQueueAt(0);if(frameBox&&frameBox.scrollIntoView)frameBox.scrollIntoView({behavior:window.vpReducedMotion()?'auto':'smooth',block:'center'});});
     ab('Add to queue',function(){var n=0;items().forEach(function(x){if(findIn(lib.queue,x.id)<0&&lib.queue.length<50){lib.queue.push(x);n++;}});saveLib();renderLib();say(T('Tag added to the queue:')+' '+n);});
+    ab('Rename tag',function(){var oldName=sel;if(!oldName||typeof window.vpAsk!=='function')return;
+      window.vpAsk(T('New name for the tag')+' "'+oldName+'":',oldName,{okLabel:T('Rename tag')}).then(function(v){
+        var nn=norm(v);if(!nn||nn===oldName)return;
+        var snap=JSON.parse(JSON.stringify(tags)),merged=!!counts()[nn];
+        Object.keys(tags).forEach(function(id){var a=tags[id],i=a.indexOf(oldName);if(i<0)return;
+          if(a.indexOf(nn)>=0)a.splice(i,1);else a[i]=nn;
+          if(!a.length)delete tags[id];});
+        sel=nn;save();paint();
+        toastUndo((merged?T('Tags merged:'):T('Tag renamed:'))+' '+oldName+' \u2192 '+nn,function(){Object.keys(tags).forEach(function(k){delete tags[k];});Object.keys(snap).forEach(function(k){tags[k]=snap[k];});sel=oldName;save();paint();},T('Tags restored'));
+      });});
     ab('Delete tag',function(){var name=sel,snap=JSON.parse(JSON.stringify(tags));Object.keys(tags).forEach(function(id){tags[id]=tags[id].filter(function(x){return x!==name;});if(!tags[id].length)delete tags[id];});sel=null;save();paint();toastUndo(T('Tag deleted:')+' '+name,function(){Object.keys(tags).forEach(function(k){delete tags[k];});Object.keys(snap).forEach(function(k){tags[k]=snap[k];});save();paint();},T('Tags restored'));});}
   $('tgAdd').addEventListener('click',function(){var id=$('tgVid').value,t=norm($('tgIn').value);if(!id){say(T('Pick a video first.'));return;}if(!t){say(T('Type a tag first.'));$('tgIn').focus();return;}
     var a=tags[id]||[];if(a.indexOf(t)>=0){say(T('Already has that tag.'));return;}if(a.length>=8){say(T('That video already has 8 tags.'));return;}if(!counts()[t]&&Object.keys(counts()).length>=40){say(T('You already use 40 different tags. Delete one first.'));return;}
@@ -46667,6 +46681,14 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // (round 412's at 2620ms) - anything earlier is itself unshifted over and dropped.
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Up next, said out loud", "#announceCard268"); }, 2720); });
 
+  // Round 414 new 1 translations for the finder's and What's new name.
+  Object.assign(TR_MSG, {
+    "Rename a tag": ["टैग का नाम बदलें", "ટેગનું નામ બદલો"]
+  });
+  // Round 414 new 1: announced through the deferred helper, staggered at 2820ms, past the
+  // latest load-time announcement (round 413's at 2720ms).
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Rename a tag", "#tagsCard"); }, 2820); });
+
   window.__vpMainOk325 = true;
 
 
@@ -51228,6 +51250,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Rediscover", "rediscover forgotten favourites not played old months ago stale oldest unplayed bring back resurface", "#rediscoverCard"],
       ["Weekly plan", "weekly plan schedule weekday playlist monday study routine habit today plan calendar assign", "#weekPlanCard"],
       ["Video tags", "video tags labels tag words group favourites queue watch later workout exam category organise filter play tag", "#tagsCard"],
+      ["Rename a tag", "rename tag change tag name fix typo relabel merge two tags into one video tags", "#tagsCard"],
       ["Activity calendar", "activity calendar month heatmap streak days watched grid consistency habit calendar view", "#actCalCard"],
       ["Repeat titles", "repeat titles duplicate same title different link reupload copies saved twice keep one clean library", "#repeatCard"],
       ["Overlapping playlists", "overlapping playlists duplicate similar merge combine same videos tidy share half dedupe playlists", "#overlapCard"],
