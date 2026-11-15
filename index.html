@@ -13263,11 +13263,22 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // calls back into applyLibSearch; the flag then matches, so there is no loop).
   var favSearchOpen219 = false;
   var archAutoOpen393 = false;
+  var laterSearchOpen399 = false;
   function applyLibSearch() {
     if (!libSearch) return;
     var qNow = libSearch.value.trim();
     var wantFull = !!qNow && !favFoldOpen && lib.favs.length > 30;
     if (wantFull !== favSearchOpen219) { favSearchOpen219 = wantFull; renderLib(); return; }
+    // Round 399 fix 1: the Watch later fold (round 324) caps the rendered list at 30 rows,
+    // but only the favourites fold got the round-219 search treatment - with a 31+ row Watch
+    // later, typing in the library search filtered just the 30 rendered rows, so matches in
+    // rows 31+ were unfindable, missing from the summary count and unreachable by
+    // Enter-opens-first-match (seen live: 40 matching rows, the summary read 'Watch later 30').
+    // The same open-while-searching pattern now covers the Watch later fold; its Show-all row
+    // already hides while the box has text (the fav-fold-row class hides on q). renderLib
+    // calls back into applyLibSearch; the flag then matches, so there is no loop.
+    var wantFullLater399 = !!qNow && !prefs.laterFold324 && lib.later.length > 30;
+    if (wantFullLater399 !== laterSearchOpen399) { laterSearchOpen399 = wantFullLater399; renderLib(); return; }
     qPickSearchPaint();
     var q = libSearch.value.trim().toLowerCase(), shown = 0, total = 0, parts = [];
     function inScope(s) { return libScope === "all" || libScope === s; }
