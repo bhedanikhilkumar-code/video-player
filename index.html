@@ -4280,15 +4280,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // (E key, playlist import, backup import, Watch later feed) skips them and the
   // Remove duplicates chip only cleans up after the fact. Duplicates are skipped here
   // too now, and the caller says honestly how many were skipped.
-  var queueAddLastSkipped = 0;
+  // Round 454 fix: links dropped only because the queue was already at the 50-cap were not
+  // counted anywhere, so callers reported them as invalid links or skipped duplicates - or said
+  // nothing. They are counted here in queueAddLastFull and every caller names them honestly.
+  var queueAddLastSkipped = 0, queueAddLastFull = 0;
   function queueAdd(text) {
     var tokens = text.split(/[\s,]+/).filter(Boolean), added = 0, seen = {};
-    queueAddLastSkipped = 0;
+    queueAddLastSkipped = 0; queueAddLastFull = 0;
     tokens.forEach(function (t) {
       var id = parseVideoId(t);
       if (!id) return;
       if (seen[id] || findIn(lib.queue, id) >= 0) { queueAddLastSkipped++; return; }
-      if (lib.queue.length < 50) { seen[id] = 1; lib.queue.push({ id: id, title: titleFor(id) }); added++; fetchTitle(id); }
+      if (lib.queue.length >= 50) { queueAddLastFull++; return; }
+      seen[id] = 1; lib.queue.push({ id: id, title: titleFor(id) }); added++; fetchTitle(id);
     });
     saveLib(); renderLib();
     return added;
@@ -6044,14 +6048,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var firstNew = lib.queue.length, n = queueAdd(linkInput.value);
     if (!n) {
       // Round 241 fix: links that were valid but already queued reported "No valid YouTube link found";
-      // now they say what happened.
-      linkError.textContent = queueAddLastSkipped ? T("Already in the queue - nothing new was added.") : T("No valid YouTube link found to add. Paste one or more full YouTube links.");
+      // now they say what happened. Round 454 fix: a valid link that only hit the full-queue cap
+      // reported the same wrong "No valid link" error; cap drops are counted and named now.
+      linkError.textContent = queueAddLastFull ? T("The queue is full at 50 videos.") : queueAddLastSkipped ? T("Already in the queue - nothing new was added.") : T("No valid YouTube link found to add. Paste one or more full YouTube links.");
       linkError.hidden = false;
     } else {
       linkError.hidden = true; showLibErr(""); linkInput.value = "";
       toast((n === 1 ? T("Added to queue") : n + " " + T("videos added to queue")) + (queueAddLastSkipped ? " - " + (queueAddLastSkipped === 1 ? T("1 was already in the queue, skipped") : queueAddLastSkipped + " " + T("were already in the queue, skipped")) : ""));
       if (!iframe) playQueueAt(firstNew);
-      if (lib.queue.length >= 50) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
+      // Round 454 fix: the cap note fired on any add that merely LEFT the queue at 50, even when
+      // nothing was dropped; it now fires only when links were actually skipped at the cap.
+      if (queueAddLastFull) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
     }
   });
   // Queue as next (round 158): like Add to queue, but the new videos are inserted
@@ -27087,7 +27094,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         toast(T("Playing the dropped link"));
       } else {
         var firstNew = lib.queue.length, n = queueAdd(ids.map(function (id) { return "https://youtu.be/" + id; }).join(" "));
-        toast(n + " " + T("videos added to queue") + (queueAddLastSkipped ? " - " + (queueAddLastSkipped === 1 ? T("1 was already in the queue, skipped") : queueAddLastSkipped + " " + T("were already in the queue, skipped")) : ""));
+        toast(n + " " + T("videos added to queue") + (queueAddLastSkipped ? " - " + (queueAddLastSkipped === 1 ? T("1 was already in the queue, skipped") : queueAddLastSkipped + " " + T("were already in the queue, skipped")) : "") + (queueAddLastFull ? " - " + T("The queue is full at 50 videos.") : ""));
         if (!iframe && n) playQueueAt(firstNew);
       }
     });
@@ -34814,6 +34821,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if(!pool.length){msg.textContent=T('No unwatched videos with a known length - play a saved video once so the app learns its length.');return;}
       var budget=mins*60,total=0,ids=[];
       for(var i=0;i<pool.length;i++){var d=dOf(pool[i],findIn(lib.hist,pool[i].id));if(total+d<=budget&&(lib.queue.length+ids.length)<50){ids.push(pool[i].id);total+=d;}}
+      if(!ids.length&&lib.queue.length>=50){msg.textContent=T("The queue is full at 50 videos.");return;}
       if(!ids.length){var minD=Math.min.apply(null,pool.map(function(it){return dOf(it,findIn(lib.hist,it.id));}));msg.textContent=T('Nothing fits in that time - the shortest unwatched video is about {m} min.').replace('{m}',Math.max(1,Math.round(minD/60)));return;}
       queueAdd(ids.join(' '));
       msg.textContent=(ids.length===1?T('Queued {n} video ({m} min)'):T('Queued {n} videos ({m} min)')).replace('{n}',ids.length).replace('{m}',Math.max(1,Math.round(total/60)));
