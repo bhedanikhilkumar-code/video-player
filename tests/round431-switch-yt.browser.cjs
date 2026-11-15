@@ -38,6 +38,7 @@ const server = http.createServer((q, r) => {
       await page.waitForFunction(()=>document.getElementById('playerDock').classList.contains('is-mini'));
       assert.ok(await page.locator('#switchCard431').evaluate(e=>e.scrollWidth<=e.clientWidth+1));
       assert.ok(await page.locator('#switchChoose431').isVisible());
+      assert.ok(await page.locator('#switchChoose431').evaluate(e=>{const r=e.getBoundingClientRect();return e.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2));}),'the docked iframe must not intercept the Choose button');
       await page.locator('#switchStop431').click();
     }
     await page.evaluate(()=>{document.documentElement.dataset.theme='dark';document.documentElement.classList.add('high-contrast','calm-motion','low-fx');});
@@ -45,6 +46,7 @@ const server = http.createServer((q, r) => {
     assert.equal(await page.locator('.switch-cell431[data-current="true"]').count(),0);
     await page.locator('#switchChoose431').click();assert.equal(await page.locator('.switch-cell431[data-current="true"]').count(),1);
     await page.locator('#switchStop431').click();
+    await page.locator('#switchCard431').evaluate(e=>e.open=false);await page.waitForFunction(()=>!document.documentElement.classList.contains('switch-open431'));
     assert.deepEqual(errors,[]);console.log('Single-switch YouTube simulated-message integration: play/pause and seek route correctly; docked player stays active, 390px three-language layout, dark/high-contrast/calm/low-effects controls pass.');
   } finally { await browser.close(); server.close(); }
 })().catch(e => { console.error(e); server.close(); process.exitCode = 1; });
