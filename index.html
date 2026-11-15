@@ -47312,6 +47312,68 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       });
     });
     var beforeExchangePaint422 = paintPresets421; paintPresets421 = function () { beforeExchangePaint422(); paintExchange422(); };
+    // Round 422: all-video routine browser. Per-video presets were unreachable until
+    // their video had been loaded; this card is usable from a fresh, empty player.
+    Object.assign(TR_MSG, {
+      "Circuit library": ["सर्किट लाइब्रेरी", "સર્કિટ લાઇબ્રેરી"],
+      "Find routines across every video without loading each video first. Opening loads its video paused and prepares the draft; press Start circuit yourself.": ["हर वीडियो खोले बिना सभी वीडियो के रूटीन खोजें. खोलने पर वीडियो रुका हुआ लोड होता है और ड्राफ्ट तैयार होता है; सर्किट शुरू करें खुद दबाएं.", "દરેક વીડિયો ખોલ્યા વગર બધા વીડિયોના રૂટિન શોધો. ખોલતાં વીડિયો અટકેલો લોડ થાય છે અને ડ્રાફ્ટ તૈયાર થાય છે; સર્કિટ શરૂ કરો જાતે દબાવો."],
+      "Search circuits, videos and loop names": ["सर्किट, वीडियो और लूप नाम खोजें", "સર્કિટ, વીડિયો અને લૂપનાં નામ શોધો"],
+      "Open circuit paused": ["सर्किट रुका हुआ खोलें", "સર્કિટ અટકેલું ખોલો"],
+      "Opening this routine replaces the draft and stops the current practice session. Its video will load paused. Continue?": ["यह रूटीन खोलने से ड्राफ्ट बदलेगा और मौजूदा प्रैक्टिस सेशन रुकेगा. इसका वीडियो रुका हुआ लोड होगा. जारी रखें?", "આ રૂટિન ખોલતાં ડ્રાફ્ટ બદલાશે અને હાલનું પ્રેક્ટિસ સેશન અટકશે. તેનો વીડિયો અટકેલો લોડ થશે. ચાલુ રાખવું?"],
+      "No saved circuits yet. Save a named preset in Practice circuit, or import a circuit file there.": ["अभी कोई सर्किट सेव नहीं है. प्रैक्टिस सर्किट में नाम वाला प्रीसेट सेव करें या वहां सर्किट फ़ाइल लाएं.", "હજુ કોઈ સર્કિટ સાચવ્યું નથી. પ્રેક્ટિસ સર્કિટમાં નામવાળું પ્રીસેટ સાચવો અથવા ત્યાં સર્કિટ ફાઇલ લાવો."],
+      "No circuits match this search.": ["इस खोज से कोई सर्किट नहीं मिला.", "આ શોધ સાથે કોઈ સર્કિટ મળતું નથી."],
+      "Circuits found: {n} of {total}": ["सर्किट मिले: {total} में से {n}", "મળેલા સર્કિટ: {total}માંથી {n}"],
+      "Preview routine": ["रूटीन देखें", "રૂટિન જુઓ"]
+    });
+    var circuitLibrary422 = document.createElement("details"); circuitLibrary422.id = "circuitLibrary422"; circuitLibrary422.className = "r239-card";
+    circuitLibrary422.innerHTML = '<summary></summary><p class="hint" id="clHint422"></p><input type="search" class="chip" id="clSearch422" maxlength="100" style="display:block;width:100%;min-width:0;margin:8px 0"><p class="hint" id="clCount422" role="status"></p><p class="hint" id="clStatus422" role="status"></p><div id="clResults422"></div>';
+    $("library").appendChild(circuitLibrary422);
+    var opening422 = false, libraryMessage422 = "";
+    function circuitVideoTitle422(id) { return (typeof titleFor === "function" && titleFor(id)) || id; }
+    async function openLibraryCircuit422(key) {
+      if (opening422 || playbackCovered345()) return; opening422 = true;
+      try {
+        if ((rows.length || active) && !await vpConfirm(T("Opening this routine replaces the draft and stops the current practice session. Its video will load paused. Continue?"), T("Open circuit paused"))) return;
+        var preset = readPresets421().find(function (p) { return p.key === key; });
+        if (!preset) { libraryMessage422 = "This circuit preset no longer exists."; return; }
+        if (playbackCovered345()) return;
+        if (active) stop("Circuit stopped.", true);
+        if (curId !== preset.video) { linkInput.value = "https://youtu.be/" + preset.video; loadVideo(0, null, -1, false); }
+        if (curId !== preset.video) return;
+        send("pauseVideo"); source = curId; rows = preset.steps.map(function (x) { return Object.assign({}, x); }); status = ""; presetState421 = "Circuit preset loaded. Press Start circuit when ready."; libraryMessage422 = "";
+        card.open = true; presetCard421.open = true; paint();
+        card.scrollIntoView({block:"start",behavior:"auto"});
+      } finally { opening422 = false; paintCircuitLibrary422(); }
+    }
+    function paintCircuitLibrary422() {
+      var all = readPresets421(), query = $("clSearch422").value.trim().toLocaleLowerCase(), results = all.filter(function (p) { return [p.name, p.video, circuitVideoTitle422(p.video)].concat(p.steps.map(function (x) { return x.name; })).join(" ").toLocaleLowerCase().indexOf(query) >= 0; });
+      circuitLibrary422.querySelector("summary").textContent = T("Circuit library") + " (" + all.length + ")";
+      $("clHint422").textContent = T("Find routines across every video without loading each video first. Opening loads its video paused and prepares the draft; press Start circuit yourself.");
+      $("clSearch422").placeholder = T("Search circuits, videos and loop names"); $("clSearch422").setAttribute("aria-label", T("Search circuits, videos and loop names"));
+      $("clCount422").textContent = T("Circuits found: {n} of {total}").replace("{n}", results.length).replace("{total}", all.length); $("clStatus422").textContent = libraryMessage422 ? T(libraryMessage422) : "";
+      var box = $("clResults422"); box.textContent = "";
+      if (!results.length) { var empty = document.createElement("p"); empty.className = "hint"; empty.textContent = T(all.length ? "No circuits match this search." : "No saved circuits yet. Save a named preset in Practice circuit, or import a circuit file there."); box.appendChild(empty); }
+      results.forEach(function (preset) {
+        var item = document.createElement("article"); item.style.cssText = "padding:14px;border:1px solid var(--hairline);border-radius:18px;background:var(--soft);margin:10px 0;overflow-wrap:anywhere";
+        var heading = document.createElement("strong"); heading.textContent = preset.name;
+        var video = document.createElement("p"); video.className = "hint"; video.textContent = circuitVideoTitle422(preset.video) + " · " + T("Circuit length at 1x") + ": " + fmt(preset.steps.reduce(function (n, x) { return n + (x.b-x.a)*x.passes; },0));
+        var preview = document.createElement("details"), summary = document.createElement("summary"), ol = document.createElement("ol"); summary.textContent = T("Preview routine") + " (" + preset.steps.length + ")"; ol.style.paddingLeft="24px";
+        preset.steps.forEach(function (step) { var li = document.createElement("li"); li.textContent = step.name + " · " + fmt(step.a) + " - " + fmt(step.b) + " × " + step.passes; ol.appendChild(li); }); preview.append(summary, ol);
+        var actions = document.createElement("div"); actions.className = "row"; actions.style.cssText = "flex-wrap:wrap;gap:8px;margin-top:10px";
+        var open = button("Open circuit paused", function () { openLibraryCircuit422(preset.key); }, opening422); open.setAttribute("aria-label", T("Open circuit paused") + ": " + preset.name);
+        var remove = button("Remove", function () {
+          var latest = readPresets421(), live = latest.find(function (p) { return p.key === preset.key; }); if (!live || !writePresets421(latest.filter(function (p) { return p.key !== live.key; }))) return;
+          paintPresets421(); toastUndo(T("Circuit preset removed."), function () {
+            var now = readPresets421(); if (now.length >= 20 || now.some(function (p) { return p.key === live.key || (p.video === live.video && p.name.toLowerCase() === live.name.toLowerCase()); })) { libraryMessage422 = "Use a different circuit preset name, or remove one at the 20-preset limit."; paintCircuitLibrary422(); return; }
+            if (writePresets421(now.concat([live]))) paintPresets421();
+          });
+        }); remove.setAttribute("aria-label", T("Remove") + ": " + preset.name); actions.append(open, remove); item.append(heading, video, preview, actions); box.appendChild(item);
+      });
+    }
+    $("clSearch422").addEventListener("input", paintCircuitLibrary422);
+    circuitLibrary422.addEventListener("toggle", function () { if (circuitLibrary422.open) paintCircuitLibrary422(); });
+    var beforeLibraryPaint422 = paintPresets421; paintPresets421 = function () { beforeLibraryPaint422(); paintCircuitLibrary422(); };
+
     window.addEventListener("storage", function (e) { if (e.key === presetKey421 || e.key === null) paintPresets421(); });
     document.addEventListener("vp-circuit-presets421-change", paintPresets421);
     var oldCircuitPaint421 = paint; paint = function () { oldCircuitPaint421(); paintPresets421(); };
@@ -47320,6 +47382,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Practice circuit", "#circuit421"); }, 3320); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Saved circuit presets", "#circuitPresets421"); }, 3420); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Circuit exchange", "#circuitExchange422"); }, 3520); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Circuit library", "#circuitLibrary422"); }, 3620); });
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -51691,6 +51754,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var FEATS = [
       ["Stopwatch", "stopwatch timer lap laps split time workout practice measure seconds clock count up timing", "#swCard417"],
       ["Countdown timer", "countdown timer count down minutes beep kitchen cook recipe workout rest break tea egg", "#tmCard418"],
+      ["Circuit library", "circuit library routines all videos search open paused browse practice guitar workout", "#circuitLibrary422"],
       ["Circuit exchange", "circuit exchange import export portable routines file transfer merge preview", "#circuitExchange422"],
       ["Saved circuit presets", "saved circuit presets named routines reuse backup practice loops passes workout sessions", "#circuitPresets421"],
       ["Practice circuit", "practice circuit saved loops sequence passes repetitions workout guitar drills ordered training", "#circuit421"],
