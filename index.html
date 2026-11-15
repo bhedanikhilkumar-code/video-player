@@ -5289,19 +5289,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   var laterQueueTopBtn = $("laterQueueTopBtn");
   if (laterQueueTopBtn) laterQueueTopBtn.addEventListener("click", function () {
-    var snap = lib.queue.slice(), sp = qPos, add = [];
+    // Round 454 fix: the 50-cap was counted as "nothing to add" - with a full queue these
+    // chips claimed no matching videos existed and a partial add dropped the rest silently.
+    var snap = lib.queue.slice(), sp = qPos, add = [], eligible = 0, leftOut = 0;
     lib.later.map(function (it, i) { return { it: it, r: vpRateOf(it.id), i: i }; })
       .filter(function (x) { return x.r >= 4; })
       .sort(function (a, b) { return (b.r - a.r) || (a.i - b.i); })
       .forEach(function (x) {
-        if (findIn(lib.queue, x.it.id) >= 0 || lib.queue.length + add.length >= 50) return;
+        if (findIn(lib.queue, x.it.id) >= 0) return;
+        eligible++;
+        if (lib.queue.length + add.length >= 50) { leftOut++; return; }
         add.push({ id: x.it.id, title: x.it.title || "" });
       });
-    if (!add.length) { showLibErr(T("No Watch later videos rated 4 or 5 stars to add.")); return; }
+    if (!add.length) { showLibErr(eligible && leftOut ? T("The queue is full at 50 videos.") : T("No Watch later videos rated 4 or 5 stars to add.")); return; }
     showLibErr("");
     add.forEach(function (x) { lib.queue.push(x); });
     saveLib(); renderLib();
     toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    if (leftOut) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
   });
   (window.__relang = window.__relang || []).push(function () { if (laterQueueTopBtn) { laterQueueTopBtn.textContent = T("\u2b50 Queue top rated"); laterQueueTopBtn.setAttribute("aria-label", T("Add Watch later videos rated 4 or 5 stars to the queue, best first")); } });
   if (laterQueueTopBtn) { laterQueueTopBtn.textContent = T("\u2b50 Queue top rated"); laterQueueTopBtn.setAttribute("aria-label", T("Add Watch later videos rated 4 or 5 stars to the queue, best first")); }
@@ -5317,19 +5322,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   var favQueueUnwBtn = $("favQueueUnwBtn");
   if (favQueueUnwBtn) favQueueUnwBtn.addEventListener("click", function () {
-    var snap = lib.queue.slice(), sp = qPos, add = [];
+    // Round 454 fix: the 50-cap was counted as "nothing to add" - with a full queue these
+    // chips claimed no matching videos existed and a partial add dropped the rest silently.
+    var snap = lib.queue.slice(), sp = qPos, add = [], eligible = 0, leftOut = 0;
     lib.favs.forEach(function (it) {
       var hi = findIn(lib.hist, it.id);
       var watched = it.done === true || (hi >= 0 && lib.hist[hi].done === true);
       if (watched || findIn(lib.queue, it.id) >= 0) return;
-      if (lib.queue.length + add.length >= 50) return;
+      eligible++;
+      if (lib.queue.length + add.length >= 50) { leftOut++; return; }
       add.push({ id: it.id, title: it.title || "" });
     });
-    if (!add.length) { showLibErr(T("No unwatched favourites to add to the queue.")); return; }
+    if (!add.length) { showLibErr(eligible && leftOut ? T("The queue is full at 50 videos.") : T("No unwatched favourites to add to the queue.")); return; }
     showLibErr("");
     add.forEach(function (x) { lib.queue.push(x); });
     saveLib(); renderLib();
     toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    if (leftOut) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
   });
   (window.__relang = window.__relang || []).push(function () { if (favQueueUnwBtn) { favQueueUnwBtn.textContent = T("➕ Queue unwatched"); favQueueUnwBtn.setAttribute("aria-label", T("Add every unwatched favourite to the queue")); } });
   if (favQueueUnwBtn) favQueueUnwBtn.setAttribute("aria-label", T("Add every unwatched favourite to the queue"));
@@ -5345,19 +5354,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   var favQueueTopBtn = $("favQueueTopBtn");
   if (favQueueTopBtn) favQueueTopBtn.addEventListener("click", function () {
-    var snap = lib.queue.slice(), sp = qPos, add = [];
+    // Round 454 fix: the 50-cap was counted as "nothing to add" - with a full queue these
+    // chips claimed no matching videos existed and a partial add dropped the rest silently.
+    var snap = lib.queue.slice(), sp = qPos, add = [], eligible = 0, leftOut = 0;
     lib.favs.map(function (it, i) { return { it: it, r: vpRateOf(it.id), i: i }; })
       .filter(function (x) { return x.r >= 4; })
       .sort(function (a, b) { return (b.r - a.r) || (a.i - b.i); })
       .forEach(function (x) {
-        if (findIn(lib.queue, x.it.id) >= 0 || lib.queue.length + add.length >= 50) return;
+        if (findIn(lib.queue, x.it.id) >= 0) return;
+        eligible++;
+        if (lib.queue.length + add.length >= 50) { leftOut++; return; }
         add.push({ id: x.it.id, title: x.it.title || "" });
       });
-    if (!add.length) { showLibErr(T("No favourites rated 4 or 5 stars to add.")); return; }
+    if (!add.length) { showLibErr(eligible && leftOut ? T("The queue is full at 50 videos.") : T("No favourites rated 4 or 5 stars to add.")); return; }
     showLibErr("");
     add.forEach(function (x) { lib.queue.push(x); });
     saveLib(); renderLib();
     toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    if (leftOut) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
   });
   function favQueueTopPaint() { if (favQueueTopBtn) { favQueueTopBtn.textContent = T("⭐ Queue top rated"); favQueueTopBtn.setAttribute("aria-label", T("Add favourites rated 4 or 5 stars to the queue, best first")); } }
   (window.__relang = window.__relang || []).push(favQueueTopPaint);
