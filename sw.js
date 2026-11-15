@@ -1,34 +1,70 @@
 // Offline app shell is saved during install, before the first lost connection.
 var CACHE = "vp-shell-v12";
 var SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
-self.addEventListener("install", function(e) {
-  e.waitUntil(caches.open(CACHE).then(function(cache) { return cache.addAll(SHELL); }).then(function() { return self.skipWaiting(); }));
-});
-self.addEventListener("activate", function(e) {
-  e.waitUntil(caches.keys().then(function(keys) {
-    return Promise.all(keys.filter(function(k) { return k.indexOf("vp-shell-") === 0 && k !== CACHE; }).map(function(k) { return caches.delete(k); }));
-  }).then(function() { return self.clients.claim(); }));
-});
 // Offline library thumbnails (round 287): the app shell already opens offline, but every
 // library row lost its picture without a connection. YouTube thumbnails the library has
 // shown once now save themselves on the device (newest 400 kept) and the saved copy serves
 // when the network is down or slow, so the queue, Watch later and history still look
 // complete offline. Only thumbnails are cached this way - never videos or pages.
 var THUMBS = "vp-thumbs-v1", THUMB_MAX = 400;
+self.addEventListener("install", function(e) {
+  e.waitUntil(caches.open(CACHE).then(function(cache) { return cache.addAll(SHELL); }).then(function() { return self.skipWaiting(); }));
+});
+self.addEventListener("activate", function(e) {
+  e.waitUntil(caches.keys().then(function(keys) {
+    return Promise.all(keys.filter(function(k) { return k.indexOf("vp-shell-") === 0 && k !== CACHE; }).map(function(k) { return caches.delete(k); }));
+  }).then(function() {
+    // Round 460: older workers saved opaque thumbnail copies, and the browser pads every
+    // opaque cache entry to several MB in its storage quota (measured about 9 MB per
+    // picture). Sweep them once; each one refetches as a small CORS copy on next use.
+    return caches.open(THUMBS).then(function(cache) {
+      return cache.keys().then(function(keys) {
+        return Promise.all(keys.map(function(key) {
+          return cache.match(key).then(function(res) { if (res && res.type === "opaque") return cache.delete(key); });
+        }));
+      });
+    });
+  }).catch(function() {}).then(function() { return self.clients.claim(); }));
+});
+// Round 460: the page asks for thumbnails no-cors, so a plain fetch hands back an opaque
+// response and every saved copy cost megabytes of quota padding. i.ytimg.com answers CORS,
+// so the worker fetches the picture itself with CORS and caches the readable copy instead:
+// real sizes (~10 KB each), so 400 library pictures cost ~5 MB, not ~3.5 GB of quota.
+function corsThumb(url) {
+  return fetch(new Request(url.href, { mode: "cors", credentials: "omit" })).then(function(res) {
+    if (res && res.ok && (res.headers.get("content-type") || "").indexOf("image/") === 0) return res;
+    return null;
+  }, function() { return null; });
+}
+function trimThumbs(cache) {
+  return cache.keys().then(function(keys) {
+    return Promise.all(keys.slice(0, Math.max(0, keys.length - THUMB_MAX)).map(function(key) { return cache.delete(key); }));
+  });
+}
 self.addEventListener("fetch", function(e) {
   var req = e.request, url = new URL(req.url);
   if (req.method === "GET" && req.cache !== "reload" && /^(i\d*\.ytimg\.com|img\.youtube\.com)$/.test(url.hostname)) {
     e.respondWith(caches.open(THUMBS).catch(function() { return null; }).then(function(cache) {
       if (!cache) return fetch(req).catch(function() { return Response.error(); });
       return cache.match(req).then(function(hit) {
-        var net = fetch(req).then(function(res) {
-          if (!res || !(res.ok || res.type === "opaque")) return res;
-          // A cache write is an optimisation, never a reason to hide a good image.
-          return cache.put(req, res.clone()).then(function() {
-            return cache.keys().then(function(keys) {
-              return Promise.all(keys.slice(0, Math.max(0, keys.length - THUMB_MAX)).map(function(key) { return cache.delete(key); }));
-            });
-          }).then(function() { return res; }, function() { return res; });
+        if (hit && hit.type !== "opaque") {
+          // A good readable copy: serve it now and refresh it in the background.
+          var refresh = corsThumb(url).then(function(res) {
+            if (!res) return;
+            return cache.put(req, res).then(function() { return trimThumbs(cache); });
+          });
+          e.waitUntil(refresh.then(function() {}, function() {}));
+          return hit;
+        }
+        var net = corsThumb(url).then(function(res) {
+          if (res) {
+            // A cache write is an optimisation, never a reason to hide a good image.
+            return cache.put(req, res.clone()).then(function() { return trimThumbs(cache); }).then(function() { return res; }, function() { return res; });
+          }
+          // No readable copy (CORS refused): do not save another padded opaque entry;
+          // keep an old opaque hit if one exists, else just pass the network answer through.
+          if (hit) return hit;
+          return fetch(req);
         });
         // On a cache hit respondWith resolves immediately. Keep the refresh alive and
         // consume a failed offline fetch instead of leaking an unhandled rejection.
