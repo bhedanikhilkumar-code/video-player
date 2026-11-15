@@ -1677,6 +1677,22 @@ html.high-contrast #prName262,html.high-contrast #smName262,html.high-contrast #
 #playerDock.is-mini #miniTime:not([hidden]){position:static;width:max-content;max-width:calc(100% - 16px);margin:4px 8px 6px auto;min-height:32px;box-sizing:border-box;white-space:normal;overflow-wrap:anywhere}
 #playerDock.is-mini #miniTitle{padding-right:10px}
 </style>
+<style id="r447-lpmini">
+/* Mini player for device files (round 447 new 1): a device file playing in Play a file
+   scrolled off screen and was simply gone - only the YouTube player had a dock. The file's
+   view wrap now docks into the same glass corner, keeps its own controls and gains a small
+   bar (back to the section, pause and dismiss). Follows the mini player's saved side, holds
+   the page place with a placeholder so nothing jumps, and stays a plain position change so
+   Calm motion and Low-end mode need no special case. */
+#lpViewWrap.lpMini447{position:fixed;right:16px;bottom:16px;width:min(360px,calc(100vw - 32px));z-index:80;margin:0;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.33)}
+html.mini-left #lpViewWrap.lpMini447{right:auto;left:16px}
+@media(max-width:480px){#lpViewWrap.lpMini447{right:8px;bottom:8px;width:min(320px,calc(100vw - 16px))}html.mini-left #lpViewWrap.lpMini447{left:8px}}
+#lpViewWrap.lpMini447 #lpVideo{max-height:220px}
+.lpMiniBar447{display:flex;gap:6px;justify-content:flex-end;padding:6px;background:rgba(12,16,20,.82)}
+.lpMiniBar447 .chip{min-height:36px;color:#fff;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.22)}
+html.high-contrast .lpMiniBar447{background:#000}
+html.high-contrast .lpMiniBar447 .chip{background:#000;color:#fff;border-color:#fff}
+</style>
 </head>
 <body>
 <a class="skip-link" id="skipLink" href="#player">Skip to the player</a>
@@ -48574,6 +48590,96 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Round 445 fix 1: cancellation keeps the active device-file session intact.
   Object.assign(TR_MSG, {"Cancelled file picks keep your queue": ["फ़ाइल चुनना रद्द करने पर कतार सुरक्षित", "ફાઇલ પસંદગી રદ કરતાં કતાર સુરક્ષિત"]});
   window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Cancelled file picks keep your queue","#lpPickBtn");},4420);});
+
+  // Round 447 new 1: Mini player for device files. The YouTube player docks into the floating
+  // mini player when its section scrolls away, but a device file playing in Play a file simply
+  // scrolled off screen - scroll away and the picture was gone until you scrolled back (PiP
+  // exists, but it leaves the app window). The file's view wrap now docks into the same glass
+  // corner the YouTube mini uses, keeps its own controls, and gains a small bar: Back to player
+  // scrolls back and undocks, and the close chip pauses and dismisses the dock until the next
+  // picked file. It holds the section's place with a placeholder so the page does not jump,
+  // follows the saved mini-player side, and stays out of full screen, Picture in picture, the
+  // paired viewing stage and Car mode. A plain position change, so Calm motion and Low-end
+  // mode need no special case. Hindi and Gujarati text, feature finder and What's new included.
+  Object.assign(TR_MSG, {
+    "Mini player for device files": ["डिवाइस फ़ाइलों के लिए मिनी प्लेयर", "ડિવાઇસ ફાઇલો માટે મિની પ્લેયર"],
+    "Back to the file player": ["फ़ाइल प्लेयर पर वापस", "ફાઇલ પ્લેયર પર પાછા"]
+  });
+  (function lpMini447() {
+    var dismissed447 = false, docked447 = false, ph447 = null, bar447 = null, raf447 = 0;
+    function vid447() { return $("lpVideo"); }
+    function wrap447() { return document.getElementById("lpViewWrap"); }
+    function active447() {
+      var v = vid447(), w = wrap447();
+      return !!(v && w && !v.hidden && (v.currentSrc || v.src) && w.offsetParent !== null);
+    }
+    function covered447() {
+      if (document.fullscreenElement) return true;
+      try { if (document.pictureInPictureElement) return true; } catch (e) {}
+      if (window.__vpCarVideo432) return true; // Car mode owns the screen
+      var dv = document.getElementById("localCompare445"); if (dv && dv.offsetParent !== null) return true; // paired stage owns the file view
+      return false;
+    }
+    function relabel447() {
+      if (!bar447) return;
+      var b = bar447.childNodes[0], c = bar447.childNodes[1];
+      b.textContent = T("Back to player"); b.setAttribute("aria-label", T("Back to the file player"));
+      c.textContent = T("\u2715 Pause"); c.setAttribute("aria-label", T("Close mini player and pause"));
+    }
+    function dock447() {
+      var wrap = wrap447(); if (!wrap || docked447) return;
+      var r = wrap.getBoundingClientRect();
+      ph447 = document.createElement("div"); ph447.className = "lpMiniPh447";
+      ph447.style.height = Math.max(1, Math.round(r.height)) + "px";
+      ph447.setAttribute("aria-hidden", "true");
+      wrap.parentNode.insertBefore(ph447, wrap);
+      if (!bar447) {
+        bar447 = document.createElement("div"); bar447.className = "lpMiniBar447";
+        var back = document.createElement("button"); back.type = "button"; back.className = "chip"; back.id = "lpMiniBack447";
+        var close = document.createElement("button"); close.type = "button"; close.className = "chip"; close.id = "lpMiniClose447";
+        back.addEventListener("click", function () {
+          undock447();
+          var lp = $("lp"); if (lp) lp.scrollIntoView({ block: "center", behavior: "smooth" });
+        });
+        close.addEventListener("click", function () {
+          dismissed447 = true;
+          var v = vid447(); if (v && !v.paused) v.pause();
+          undock447();
+        });
+        bar447.appendChild(back); bar447.appendChild(close);
+        (window.__relang = window.__relang || []).push(relabel447);
+      }
+      wrap.appendChild(bar447);
+      wrap.classList.add("lpMini447");
+      docked447 = true; relabel447();
+    }
+    function undock447() {
+      var wrap = wrap447(); if (!wrap || !docked447) return;
+      wrap.classList.remove("lpMini447");
+      if (bar447 && bar447.parentNode === wrap) wrap.removeChild(bar447);
+      if (ph447 && ph447.parentNode) ph447.parentNode.removeChild(ph447);
+      ph447 = null; docked447 = false;
+    }
+    function update447() {
+      if (!active447() || covered447()) { if (docked447) undock447(); return; }
+      if (dismissed447) { if (docked447) undock447(); return; }
+      if (!docked447) {
+        if (wrap447().getBoundingClientRect().bottom < 90) dock447();
+      } else if (ph447 && ph447.getBoundingClientRect().bottom > 90) {
+        undock447();
+      }
+    }
+    window.addEventListener("scroll", function () {
+      if (!raf447) raf447 = requestAnimationFrame(function () { raf447 = 0; update447(); });
+    }, { passive: true });
+    window.addEventListener("resize", update447);
+    document.addEventListener("fullscreenchange", update447);
+    document.addEventListener("enterpictureinpicture", update447, true);
+    document.addEventListener("leavepictureinpicture", update447, true);
+    document.addEventListener("vp-local-playing", function () { dismissed447 = false; if (docked447) undock447(); });
+    var lc447 = $("lpClose"); if (lc447) lc447.addEventListener("click", function () { dismissed447 = false; undock447(); });
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Mini player for device files", "#lp"); }, 5220); });
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -53587,6 +53693,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Current chapter marked on local files", "current chapter local file now playing which chapter highlight", "#lpChH"],
       ["Copy the community chapter list", "copy chapters youtube community chapter list text clipboard paste notes", "#chapBtn306"],
       ["Picture in picture (local file)", "pip picture floating", "#lpPip"],
+      ["Mini player for device files", "mini player device files local file dock floating corner scroll keep watching small window", "#lp"],
       ["Add playlist to queue", "playlist youtube import", "#plBtn"],
       ["Paste a list of links", "paste many links bulk", "#plPasteBtn"],
       ["Saved playlists", "playlist saved study", "#lhPlaylists"],
