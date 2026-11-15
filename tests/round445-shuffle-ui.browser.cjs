@@ -2,7 +2,8 @@ const assert=require('node:assert/strict');
 require('./round445-harness.cjs')(async({p,pick,files})=>{
  await p.locator('#linkInput').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');await p.locator('#loadBtn').click();await p.locator('#frameBox iframe').waitFor({state:'attached'});await p.evaluate(()=>{const f=document.querySelector('#frameBox iframe');for(const [event,info] of [['onReady',null],['infoDelivery',{currentTime:8,duration:213}],['onStateChange',1]])window.dispatchEvent(new MessageEvent('message',{source:f.contentWindow,origin:'https://www.youtube-nocookie.com',data:{event,info}}));});
  // Existing iframe is allowed to be a test frame; media itself is a real decoded local MP4.
- await pick();await p.locator('#lpShuffleBtn').click();await p.locator('#lpNext').click();await p.waitForFunction(()=>document.querySelector('#lpVideo').readyState>=2);
+ await pick();await p.locator('#lpVideo').scrollIntoViewIfNeeded();await p.waitForFunction(()=>document.querySelector('#playerDock').classList.contains('is-mini'));await p.locator('#localShuffleJourney445').evaluate(e=>e.open=true);await p.locator('#lpShuffleBtn').click();assert.equal(await p.locator('#playerDock').evaluate(e=>e.classList.contains('is-mini')),true);await p.locator('#lpNext').click();await p.waitForFunction(()=>document.querySelector('#lpVideo').readyState>=2);
+ await p.locator('#lpVideo').scrollIntoViewIfNeeded();
  await p.locator('#localShuffleJourney445').evaluate(e=>e.open=true);
  await p.locator('#localQueueEditor443').evaluate(e=>e.open=false);
  for(const lang of ['en','hi','gu']){
