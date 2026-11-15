@@ -6951,6 +6951,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         sleepLabel.textContent = T("Stopped at the end of the video (sleep timer).");
         return;
       }
+      if (data.info === 0 && window.__vpDrillEnded421 && window.__vpDrillEnded421()) return;
       if (data.info === 0 && !prefs.loop && !(abEnabled && abA != null && abB != null) && typeof window.__vpFinBurst === "function") window.__vpFinBurst();
       if (data.info === 0 && abEnabled && abA != null && abB != null) abLoopBack(true);
       else if (data.info === 0 && prefs.loop) { send("seekTo", [0, true]); send("playVideo"); if (window.__vpLoopPulse) window.__vpLoopPulse("full", 0, 0); }
@@ -28956,13 +28957,22 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var span=30,timer=null,idx=0,list=[],drillId=null;
   function curMoments(){return (typeof marks==='object'&&marks&&curId&&Array.isArray(marks[curId]))?marks[curId].filter(function(m){return m&&typeof m.t==='number'&&m.t>=0;}).slice().sort(function(a,b){return a.t-b.t;}):[];}
   function stop(msg){if(timer){clearInterval(timer);timer=null;}drillId=null;if(msg)$('drMsg').textContent=msg;paint();}
+  function advance421(restart){
+    idx++;
+    if(idx>=list.length){var n=list.length;stop(T('Drill done - all {n} moments replayed.').replace('{n}',n));send('pauseVideo');return;}
+    send('seekTo',[list[idx].t,true]);curTime=list[idx].t;if(restart)send('playVideo');
+    $('drMsg').textContent=T('Drill: moment {a} of {b}').replace('{a}',idx+1).replace('{b}',list.length);
+  }
   function tick(){if(drillId===null)return;
-    if(drillId!==curId){stop();return;}
-    if(typeof curTime==='number'&&list[idx]&&curTime>=list[idx].t+span){idx++;
-      if(idx>=list.length){var n=list.length;stop(T('Drill done - all {n} moments replayed.').replace('{n}',n));send('pauseVideo');return;}
-      send('seekTo',[list[idx].t,true]);$('drMsg').textContent=T('Drill: moment {a} of {b}').replace('{a}',idx+1).replace('{b}',list.length);}}
-  function start(){document.dispatchEvent(new Event('vp-moment-drill-start421'));list=curMoments();
+    if(drillId!==curId||sleepPaused||playbackCovered345()){stop(T('Drill stopped.'));return;}
+    if(playing&&typeof curTime==='number'&&list[idx]&&curTime>=Math.min(duration,list[idx].t+span))advance421(false);
+  }
+  window.__vpDrillEnded421=function(){if(drillId===null||drillId!==curId)return false;if(sleepPaused||playbackCovered345()){stop(T('Drill stopped.'));return false;}advance421(true);return true;};
+  function start(){
+    if(!ready||!(duration>0)){ $('drMsg').textContent=T('Play a little first, then replay a section.');return; }
+    list=curMoments().filter(function(m){return m.t<duration;});
     if(!curId||!list.length){$('drMsg').textContent=T('Load a video that has saved moments first.');return;}
+    document.dispatchEvent(new Event('vp-moment-drill-start421'));
     idx=0;drillId=curId;send('seekTo',[list[0].t,true]);send('playVideo');
     $('drMsg').textContent=T('Drill: moment {a} of {b}').replace('{a}',1).replace('{b}',list.length);
     if(timer)clearInterval(timer);timer=setInterval(tick,500);
