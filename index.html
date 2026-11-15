@@ -6385,8 +6385,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function listPlay(items) {
     var src = items.filter(validItem);
     if (!src.length) { libSay(T("Nothing here to play yet.")); return; }
-    lib.queue = src.slice(0, 50).map(function (x) { return { id: x.id, title: x.title || "" }; }); qPos = -1;
+    var snap415 = lib.queue.slice(), sp415 = qPos, sa415 = qAfter;
+    lib.queue = src.slice(0, 50).map(function (x) { return { id: x.id, title: x.title || "" }; }); qPos = -1; qAfter = -1;
     saveLib(); renderLib(); showLibErr("");
+    toastUndo(T("Queue replaced and playing. Items:") + " " + lib.queue.length, function () { lib.queue = snap415; qPos = sp415; qAfter = sa415; saveLib(); renderLib(); }, T("Queue restored"));
     libSay(T("Queue replaced and playing. Items:") + " " + lib.queue.length + (src.length > 50 ? ". " + T("Only the first 50 were used.") : ""));
     playQueueAt(0);
     if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
@@ -14369,7 +14371,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       }
       function playPl() {
         if (!pl.items.length) return;
-        lib.queue = pl.items.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1;
+        var snap415 = lib.queue.slice(), sp415 = qPos, sa415 = qAfter;
+        lib.queue = pl.items.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1; qAfter = -1;
+        toastUndo(T("Playing the playlist:") + " " + (pl.name || ""), function () { lib.queue = snap415; qPos = sp415; qAfter = sa415; saveLib(); renderLib(); }, T("Queue restored"));
         saveLib(); renderLib(); showLibErr(""); plHookPlay246(pl); plSay(T("Playing") + " \"" + pl.name + "\". " + T("The queue now holds its") + " " + pl.items.length + " " + T(pl.items.length === 1 ? "video" : "videos") + "."); // round 258 fix: one video read "1 videos"
         playQueueAt(0);
         if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
@@ -14434,7 +14438,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       btn(T("Play"), "", playPl);
       var rs260 = window.__vpPlResume ? window.__vpPlResume(pl) : null;
       if (rs260) btn(rs260.label, "", function () {
-        lib.queue = pl.items.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1;
+        var snap415 = lib.queue.slice(), sp415 = qPos, sa415 = qAfter;
+        lib.queue = pl.items.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1; qAfter = -1;
+        toastUndo(T("Playing the playlist:") + " " + (pl.name || ""), function () { lib.queue = snap415; qPos = sp415; qAfter = sa415; saveLib(); renderLib(); }, T("Queue restored"));
         saveLib(); renderLib(); showLibErr(""); plHookPlay246(pl); plSay(rs260.msg);
         playQueueAt(rs260.index);
         if (frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
@@ -14457,7 +14463,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         if (!pl.items.length) return;
         var un = pl.items.filter(function (x) { var hi = findIn(lib.hist, x.id); return !(hi >= 0 && lib.hist[hi].done); });
         if (!un.length) { plSay(T("Everything in this playlist is watched.")); return; }
-        lib.queue = un.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1;
+        var snap415 = lib.queue.slice(), sp415 = qPos, sa415 = qAfter;
+        lib.queue = un.map(function (x) { return { id: x.id, title: x.title }; }); qPos = -1; qAfter = -1;
+        toastUndo(T("Playing the unwatched videos of") + " \"" + pl.name + "\"", function () { lib.queue = snap415; qPos = sp415; qAfter = sa415; saveLib(); renderLib(); }, T("Queue restored"));
         saveLib(); renderLib(); showLibErr(""); plHookPlay246(pl);
         plSay(T("Playing the unwatched videos of") + " \"" + pl.name + "\": " + un.length + "/" + pl.items.length + " " + (un.length === 1 ? T("video") : T("videos")) + ".");
         playQueueAt(0);
@@ -15173,7 +15181,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
 
   function playMusicList(pl) {
     if (!pl || !pl.items.length) { plSay(T("No Music playlist yet. Add videos to your queue, then tap Save queue as Music.")); return; }
-    lib.queue = pl.items.map(function(x){return {id:x.id,title:x.title};}); qPos=-1; resetShuffle();
+    var snap415 = lib.queue.slice(), sp415 = qPos, sa415 = qAfter;
+    lib.queue = pl.items.map(function(x){return {id:x.id,title:x.title};}); qPos=-1; qAfter=-1; resetShuffle();
+    toastUndo(T("Playing Music. Your saved list is now in the queue."), function () { lib.queue = snap415; qPos = sp415; qAfter = sa415; saveLib(); renderLib(); }, T("Queue restored"));
     saveLib(); renderLib(); setMusicMode(true); playQueueAt(0);
     plSay(T("Playing Music. Your saved list is now in the queue.")); $("musicBar").scrollIntoView({block:"start",behavior:"smooth"});
   }
@@ -23646,7 +23656,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         if (hi >= 0 && lib.hist[hi].done) { var wd = document.createElement("span"); wd.className = "plv-done"; wd.textContent = "✓ " + T("Watched"); open.appendChild(wd); }
         open.addEventListener("click", function () {
           if (!pl.items.length) return;
-          lib.queue = pl.items.map(function (y) { return { id: y.id, title: y.title }; }); qPos = -1;
+          var snap415 = lib.queue.slice(), sp415 = qPos, sa415 = qAfter;
+          lib.queue = pl.items.map(function (y) { return { id: y.id, title: y.title }; }); qPos = -1; qAfter = -1;
+          toastUndo(T("Playing the playlist:") + " " + (pl.name || ""), function () { lib.queue = snap415; qPos = sp415; qAfter = sa415; saveLib(); renderLib(); }, T("Queue restored"));
           saveLib(); renderLib(); showLibErr(""); plHookPlay246(pl);
           plSay(T("Playing") + " \"" + pl.name + "\" (" + (i + 1) + "/" + pl.items.length + ").");
           playQueueAt(i);
