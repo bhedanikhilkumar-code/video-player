@@ -25874,7 +25874,27 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   });
   var BIN_KEY = "vp-bin.v1", binItems = [], binPrev = null;
   try { var bin0 = JSON.parse(localStorage.getItem(BIN_KEY) || "null"); if (Array.isArray(bin0)) binItems = bin0.filter(function (b) { return b && validItem(b.item) && (b.list === "favs" || b.list === "later") && typeof b.at === "number" && Date.now() - b.at < 30 * 86400000; }).slice(0, 20); } catch (e) {}
-  function binSave() { try { localStorage.setItem(BIN_KEY, JSON.stringify(binItems)); } catch (e) { if (typeof storageWarn === "function") storageWarn(); } }
+  // Round 407 fix 3: bin changes in another tab never reached this one. The Recently
+  // removed bin read vp-bin.v1 once at load, so a video restored or the bin emptied in a
+  // second tab left this tab's count and rows stale until a reload - the same cross-tab
+  // gap fix 1 (practice loops) and fix 2 (saved channels) close this round. A
+  // baseline-guarded storage listener mirrors them: an in-flight local change keeps
+  // priority for its next save, otherwise the bin is re-read through the same validation
+  // the loader uses, the tracking snapshot resets so the next binTrack cannot mistake the
+  // synced entries for fresh removals, and the open panel repaints through __vpBinPaint.
+  var binBaseline407 = JSON.stringify(binItems);
+  window.addEventListener("storage", function (e) {
+    if (e.key !== BIN_KEY && e.key !== null) return;
+    if (JSON.stringify(binItems) !== binBaseline407) return;
+    try {
+      var freshB407 = JSON.parse(localStorage.getItem(BIN_KEY) || "null");
+      binItems = Array.isArray(freshB407) ? freshB407.filter(function (b) { return b && validItem(b.item) && (b.list === "favs" || b.list === "later") && typeof b.at === "number" && Date.now() - b.at < 30 * 86400000; }).slice(0, 20) : [];
+    } catch (e2) { binItems = []; }
+    binBaseline407 = JSON.stringify(binItems);
+    binPrev = binSnap();
+    if (typeof window.__vpBinPaint === "function") window.__vpBinPaint();
+  });
+  function binSave() { try { localStorage.setItem(BIN_KEY, JSON.stringify(binItems)); binBaseline407 = JSON.stringify(binItems); } catch (e) { if (typeof storageWarn === "function") storageWarn(); } }
   function binSnap() { return { favs: lib.favs.slice(), later: lib.later.slice() }; }
   function binTrack() {
     var now = binSnap();
