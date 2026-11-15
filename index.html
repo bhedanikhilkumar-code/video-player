@@ -48389,9 +48389,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function align(play){
       if(!ready()){state="Open both device files before aligning them.";paint();return;}
       var n=Number(offset.value);if(!isFinite(n))n=0;n=Math.max(-3600,Math.min(3600,n));offset.value=String(n);
-      var t=primary.currentTime+n,inside=t>=0&&t<ref.duration;
+      var mapping446=localReferenceClock446(primary.currentTime,primary.playbackRate);
+      var t=mapping446.time+n,inside=t>=0&&t<ref.duration;
       if(Math.abs(ref.currentTime-Math.max(0,Math.min(ref.duration,t)))>.15)try{ref.currentTime=Math.max(0,Math.min(ref.duration,t));}catch(e){}
-      ref.playbackRate=primary.playbackRate;
+      try{ref.playbackRate=mapping446.rate;}catch(e){pause();follow.checked=false;state="This browser cannot play the matched reference speed.";paint();return;}
       if(!inside){pause();state="Reference is outside its playable time at this offset.";paint();return;}
       state="Reference aligned to the main file position.";
       if(play&&!primary.paused&&!document.hidden&&!playbackCovered345()){
@@ -48435,7 +48436,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function paint(){box.querySelectorAll("[data-fm]").forEach(function(e){e.textContent=T(e.dataset.fm);});$("fmMain446").disabled=!ready(main);$("fmRef446").disabled=!ready(ref);$("fmApply446").disabled=!valid();$("fmClear446").disabled=a===null&&b===null;$("fmMarks446").textContent=T("Main frame")+": "+stamp(a)+" · "+T("Reference frame")+": "+stamp(b)+(a!==null&&b!==null?" · "+(Math.abs(b-a)<=3600?T("Matched offset")+": "+(b-a).toFixed(3)+" s":T("Choose frames within one hour of each other.")):"");}
     function mark(which){if(!ready(which))return;$("lcFollow445").checked=false;$("lcFollow445").dispatchEvent(new Event("change"));main.pause();ref.pause();if(which===main){a=main.currentTime;sourceA=main.src;}else{b=ref.currentTime;sourceB=ref.src;}paint();}
     $("fmMain446").addEventListener("click",function(){mark(main);});$("fmRef446").addEventListener("click",function(){mark(ref);});$("fmClear446").addEventListener("click",clear);
-    $("fmApply446").addEventListener("click",function(){if(!valid())return;var offset=$("lcOffset445");offset.value=(b-a).toFixed(3);offset.dispatchEvent(new Event("change"));});
+    $("fmApply446").addEventListener("click",function(){if(!valid())return;if(window.__vpDriftDisable446)window.__vpDriftDisable446();var offset=$("lcOffset445");offset.value=(b-a).toFixed(3);offset.dispatchEvent(new Event("change"));});
     [main,ref].forEach(function(v){v.addEventListener("emptied",clear);v.addEventListener("loadeddata",paint);v.addEventListener("error",paint);});
     $("lcClose445").addEventListener("click",clear);box.addEventListener("toggle",paint);(window.__relang=window.__relang||[]).push(paint);paint();
     window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Match corresponding frames","#frameMatch446");},5220);});
@@ -48461,6 +48462,34 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     [main,ref].forEach(function(v){v.addEventListener("emptied",function(){leave(false);paint();});v.addEventListener("loadeddata",paint);v.addEventListener("error",function(){leave(false);paint();});});
     card.addEventListener("toggle",function(){if(!card.open)leave(false);});document.addEventListener("vp-youtube-selected",function(){leave(false);});window.addEventListener("pagehide",function(){leave(false);});
     (window.__relang=window.__relang||[]).push(paint);paint();window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Paired viewing stage","#pairStage446");},5320);});
+  })();
+  // Round 446: two-point timing calibration for files with different clock speeds.
+  var referenceDrift446=null;
+  function localReferenceClock446(time,rate){var d=referenceDrift446;return d?{time:d.b+(time-d.a)*d.scale,rate:rate*d.scale}:{time:time,rate:rate};}
+  (function(){
+    var card=$("localCompare445"),main=$("lpVideo"),ref=$("lcVideo445");if(!card||!main||!ref)return;
+    Object.assign(TR_MSG,{
+      "Two-point timing calibration":["दो बिंदुओं से समय मिलाएं","બે બિંદુઓથી સમય મેળવો"],
+      "For recordings that slowly drift apart: pause both files at a matching early moment and save point 1. Find a matching later moment and save point 2. Applying adjusts reference timing and speed only for this pair.":["धीरे-धीरे अलग होते रिकॉर्डिंग के लिए: दोनों फ़ाइलों में शुरुआती एक ही पल पर रोककर बिंदु 1 सहेजें. बाद का एक ही पल ढूंढकर बिंदु 2 सहेजें. लागू करने पर केवल इस जोड़ी के संदर्भ का समय और गति बदलती है.","ધીમે ધીમે સમય અલગ પડતી રેકોર્ડિંગ માટે: બંને ફાઇલમાં શરૂઆતની એક જ પળે રોકીને બિંદુ 1 સાચવો. પછીની એક જ પળ શોધીને બિંદુ 2 સાચવો. લાગુ કરવાથી ફક્ત આ જોડીના સંદર્ભનો સમય અને ઝડપ બદલાય છે."],
+      "Save timing point 1":["समय बिंदु 1 सहेजें","સમય બિંદુ 1 સાચવો"],"Save timing point 2":["समय बिंदु 2 सहेजें","સમય બિંદુ 2 સાચવો"],
+      "Apply timing calibration":["समय मिलान लागू करें","સમય મેળ લાગુ કરો"],"Clear timing calibration":["समय मिलान हटाएं","સમય મેળ સાફ કરો"],
+      "Timing calibration active":["समय मिलान चालू","સમય મેળ ચાલુ"],"Timing calibration off":["समय मिलान बंद","સમય મેળ બંધ"],
+      "Choose two increasing points at least one second apart in both files. Reference speed must be between 0.25x and 4x of the main speed.":["दोनों फ़ाइलों में कम से कम एक सेकंड के अंतर पर दो आगे बढ़ते बिंदु चुनें. संदर्भ की गति मुख्य गति की 0.25x से 4x होनी चाहिए.","બંને ફાઇલમાં ઓછામાં ઓછા એક સેકન્ડના અંતરે બે આગળ વધતા બિંદુ પસંદ કરો. સંદર્ભની ઝડપ મુખ્ય ઝડપની 0.25x થી 4x હોવી જોઈએ."],
+      "This browser cannot play the matched reference speed.":["यह ब्राउज़र मिले हुए संदर्भ की गति नहीं चला सकता.","આ બ્રાઉઝર મેળ ખાતી સંદર્ભની ઝડપ ચલાવી શકતું નથી."]
+    });
+    var box=document.createElement("details");box.id="timingCalibration446";box.className="lp-workbench";box.innerHTML='<summary data-tc="Two-point timing calibration"></summary><p class="hint" data-tc="For recordings that slowly drift apart: pause both files at a matching early moment and save point 1. Find a matching later moment and save point 2. Applying adjusts reference timing and speed only for this pair."></p><div class="row" style="flex-wrap:wrap"><button type="button" class="chip" id="tcOne446" data-tc="Save timing point 1"></button><button type="button" class="chip" id="tcTwo446" data-tc="Save timing point 2"></button></div><p id="tcPoints446" style="overflow-wrap:anywhere"></p><p id="tcStatus446" class="hint" role="status"></p><div class="row" style="flex-wrap:wrap"><button type="button" class="chip" id="tcApply446" data-tc="Apply timing calibration"></button><button type="button" class="chip" id="tcClear446" data-tc="Clear timing calibration"></button></div>';
+    card.append(box);var first=null,second=null;
+    function ready(){return [main,ref].every(function(v){return !v.hidden&&/^blob:/.test(v.getAttribute("src")||"")&&v.readyState>=2&&!v.seeking&&!v.error;});}
+    function scale(){return first&&second?(second.b-first.b)/(second.a-first.a):NaN;}
+    function valid(){var r=scale();return ready()&&first&&second&&second.a-first.a>=1&&second.b-first.b>=1&&r>=.25&&r<=4;}
+    function paint(){box.querySelectorAll("[data-tc]").forEach(function(e){e.textContent=T(e.dataset.tc);});$("tcOne446").disabled=$("tcTwo446").disabled=!ready();$("tcApply446").disabled=!valid();$("tcClear446").disabled=!first&&!second&&!referenceDrift446;$("tcPoints446").textContent=[first,second].map(function(p,i){return (i+1)+": "+(p?p.a.toFixed(3)+" s → "+p.b.toFixed(3)+" s":T("Not marked"));}).join(" · ");$("tcStatus446").textContent=T(referenceDrift446?"Timing calibration active":"Timing calibration off")+(referenceDrift446?" · "+referenceDrift446.scale.toFixed(5)+"x":(first&&second&&!valid()?" · "+T("Choose two increasing points at least one second apart in both files. Reference speed must be between 0.25x and 4x of the main speed."):""));}
+    function disable(){referenceDrift446=null;paint();}window.__vpDriftDisable446=disable;
+    function reset(){referenceDrift446=null;first=second=null;paint();}
+    function capture(which){if(!ready())return;$("lcFollow445").checked=false;$("lcFollow445").dispatchEvent(new Event("change"));main.pause();ref.pause();referenceDrift446=null;var point={a:main.currentTime,b:ref.currentTime};if(which===1){first=point;second=null;}else second=point;paint();}
+    $("tcOne446").addEventListener("click",function(){capture(1);});$("tcTwo446").addEventListener("click",function(){capture(2);});$("tcClear446").addEventListener("click",reset);
+    $("tcApply446").addEventListener("click",function(){if(!valid())return;referenceDrift446={a:first.a,b:first.b,scale:scale()};$("lcOffset445").value="0";$("lcOffset445").dispatchEvent(new Event("change"));paint();});
+    [main,ref].forEach(function(v){v.addEventListener("emptied",reset);["loadeddata","seeking","seeked","canplay"].forEach(function(e){v.addEventListener(e,paint);});v.addEventListener("error",reset);});$("lcClose445").addEventListener("click",reset);document.addEventListener("vp-youtube-selected",reset);(window.__relang=window.__relang||[]).push(paint);paint();
+    window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Two-point timing calibration","#timingCalibration446");},5420);});
   })();
   // Round 445 fix 2: delayed local artwork must not take back YouTube's media session.
   Object.assign(TR_MSG, {"Local artwork respects the active player": ["लोकल चित्र सक्रिय प्लेयर का ध्यान रखता है", "લોકલ ચિત્ર સક્રિય પ્લેયરનું ધ્યાન રાખે છે"]});
@@ -52973,6 +53002,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Local artwork respects the active player", "media session lock screen artwork stale local youtube source switch", "#lpVideo"],
       ["Match corresponding frames", "matching frames sync anchor align main reference exact offset two files", "#frameMatch446"],
       ["Paired viewing stage", "two local video comparison side by side paired stage split screen reference", "#pairStage446"],
+      ["Two-point timing calibration", "two anchors drift correction clock speed reference recording alignment calibration", "#timingCalibration446"],
       ["Compare two device videos", "local device video reference compare two files alignment offset follow main synced playback private", "#localCompare445"],
       ["Local shuffle journey", "local device file shuffle non repeating bag upcoming order previous history back forward heard next cycle music", "#localShuffleJourney445"],
       ["Cancelled file picks keep your queue", "cancel empty file picker keeps active session selected queue", "#lpPickBtn"],
