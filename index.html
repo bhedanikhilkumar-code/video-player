@@ -18726,6 +18726,11 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   window.__vpSetLangOnce = function (lg) { if (LANGS.indexOf(lg) < 0 || prefs.lang === lg) return; prefs.lang = lg; savePrefs(); applyLang(true); };
 
   // Continue watching: every video with a saved position, with progress, not just the last one.
+  // Round 452 new 1 strings (Start over / Queue on each row) live here so T() finds
+  // them in every language - see the row builder below.
+  Object.assign(TR_MSG, {
+    "Playing from the beginning": ["\u0936\u0941\u0930\u0942 \u0938\u0947 \u091a\u0932 \u0930\u0939\u093e \u0939\u0948", "\u0ab6\u0ab0\u0ac2\u0a86\u0aa4\u0aa5\u0ac0 \u0a9a\u0abe\u0ab2\u0ac7 \u0a9b\u0ac7"]
+  });
   var continueItems;
   function continueEligible266(h) { var end = h && (prefs.finishAt === "90" || prefs.finishAt === "95") ? Math.min(h.dur - 5, h.dur * Number(prefs.finishAt) / 100) : h && h.dur - 5; return !!(h && h.id && h.t >= 10 && h.dur > 0 && h.t < end); }
   function renderContinue() {
@@ -18766,7 +18771,35 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         var had = item.t; item.t = 0; saveLib(); renderLib();
         toastUndo(T("Removed from Continue watching"), function () { item.t = had; saveLib(); renderLib(); }, T("Position restored"));
       });
-      li.appendChild(open); li.appendChild(act); ul.appendChild(li);
+      // Round 452 new 1: Start over and Queue on every Continue watching row. A row
+      // only had Open and Remove, so rewatching a half-finished video from the top
+      // meant opening it and dragging the seek bar to 0:00 by hand, and lining it up
+      // behind the playing video meant opening it first or queuing the whole card.
+      // Start over plays the video from 0:00 and clears the saved second (the Undo
+      // toast brings it back, like Remove); Queue adds the video behind the playing
+      // one without opening it, skipping a duplicate and respecting the 50-video cap.
+      // Hindi and Gujarati text, feature finder and What's new included.
+      var so452 = document.createElement("button"); so452.className = "chip"; so452.type = "button";
+      so452.textContent = "\u21BA " + T("Start over");
+      so452.setAttribute("aria-label", T("Start over") + ": " + (item.title || item.id));
+      so452.addEventListener("click", function () {
+        var hadSo = item.t; item.t = 0; saveLib(); renderLib();
+        linkInput.value = "https://youtu.be/" + item.id;
+        var cqiSo = findIn(lib.queue, item.id);
+        loadVideo(0, null, cqiSo >= 0 ? cqiSo : undefined, true);
+        toastUndo(T("Playing from the beginning"), function () { item.t = hadSo; saveLib(); renderLib(); }, T("Position restored"));
+      });
+      var q452 = document.createElement("button"); q452.className = "chip"; q452.type = "button";
+      q452.textContent = "+ " + T("Queue");
+      q452.setAttribute("aria-label", T("Queue") + ": " + (item.title || item.id));
+      q452.addEventListener("click", function () {
+        if (findIn(lib.queue, item.id) >= 0) { toast(T("Already in the queue")); return; }
+        if (lib.queue.length >= 50) { toast(T("The queue is full at 50 videos.")); return; }
+        lib.queue.push({ id: item.id, title: item.title || titleFor(item.id) });
+        saveLib(); renderLib();
+        toastUndo(T("Added to queue"), function () { var qiU = findIn(lib.queue, item.id); if (qiU >= 0) { lib.queue.splice(qiU, 1); saveLib(); renderLib(); } }, T("Removed from queue"));
+      });
+      li.appendChild(open); li.appendChild(so452); li.appendChild(q452); li.appendChild(act); ul.appendChild(li);
     });
     // Total time left (round 228 new 4): every row shows its own "2 min left", but planning
     // a break around the whole rotation meant adding those in your head. One line under the
@@ -18795,6 +18828,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     }
   }
   renderContinue();
+  // Round 452 new 1: announce through the deferred helper, staggered past the latest
+  // load-time entry (round 450's at 6920ms) so the 10-row cap cannot push it out.
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Start over or queue from Continue watching", "#continueWrap"); }, 7020); });
 
   // Queue all from Continue watching (round 220 new 2): the card gathers everything you
   // started and have not finished, but lining the whole set up for an evening meant opening
@@ -53550,6 +53586,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       };
     }
     var FEATS = [
+      ["Start over or queue from Continue watching", "start over queue continue watching row rewatch from beginning zero play again line up behind current add to queue without opening", "#continueWrap"],
       ["Open files with the app", "open with installed app pwa right click file video audio default player file handler launch device queue", "#lp"],
       ["One tab at a time", "one tab at a time another tab window pause two videos playing together second window pwa broadcast", "#oneTabCard450"],
       ["Video passport", "video passport export import one single video moments note remembered settings lyrics move another device backup share file", "#passportRow449"],
