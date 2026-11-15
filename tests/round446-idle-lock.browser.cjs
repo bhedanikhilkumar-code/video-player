@@ -1,0 +1,7 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p,pick,files,boot})=>{
+ await p.addInitScript(()=>{const original=setInterval;window.setInterval=(fn,ms,...args)=>{if(ms===15000&&String(fn).includes('idleDue345'))window.idleTick446=fn;return original(fn,ms,...args);};});await boot();await pick(files.slice(0,1));await p.locator('#localCompare445').evaluate(e=>e.open=true);await p.locator('#lcFile445').setInputFiles(files[1]);await p.waitForFunction(()=>document.querySelector('#lcVideo445').readyState>=2);await p.locator('#lcVideo445').evaluate(v=>v.play());
+ await p.evaluate(()=>{localStorage.setItem('vp-lock288.v1',JSON.stringify({s:'isolated-test-salt',h:'isolated-test-hash'}));const e=document.getElementById('lockIdle345');e.value='5';e.dispatchEvent(new Event('change'));window.originalNow446=Date.now;window.timeDelta446=360000;Date.now=()=>window.originalNow446()+window.timeDelta446;window.idleTick446();});assert.equal(await p.locator('#vpLock288').count(),0,'Watching a reference video must not count as an idle paused session');
+ await p.locator('#lcVideo445').evaluate(v=>v.pause());await p.evaluate(()=>{window.timeDelta446=720000;window.idleTick446();});assert.equal(await p.locator('#vpLock288').count(),1,'A truly idle paused session still locks');
+ console.log('PASS reference playback does not count as idle; after reference pauses the idle lock still activates. Isolated test lock metadata only.');
+}).catch(e=>{console.error(e);process.exitCode=1;});
