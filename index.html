@@ -13038,6 +13038,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var r301 = Number(rateMapCache301[id]);
     return isFinite(r301) && r301 > 0;
   }
+  // Round 379 new 1: has:photo reads the photo-note store the way rated301 reads
+  // ratings - one shared raw-string cache, re-parsed only when the stored text changes.
+  var vphotoRawCache379 = null, vphotoMapCache379 = {};
+  function hasPhoto379(id) {
+    var raw = "";
+    try { raw = localStorage.getItem("vp-vphotos.v1") || ""; } catch (e) {}
+    if (raw !== vphotoRawCache379) { vphotoRawCache379 = raw; try { vphotoMapCache379 = JSON.parse(raw || "{}") || {}; } catch (e) { vphotoMapCache379 = {}; } }
+    var ph = vphotoMapCache379[id];
+    return !!(ph && typeof ph.d === "string" && ph.d.length > 0);
+  }
   function sqOps259(id, ops) {
     for (var i = 0; i < ops.length; i++) {
       var o = ops[i], ok, neg = o.charAt(0) === "-"; if (neg) o = o.slice(1);
@@ -13059,6 +13069,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // could only be seen video by video, so the songs you already keep lyrics for had no
       // way to surface in one search. The everyday spelling has:lyric is recognised too.
       else if (o === "has:lyric") ok = typeof lyrics !== "undefined" && lyrics && typeof lyrics[id] === "string" && lyrics[id].trim() !== "";
+      // Round 379 new 1: has:photo finds rows this device holds a photo note for. The
+      // photos live in vp-vphotos.v1 outside this scope, so like is:rated they are read
+      // through a raw-string cache that re-parses only when the stored value changes.
+      else if (o === "has:photo") ok = hasPhoto379(id);
       else ok = typeof notes !== "undefined" && notes && typeof notes[id] === "string" && notes[id].trim() !== "";
       if (neg ? ok : !ok) return false;
     }
@@ -30158,6 +30172,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Search is:snoozed / is:pinned / has:reason": ["\u0916\u094b\u091c is:snoozed / is:pinned / has:reason", "\u0ab6\u0acb\u0aa7 is:snoozed / is:pinned / has:reason"]
   });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search is:snoozed / is:pinned / has:reason", "#sqTip259"); }, 1450); });
+  // Round 379 new 1: has:photo joins the search tips and the feature finder keywords.
+  Object.assign(TR_MSG, {
+    "Search has:photo": ["\u0916\u094b\u091c has:photo", "\u0ab6\u0acb\u0aa7 has:photo"]
+  });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search has:photo", "#sqTip259"); }, 1500); });
   // Search has:loop (round 366 new 1): the operator joins the tips line, the Hindi and
   // Gujarati tips, the feature finder keywords and this What's new entry.
   Object.assign(TR_MSG, {
@@ -30173,13 +30192,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Search operators tip (round 259 new 2): one line under the library search box that lists
   // the operators; Hindi and Gujarati text, feature finder included.
   Object.assign(TR_MSG, {
-    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, channel:name": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, channel:नाम", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, channel:નામ"]
+    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, channel:name": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, channel:नाम", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, channel:નામ"]
   });
   (function () {
     var m = $("libSearchMsg"); if (!m || !m.parentNode) return;
     var tip = document.createElement("span"); tip.className = "hint"; tip.id = "sqTip259"; tip.style.cssText = "display:block;margin-top:4px";
     m.parentNode.insertBefore(tip, m.nextSibling);
-    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, channel:name"); }
+    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, channel:name"); }
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
@@ -49243,7 +49262,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Bookmark folders as playlists", "bookmark folders playlists import browser bookmarks make a playlist for each folder organise sorted", "#bmCard"],
       ["Export as browser bookmarks", "export browser bookmarks bookmarks.html chrome safari firefox edge save queue favourites watch later playlists folders backup", "#bmExpCard"],
       ["Skip parts", "skip parts segments ad read recap middle cut jump over sponsor boring stretch mark start end per video skip intro outro", "#skipPartsCard"],
-      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played is:short is:long short long under a minute over ten minutes duration has:note has:moment moments is:rated rated stars is:snoozed snoozed sleeping is:pinned pinned pin has:reason reason why saved has:loop loops saved loop practice a-b channel:name by channel from one channel has:lyrics lyrics saved words song lines advanced library search narrow", "#sqTip259"],
+      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played is:short is:long short long under a minute over ten minutes duration has:note has:moment moments is:rated rated stars is:snoozed snoozed sleeping is:pinned pinned pin has:reason reason why saved has:loop loops saved loop practice a-b channel:name by channel from one channel has:lyrics lyrics saved words song lines has:photo photo note attached picture snap advanced library search narrow", "#sqTip259"],
       ["Activity log", "activity log history of changes what was added removed queue watch later favourites where did it go timeline recent changes", "#activityCard"],
       ["Speed ramp", "speed ramp ease up faster gradually raise playback speed every minutes lecture podcast step 1.25 1.5 2x training", "#rampCard"],
       ["Saved searches", "saved searches save search keep pin favourite query operators is:later chips repeat run again library", "#ssRow"],
