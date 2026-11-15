@@ -46365,6 +46365,68 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Share at this speed", "#speedLink409"); }, 2180); });
 
+  // Round 410 new 1: a QR for "Continue on another device". The handoff chip (round 242)
+  // only COPIES the link - moving an evening's watching from the phone to the laptop or
+  // TV still meant pasting it into a chat with yourself. Playlists already show a QR for
+  // exactly this job; the handoff link now gets the same treatment. A small "QR" chip
+  // beside the handoff chip builds the very same link (this video at the current second
+  // plus the upcoming queue as the shareable ?q= block) and opens the playlist-style
+  // glass dialog: QR to scan, the link in text, Copy link and Close. The copy-on-tap
+  // behaviour of the handoff chip itself is untouched. Nothing is uploaded; the link
+  // holds everything. Checked first: the handoff chip had no QR anywhere (the comment
+  // above it says its QR translations only serve the playlist chip; grep handoffQr = 0).
+  // Hindi and Gujarati text inside the main closure, feature finder and What's new
+  // (staggered above round 409) included.
+  Object.assign(TR_MSG, {
+    "Scan to continue on another device": ["\u0926\u0942\u0938\u0930\u0947 \u0921\u093f\u0935\u093e\u0907\u0938 \u092a\u0930 \u091c\u093e\u0930\u0940 \u0930\u0916\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u0938\u094d\u0915\u0948\u0928 \u0915\u0930\u0947\u0902", "\u0aac\u0ac0\u0a9c\u0abe \u0aa1\u0abf\u0ab5\u0abe\u0a87\u0ab8 \u0aaa\u0ab0 \u0a9a\u0abe\u0ab2\u0ac1 \u0ab0\u0abe\u0a96\u0ab5\u0abe \u0ab8\u0acd\u0a95\u0ac7\u0aa8 \u0a95\u0ab0\u0acb"],
+    "Show a QR code to continue on another device": ["\u0926\u0942\u0938\u0930\u0947 \u0921\u093f\u0935\u093e\u0907\u0938 \u092a\u0930 \u091c\u093e\u0930\u0940 \u0930\u0916\u0928\u0947 \u0915\u093e QR \u0915\u094b\u0921 \u0926\u093f\u0916\u093e\u090f\u0902", "\u0aac\u0ac0\u0a9c\u0abe \u0aa1\u0abf\u0ab5\u0abe\u0a87\u0ab8 \u0aaa\u0ab0 \u0a9a\u0abe\u0ab2\u0ac1 \u0ab0\u0abe\u0a96\u0ab5\u0abe\u0aa8\u0acb QR \u0a95\u0acb\u0aa1 \u0aac\u0aa4\u0abe\u0ab5\u0acb"],
+    "QR for handoff": ["\u0939\u0948\u0902\u0921\u0911\u092b\u093c QR", "\u0ab9\u0ac7\u0aa8\u0acd\u0aa1\u0a91\u0aab QR"]
+  });
+  (function () {
+    var hb = $("handoffBtn"); if (!hb || !hb.parentNode) return;
+    var qb = document.createElement("button"); qb.type = "button"; qb.className = "chip"; qb.id = "handoffQr410";
+    hb.parentNode.insertBefore(qb, hb.nextSibling);
+    function paint410() { qb.textContent = "\u{1F4F1} " + T("QR for handoff"); qb.setAttribute("aria-label", T("Show a QR code to continue on another device")); }
+    (window.__relang = window.__relang || []).push(paint410); paint410();
+    var dlg410 = null;
+    qb.addEventListener("click", function () {
+      if (!curId) { toast(T("Load a video first, then share from it.")); return; }
+      qAdoptPlaying292();
+      var t = Math.max(0, Math.floor(curTime || 0));
+      var link = location.origin + location.pathname + "?v=" + curId + (t >= 5 ? "&from=" + t : "");
+      var from = qPos >= 0 ? qPos + 1 : 0, up = lib.queue.slice(from, from + 20);
+      if (up.length) { var b64 = btoa(unescape(encodeURIComponent(JSON.stringify({ v: up.map(function (x) { return [x.id, String(x.title || "").slice(0, 120)]; }) })))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); link += "&q=" + b64; }
+      if (dlg410) { dlg410.remove(); dlg410 = null; }
+      var img = null;
+      try {
+        if (typeof qrcode !== "function") { var qs = document.getElementById("qrLibSrc"); if (qs) (0, eval)(qs.textContent); }
+        if (typeof qrcode !== "function") throw new Error("qr library missing");
+        var q = qrcode(0, "M"); q.addData(link); q.make();
+        img = q.createDataURL(6, 8);
+      } catch (e) { img = null; }
+      var dlg = document.createElement("dialog");
+      dlg.id = "handoffQrDlg410";
+      dlg.style.cssText = "background:var(--card,#fff);color:var(--ink,#111);border:1px solid var(--line,#ccc);border-radius:18px;padding:18px;max-width:92vw;text-align:center;box-shadow:0 18px 50px rgba(0,0,0,.35)";
+      var h = document.createElement("div"); h.style.cssText = "font-weight:700;margin-bottom:8px";
+      h.textContent = T("Scan to continue on another device"); dlg.appendChild(h);
+      var nm = (typeof titleFor === "function" && curId) ? (titleFor(curId) || "") : "";
+      if (nm) { var nn = document.createElement("div"); nn.style.cssText = "font-size:13px;color:var(--ink2,#666);margin-bottom:10px"; nn.textContent = nm; dlg.appendChild(nn); }
+      if (img) { var im = document.createElement("img"); im.src = img; im.alt = T("QR code"); im.style.cssText = "width:240px;max-width:70vw;border-radius:12px;background:#fff;padding:6px"; dlg.appendChild(im); }
+      else { var warn = document.createElement("p"); warn.textContent = T("QR code could not be drawn - the link below still works."); dlg.appendChild(warn); }
+      var lt = document.createElement("p"); lt.style.cssText = "font-size:12px;overflow-wrap:anywhere;color:var(--ink2,#666)"; lt.textContent = link; dlg.appendChild(lt);
+      var rr = document.createElement("div"); rr.className = "row"; rr.style.justifyContent = "center";
+      var cb = document.createElement("button"); cb.type = "button"; cb.className = "chip"; cb.textContent = T("Copy this link");
+      cb.addEventListener("click", function () { vpCopySafe(link, function (ok) { toast(ok ? T("Link copied") : T("Could not copy - select the text and copy it by hand.")); }); });
+      var xb = document.createElement("button"); xb.type = "button"; xb.className = "chip"; xb.textContent = T("Close");
+      xb.addEventListener("click", function () { dlg.close(); });
+      dlg.addEventListener("close", function () { if (dlg410 === dlg) dlg410 = null; dlg.remove(); });
+      dlg.addEventListener("click", function (ev) { if (ev.target === dlg) dlg.close(); });
+      rr.appendChild(cb); rr.appendChild(xb); dlg.appendChild(rr);
+      document.body.appendChild(dlg); dlg410 = dlg; dlg.showModal();
+    });
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("QR for handoff", "#handoffQr410"); }, 2190); });
+
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -51346,6 +51408,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Share a saved loop", "share saved loop link copy send friend practice a-b library loop", "#loopLibCard296"],
       ["Manage saved loops", "manage saved loops rename remove delete practice loop library clean up edit name old drill", "#loopLibCard296"],
       ["Now in chapter", "now in chapter current chapter name now playing which part section live position seek bar restart community", "#chapNow408"],
+      ["QR for handoff", "qr handoff continue another device scan code phone laptop tv move watching queue position camera", "#handoffQr410"],
       ["Share at this speed", "share at this speed link plays video current speed 1.5x 2x pace send friend lecture tutorial watch faster slower", "#speedLink409"],
       ["Saved lyrics library", "saved lyrics library all songs words every video play sing along list", "#lyricLibCard377"],
       ["Saved moments library", "saved moments library all marked videos every video bookmarks spots list jump first moment", "#momLibCard378"],
