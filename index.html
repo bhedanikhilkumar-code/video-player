@@ -34992,8 +34992,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ACTS.forEach(function (a) {
         var k = map[a[0]]; if (!k) return; any = true;
         var c = document.createElement("button"); c.type = "button"; c.className = "chip";
-        c.textContent = k.toUpperCase() + " = " + T(a[1]) + " \u00d7";
-        c.setAttribute("aria-label", T("Remove") + " " + k.toUpperCase() + " " + T(a[1]));
+        // Round 405 fix 2: the chip uppercased every key, so v and Shift+V (two
+        // different bindings the picker happily keeps) both read "V =" and only one
+        // of them could be told apart by its action. Letters bound with Shift now
+        // read "Shift+X"; plain letters stay uppercase as before.
+        var keyLab405 = /^[A-Z]$/.test(k) ? "Shift+" + k : k.toUpperCase();
+        c.textContent = keyLab405 + " = " + T(a[1]) + " \u00d7";
+        c.setAttribute("aria-label", T("Remove") + " " + keyLab405 + " " + T(a[1]));
         c.addEventListener("click", function () { delete prefs.xkeys280[a[0]]; savePrefs(); paint(); toast(T("Key removed.")); });
         list.appendChild(c);
       });
@@ -35028,7 +35033,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         if (xkReserved280(k)) { toast(T("That key is already used by the app.")); return; }
         Object.keys(prefs.xkeys280).forEach(function (a) { if (prefs.xkeys280[a] === k) delete prefs.xkeys280[a]; });
         prefs.xkeys280[act404] = k; savePrefs(); paint();
-        toast(k.toUpperCase() + " " + T("now runs") + " " + name404 + ".");
+        toast((/^[A-Z]$/.test(k) ? "Shift+" + k : k.toUpperCase()) + " " + T("now runs") + " " + name404 + ".");
     }
     setB.addEventListener("click", function () {
       if (armed404) return;
