@@ -9789,6 +9789,15 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       else if (k === ",") { var lpFb384 = $("lpFrameBack"); if (lpFb384) lpFb384.click(); }
       else if (k === ".") { var lpFn384 = $("lpFrameNext"); if (lpFn384) lpFn384.click(); }
       else lpH = false;
+      // Round 403 fix 1: your own keys answer while a file plays too. Round 384 fix 1's
+      // swallow below eats every leftover single-character key so a stray letter cannot
+      // touch the YouTube video behind the file - but it also ate custom keys, so the
+      // speed and sleep keys (round 401) went silent with a file in front (seen live:
+      // speed bound to V, file playing, V did nothing while M muted). Unhandled keys
+      // now offer themselves to xkeyRun280 first; it only runs the player-aware
+      // actions here (speed, sleep) and says false for the rest, so the swallow still
+      // protects the hidden YouTube video exactly as before.
+      if (!lpH && k && k.length === 1 && typeof xkeyRun280 === "function" && xkeyRun280(k)) lpH = true;
       if (lpH) { e.preventDefault(); return; }
       // Round 384 fix 1: a key the local player does not use used to fall through to the
       // YouTube handlers below and act on the hidden video behind the file - R silently
@@ -34885,6 +34894,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var map = prefs.xkeys280 || {}, act = null;
     Object.keys(map).forEach(function (a) { if (map[a] === k) act = a; });
     if (!act) return false;
+    // Round 403 fix 1: with a local file in front, only the player-aware actions run
+    // here - speed and sleep already route to the file themselves; the rest belong to
+    // the YouTube player and must not fire on it hidden behind the file.
+    var lpv403 = $("lpVideo"), lpOn403 = !!(lpv403 && !lpv403.hidden && lpv403.src && !(playing && ready));
+    if (lpOn403 && act !== "speed" && act !== "sleep") return false;
     if (act === "speed") { vpSpeedCycle401(); return true; }
     if (act === "sleep") { vpSleepCycle401(); return true; }
     if (act === "fav") { if (curId) toggleFav(curId); else toast(T("Load a video first.")); return true; }
