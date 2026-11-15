@@ -13057,8 +13057,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // matched nothing at all. Words, leave-out words, quoted phrases and the operator
       // spellings are all lowercased at parse time now.
       var wl = w.toLowerCase();
-      var om = /^(-?)((?:is|has):(?:fav|favs|favourite|favourites|favorite|favorites|later|queued|queue|new|played|note|notes|short|long|moment|moments|rated|snoozed|snooze|pinned|pin|reason|reasons|loop|loops|lyrics|lyric|photo|photos))$/.exec(wl);
-      if (om) { r.ops.push(om[1] + om[2].replace(/(avourites|avorites|avourite|avorite|avs)$/, "av").replace(/s$/, "").replace("queued", "queue").replace(/^is:snooze$/, "is:snoozed").replace(/^is:pin$/, "is:pinned")); continue; }
+      var om = /^(-?)((?:is|has):(?:fav|favs|favourite|favourites|favorite|favorites|later|queued|queue|new|played|note|notes|short|long|moment|moments|rated|snoozed|snooze|pinned|pin|reason|reasons|loop|loops|lyrics|lyric|photo|photos|voice|voices|timed|tnote|tnotes))$/.exec(wl);
+      if (om) { r.ops.push(om[1] + om[2].replace(/(avourites|avorites|avourite|avorite|avs)$/, "av").replace(/s$/, "").replace("queued", "queue").replace(/^is:snooze$/, "is:snoozed").replace(/^is:pin$/, "is:pinned").replace(/^has:tnote$/, "has:timed")); continue; }
       // Round 286 new 2: channel:word (and -channel:word to leave one out) filters by the
       // channel the app has learned for each video.
       var cm286 = /^(-?)channel:(\S+)$/.exec(wl);
@@ -13088,6 +13088,30 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var ph = vphotoMapCache379[id];
     return !!(ph && typeof ph.d === "string" && ph.d.length > 0);
   }
+  // Round 389 new 1: has:voice and has:timed join the operators. Voice notes (round 294,
+  // vp-vnotes.v1) and timed notes (round 306, vp-tnotes306.v1) each have their own library
+  // card (rounds 380 and 382) and Find everywhere (round 388) matches their words, but from
+  // a long backlog there was no way to pull just the videos you recorded a memo on, or the
+  // ones holding timestamped notes, into one filtered list - the gap has:photo (round 379)
+  // closed for photo notes. Both stores sit outside this scope, so they are read through
+  // the same raw-string cache is:rated and has:photo use, re-parsed only when the stored
+  // text changes. has:voices, has:tnote and has:tnotes fold onto the two spellings above.
+  var vnoteRawCache389 = null, vnoteMapCache389 = {};
+  function hasVoice389(id) {
+    var raw = "";
+    try { raw = localStorage.getItem("vp-vnotes.v1") || ""; } catch (e) {}
+    if (raw !== vnoteRawCache389) { vnoteRawCache389 = raw; try { vnoteMapCache389 = JSON.parse(raw || "{}") || {}; } catch (e) { vnoteMapCache389 = {}; } }
+    var vn389 = vnoteMapCache389[id];
+    return !!(vn389 && typeof vn389.d === "string" && vn389.d.length > 0);
+  }
+  var tnoteRawCache389 = null, tnoteMapCache389 = {};
+  function hasTimed389(id) {
+    var raw = "";
+    try { raw = localStorage.getItem("vp-tnotes306.v1") || ""; } catch (e) {}
+    if (raw !== tnoteRawCache389) { tnoteRawCache389 = raw; try { tnoteMapCache389 = JSON.parse(raw || "{}") || {}; } catch (e) { tnoteMapCache389 = {}; } }
+    var tn389 = tnoteMapCache389[id];
+    return Array.isArray(tn389) && tn389.length > 0;
+  }
   function sqOps259(id, ops) {
     for (var i = 0; i < ops.length; i++) {
       var o = ops[i], ok, neg = o.charAt(0) === "-"; if (neg) o = o.slice(1);
@@ -13113,6 +13137,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // photos live in vp-vphotos.v1 outside this scope, so like is:rated they are read
       // through a raw-string cache that re-parses only when the stored value changes.
       else if (o === "has:photo") ok = hasPhoto379(id);
+      else if (o === "has:voice") ok = hasVoice389(id);
+      else if (o === "has:timed") ok = hasTimed389(id);
       else ok = typeof notes !== "undefined" && notes && typeof notes[id] === "string" && notes[id].trim() !== "";
       if (neg ? ok : !ok) return false;
     }
@@ -30249,16 +30275,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Search has:lyrics": ["\u0916\u094b\u091c has:lyrics", "\u0ab6\u0acb\u0aa7 has:lyrics"]
   });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search has:lyrics", "#sqTip259"); }, 1480); });
+  Object.assign(TR_MSG, { "Search has:voice and has:timed": ["खोज has:voice और has:timed", "શોધ has:voice અને has:timed"] });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search has:voice and has:timed", "#sqTip259"); }, 1520); });
   // Search operators tip (round 259 new 2): one line under the library search box that lists
   // the operators; Hindi and Gujarati text, feature finder included.
   Object.assign(TR_MSG, {
-    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, channel:name": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, channel:नाम", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, channel:નામ"]
+    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, has:voice, has:timed, channel:name": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, has:voice, has:timed, channel:नाम", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, has:voice, has:timed, channel:નામ"]
   });
   (function () {
     var m = $("libSearchMsg"); if (!m || !m.parentNode) return;
     var tip = document.createElement("span"); tip.className = "hint"; tip.id = "sqTip259"; tip.style.cssText = "display:block;margin-top:4px";
     m.parentNode.insertBefore(tip, m.nextSibling);
-    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, channel:name"); }
+    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, has:voice, has:timed, channel:name"); }
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
@@ -49858,7 +49886,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Bookmark folders as playlists", "bookmark folders playlists import browser bookmarks make a playlist for each folder organise sorted", "#bmCard"],
       ["Export as browser bookmarks", "export browser bookmarks bookmarks.html chrome safari firefox edge save queue favourites watch later playlists folders backup", "#bmExpCard"],
       ["Skip parts", "skip parts segments ad read recap middle cut jump over sponsor boring stretch mark start end per video skip intro outro", "#skipPartsCard"],
-      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played is:short is:long short long under a minute over ten minutes duration has:note has:moment moments is:rated rated stars is:snoozed snoozed sleeping is:pinned pinned pin has:reason reason why saved has:loop loops saved loop practice a-b channel:name by channel from one channel has:lyrics lyrics saved words song lines has:photo photo note attached picture snap advanced library search narrow", "#sqTip259"],
+      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played is:short is:long short long under a minute over ten minutes duration has:note has:moment moments is:rated rated stars is:snoozed snoozed sleeping is:pinned pinned pin has:reason reason why saved has:loop loops saved loop practice a-b channel:name by channel from one channel has:lyrics lyrics saved words song lines has:photo photo note attached picture snap has:voice voice note recorded memo audio has:timed timed notes timestamped tnote advanced library search narrow", "#sqTip259"],
       ["Activity log", "activity log history of changes what was added removed queue watch later favourites where did it go timeline recent changes", "#activityCard"],
       ["Speed ramp", "speed ramp ease up faster gradually raise playback speed every minutes lecture podcast step 1.25 1.5 2x training", "#rampCard"],
       ["Saved searches", "saved searches save search keep pin favourite query operators is:later chips repeat run again library", "#ssRow"],
