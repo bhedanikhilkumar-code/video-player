@@ -49376,6 +49376,56 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     window.__vpOpenWith450 = true;
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Open files with the app", "#lp"); }, 6920); });
   })();
+  // Round 456 new 1: Start over and Queue on the top "Continue where you left off"
+  // card. Round 452 put both actions on every Continue watching row, but the banner
+  // under the link field - the first thing a returning viewer sees - still offered
+  // only Continue and dismiss: rewatching yesterday's half-finished video from the
+  // top meant resuming it and dragging the seek bar to 0:00 by hand, and lining it
+  // up behind the playing video meant opening it first. The card now carries the
+  // same two actions: Start over plays from 0:00 (Undo brings the saved second
+  // back) and Queue adds the video behind the playing one without opening it,
+  // skipping a duplicate and respecting the 50-video cap. The buttons only act
+  // while the card is up (resumeRec is set exactly then) and re-translate on every
+  // language switch. Hindi and Gujarati text, feature finder and What's new
+  // included.
+  Object.assign(TR_MSG, {
+    "Start over or queue from the resume card": ["जारी रखने वाले कार्ड से शुरू से चलाएं या कतार में डालें", "ચાલુ રાખવાના કાર્ડ પરથી શરૂઆતથી ચલાવો કે કતારમાં નાખો"]
+  });
+  (function () {
+    var box456 = $("resumeBox"); if (!box456) return;
+    var row456 = box456.querySelector(".row"); if (!row456) return;
+    var so456 = document.createElement("button"); so456.type = "button"; so456.className = "chip"; so456.id = "resumeStart456";
+    var q456 = document.createElement("button"); q456.type = "button"; q456.className = "chip"; q456.id = "resumeQueue456";
+    row456.insertBefore(so456, $("resumeX") || null);
+    row456.insertBefore(q456, $("resumeX") || null);
+    function paint456() {
+      so456.textContent = "\u21BA " + T("Start over");
+      q456.textContent = "+ " + T("Queue");
+      var t456 = (resumeRec && (resumeRec.title || resumeRec.id)) || "";
+      so456.setAttribute("aria-label", T("Start over") + (t456 ? ": " + t456 : ""));
+      q456.setAttribute("aria-label", T("Queue") + (t456 ? ": " + t456 : ""));
+    }
+    so456.addEventListener("click", function () {
+      var r = resumeRec; box456.hidden = true; if (!r || !r.id) return;
+      linkInput.value = "https://youtu.be/" + r.id;
+      try { localStorage.removeItem(RK); } catch (e) {}
+      var qi = findIn(lib.queue, r.id);
+      loadVideo(0, null, qi >= 0 ? qi : undefined, true);
+      toastUndo(T("Playing from the beginning"), function () { try { localStorage.setItem(RK, JSON.stringify(r)); } catch (e2) {} }, T("Position restored"));
+    });
+    q456.addEventListener("click", function () {
+      var r = resumeRec; if (!r || !r.id) return;
+      if (findIn(lib.queue, r.id) >= 0) { toast(T("Already in the queue")); return; }
+      if (lib.queue.length >= 50) { toast(T("The queue is full at 50 videos.")); return; }
+      lib.queue.push({ id: r.id, title: r.title || titleFor(r.id) });
+      saveLib(); renderLib();
+      toastUndo(T("Added to queue"), function () { var qi2 = findIn(lib.queue, r.id); if (qi2 >= 0) { lib.queue.splice(qi2, 1); saveLib(); renderLib(); } }, T("Removed from queue"));
+    });
+    (window.__relang = window.__relang || []).push(paint456);
+    paint456();
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Start over or queue from the resume card", "#resumeBox"); }, 7120); });
+  })();
+
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -53867,6 +53917,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     var FEATS = [
       ["Compact mini player", "mini player compact smaller tiny shrink collapse short dock floating less space phone screen video keeps playing one row", "#miniSizeBtn304"],
+      ["Start over or queue from the resume card", "resume continue where you left off start over beginning queue top banner card rewatch from zero line up", "#resumeBox"],
       ["Start over or queue from Continue watching", "start over queue continue watching row rewatch from beginning zero play again line up behind current add to queue without opening", "#continueWrap"],
       ["Open files with the app", "open with installed app pwa right click file video audio default player file handler launch device queue", "#lp"],
       ["One tab at a time", "one tab at a time another tab window pause two videos playing together second window pwa broadcast", "#oneTabCard450"],
