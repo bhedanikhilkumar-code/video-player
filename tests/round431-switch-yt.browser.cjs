@@ -28,7 +28,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#switchStart431').click();await page.keyboard.press('Space');
     await playerFrame.waitForFunction(()=>window.testCommands431.some(m=>m.func==='pauseVideo'));
     await page.waitForFunction(()=>document.querySelector('.switch-cell431[data-current="true"]').textContent.includes('Back'),null,{timeout:2500});
-    await page.keyboard.press('Space');assert.ok(await playerFrame.evaluate(()=>window.testCommands431.some(m=>m.func==='seekTo'&&m.args[0]===0)));
+    await page.keyboard.press('Space');await playerFrame.waitForFunction(()=>window.testCommands431.some(m=>m.func==='seekTo'&&m.args[0]===0));
     await page.locator('#switchStop431').click();
     await page.setViewportSize({width:390,height:844});
     for(const lang of ['en','hi','gu']){
