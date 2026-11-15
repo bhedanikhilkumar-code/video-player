@@ -49270,7 +49270,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // is reachable); it plays through this one bridge so the real show() path is used.
   window.__lpShowUrl303 = function (u) { try { if (!window.vpPlayUrl) return false; window.vpPlayUrl(u); return true; } catch (e) { return false; } };
   var posKey = null, lastPos = 0;
-  var localFiles = [], localIndex = -1, session = "mediaSession" in navigator ? navigator.mediaSession : null;
+  var localFiles = [], localIndex = -1, localSessionOwned443 = false, session = "mediaSession" in navigator ? navigator.mediaSession : null;
   var sessionMsg = $("lpSessionMsg");
   var T = window.T || function (x) { return x; };
   (function () {
@@ -49325,7 +49325,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if (lp.lshuffle) return localFiles.length > 1;
     return !!lp.lrepeat || (n < 0 ? localIndex > 0 : localIndex < localFiles.length - 1);
   }
-  function updateLocalButtons() { $("lpPrev").disabled = !localCanStep443(-1); $("lpNext").disabled = !localCanStep443(1); renderLocalQueue(); }
+  function updateLocalButtons() { $("lpPrev").disabled = !localCanStep443(-1); $("lpNext").disabled = !localCanStep443(1); syncLocalTrackActions443(); renderLocalQueue(); }
   function renderLpModes() {
     [["lpShuffleBtn", "lshuffle", "Shuffle"]].forEach(function (x) {
       var b = $(x[0]); if (!b) return;
@@ -49540,12 +49540,17 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       session.metadata = new MediaMetadata({ title: localIndex >= 0 && localFiles[localIndex] ? localFiles[localIndex].name : "Local media", artist: "HD Video Player", artwork: [{ src: url, sizes: w + "x" + h, type: "image/jpeg" }] });
     } catch (e) {}
   }
+  function syncLocalTrackActions443() {
+    if (!localSessionOwned443) return;
+    mediaAction("previoustrack", localCanStep443(-1) ? function(){localStep(-1);} : null);
+    mediaAction("nexttrack", localCanStep443(1) ? function(){localStep(1);} : null);
+  }
   function claimLocalSession() {
-    if (!session) return;
+    // A queued play event may arrive after Pause or a source switch.
+    if (!session || vid.paused || vid.hidden || !vid.getAttribute("src")) return;
     if (window.MediaMetadata) session.metadata = new MediaMetadata({title: localIndex >= 0 && localFiles[localIndex] ? localFiles[localIndex].name : "Local media", artist:"HD Video Player"});
     mediaAction("play",localPlay); mediaAction("pause",function(){vid.pause();});
-    mediaAction("previoustrack",localIndex > 0 ? function(){localStep(-1);} : null);
-    mediaAction("nexttrack",localIndex >= 0 && localIndex < localFiles.length-1 ? function(){localStep(1);} : null);
+    localSessionOwned443 = true; syncLocalTrackActions443();
     mediaAction("seekbackward",function(d){vid.currentTime=Math.max(0,vid.currentTime-(d.seekOffset||10));});
     mediaAction("seekforward",function(d){if(isFinite(vid.duration))vid.currentTime=Math.min(vid.duration,vid.currentTime+(d.seekOffset||10));});
     mediaAction("seekto",function(d){if(isFinite(d.seekTime) && isFinite(vid.duration))vid.currentTime=Math.max(0,Math.min(vid.duration,d.seekTime));});
@@ -49559,7 +49564,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   vid.addEventListener("pause",function(){if(session)session.playbackState="paused";});
   vid.addEventListener("ended",function(){if(window.__vpSleepStopped300){window.__vpSleepStopped300=false;if(session)session.playbackState="none";return;}if(typeof loopB!=="undefined" && loopB!==null)return;if(lp.lrepeat===2&&localFiles.length&&localIndex>=0){vid.currentTime=0;localPlay();}else if(lp.lshuffle&&localFiles.length>1)localStep(1);else if(localIndex>=0&&localIndex<localFiles.length-1)localStep(1);else if(lp.lrepeat&&localFiles.length)playLocalAt(0,true);else if(session)session.playbackState="none";});
   vid.addEventListener("error",function(){sessionMsg.textContent=T("This file could not be played. Try a format your browser supports or choose Next file.");});
-  document.addEventListener("vp-youtube-selected",function(){vid.pause(); if(session) {session.metadata=null;session.playbackState="none";["play","pause","previoustrack","nexttrack","seekbackward","seekforward","seekto"].forEach(function(n){mediaAction(n,null);});}});
+  document.addEventListener("vp-youtube-selected",function(){localSessionOwned443=false;vid.pause(); if(session) {session.metadata=null;session.playbackState="none";["play","pause","previoustrack","nexttrack","seekbackward","seekforward","seekto"].forEach(function(n){mediaAction(n,null);});}});
   vid.addEventListener("loadedmetadata", function () {
     if (!posKey) return;
     try { var m = JSON.parse(localStorage.getItem(PK) || "{}"), t = m[posKey]; if (t > 5 && t < vid.duration - 10) vid.currentTime = t; } catch (e) {}
@@ -50419,7 +50424,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   }
   vid.addEventListener("pause",saveLocalPositionNow);window.addEventListener("pagehide",saveLocalPositionNow);
   $("lpClose").addEventListener("click",function(){
-    saveLocalPositionNow();vid.pause();
+    localSessionOwned443=false;saveLocalPositionNow();vid.pause();
     if(document.pictureInPictureElement===vid&&document.exitPictureInPicture)document.exitPictureInPicture().catch(function(){});
     clearSub();subMsg.textContent="";subFile.value="";
     thumbVid.pause();thumbVid.removeAttribute("src");thumbVid.load();thumbOk=false;lpThumb.hidden=true;lpSeekWrap.hidden=true;
@@ -50616,7 +50621,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
   window.vpPlayUrl = function (url, key) {
-    saveLocalPositionNow(); cancelSoft346(); origPause283();
+    localSessionOwned443=false;saveLocalPositionNow(); cancelSoft346(); origPause283();
     localFiles = []; localIndex = -1; lpPickCount = 0; file.value = ""; lpPickPaint(); updateLocalButtons();
     posKey = typeof key === "string" && key ? key : null;
     if (session) { session.metadata = null; session.playbackState = "none"; ["play", "pause", "previoustrack", "nexttrack", "seekbackward", "seekforward", "seekto"].forEach(function (name) { mediaAction(name, null); }); }
