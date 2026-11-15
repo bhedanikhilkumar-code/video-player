@@ -37056,7 +37056,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var privHint = $("privHint"); if (!privHint || !privHint.parentNode) return;
     var KEY = "vp-lock288.v1";
     function readLock() { try { var m = JSON.parse(localStorage.getItem(KEY) || "null"); return (m && typeof m.s === "string" && typeof m.h === "string") ? m : null; } catch (e) { return null; } }
-    function writeLock(m) { try { if (m) localStorage.setItem(KEY, JSON.stringify(m)); else localStorage.removeItem(KEY); } catch (e) {} }
+    function writeLock(m) { try { if (m) localStorage.setItem(KEY, JSON.stringify(m)); else localStorage.removeItem(KEY); return true; } catch (e) { toast(T("Could not update app lock. Device storage is unavailable.")); return false; } }
     function hash(salt, pin) {
       var str = salt + ":" + pin, h = 0x811c9dc5;
       for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = (h * 0x01000193) >>> 0; }
@@ -37177,10 +37177,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (!/^\d{4,6}$/.test(a)) { toast(T("PIN needs 4 to 6 digits.")); return; }
       if (a !== b) { toast(T("The two PINs do not match.")); return; }
       var salt = String(Date.now()) + "-" + Math.random().toString(36).slice(2, 8);
-      writeLock({ s: salt, h: hash(salt, a) });
+      if (!writeLock({ s: salt, h: hash(salt, a) })) return;
       panel.hidden = true; clearSetup347(); paint(); toast(T("PIN saved. The app will ask for it on every open."));
     });
-    rmBtn.addEventListener("click", function () { writeLock(null); panel.hidden = true; clearSetup347(); paint(); toast(T("PIN removed.")); });
+    rmBtn.addEventListener("click", function () { if (!writeLock(null)) return; panel.hidden = true; clearSetup347(); paint(); toast(T("PIN removed.")); });
     nowBtn.addEventListener("click", lockNow);
     (window.__relang = window.__relang || []).push(paint);
     var stl = document.createElement("style");
@@ -37193,6 +37193,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       + "html.calm-motion .vp-lock-no .vp-lock-card,html.low-fx .vp-lock-no .vp-lock-card{animation:none}";
     document.head.appendChild(stl);
     Object.assign(TR_MSG, {
+      "Could not update app lock. Device storage is unavailable.": ["ऐप लॉक नहीं बदल सके. डिवाइस स्टोरेज उपलब्ध नहीं है.", "એપ લૉક બદલી શક્યા નહીં. ડિવાઇસ સ્ટોરેજ ઉપલબ્ધ નથી."],
       "Lock an idle paused session": ["खाली पड़े रुके सेशन को लॉक करें", "નિષ્ક્રિય અટકેલું સેશન લૉક કરો"],
       "Locks after no touch, typing, scrolling or playback. Watching or listening never counts as idle. Checked about every 15 seconds while this page is visible.": ["टच, टाइपिंग, स्क्रॉल या प्लेबैक न होने पर लॉक होता है. वीडियो देखना या सुनना निष्क्रिय नहीं माना जाता. पेज दिखते समय लगभग हर 15 सेकंड में जाँच होती है.", "ટચ, ટાઇપિંગ, સ્ક્રોલ કે પ્લેબેક ન હોય ત્યારે લૉક થાય છે. વીડિયો જોવો કે સાંભળવો નિષ્ક્રિય ગણાતો નથી. પેજ દેખાતું હોય ત્યારે આશરે દર 15 સેકન્ડે તપાસ થાય છે."],
       "After 5 idle minutes": ["5 निष्क्रिय मिनट बाद", "5 નિષ્ક્રિય મિનિટ પછી"],
