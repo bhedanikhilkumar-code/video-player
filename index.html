@@ -4503,7 +4503,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (qTPos >= 0 && qTPos < lib.queue.length && curId && lib.queue[qTPos] && lib.queue[qTPos].id === curId && curTime > 0) {
       var dCur = infoCache[curId] && infoCache[curId].dur;
       if (!(typeof dCur === "number" && dCur > 0)) { var hiC = findIn(lib.hist, curId); if (hiC >= 0 && typeof lib.hist[hiC].dur === "number" && lib.hist[hiC].dur > 0) dCur = lib.hist[hiC].dur; }
-      if (typeof dCur === "number" && dCur > 0) secs = Math.max(0, secs - Math.min(Math.floor(curTime), dCur));
+      if (typeof dCur === "number" && dCur > 0) {
+        secs = Math.max(0, secs - Math.min(Math.floor(curTime), dCur));
+        // Round 461 fix: a "play N times" countdown on the playing video adds whole
+        // passes the queue total never counted, so its "ends ~" clock landed early.
+        if (typeof vidRepN === "number" && vidRepN > 1) secs += (vidRepN - 1) * dCur;
+      }
     }
     var sp = prefs.speed > 0 ? prefs.speed : 1;
     var txt = lib.queue.length + " " + T(lib.queue.length === 1 ? "video in queue" : "videos in queue");
@@ -8449,6 +8454,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (!curId || !(duration > 0)) { endsAtEl.hidden = true; endsAtEl.textContent = ""; return; }
     if (vpLoopingForever461()) { endsAtEl.textContent = T("Looping - plays until you stop it"); endsAtEl.hidden = false; return; }
     var left = Math.max(0, (duration - (t || 0)) / (prefs.speed > 0 ? prefs.speed : 1));
+    // Round 461 fix: "Repeat this video N times" (round 208) replays the video after it
+    // ends, but the clock named the end of THIS pass only - "play 3 times" of a 3:33
+    // song read "Ends at 5:16 am" when the last pass really ends ~7 minutes later.
+    // Add the whole passes still owed after this one (vidRepN counts the current pass).
+    if (typeof vidRepN === "number" && vidRepN > 1) left += (vidRepN - 1) * duration / (prefs.speed > 0 ? prefs.speed : 1);
     var d = new Date(Date.now() + left * 1000);
     // Round 253 fix 2: the Ends at clock formatted itself with hardcoded English AM/PM,
     // ignoring the app language (and saying nothing when a long video would finish past
@@ -8577,6 +8587,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       b.textContent = n === 0 ? T("Off") : n + "x";
       b.addEventListener("click", function () {
         vidRepN = n; renderVidRep();
+        // Round 461 fix: the finish clocks count the repeat passes now, so repaint them
+        // with the chip instead of up to 20 seconds late.
+        if (typeof paintEndsAt === "function") paintEndsAt(typeof curTime === "number" ? curTime : 0);
+        if (typeof updateQueueTime === "function") updateQueueTime();
         toast(n === 0 ? T("Video repeat off") : T("Video will play {n} times in all").replace("{n}", n));
       });
       vidRepChips.appendChild(b);
@@ -12831,6 +12845,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var cur = lib.queue[sPos], dCur = cur ? queueRowDur(cur.id) : 0;
       if (dCur > 0) {
         if (curId && cur.id === curId && curTime > 0) dCur = Math.max(0, dCur - Math.min(Math.floor(curTime), dCur));
+        // Round 461 fix: whole repeat passes still owed on the playing video push every
+        // later row's "starts ~" clock; count them like the queue total now does.
+        if (typeof vidRepN === "number" && vidRepN > 1 && curId && cur.id === curId) dCur += (vidRepN - 1) * queueRowDur(cur.id);
         acc += dCur;
       } else known = false;
     } else if (curId) {
