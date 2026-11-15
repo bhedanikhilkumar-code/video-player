@@ -48862,6 +48862,26 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       localStorage.setItem(RECKEY, JSON.stringify(r.slice(0, 5)));
     } catch (e) {}
   }
+  // Round 371 new 1: Pinned actions in Search. Recently used (round 368) guesses what
+  // you want from habit, but the one toggle you reach for every single day (theme, a
+  // practice tool, a section) still moved around as other picks pushed it down. Every
+  // row now carries a small pin: tap it (or press Shift+Enter on the highlighted row)
+  // and the action stays on top of the empty Search box under its own Pinned group, in
+  // the order you pinned it, until you unpin it. Up to 8, remembered on this device
+  // only (vp-pal-pins.v1) by the same language-proof stable keys as fix 1 above.
+  // Checked first: pinning exists for playlists, queue rows and list rows, but nothing
+  // let you choose what sits on top of Search - Recently used only mirrors habit.
+  var PINKEY = "vp-pal-pins.v1";
+  function readPins() { try { var p = JSON.parse(localStorage.getItem(PINKEY) || "[]"); return Array.isArray(p) ? p.filter(function (x) { return typeof x === "string"; }).slice(0, 8) : []; } catch (e) { return []; } }
+  function isPinnedKey(k) { return !!k && readPins().indexOf(k) >= 0; }
+  function togglePin(it) {
+    if (!it || !it.key) return;
+    var p = readPins(), i = p.indexOf(it.key);
+    if (i >= 0) { p.splice(i, 1); }
+    else { if (p.length >= 8) { if (window.toast) window.toast(T("Up to 8 pinned actions.")); return; } p.push(it.key); }
+    try { localStorage.setItem(PINKEY, JSON.stringify(p)); } catch (e) {}
+    render();
+  }
 
   function buildItems() {
     var out = [];
@@ -48924,6 +48944,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var FEATS = [
       ["Language on the first open", "language first open pick choose hindi gujarati english welcome new visitor onboarding start fresh install", "#langBtn"],
       ["Recently used in Search", "recently used in search recent actions last picks again repeat ctrl k palette history top", "#palBtn"],
+      ["Pinned actions in Search", "pinned actions in search pin favourite star keep on top always first ctrl k palette bookmark daily", "#palBtn"],
       ["App font choice", "app font typeface letters style serif rounded monospace reading accessibility text look change", "#uiFontRow359"],
       ["Downloads finished alert", "downloads finished alert notification batch done tell me away background tab queue bell", "#dlQAlertBtn355"],
       ["Playback ended alert", "playback ended alert queue finished video ended notification tell me away background tab music bell", "#qEndAlertBtn355"],
@@ -49869,7 +49890,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       "Import an .m3u playlist": "\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f playlist",
       "Save a playlist as .m3u": "\u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f playlist",
       "Search operators": "\u0916\u094b\u091c \u0ab6\u0acb\u0aa7 khoj shodh",
-      "Saved searches": "\u0916\u094b\u091c \u0ab6\u0acb\u0aa7 khoj shodh"
+      "Saved searches": "\u0916\u094b\u091c \u0ab6\u0acb\u0aa7 khoj shodh",
+      "Pinned actions in Search": "\u092a\u093f\u0928 \u0aaa\u0abf\u0aa8 pin"
     };
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
@@ -49891,11 +49913,17 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var q = (input.value || "").trim().toLowerCase();
     shown = items.filter(function (it) { return !q || it.label.toLowerCase().indexOf(q) >= 0 || (it.kw && it.kw.indexOf(q) >= 0); });
     if (!q) {
+      var pitems = [];
+      readPins().forEach(function (k) {
+        var m = items.filter(function (it) { return it.key === k; })[0];
+        if (m && pitems.indexOf(m) < 0) pitems.push({ label: m.label, group: "Pinned", run: m.run, key: m.key });
+      });
       var ritems = [];
       readRec().forEach(function (m) {
-        if (ritems.indexOf(m) < 0) ritems.push({ label: m.label, group: "Recently used", run: m.run, key: m.key });
+        if (ritems.indexOf(m) < 0 && pitems.every(function (p) { return p.key !== m.key; })) ritems.push({ label: m.label, group: "Recently used", run: m.run, key: m.key });
       });
       if (ritems.length) shown = ritems.concat(shown);
+      if (pitems.length) shown = pitems.concat(shown);
     }
     if (act > shown.length - 1) act = shown.length - 1;
     if (act < 0) act = 0;
@@ -49921,7 +49949,21 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       d.className = "vp-pal-item";
       d.id = "vpPalItem" + i;
       d.setAttribute("role", "option");
-      d.textContent = it.label;
+      var sp = document.createElement("span");
+      sp.textContent = it.label;
+      d.appendChild(sp);
+      if (it.key) {
+        var pb = document.createElement("button");
+        pb.type = "button";
+        pb.className = "vp-pal-pin";
+        var pnon = isPinnedKey(it.key);
+        pb.textContent = pnon ? "\uD83D\uDCCC" : "\u2606";
+        pb.setAttribute("aria-label", T(pnon ? "Unpin this action" : "Pin this action"));
+        pb.setAttribute("aria-pressed", pnon ? "true" : "false");
+        pb.title = T(pnon ? "Unpin this action" : "Pin this action");
+        pb.addEventListener("click", function (e) { e.stopPropagation(); togglePin(it); });
+        d.appendChild(pb);
+      }
       d.addEventListener("click", function () { pick(i); });
       list.appendChild(d);
     });
@@ -49970,6 +50012,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     input.addEventListener("keydown", function (e) {
       if (e.key === "ArrowDown") { e.preventDefault(); e.stopPropagation(); if (act < shown.length - 1) { act++; paint(); } }
       else if (e.key === "ArrowUp") { e.preventDefault(); e.stopPropagation(); if (act > 0) { act--; paint(); } }
+      else if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); e.stopPropagation(); if (shown[act]) togglePin(shown[act]); }
       else if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); pick(act); }
       else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
     });
@@ -50026,6 +50069,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
   }
   window.__vpPalette = { open: open, close: close };
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Recently used in Search", "#palBtn"); }, 1650); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Pinned actions in Search", "#palBtn"); }, 1700); });
 })();
 </script>
 <script>
