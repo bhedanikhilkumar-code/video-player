@@ -51732,7 +51732,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
             if (perm !== "granted") { play.disabled = false; say(T("Permission was not given, so the file cannot be re-opened.")); return; }
             r.handle.getFile().then(function (f) {
               play.disabled = false;
-              if (window.vpPlayUrl) { window.vpPlayUrl(URL.createObjectURL(f), f.name + "|" + f.size); say(T("Playing") + " \"" + f.name + "\"."); }
+              // Open a real File, not an anonymous URL: filename, per-file memory,
+              // local queue, file info and Media Session all use the normal file path.
+              if (window.vpOpenFiles && window.vpOpenFiles([f])) {
+                say(T("Source opened. Press Play if playback does not start.") + " " + f.name);
+                if(window.vpExpandSection)window.vpExpandSection("lp");
+                $("lp").scrollIntoView({behavior:window.vpReducedMotion()?"auto":"smooth"});
+              }
             }, function () { play.disabled = false; say(T("The file is gone or was moved. Pick it again.")); });
           }, function () { play.disabled = false; say(T("The file is gone or was moved. Pick it again.")); });
         });
