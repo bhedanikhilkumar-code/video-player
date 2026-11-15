@@ -41455,8 +41455,21 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var anchor = $("vphotoRow298") || $("vnoteRow294"); if (!anchor || !anchor.parentNode) return;
     var TN_KEY = "vp-tnotes306.v1", tnotes = {}, openBox = false, lastVid = "";
     try { var tnIn = JSON.parse(localStorage.getItem(TN_KEY) || "null"); if (tnIn && typeof tnIn === "object" && !Array.isArray(tnIn)) tnotes = tnIn; } catch (e) {}
+    // Round 457 fix 1 (cont.): the library card (round 382) and the other readers of this store read
+    // localStorage on their own, so damaged entries are also cleaned out of the stored copy once here.
+    (function () { var dirty = false; Object.keys(tnotes).forEach(function (k) { var a = tnotes[k]; if (!Array.isArray(a)) { delete tnotes[k]; dirty = true; return; } var ok = a.filter(function (n) { return n && typeof n === "object" && typeof n.t === "number" && isFinite(n.t) && typeof n.x === "string"; }); if (ok.length !== a.length) { dirty = true; if (ok.length) tnotes[k] = ok; else delete tnotes[k]; } }); if (dirty) { try { localStorage.setItem(TN_KEY, JSON.stringify(tnotes)); } catch (e) {} } })();
     function tnSave() { try { localStorage.setItem(TN_KEY, JSON.stringify(tnotes)); try { if (window.__vpTnoteLib382) window.__vpTnoteLib382(); } catch (e2) {} return true; } catch (e) { return false; } }
-    function notesFor(id) { var a = tnotes[id]; return Array.isArray(a) ? a : []; }
+    // Round 457 fix 1: one damaged entry (null, a bare number, a note without a number time or text)
+    // in vp-tnotes306.v1 made the sort in paint306 throw "Cannot read properties of null (reading 't')",
+    // which stopped the whole main script at boot (no player at all) for that browser until storage was
+    // cleared by hand. Unusable entries are now dropped when a video's notes are read; good notes stay.
+    function notesFor(id) {
+      var a = tnotes[id]; if (!Array.isArray(a)) return [];
+      var ok = a.filter(function (n) { return n && typeof n === "object" && typeof n.t === "number" && isFinite(n.t) && typeof n.x === "string"; });
+      if (ok.length === a.length) return a;
+      if (ok.length) tnotes[id] = ok; else delete tnotes[id];
+      return ok;
+    }
     var row = document.createElement("div"); row.className = "row"; row.id = "tnoteRow306"; row.style.cssText = "margin-top:6px;flex-wrap:wrap;gap:8px;align-items:center";
     anchor.parentNode.insertBefore(row, anchor.nextSibling);
     var addB = document.createElement("button"); addB.type = "button"; addB.className = "chip"; addB.id = "tnoteAdd306"; row.appendChild(addB);
