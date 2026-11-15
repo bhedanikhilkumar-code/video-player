@@ -8432,11 +8432,21 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // showing the finish time it had when it paused - minutes or hours in the past after a break - and it
   // stayed in the old language after a language switch. It now repaints every 20 seconds (the clock moves
   // on while paused) and on every language change. Playing videos still repaint with every time update.
-  setInterval(function () { if (endsAtEl && !endsAtEl.hidden && !document.hidden) paintEndsAt(typeof curTime === "number" ? curTime : 0); }, 20000);
+  setInterval(function () {
+    if (document.hidden) return;
+    if (endsAtEl && !endsAtEl.hidden) paintEndsAt(typeof curTime === "number" ? curTime : 0);
+    // Round 460 fix: a paused video's time-left label kept the old speed's count after a
+    // speed change until playback moved it again; repaint it on the same idle clock.
+    if (prefs.timeLeft && duration > 0 && typeof seeking !== "undefined" && !seeking && !(playing && ready)) paintTime(typeof curTime === "number" ? curTime : 0);
+  }, 20000);
   (window.__relang = window.__relang || []).push(function () { if (endsAtEl && !endsAtEl.hidden) paintEndsAt(typeof curTime === "number" ? curTime : 0); });
   function paintTime(t) {
     t = t || 0;
-    if (prefs.timeLeft && duration > 0) timeLabel.textContent = "\u2212" + fmt(Math.max(0, Math.round(duration - t))) + " " + T("left");
+    // Round 460 fix: time left counted content seconds, so at 2x a video with 30:00 of
+    // content left read "-30:00 left" while it really finishes in 15:00 - and the Ends at
+    // clock right beside it (which does divide by speed) disagreed with it. Time left now
+    // means wall-clock minutes at the current speed, same as Ends at.
+    if (prefs.timeLeft && duration > 0) timeLabel.textContent = "\u2212" + fmt(Math.max(0, Math.round((duration - t) / (prefs.speed > 0 ? prefs.speed : 1)))) + " " + T("left");
     else timeLabel.textContent = fmt(t) + " / " + fmt(duration);
     paintEndsAt(t);
     if (typeof paintPct === "function") paintPct(t);
