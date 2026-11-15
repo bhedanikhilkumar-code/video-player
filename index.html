@@ -13063,6 +13063,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // channel the app has learned for each video.
       var cm286 = /^(-?)channel:(\S+)$/.exec(wl);
       if (cm286) { r.chans = r.chans || []; r.chans.push({ neg: !!cm286[1], name: cm286[2].toLowerCase() }); continue; }
+      // Round 389 new 2: tag:word (and -tag:word to leave one out) filters by a video tag
+      // (round 260). Tags label videos across every list, but until now they could only be
+      // browsed from the tags card one tag at a time - from a long Watch later backlog
+      // there was no way to pull "every video tagged exam" into the library search.
+      var tm389 = /^(-?)tag:(\S+)$/.exec(wl);
+      if (tm389) { r.tags = r.tags || []; r.tags.push({ neg: !!tm389[1], name: tm389[2].toLowerCase() }); continue; }
       if (w.length > 1 && w.charAt(0) === "-") r.not.push(w.slice(1).toLowerCase()); else r.words.push(w.toLowerCase());
     }
     sqCache259 = { q: q, r: r }; return r;
@@ -13111,6 +13117,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (raw !== tnoteRawCache389) { tnoteRawCache389 = raw; try { tnoteMapCache389 = JSON.parse(raw || "{}") || {}; } catch (e) { tnoteMapCache389 = {}; } }
     var tn389 = tnoteMapCache389[id];
     return Array.isArray(tn389) && tn389.length > 0;
+  }
+  var tagsRawCache389b = null, tagsMapCache389b = {};
+  function videoHasTag389b(id, tag) {
+    var raw = "";
+    try { raw = localStorage.getItem("vp-tags.v1") || ""; } catch (e) {}
+    if (raw !== tagsRawCache389b) { tagsRawCache389b = raw; try { tagsMapCache389b = JSON.parse(raw || "{}") || {}; } catch (e) { tagsMapCache389b = {}; } }
+    var arr = tagsMapCache389b[id];
+    if (!Array.isArray(arr)) return false;
+    for (var ti = 0; ti < arr.length; ti++) if (String(arr[ti]).toLowerCase().indexOf(tag) >= 0) return true;
+    return false;
   }
   function sqOps259(id, ops) {
     for (var i = 0; i < ops.length; i++) {
@@ -13163,6 +13179,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       for (var ci286 = 0; ci286 < p.chans.length; ci286++) {
         var chit286 = ch286 !== "" && ch286.indexOf(p.chans[ci286].name) >= 0;
         if (p.chans[ci286].neg ? chit286 : !chit286) return false;
+      }
+    }
+    // Round 389 new 2: apply the tag: filters learned from the query. Like channel:, the
+    // match is a substring of any one tag on the video, lowercased both sides.
+    if (p.tags && p.tags.length) {
+      for (var ti389 = 0; ti389 < p.tags.length; ti389++) {
+        var thit389 = videoHasTag389b(it.id, p.tags[ti389].name);
+        if (p.tags[ti389].neg ? thit389 : !thit389) return false;
       }
     }
     return true;
@@ -30277,16 +30301,18 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search has:lyrics", "#sqTip259"); }, 1480); });
   Object.assign(TR_MSG, { "Search has:voice and has:timed": ["खोज has:voice और has:timed", "શોધ has:voice અને has:timed"] });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search has:voice and has:timed", "#sqTip259"); }, 1520); });
+  Object.assign(TR_MSG, { "Search tag:name": ["खोज tag:नाम", "શોધ tag:નામ"] });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search tag:name", "#sqTip259"); }, 1530); });
   // Search operators tip (round 259 new 2): one line under the library search box that lists
   // the operators; Hindi and Gujarati text, feature finder included.
   Object.assign(TR_MSG, {
-    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, has:voice, has:timed, channel:name": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, has:voice, has:timed, channel:नाम", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, has:voice, has:timed, channel:નામ"]
+    "Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, has:voice, has:timed, channel:name, tag:name": ["खोज टिप्स: \"सटीक वाक्य\", -शब्द छोड़ने के लिए, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, has:voice, has:timed, channel:नाम, tag:नाम", "શોધ ટિપ્સ: \"ચોક્કસ વાક્ય\", -શબ્દ બાકાત કરવા, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, has:voice, has:timed, channel:નામ, tag:નામ"]
   });
   (function () {
     var m = $("libSearchMsg"); if (!m || !m.parentNode) return;
     var tip = document.createElement("span"); tip.className = "hint"; tip.id = "sqTip259"; tip.style.cssText = "display:block;margin-top:4px";
     m.parentNode.insertBefore(tip, m.nextSibling);
-    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, has:voice, has:timed, channel:name"); }
+    function paint() { tip.textContent = T("Search tips: \"exact phrase\", -word to leave out, is:fav, is:later, is:queued, is:new, is:played, is:short, is:long, has:note, has:moment, is:rated, is:snoozed, is:pinned, has:reason, has:loop, has:lyrics, has:photo, has:voice, has:timed, channel:name, tag:name"); }
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
@@ -49886,7 +49912,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Bookmark folders as playlists", "bookmark folders playlists import browser bookmarks make a playlist for each folder organise sorted", "#bmCard"],
       ["Export as browser bookmarks", "export browser bookmarks bookmarks.html chrome safari firefox edge save queue favourites watch later playlists folders backup", "#bmExpCard"],
       ["Skip parts", "skip parts segments ad read recap middle cut jump over sponsor boring stretch mark start end per video skip intro outro", "#skipPartsCard"],
-      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played is:short is:long short long under a minute over ten minutes duration has:note has:moment moments is:rated rated stars is:snoozed snoozed sleeping is:pinned pinned pin has:reason reason why saved has:loop loops saved loop practice a-b channel:name by channel from one channel has:lyrics lyrics saved words song lines has:photo photo note attached picture snap has:voice voice note recorded memo audio has:timed timed notes timestamped tnote advanced library search narrow", "#sqTip259"],
+      ["Search operators", "search operators filter exact phrase minus exclude is:fav is:later is:queued is:new is:played is:short is:long short long under a minute over ten minutes duration has:note has:moment moments is:rated rated stars is:snoozed snoozed sleeping is:pinned pinned pin has:reason reason why saved has:loop loops saved loop practice a-b channel:name by channel from one channel has:lyrics lyrics saved words song lines has:photo photo note attached picture snap has:voice voice note recorded memo audio has:timed timed notes timestamped tnote tag:name by tag labelled workout exam category advanced library search narrow", "#sqTip259"],
       ["Activity log", "activity log history of changes what was added removed queue watch later favourites where did it go timeline recent changes", "#activityCard"],
       ["Speed ramp", "speed ramp ease up faster gradually raise playback speed every minutes lecture podcast step 1.25 1.5 2x training", "#rampCard"],
       ["Saved searches", "saved searches save search keep pin favourite query operators is:later chips repeat run again library", "#ssRow"],
