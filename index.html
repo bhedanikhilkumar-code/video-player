@@ -13150,7 +13150,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var n = lib.queue.length;
     if (!n) { qProg.hidden = true; return; }
     qProg.hidden = false;
-    var cur = (qPos >= 0 && qPos < n) ? qPos + 1 : 0;
+    // Round 415 fix 2: with the video loaded from the link box, a share link or the
+    // Continue banner, qPos = -1 even when its row sits in the queue, so the bar read
+    // "0 / n" and stayed empty while a queued video was clearly playing - the same
+    // adoption hole round 411 fix 3 closed for the queue total and fix 4 for the
+    // starts-~ clocks. Find the row the same non-moving way they do.
+    var pPos = qPos;
+    if (pPos < 0 && curId) { var pIx = findIn(lib.queue, curId); if (pIx >= 0) pPos = pIx; }
+    var cur = (pPos >= 0 && pPos < n) ? pPos + 1 : 0;
     qProgFill.style.width = Math.round(cur / n * 100) + "%";
     var txt = cur + " / " + n;
     qProgTxt.textContent = txt;
