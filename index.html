@@ -47560,10 +47560,72 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var savedCard435=document.createElement('details');savedCard435.id='offlineSaved435';savedCard435.className='offline-panel435';
     savedCard435.innerHTML='<summary></summary><p class="hint" id="offlineSavedHint435"></p><label for="offlineSavedName435" id="offlineSavedLabel435"></label><div class="row"><input type="text" class="chip" id="offlineSavedName435" maxlength="80" autocomplete="off" style="width:100%;min-width:0"><button type="button" class="chip" id="offlineSavedSave435"></button></div><div id="offlineSavedRows435"></div><p id="offlineSavedStatus435" role="status" class="hint"></p>';
     sessionCard.after(savedCard435);
+    // Round 437: explicitly remap a saved session after originals were re-saved or
+    // restored on another device. No filename guessing, media writes or playback.
+    Object.assign(TR_MSG, {
+      "Repair saved session": ["सेव सत्र की फ़ाइलें जोड़ें", "સાચવેલા સત્રની ફાઇલો જોડો"],
+      "Choose a shelf copy for every position, then review before saving. Save the originals offline first if a copy is missing. Only this saved session changes; the draft, playing queue and files stay as they are.": ["हर स्थान के लिए शेल्फ़ कॉपी चुनें, फिर सेव करने से पहले जांचें. कॉपी गायब हो तो पहले मूल फ़ाइल ऑफ़लाइन सेव करें. सिर्फ यह सेव सत्र बदलेगा; ड्राफ्ट, चलती कतार और फ़ाइलें नहीं बदलेंगी.", "દરેક સ્થાન માટે શેલ્ફની નકલ પસંદ કરો, પછી સાચવતાં પહેલાં તપાસો. નકલ ગુમ હોય તો પહેલાં મૂળ ફાઇલ ઑફલાઇન સાચવો. ફક્ત આ સાચવેલું સત્ર બદલાશે; ડ્રાફ્ટ, ચાલતી કતાર અને ફાઇલો નહીં બદલાય."],
+      "Choose a replacement copy": ["बदलने के लिए कॉपी चुनें", "બદલવા માટે નકલ પસંદ કરો"],
+      "Review session repair": ["सत्र के बदलाव जांचें", "સત્રના ફેરફારો તપાસો"],
+      "Save repaired session": ["बदला सत्र सेव करें", "બદલેલું સત્ર સાચવો"],
+      "Back to file choices": ["फ़ाइल चयन पर लौटें", "ફાઇલ પસંદગી પર પાછા જાઓ"],
+      "Choose one different shelf copy per position. At least one choice must change.": ["हर स्थान पर अलग शेल्फ़ कॉपी चुनें. कम से कम एक चयन बदलना चाहिए.", "દરેક સ્થાન માટે અલગ શેલ્ફની નકલ પસંદ કરો. ઓછામાં ઓછી એક પસંદગી બદલવી જોઈએ."],
+      "Review the old and new file names below. Nothing has been changed yet.": ["नीचे पुराने और नए फ़ाइल नाम जांचें. अभी कुछ नहीं बदला है.", "નીચે જૂના અને નવા ફાઇલનાં નામ તપાસો. હજી કંઈ બદલાયું નથી."],
+      "Saved session repaired. Load its draft when ready. Your current draft and playing queue were kept.": ["सेव सत्र बदल दिया. तैयार होने पर इसका ड्राफ्ट खोलें. आपका मौजूदा ड्राफ्ट और चलती कतार नहीं बदली.", "સાચવેલું સત્ર બદલ્યું. તૈયાર થાઓ ત્યારે તેનો ડ્રાફ્ટ ખોલો. હાલનો ડ્રાફ્ટ અને ચાલતી કતાર યથાવત્ છે."],
+      "A chosen copy is no longer available. Refresh the shelf and choose again.": ["चुनी कॉपी अब उपलब्ध नहीं है. शेल्फ़ रीफ़्रेश करके फिर चुनें.", "પસંદ કરેલી નકલ હવે ઉપલબ્ધ નથી. શેલ્ફ રિફ્રેશ કરીને ફરી પસંદ કરો."],
+      "Original file": ["पुरानी फ़ाइल", "જૂની ફાઇલ"],
+      "Replacement file": ["नई फ़ाइल", "નવી ફાઇલ"]
+    });
+    var repair437=null,repairPicks437=[],repairReview437=false,repairState437='';
+    var repairBox437=document.createElement('section');repairBox437.id='offlineRepair437';repairBox437.className='offline-panel435';repairBox437.hidden=true;repairBox437.setAttribute('aria-labelledby','offlineRepairTitle437');
+    repairBox437.innerHTML='<h3 id="offlineRepairTitle437" tabindex="-1"></h3><p class="hint" id="offlineRepairHint437"></p><ol id="offlineRepairRows437"></ol><p class="hint" role="status" id="offlineRepairStatus437"></p><div class="row"><button type="button" class="chip" id="offlineRepairBack437"></button><button type="button" class="chip" id="offlineRepairReview437"></button><button type="button" class="chip" id="offlineRepairSave437"></button><button type="button" class="chip" id="offlineRepairCancel437"></button></div>';
+    savedCard435.appendChild(repairBox437);
+    css.textContent+='#offlineRepair437 select{display:block;width:100%;min-width:0;box-sizing:border-box;margin:8px 0}#offlineRepairRows437{padding-left:24px}#offlineRepairRows437 li{padding:10px 0;overflow-wrap:anywhere}#offlineRepair437 h3{margin:0 0 8px}';
+    function repairFiles437(){
+      if(!repair437||repairPicks437.length!==repair437.files.length)return null;
+      var selected=repairPicks437.map(function(id){return rows.find(function(r){return r.id===id;});});
+      if(selected.some(function(x){return !x;})||new Set(repairPicks437).size!==selected.length||repairPicks437.every(function(id,i){return id===repair437.files[i].id;}))return null;
+      return selected.map(function(r){return {id:r.id,name:r.name};});
+    }
+    function paintRepair437(){
+      repairBox437.hidden=!repair437;if(!repair437)return;
+      $('offlineRepairTitle437').textContent=T('Repair saved session')+': '+repair437.name;
+      $('offlineRepairHint437').textContent=T('Choose a shelf copy for every position, then review before saving. Save the originals offline first if a copy is missing. Only this saved session changes; the draft, playing queue and files stay as they are.');
+      $('offlineRepairStatus437').textContent=T(repairState437||(repairReview437?'Review the old and new file names below. Nothing has been changed yet.':''));
+      var box=$('offlineRepairRows437');box.textContent='';
+      repair437.files.forEach(function(f,i){
+        var li=document.createElement('li'),label=document.createElement('label');label.htmlFor='offlineRepairPick437-'+i;label.textContent=T('Original file')+': '+f.name;li.appendChild(label);
+        if(repairReview437){var p=document.createElement('p'),r=rows.find(function(r){return r.id===repairPicks437[i];});p.className='hint';p.textContent=T('Replacement file')+': '+(r?r.name:T('Choose a replacement copy'));li.appendChild(p);}
+        else{var select=document.createElement('select');select.id=label.htmlFor;select.className='chip';select.setAttribute('aria-label',T('Choose a replacement copy')+': '+(i+1)+' · '+f.name);var empty=document.createElement('option');empty.value='';empty.textContent=T('Choose a replacement copy');select.appendChild(empty);rows.forEach(function(r){var option=document.createElement('option');option.value=r.id;option.textContent=r.name+' · '+(r.size/1048576).toFixed(1)+' MB';select.appendChild(option);});select.value=repairPicks437[i]||'';select.disabled=busy;select.addEventListener('change',function(){repairPicks437[i]=select.value;repairState437='';$('offlineRepairStatus437').textContent='';});li.appendChild(select);}
+        box.appendChild(li);
+      });
+      [['offlineRepairBack437','Back to file choices',!repairReview437],['offlineRepairReview437','Review session repair',repairReview437],['offlineRepairSave437','Save repaired session',!repairReview437],['offlineRepairCancel437','Cancel',false]].forEach(function(x){var b=$(x[0]);b.textContent=T(x[1]);b.hidden=x[2];b.disabled=busy;});
+    }
+    function beginRepair437(item){
+      repair437=JSON.parse(JSON.stringify(item));repairPicks437=item.files.map(function(f){return rows.some(function(r){return r.id===f.id;})?f.id:'';});repairReview437=false;repairState437='';paintRepair437();repairBox437.scrollIntoView({block:'center',behavior:window.vpReducedMotion()?'auto':'smooth'});$('offlineRepairTitle437').focus({preventScroll:true});
+    }
+    $('offlineRepairCancel437').addEventListener('click',function(){repair437=null;repairPicks437=[];paintRepair437();var b=$('offlineSavedRows435').querySelector('.offline-saved-repair437435');if(b)b.focus();});
+    $('offlineRepairBack437').addEventListener('click',function(){repairReview437=false;repairState437='';paintRepair437();$('offlineRepairPick437-0').focus();});
+    $('offlineRepairReview437').addEventListener('click',function(){if(busy)return;if(!repairFiles437()){repairState437='Choose one different shelf copy per position. At least one choice must change.';paintRepair437();return;}repairReview437=true;repairState437='';paintRepair437();$('offlineRepairSave437').focus();});
+    $('offlineRepairSave437').addEventListener('click',async function(){
+      if(busy||!repairReview437||!repair437)return;var snapshot=repair437,files=repairFiles437();if(!files){repairReview437=false;repairState437='A chosen copy is no longer available. Refresh the shelf and choose again.';paintRepair437();return;}
+      busy=true;paint();
+      try{
+        // Re-read both stores immediately before the metadata write, not just the
+        // cached shelf rows. No queue replacement or partial update on a bad copy.
+        var fresh=await all();for(var i=0;i<files.length;i++){var meta=fresh.find(function(r){return r.id===files[i].id;}),blob=await fileFor(files[i].id);if(!meta||!(blob instanceof Blob)||blob.size!==meta.size||!blob.size)throw Error('missing');}
+        var latest=readSaved435();if(!unchangedSaved435(snapshot,latest)){repairState437='This saved session changed in another tab. Review it again.';return;}
+        var updated=latest.map(function(x){return x.key===snapshot.key?{key:x.key,name:x.name,files:files}:x;});
+        if(!cleanOfflineSessions435(updated).length||!writeSaved435(updated)){repairState437='Saved sessions could not be read or written. Nothing was reported as saved or removed.';return;}
+        repair437=null;repairPicks437=[];savedState435='Saved session repaired. Load its draft when ready. Your current draft and playing queue were kept.';
+      }catch(e){repairReview437=false;repairState437='A chosen copy is no longer available. Refresh the shelf and choose again.';}
+      finally{busy=false;paint();}
+    });
     function readSaved435(){try{var raw=localStorage.getItem(savedKey435),value=raw===null?[]:JSON.parse(raw),clean=cleanOfflineSessions435(value);return Array.isArray(value)&&value.length===clean.length?clean:null;}catch(e){return null;}}
     function writeSaved435(value){try{localStorage.setItem(savedKey435,JSON.stringify(value));return true;}catch(e){savedState435='Saved sessions could not be read or written. Nothing was reported as saved or removed.';return false;}}
     function unchangedSaved435(snapshot,all){return all&&all.some(function(x){return JSON.stringify(x)===JSON.stringify(snapshot);});}
     function paintSaved435(){
+      paintRepair437();
       var all=readSaved435();savedCard435.querySelector('summary').textContent=T('Saved offline sessions')+' ('+(all?all.length:'?')+'/20)';
       $('offlineSavedHint435').textContent=T('Save up to 20 named sessions. Names and file references are included in JSON backups, not media files. A restored session needs the same saved copies on this device. Loading only replaces the draft, never starts playback.');
       $('offlineSavedLabel435').textContent=T('Offline session name');$('offlineSavedSave435').textContent=T('Save new offline session');$('offlineSavedSave435').disabled=busy||!session435.length||!all||all.length>=20;
@@ -47574,6 +47636,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       all.forEach(function(item){
         var article=document.createElement('article');article.className='offline-panel435';var name=document.createElement('strong');name.textContent=item.name;var count=document.createElement('p');count.className='hint';var missing=item.files.filter(function(f){return !rows.some(function(r){return r.id===f.id;});}).length;count.textContent=T('Files in this session: {n}').replace('{n}',item.files.length)+(missing?' · '+T('Missing saved copies: {n}').replace('{n}',missing):'');var actions=document.createElement('div');actions.className='row';
         function action(label,kind,fn){var b=document.createElement('button');b.type='button';b.className='chip offline-saved-'+kind+'435';b.textContent=T(label);b.setAttribute('aria-label',T(label)+': '+item.name);b.disabled=busy;b.addEventListener('click',fn);actions.appendChild(b);}
+        action('Repair saved session','repair437',function(){if(!busy)beginRepair437(item);});
         action('Load session draft','load',async function(){
           if(busy)return;if(session435.length&&(!window.vpConfirm||!await window.vpConfirm(T('Replace the current offline session draft? Saved sessions and the playing queue will not change.'),T('Load session draft'))))return;
           var latest=readSaved435();if(busy)return;if(!unchangedSaved435(item,latest)){savedState435='This saved session changed in another tab. Review it again.';paintSaved435();return;}
@@ -47681,6 +47744,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Offline session builder","#offlineSession435");},4120);});
   window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Saved offline sessions","#offlineSaved435");},4220);});
   window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Download saved device copy","#offlineShelf432");},4320);});
+  window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Repair saved session","#offlineSaved435");},4420);});
   // Round 431: a single switch can scan real playback actions without needing a mouse,
   // touch gestures or a different key for every action. Session-only, opt-in, never auto-start.
   (function () {
@@ -52229,6 +52293,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Repair saved session", "repair relink missing offline files copies replace session migrate restored backup choose review reconnect", "#offlineSaved435"],
       ["Download saved device copy", "export recover download original offline shelf saved local device file bytes keep copy backup", "#offlineShelf432"],
       ["Saved offline sessions", "named offline sessions save playlists local copies reuse backup draft files device", "#offlineSaved435"],
       ["Offline session builder", "offline session playlist arrange saved files choose order local queue music copies no internet", "#offlineSession435"],
