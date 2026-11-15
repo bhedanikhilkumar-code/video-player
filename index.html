@@ -40572,6 +40572,72 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Timestamped notes library", "#tnoteLibCard382"); }, 1500); });
 
+  // Find in all timed notes (round 383 new 1): a note at a time (round 306) could only be
+  // found inside its own video, and the Timestamped notes library (round 382) lists which
+  // videos hold notes but cannot match their words - the same gap Find in all notes
+  // (typed notes) and Find in all moments closed for their stores. This card under the
+  // library searches every timed note's text across all videos on this device; each hit
+  // jumps straight to that note's second (same video seeks and plays, another video loads
+  // there), exactly like the library's rows. Up to 8 hits with a "showing x of y" line,
+  // a 250ms debounce, and a fresh read of the store on every run so another tab's saves
+  // are found too. The store is untouched (vp-tnotes306.v1) - the card only reads it.
+  // Checked first: Find in all notes searches typed notes (vp-notes.v1), Find in all
+  // moments searches moment names - nothing searched timed-note text. Hindi and Gujarati
+  // text inside the main closure, What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Find in all timed notes": ["\u0938\u092d\u0940 \u091f\u093e\u0907\u092e \u0935\u093e\u0932\u0947 \u0928\u094b\u091f\u094d\u0938 \u092e\u0947\u0902 \u0916\u094b\u091c\u0947\u0902", "\u0aac\u0aa7\u0ac0 \u0ab8\u0aae\u0aaf\u0ab5\u0abe\u0ab2\u0ac0 \u0aa8\u0acb\u0a82\u0aa7\u0acb\u0aae\u0abe\u0a82 \u0ab6\u0acb\u0aa7\u0acb"],
+    "Search every timed note...": ["\u0939\u0930 \u091f\u093e\u0907\u092e \u0935\u093e\u0932\u0947 \u0928\u094b\u091f \u092e\u0947\u0902 \u0916\u094b\u091c\u0947\u0902...", "\u0aa6\u0ab0\u0ac7\u0a95 \u0ab8\u0aae\u0aaf\u0ab5\u0abe\u0ab2\u0ac0 \u0aa8\u0acb\u0a82\u0aa7\u0aae\u0abe\u0a82 \u0ab6\u0acb\u0aa7\u0acb..."],
+    "No timed notes match.": ["\u0915\u094b\u0908 \u091f\u093e\u0907\u092e \u0935\u093e\u0932\u093e \u0928\u094b\u091f \u0928\u0939\u0940\u0902 \u092e\u093f\u0932\u093e.", "\u0a95\u0acb\u0a88 \u0ab8\u0aae\u0aaf\u0ab5\u0abe\u0ab2\u0ac0 \u0aa8\u0acb\u0a82\u0aa7 \u0aae\u0ab3\u0ac0 \u0aa8\u0ab9\u0ac0\u0a82."],
+    "Jump to this timed note": ["\u0907\u0938 \u091f\u093e\u0907\u092e \u0935\u093e\u0932\u0947 \u0928\u094b\u091f \u0aaa\u0930 \u091c\u093e\u090f\u0902", "\u0a86 \u0ab8\u0aae\u0aaf\u0ab5\u0abe\u0ab2\u0ac0 \u0aa8\u0acb\u0a82\u0aa7 \u0aaa\u0ab0 \u0a9c\u0abe\u0a93"]
+  });
+  (function () {
+    var anchor383 = $("tnoteLibCard382"); if (!anchor383 || !anchor383.parentNode) return;
+    var cardF383 = document.createElement("details"); cardF383.className = "note-find"; cardF383.id = "tnoteFindCard383"; cardF383.style.marginTop = "10px";
+    cardF383.innerHTML = "<summary id='tnoteFindSum383'></summary><input id='tnoteFindIn383' type='search' autocomplete='off' spellcheck='false'><div id='tnoteFindOut383'></div>";
+    anchor383.parentNode.insertBefore(cardF383, anchor383.nextSibling);
+    var inpF383 = $("tnoteFindIn383"), outF383 = $("tnoteFindOut383");
+    function readAllF383() { try { var m = JSON.parse(localStorage.getItem("vp-tnotes306.v1") || "null"); return (m && typeof m === "object" && !Array.isArray(m)) ? m : {}; } catch (e) { return {}; } }
+    function runF383() {
+      var q = inpF383.value.trim().toLowerCase(); outF383.textContent = "";
+      if (!q) return;
+      var allF383 = readAllF383(), hits = 0, total = 0;
+      Object.keys(allF383).forEach(function (id) {
+        var arr = allF383[id]; if (!Array.isArray(arr)) return;
+        var vt = (titleFor(id) || "").toLowerCase();
+        arr.forEach(function (n) {
+          if (!n || typeof n.x !== "string") return;
+          if (n.x.toLowerCase().indexOf(q) < 0 && vt.indexOf(q) < 0) return;
+          total++;
+          if (hits >= 8) return;
+          hits++;
+          var tF = Math.max(0, Math.floor(Number(n.t) || 0));
+          var txt = n.x.length > 40 ? n.x.slice(0, 40) + "\u2026" : n.x;
+          var go = document.createElement("button"); go.type = "button"; go.className = "chip";
+          go.textContent = "\u25b6 " + (titleFor(id) || (T("Video ") + id)) + " - " + fmt(tF) + " " + txt;
+          go.setAttribute("aria-label", T("Jump to this timed note") + " " + fmt(tF));
+          go.addEventListener("click", function () {
+            if (id === curId) { if (ready) { manualSeek(tF, "tnoteFind383"); send("playVideo"); } }
+            else { linkInput.value = "https://youtu.be/" + id; loadVideo(tF, null, -1, true); }
+            window.scrollTo({ top: 0, behavior: window.vpReducedMotion() ? "auto" : "smooth" });
+          });
+          outF383.appendChild(go);
+        });
+      });
+      if (!total) { var st0 = document.createElement("span"); st0.className = "hint"; st0.textContent = T("No timed notes match."); outF383.appendChild(st0); return; }
+      if (total > hits) { var st = document.createElement("span"); st.className = "hint"; st.textContent = T("Showing ") + hits + T(" of ") + total; outF383.appendChild(st); }
+    }
+    var debF383 = null;
+    inpF383.addEventListener("input", function () { if (debF383) clearTimeout(debF383); debF383 = setTimeout(runF383, 250); });
+    function paintF383() {
+      $("tnoteFindSum383").textContent = T("Find in all timed notes");
+      inpF383.setAttribute("placeholder", T("Search every timed note..."));
+      inpF383.setAttribute("aria-label", T("Search every timed note..."));
+      if (inpF383.value.trim()) runF383();
+    }
+    (window.__relang = window.__relang || []).push(paintF383); paintF383();
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Find in all timed notes", "#tnoteFindCard383"); }, 1500); });
+
   // Jump to the highlight (round 306 new 2): long videos bury their best moment - the
   // goal, the drop, the punchline - and scrubbing for it is guesswork. SponsorBlock's
   // community marks a "point of interest" on many videos: the second most people
@@ -50016,6 +50082,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Notes library", "notes library all typed notes every video written list open see note card", "#noteLibCard381"],
       ["Photo notes library", "photo notes library all picture image notes every video textbook whiteboard view gallery", "#vphotoLibCard381"],
       ["Timestamped notes library", "timestamped notes library notes at a time timed notes every video jump first note list all", "#tnoteLibCard382"],
+      ["Find in all timed notes", "find in all timed notes search every timed note text words across videos jump second note at a time", "#tnoteFindCard383"],
       ["Park the playing video", "park playing video not now watch later skip save for later next queue mood", "#parkBtn296"],
       ["Welcome back", "welcome back greeting yesterday watched queue continue resume first open day hello", "#greetCard296"],
       ["Colour-blind safe look", "colour blind color safe palette accent accessibility underline active state hue vision deuteranopia", "#cbSafe296"],
