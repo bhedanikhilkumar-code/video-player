@@ -1705,6 +1705,14 @@ setTimeout(done,3000);})();
   function t(s) { return (window.T || function (x) { return x; })(s); }
   function dialog(opts) {
     return new Promise(function (resolve) {
+      // Round 380 fix 2: two vpAsk flows could stack. A quick double-tap on Save this
+      // moment (or a vpAsk opened while another still waited) appended a second
+      // #vpAskBg on top of the first - two live dialogs sharing one id, and the one
+      // answered first left the other as an orphan the user had to answer again,
+      // looking like the save did nothing. An opening dialog now cancels any one
+      // still waiting, so only one ask is ever on screen.
+      var prevOpen = document.getElementById("vpAskBg");
+      if (prevOpen && prevOpen.__vpCancel) { try { prevOpen.__vpCancel(); } catch (e) {} }
       var prev = document.activeElement;
       var bg = document.createElement("div");
       bg.id = "vpAskBg"; bg.setAttribute("role", "presentation");
@@ -1734,6 +1742,7 @@ setTimeout(done,3000);})();
         else if (e.key === "Enter" && (!opts.withInput || e.target === input)) { e.preventDefault(); e.stopPropagation(); done(opts.withInput ? input.value : true); }
         else if (e.key === "Tab") { e.preventDefault(); e.stopPropagation(); var els = opts.withInput ? [input, cancel, ok] : [cancel, ok]; var i = els.indexOf(document.activeElement); var n = els[(i + (e.shiftKey ? els.length - 1 : 1)) % els.length]; if (n) n.focus(); }
       }
+      bg.__vpCancel = function () { done(null); };
       cancel.addEventListener("click", function () { done(null); });
       ok.addEventListener("click", function () { done(opts.withInput ? input.value : true); });
       bg.addEventListener("click", function (e) { if (e.target === bg) done(null); });
