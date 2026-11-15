@@ -2,7 +2,7 @@ const vm=require('node:vm'),fs=require('node:fs'),assert=require('node:assert/st
 async function exercise({hit,offline,quota}={}){const handlers={},pending=[];let puts=0,result;
  const saved=new Response('saved image',{headers:{'content-type':'image/jpeg'}});
  const cache={match:async()=>hit?saved:undefined,put:async()=>{puts++;if(quota)throw Error('quota')},keys:async()=>[]};
- const ctx={self:{addEventListener:(n,f)=>handlers[n]=f},caches:{open:async()=>cache},URL,Response,Promise,location:{origin:'https://test.local'},fetch:async()=>{if(offline)throw Error('offline');return new Response('fresh image',{headers:{'content-type':'image/jpeg'}})}};
+ const ctx={self:{addEventListener:(n,f)=>handlers[n]=f},caches:{open:async()=>cache},URL,Request,Response,Promise,location:{origin:'https://test.local'},fetch:async()=>{if(offline)throw Error('offline');return new Response('fresh image',{headers:{'content-type':'image/jpeg'}})}};
  vm.runInNewContext(fs.readFileSync('sw.js','utf8'),ctx);handlers.fetch({request:{method:'GET',url:'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg'},waitUntil:p=>pending.push(p),respondWith:p=>result=p});
  const response=await result;const body=await response.text();await Promise.all(pending);return {body,waits:pending.length,puts};
 }
