@@ -13073,7 +13073,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // spellings are all lowercased at parse time now.
       var wl = w.toLowerCase();
       var om = /^(-?)((?:is|has):(?:fav|favs|favourite|favourites|favorite|favorites|later|queued|queue|new|played|note|notes|short|long|moment|moments|rated|snoozed|snooze|pinned|pin|reason|reasons|loop|loops|lyrics|lyric|photo|photos|voice|voices|timed|tnote|tnotes|archived|archive|archives|arch|shelved|shelf))$/.exec(wl);
-      if (om) { r.ops.push(om[1] + om[2].replace(/(avourites|avorites|avourite|avorite|avs)$/, "av").replace(/s$/, "").replace("queued", "queue").replace(/^is:snooze$/, "is:snoozed").replace(/^is:pin$/, "is:pinned").replace(/^has:tnote$/, "has:timed").replace(/^(?:is|has):(?:archive|arch|shelved|shelf)$/, "is:archived")); continue; }
+      if (om) {
+        var fold398 = om[2].replace(/(avourites|avorites|avourite|avorite|avs)$/, "av").replace(/s$/, "").replace("queued", "queue").replace(/^is:snooze$/, "is:snoozed").replace(/^is:pin$/, "is:pinned").replace(/^has:tnote$/, "has:timed").replace(/^(?:is|has):(?:archive|arch|shelved|shelf)$/, "is:archived");
+        // Round 398 fix 1: a swapped prefix fell through to has:note. The spellings list
+        // accepts is: and has: for every operator, but the matcher only knew each under
+        // one prefix - so "has:fav" (or is:moment, has:rated...) silently filtered by
+        // NOTES instead: typing has:fav hid a favourite with no note (seen live). Every
+        // accepted spelling now folds onto its one canonical operator first.
+        var base398 = fold398.replace(/^(?:is|has):/, "");
+        var canon398 = { fav: "is:fav", later: "is:later", queue: "is:queue", "new": "is:new", played: "is:played", short: "is:short", "long": "is:long", note: "has:note", moment: "has:moment", rated: "is:rated", snoozed: "is:snoozed", pinned: "is:pinned", reason: "has:reason", loop: "has:loop", lyric: "has:lyric", photo: "has:photo", voice: "has:voice", timed: "has:timed", archived: "is:archived" };
+        r.ops.push(om[1] + (canon398[base398] || fold398));
+        continue;
+      }
       // Round 286 new 2: channel:word (and -channel:word to leave one out) filters by the
       // channel the app has learned for each video.
       var cm286 = /^(-?)channel:(\S+)$/.exec(wl);
@@ -13175,7 +13186,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // -is:archived could not hide it. The everyday spellings is:archive, is:arch,
       // is:shelved and is:shelf (and the same with has:) fold onto the one operator.
       else if (o === "is:archived") ok = typeof archIdx388 === "function" && Array.isArray(archData388) && archIdx388(id) >= 0;
-      else ok = typeof notes !== "undefined" && notes && typeof notes[id] === "string" && notes[id].trim() !== "";
+      else if (o === "has:note") ok = typeof notes !== "undefined" && notes && typeof notes[id] === "string" && notes[id].trim() !== "";
+      // Round 398 fix 1: an operator spelling that reached here used to be answered as
+      // has:note; after the parser's canonical fold nothing unknown should arrive, and
+      // anything that still does must match nothing rather than silently match notes.
+      else ok = false;
       if (neg ? ok : !ok) return false;
     }
     return true;
