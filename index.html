@@ -3957,7 +3957,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   function findIn(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return i; return -1; }
   function titleFor(id) {
     var h = findIn(lib.hist, id), f = findIn(lib.favs, id), q = findIn(lib.queue, id), w = findIn(lib.later, id);
-    return (h >= 0 && lib.hist[h].title) || (f >= 0 && lib.favs[f].title) || (q >= 0 && lib.queue[q].title) || (w >= 0 && lib.later[w].title) || "";
+    var t393 = (h >= 0 && lib.hist[h].title) || (f >= 0 && lib.favs[f].title) || (q >= 0 && lib.queue[q].title) || (w >= 0 && lib.later[w].title) || "";
+    // Round 393 fix 1: a video kept ONLY in a playlist, or parked on the Archived shelf
+    // (round 388), fell back to its raw id everywhere titleFor speaks for a video -
+    // the Remembered videos settings list (round 390) and the four pick boxes read
+    // "Video dQw4w9WgXcQ" even though the app knows the name. Playlists and the shelf
+    // join the lookup now; both are read lazily and only when the four fast lists miss,
+    // so the common path is unchanged. Both stores live in this same closure but are
+    // filled later in the file, so the guards keep an early call safe.
+    if (!t393 && typeof playlists !== "undefined" && Array.isArray(playlists)) { for (var pi393 = 0; pi393 < playlists.length && !t393; pi393++) { var pItems393 = playlists[pi393] && playlists[pi393].items; if (!Array.isArray(pItems393)) continue; for (var pj393 = 0; pj393 < pItems393.length; pj393++) { if (pItems393[pj393] && pItems393[pj393].id === id && pItems393[pj393].title) { t393 = pItems393[pj393].title; break; } } } }
+    if (!t393 && typeof archIdx388 === "function" && Array.isArray(archData388)) { var ai393 = archIdx388(id); if (ai393 >= 0 && archData388[ai393] && archData388[ai393].title) t393 = archData388[ai393].title; }
+    return t393;
   }
   function setTitle(id, title) {
     [lib.hist, lib.favs, lib.queue, lib.later].forEach(function (list) { var i = findIn(list, id); if (i >= 0) list[i].title = title; });
