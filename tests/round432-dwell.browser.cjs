@@ -49,6 +49,8 @@ const server = http.createServer((q, r) => {
     }
     await page.evaluate(()=>{document.documentElement.dataset.theme='dark';document.documentElement.classList.add('high-contrast','calm-motion','low-fx');});
     await actions.nth(5).click();assert.equal(await page.locator('#lpVideo').evaluate(v=>v.volume),.6);
+    await actions.nth(7).click();await page.waitForFunction(()=>document.getElementById('lpVideo').dataset.fileName276==='second.wav');
+    await actions.nth(6).click();await page.waitForFunction(()=>document.getElementById('lpVideo').dataset.fileName276==='first.wav');
     await page.reload();await page.waitForFunction(()=>window.__vpMainOk325);assert.equal(await page.locator('#dwellEnable432').getAttribute('aria-pressed'),'false');
     await page.reload();await page.waitForFunction(()=>window.__vpMainOk325);assert.equal(await page.locator('#dwellEnable432').getAttribute('aria-pressed'),'false');
     assert.deepEqual(errors,[]);console.log('Pointer rest: real local play/pause, seek, volume and mute; one-shot dwell, leave/click/modal/blur cancellation; Hindi/Gujarati at 390px, dark/high-contrast/calm/low-effects; fresh and repeat load pass.');

@@ -38,6 +38,10 @@ const server = http.createServer((q, r) => {
     await page.evaluate(()=>window.dispatchEvent(new Event('blur')));await page.waitForFunction(()=>document.getElementById('switchChoose431').textContent==='Resume scanning');
     assert.equal(await page.locator('.switch-cell431[data-current="true"]').count(),0,'visible but unfocused windows must not scan');
     await page.bringToFront();await page.waitForTimeout(1200);assert.equal(await page.locator('#switchChoose431').textContent(),'Resume scanning','regaining focus must not auto-resume');await other.close();
+    await page.locator('#switchChoose431').click();
+    await page.evaluate(()=>Object.defineProperty(document,'hasFocus',{configurable:true,value:()=>false}));
+    await page.waitForFunction(()=>document.getElementById('switchChoose431').textContent==='Resume scanning');
+    await page.evaluate(()=>delete document.hasFocus);
     await page.locator('#switchStop431').click();
     await page.setViewportSize({width:390,height:844});
     for(const lang of ['en','hi','gu']){
