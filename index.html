@@ -8517,6 +8517,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Round 66: repeat count - play the A-B section a set number of times, then it stops on its own.
   var abLoopLimit = 0, abLoopCount = 0, abResting299 = false;
   function abLoopBack(restart) {
+    if (window.__vpCircuitBoundary421 && window.__vpCircuitBoundary421(restart)) return;
     if (abResting299) return; // Loop breather: a rest is holding the video at B.
 
     // Loop for minutes (round 298 new 2): a timed loop stops here, before the seek back.
@@ -8548,6 +8549,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       var restA299 = abA, restB299 = abB;
       setTimeout(function () {
         abResting299 = false;
+        if (window.__vpCircuitActive421 && window.__vpCircuitActive421()) return;
         if (!abEnabled || abA !== restA299 || abB !== restB299) return;
         if (window.__vpLoopMinEnd298 && Date.now() >= window.__vpLoopMinEnd298) {
           window.__vpLoopMinEnd298 = 0; window.__vpLoopMinVal298 = 0; abLoopLimit = 0; abLoopCount = 0; abEnabled = false; updateAB();
@@ -28959,7 +28961,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if(typeof curTime==='number'&&list[idx]&&curTime>=list[idx].t+span){idx++;
       if(idx>=list.length){var n=list.length;stop(T('Drill done - all {n} moments replayed.').replace('{n}',n));send('pauseVideo');return;}
       send('seekTo',[list[idx].t,true]);$('drMsg').textContent=T('Drill: moment {a} of {b}').replace('{a}',idx+1).replace('{b}',list.length);}}
-  function start(){list=curMoments();
+  function start(){document.dispatchEvent(new Event('vp-moment-drill-start421'));list=curMoments();
     if(!curId||!list.length){$('drMsg').textContent=T('Load a video that has saved moments first.');return;}
     idx=0;drillId=curId;send('seekTo',[list[0].t,true]);send('playVideo');
     $('drMsg').textContent=T('Drill: moment {a} of {b}').replace('{a}',1).replace('{b}',list.length);
@@ -28971,6 +28973,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     [15,30,60].forEach(function(s){var b=document.createElement('button');b.type='button';b.className='chip'+(span===s?' active':'');b.textContent=s+'s';b.setAttribute('aria-pressed',span===s?'true':'false');b.addEventListener('click',function(){span=s;paint();});R.appendChild(b);});
     var go=document.createElement('button');go.type='button';go.className='chip';go.textContent=drillId?T('Stop drill'):T('Start drill');
     go.addEventListener('click',function(){if(drillId)stop(T('Drill stopped.'));else start();});R.appendChild(go);}
+  document.addEventListener('vp-practice-circuit-start421',function(){if(drillId)stop(T('Drill stopped.'));});
   card.addEventListener('toggle',function(){if(card.open)paint();});
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
@@ -44593,6 +44596,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
         send("pauseVideo");
         if (window.__vpLoopPulse) window.__vpLoopPulse("ab", abLoopCount, abLoopLimit);
         function tick() {
+          if (window.__vpCircuitActive421 && window.__vpCircuitActive421()) return;
           if (!abEnabled || abA !== snapA || abB !== snapB) return;
           if (i < n) { click338(i === 0); i++; setTimeout(tick, beatMs); return; }
           // The viewer moved the playhead during the count - cancel the pass.
@@ -47021,6 +47025,114 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Interval trainer", "#intervalCard419"); }, 3120); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Search saved loops", "#loopLibCard296"); }, 3220); });
+  // Round 421: compose a practice circuit from this video's saved, variable-length
+  // A-B loops. Unlike Moment drill's fixed span at every bookmark, the viewer chooses
+  // the loops, their order and a separate pass count for each. Session-only by design.
+  Object.assign(TR_MSG, {
+    "Practice circuit": ["प्रैक्टिस सर्किट", "પ્રેક્ટિસ સર્કિટ"],
+    "Build a session from this video's saved loops. Choose the order and passes for each loop. Uses its own pass counts, with no rests or count-in. Nothing is saved; changing video or A-B stops the circuit.": ["इस वीडियो के सेव लूप से सेशन बनाएं. हर लूप का क्रम और दोहराव चुनें. इसके अपने दोहराव हैं, बिना आराम या काउंट-इन के. कुछ सेव नहीं होता; वीडियो या A-B बदलने पर सर्किट रुकता है.", "આ વીડિયોના સાચવેલા લૂપથી સેશન બનાવો. દરેક લૂપનો ક્રમ અને આવર્તન પસંદ કરો. તેના પોતાના આવર્તન છે, આરામ કે કાઉન્ટ-ઇન વગર. કંઈ સાચવાતું નથી; વીડિયો કે A-B બદલતાં સર્કિટ અટકે છે."],
+    "Choose a saved loop": ["सेव लूप चुनें", "સાચવેલો લૂપ પસંદ કરો"],
+    "Add loop to circuit": ["सर्किट में लूप जोड़ें", "સર્કિટમાં લૂપ ઉમેરો"],
+    "Passes for this loop": ["इस लूप के दोहराव", "આ લૂપના આવર્તન"],
+    "Start circuit": ["सर्किट शुरू करें", "સર્કિટ શરૂ કરો"],
+    "Stop circuit": ["सर्किट रोकें", "સર્કિટ રોકો"],
+    "Next circuit loop": ["सर्किट का अगला लूप", "સર્કિટનો આગળનો લૂપ"],
+    "Circuit complete. Playback paused.": ["सर्किट पूरा. प्लेबैक रुका.", "સર્કિટ પૂરું. પ્લેબેક અટક્યું."],
+    "Circuit stopped.": ["सर्किट रुका.", "સર્કિટ અટક્યું."],
+    "Circuit loop {n} of {total}, pass {pass} of {passes}": ["सर्किट लूप {n}/{total}, दोहराव {pass}/{passes}", "સર્કિટ લૂપ {n}/{total}, આવર્તન {pass}/{passes}"],
+    "Add up to 12 loops. Each needs 1 to 20 whole passes.": ["12 तक लूप जोड़ें. हर लूप में 1 से 20 पूरे दोहराव चाहिए.", "વધુમાં વધુ 12 લૂપ ઉમેરો. દરેક લૂપમાં 1થી 20 આખા આવર્તન જોઈએ."],
+    "No circuit yet. Save a practice loop, choose it above and add it.": ["अभी सर्किट नहीं है. प्रैक्टिस लूप सेव करें, ऊपर चुनें और जोड़ें.", "હજુ સર્કિટ નથી. પ્રેક્ટિસ લૂપ સાચવો, ઉપર પસંદ કરો અને ઉમેરો."],
+    "Circuit length at 1x": ["1x पर सर्किट की अवधि", "1x પર સર્કિટનો સમય"]
+  });
+  (function () {
+    var host = $("savedPractice"); if (!host) return;
+    var card = document.createElement("details"); card.id = "circuit421"; card.className = "r239-card";
+    card.innerHTML = '<summary></summary><p class="hint r239-desc"></p><div class="row circuit-add421"><select class="chip" id="circuitPick421"></select><button type="button" class="chip" id="circuitAdd421"></button></div><ol id="circuitRows421"></ol><p class="hint" id="circuitLength421"></p><p class="hint" id="circuitStatus421" role="status"></p><div class="row" style="flex-wrap:wrap;gap:8px"><button type="button" class="chip" id="circuitGo421"></button><button type="button" class="chip" id="circuitNext421" disabled></button><button type="button" class="chip" id="circuitClear421"></button></div>';
+    host.after(card);
+    var style = document.createElement("style"); style.textContent = '#circuit421 .circuit-add421{display:flex;flex-wrap:wrap;gap:8px}#circuitPick421{flex:1;min-width:0;width:100%}#circuitRows421{list-style:none;padding:0;display:grid;gap:10px}#circuitRows421 li{display:grid;grid-template-columns:minmax(0,1fr) 85px;gap:8px;padding:12px;border:1px solid var(--hairline);border-radius:16px;background:var(--soft)}#circuitRows421 .circuit-name421{overflow-wrap:anywhere;font-weight:650}#circuitRows421 .circuit-actions421{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}#circuitRows421 input{width:100%;min-width:0}#circuitRows421 li[aria-current=true]{outline:2px solid var(--teal)}'; document.head.appendChild(style);
+    var rows = [], source = null, active = false, index = 0, pass = 1, status = "", expected = null;
+    var picker = $("circuitPick421"), list = $("circuitRows421"), go = $("circuitGo421");
+    function stop(message, clearLoop) {
+      active = false; expected = null; status = message || "Circuit stopped.";
+      if (clearLoop) { abEnabled = false; updateAB(); send("pauseVideo"); }
+      paint();
+    }
+    function apply(playAfter) {
+      var row = rows[index];
+      if (!row || source !== curId || !(duration > 0) || row.b > duration) { stop("This range is outside the current video.", true); return; }
+      expected = { a: row.a, b: row.b }; abA = row.a; abB = row.b;
+      abEnabled = true; abLoopCount = 0; abLoopLimit = 0;
+      window.__vpLoopMinEnd298 = 0; window.__vpLoopMinVal298 = 0;
+      if (window.__vpLoopMinPaint298) window.__vpLoopMinPaint298();
+      updateAB(); renderAbLoops(); send("seekTo", [row.a, true]); curTime = row.a; if (playAfter) send("playVideo"); paint();
+    }
+    // Called by the existing A-B boundary, including a loop that ends at video end.
+    window.__vpCircuitActive421 = function () { return active; };
+    window.__vpCircuitBoundary421 = function (restart) {
+      if (!active) return false;
+      if (source !== curId || !expected || abA !== expected.a || abB !== expected.b || !abEnabled) { stop("Circuit stopped.", false); return false; }
+      pass++;
+      if (pass > rows[index].passes) { index++; pass = 1; }
+      if (index >= rows.length) { stop("Circuit complete. Playback paused.", true); return true; }
+      apply(restart === true || playing); return true;
+    };
+    var originalUpdate = updateAB;
+    updateAB = function () {
+      originalUpdate();
+      if (active && expected && (curId !== source || !abEnabled || abA !== expected.a || abB !== expected.b || abLoopLimit !== 0)) stop("Circuit stopped.", false);
+    };
+    function button(label, action, disabled) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = T(label); b.disabled = !!disabled; b.addEventListener("click", action); return b;
+    }
+    function paint() {
+      card.querySelector("summary").textContent = T("Practice circuit");
+      card.querySelector(".r239-desc").textContent = T("Build a session from this video's saved loops. Choose the order and passes for each loop. Uses its own pass counts, with no rests or count-in. Nothing is saved; changing video or A-B stops the circuit.");
+      if (source && curId !== source) { active = false; expected = null; rows = []; source = curId; status = "Circuit stopped."; }
+      var selected = picker.value; picker.textContent = "";
+      var placeholder = document.createElement("option"); placeholder.value = ""; placeholder.textContent = T("Choose a saved loop"); picker.appendChild(placeholder);
+      (practiceLoops[curId] || []).forEach(function (lp, i) { var o = document.createElement("option"); o.value = String(i); o.textContent = lp.name + " · " + fmt(lp.a) + " - " + fmt(lp.b); picker.appendChild(o); });
+      picker.value = selected; picker.setAttribute("aria-label", T("Choose a saved loop")); picker.disabled = active;
+      $("circuitAdd421").textContent = T("Add loop to circuit"); $("circuitAdd421").disabled = active || rows.length >= 12 || !(practiceLoops[curId] || []).length;
+      list.textContent = "";
+      rows.forEach(function (row, i) {
+        var li = document.createElement("li"); if (active && i === index) li.setAttribute("aria-current", "true");
+        var name = document.createElement("span"); name.className = "circuit-name421"; name.textContent = (i + 1) + ". " + row.name + " · " + fmt(row.a) + " - " + fmt(row.b); li.appendChild(name);
+        var input = document.createElement("input"); input.type = "number"; input.className = "chip"; input.min = 1; input.max = 20; input.step = 1; input.value = String(row.passes); input.disabled = active; input.setAttribute("aria-label", T("Passes for this loop") + ": " + row.name);
+        input.addEventListener("change", function () { var n = Number(input.value); if (!Number.isInteger(n) || n < 1 || n > 20) { status = "Add up to 12 loops. Each needs 1 to 20 whole passes."; } else { row.passes = n; status = ""; } paint(); }); li.appendChild(input);
+        var actions = document.createElement("div"); actions.className = "circuit-actions421";
+        actions.appendChild(button("Move up", function () { var prev = rows[i - 1]; rows[i - 1] = row; rows[i] = prev; paint(); }, active || i === 0));
+        actions.appendChild(button("Move down", function () { var next = rows[i + 1]; rows[i + 1] = row; rows[i] = next; paint(); }, active || i === rows.length - 1));
+        actions.appendChild(button("Remove", function () { rows.splice(i, 1); paint(); }, active)); li.appendChild(actions); list.appendChild(li);
+      });
+      if (!rows.length) { var empty = document.createElement("li"); empty.style.display = "block"; empty.textContent = T("No circuit yet. Save a practice loop, choose it above and add it."); list.appendChild(empty); }
+      $("circuitLength421").textContent = T("Circuit length at 1x") + ": " + fmt(rows.reduce(function (total, row) { return total + (row.b - row.a) * row.passes; }, 0));
+      $("circuitStatus421").textContent = active ? T("Circuit loop {n} of {total}, pass {pass} of {passes}").replace("{n}", index + 1).replace("{total}", rows.length).replace("{pass}", pass).replace("{passes}", rows[index].passes) : status ? T(status) : "";
+      go.textContent = T(active ? "Stop circuit" : "Start circuit"); go.disabled = !active && !rows.length;
+      $("circuitNext421").textContent = T("Next circuit loop"); $("circuitNext421").disabled = !active;
+      $("circuitClear421").textContent = T("Clear"); $("circuitClear421").disabled = active || !rows.length;
+    }
+    $("circuitAdd421").addEventListener("click", function () {
+      var lp = picker.value !== "" && (practiceLoops[curId] || [])[Number(picker.value)];
+      if (!lp || active || rows.length >= 12) return;
+      source = curId; rows.push({ name: lp.name, a: lp.a, b: lp.b, passes: 1 }); status = ""; paint();
+    });
+    go.addEventListener("click", function () {
+      if (active) { stop("Circuit stopped.", true); return; }
+      if (!ready || !curId || !(duration > 0)) { status = "Play a little first, then replay a section."; paint(); return; }
+      if (!rows.length || rows.some(function (r) { return r.b > duration; })) { status = "This range is outside the current video."; paint(); return; }
+      document.dispatchEvent(new Event("vp-practice-circuit-start421"));
+      active = true; index = 0; pass = 1; status = ""; apply(true);
+    });
+    $("circuitNext421").addEventListener("click", function () { if (!active) return; pass = rows[index].passes; window.__vpCircuitBoundary421(); });
+    $("circuitClear421").addEventListener("click", function () { if (active) return; rows = []; status = ""; paint(); });
+    document.addEventListener("vp-youtube-selected", function () { if (active) stop("Circuit stopped.", false); rows = []; source = null; paint(); });
+    document.addEventListener("vp-local-playing", function () { if (active) stop("Circuit stopped.", false); });
+    document.addEventListener("vp-moment-drill-start421", function () { if (active) stop("Circuit stopped.", true); });
+    card.addEventListener("toggle", function () { if (card.open) paint(); });
+    var oldRender = renderPracticeLoops; renderPracticeLoops = function () { oldRender(); paint(); };
+    paint(); (window.__relang = window.__relang || []).push(paint);
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Practice circuit", "#circuit421"); }, 3320); });
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -51392,6 +51504,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
     var FEATS = [
       ["Stopwatch", "stopwatch timer lap laps split time workout practice measure seconds clock count up timing", "#swCard417"],
       ["Countdown timer", "countdown timer count down minutes beep kitchen cook recipe workout rest break tea egg", "#tmCard418"],
+      ["Practice circuit", "practice circuit saved loops sequence passes repetitions workout guitar drills ordered training", "#circuit421"],
       ["Interval trainer", "interval workout exercise recovery tabata hiit training seconds rounds rest timer", "#intervalCard419"],
       ["Copy list with lengths", "copy list lengths durations total known length queue watch later favourites history clipboard share plan how long watch time", "#copyQueueBtn"],
       ["Archive Watch later rows", "archive watch later park away hide row shelf keep saved unarchive put back clean list tidy backlog", "#laterArchBtn388"],
