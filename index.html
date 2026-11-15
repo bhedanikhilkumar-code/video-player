@@ -47701,7 +47701,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if(!f||!f.size||f.size>100*1048576||!(/^(audio|video)\//.test(f.type)||/\.(mp4|webm|mkv|mov|m4v|mp3|m4a|aac|ogg|oga|opus|wav|flac)$/i.test(f.name)))return 'failed';
       var d=await db();return new Promise(function(resolve,reject){
         var tx=d.transaction(['meta','files'],'readwrite'),m=tx.objectStore('meta'),r=m.getAll(),result='failed',id=JSON.stringify([f.name,f.size,f.lastModified]);
-        r.onsuccess=function(){try{var old=r.result||[];if(old.some(function(x){return x.id===id;})){result='same';return;}if(old.length>=20||old.reduce(function(n,x){return n+x.size;},0)+f.size>250*1048576)return;
+        r.onsuccess=function(){try{var old=r.result||[],existing=old.find(function(x){return x.id===id;});if(existing){
+          // Metadata alone is not proof of a usable copy. Browser eviction or an
+          // interrupted store migration can leave an entry without its bytes.
+          var stored=tx.objectStore('files').get(id);stored.onsuccess=function(){try{if(stored.result instanceof Blob&&stored.result.size===f.size&&existing.size===f.size){result='same';return;}m.put({id:id,name:f.name,size:f.size,type:f.type,modified:f.lastModified,added:existing.added||Date.now()});tx.objectStore('files').put(f,id);result='saved';}catch(e){tx.abort();}};return;
+        }if(old.length>=20||old.reduce(function(n,x){return n+x.size;},0)+f.size>250*1048576)return;
           m.put({id:id,name:f.name,size:f.size,type:f.type,modified:f.lastModified,added:Date.now()});tx.objectStore('files').put(f,id);result='saved';}catch(e){tx.abort();}};
         tx.oncomplete=function(){resolve(result);};tx.onerror=tx.onabort=function(){reject(tx.error||Error('write'));};
       });
