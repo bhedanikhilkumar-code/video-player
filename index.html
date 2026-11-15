@@ -37813,7 +37813,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var card294 = $("ctl-notes"), times294 = $("noteTimes"); if (!card294 || !times294) return;
     var VN_KEY = "vp-vnotes.v1", vnotes = {};
     try { var vnIn = JSON.parse(localStorage.getItem(VN_KEY) || "null"); if (vnIn && typeof vnIn === "object" && !Array.isArray(vnIn)) vnotes = vnIn; } catch (e) {}
-    function vnSave() { try { localStorage.setItem(VN_KEY, JSON.stringify(vnotes)); return true; } catch (e) { return false; } }
+    function vnSave() { var ok380; try { localStorage.setItem(VN_KEY, JSON.stringify(vnotes)); ok380 = true; } catch (e) { ok380 = false; } if (window.__vpVnoteLibPaint380) { try { window.__vpVnoteLibPaint380(); } catch (e) {} } return ok380; }
     var row = document.createElement("div"); row.className = "row"; row.id = "vnoteRow294"; row.style.cssText = "margin-top:6px;flex-wrap:wrap;gap:8px;align-items:center";
     times294.parentNode.insertBefore(row, times294.nextSibling);
     var recB = document.createElement("button"); recB.type = "button"; recB.className = "chip"; recB.id = "vnoteRec294"; row.appendChild(recB);
@@ -37824,6 +37824,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var media = null, rec = null, chunks = [], recStart = 0, recTimer = 0, vnPlayer = null;
     function memo() { return curId && vnotes[curId] && typeof vnotes[curId].d === "string" ? vnotes[curId] : null; }
     function stopVnPlayer() { if (vnPlayer) { try { vnPlayer.pause(); } catch (e) {} vnPlayer = null; } }
+    window.__vpVnStop294 = stopVnPlayer;
     function paint294() {
       var m = memo();
       recB.textContent = (rec ? "⏹ " + T("Stop and save") : "🎙 " + T("Record a voice note"));
@@ -37869,6 +37870,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     });
     playB.addEventListener("click", function () {
       var m = memo(); if (!m) return;
+      if (window.__vpVnLibStop380) { try { window.__vpVnLibStop380(); } catch (e) {} }
       if (vnPlayer) { stopVnPlayer(); paint294(); return; }
       vnPlayer = new Audio(m.d);
       vnPlayer.onended = function () { stopVnPlayer(); paint294(); };
@@ -44801,6 +44803,71 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // What's new is for everyone, including returning devices that never see the card.
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Language on the first open", "#langBtn"); }, 1420); });
 
+  // Voice notes library (round 380 new 1): a voice note (round 294) stays with its own
+  // video, so the memos you already recorded were invisible until you loaded each video
+  // again - the same gap the Saved lyrics (round 377) and Saved moments (round 378)
+  // libraries closed for their stores. This card under the voice-note row lists every
+  // video with a voice note on this device - title and length, newest first - and one
+  // tap opens that video (paused, so the memo never fights it) and plays the note; the
+  // note belongs to the video, so a tap on the video already loaded just plays. Up to
+  // 40 rows; recording, replacing or deleting a memo repaints the list (hook in vnSave),
+  // as do a language switch and a save from another tab. Playing from the row and from
+  // this card stop each other, never two memos at once. The store stays exactly where it
+  // was (vp-vnotes.v1, backup and Reset untouched); this card only reads it. Checked
+  // first: has:note covers typed notes, the moments and lyrics libraries cover their own
+  // stores - nothing listed recorded voice memos across videos. Hindi and Gujarati text
+  // in the main closure; What's new and feature finder included.
+  Object.assign(TR_MSG, {
+    "Voice notes library": ["\u0935\u0949\u0907\u0938 \u0928\u094b\u091f \u0932\u093e\u0907\u092c\u094d\u0930\u0947\u0930\u0940", "\u0ab5\u0ac9\u0a87\u0ab8 \u0aa8\u0acb\u0a9f \u0ab2\u0abe\u0a87\u0aac\u0acd\u0ab0\u0ac7\u0ab0\u0ac0"],
+    "Every video with a voice note on this device. Tap one to open its video and hear the note.": ["\u0907\u0938 \u0921\u093f\u0935\u093e\u0907\u0938 \u092a\u0930 \u091c\u093f\u0928 \u0935\u0940\u0921\u093f\u092f\u094b \u092e\u0947\u0902 \u0935\u0949\u0907\u0938 \u0928\u094b\u091f \u0939\u0948. \u0915\u093f\u0938\u0940 \u092a\u0930 \u091f\u0948\u092a \u0915\u0930\u0924\u0947 \u0939\u0940 \u0909\u0938\u0915\u093e \u0935\u0940\u0921\u093f\u092f\u094b \u0916\u0941\u0932\u0947\u0917\u093e \u0914\u0930 \u0928\u094b\u091f \u0938\u0941\u0928\u093e\u0908 \u0926\u0947\u0917\u093e.", "\u0a86 \u0aa1\u0abf\u0ab5\u0abe\u0a87\u0ab8 \u0aaa\u0ab0 \u0a9c\u0ac7 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb\u0aae\u0abe\u0a82 \u0ab5\u0ac9\u0a87\u0ab8 \u0aa8\u0acb\u0a9f \u0a9b\u0ac7. \u0a95\u0acb\u0a88 \u0aaa\u0ab0 \u0a9f\u0ac5\u0aaa \u0a95\u0ab0\u0aa4\u0abe\u0a82 \u0aa4\u0ac7\u0aa8\u0acb \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a96\u0ac1\u0ab2\u0ab6\u0ac7 \u0a85\u0aa8\u0ac7 \u0aa8\u0acb\u0a9f \u0ab8\u0a82\u0aad\u0ab3\u0abe\u0ab6\u0ac7."],
+    "No voice notes yet. Record one while a video plays.": ["\u0905\u092d\u0940 \u0915\u094b\u0908 \u0935\u0949\u0907\u0938 \u0928\u094b\u091f \u0928\u0939\u0940\u0902. \u0935\u0940\u0921\u093f\u092f\u094b \u091a\u0932\u0924\u0947 \u0938\u092e\u092f \u090f\u0915 \u0930\u093f\u0915\u0949\u0930\u094d\u0921 \u0915\u0930\u0947\u0902.", "\u0ab9\u0a9c\u0ac0 \u0a95\u0acb\u0a88 \u0ab5\u0ac9\u0a87\u0ab8 \u0aa8\u0acb\u0a9f \u0aa8\u0aa5\u0ac0. \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a9a\u0abe\u0ab2\u0ac7 \u0aa4\u0acd\u0aaf\u0abe\u0ab0\u0ac7 \u0a8f\u0a95 \u0ab0\u0ac7\u0a95\u0acb\u0ab0\u0acd\u0aa1 \u0a95\u0ab0\u0acb."],
+    "Open this video and play its voice note": ["\u092f\u0939 \u0935\u0940\u0921\u093f\u092f\u094b \u0916\u094b\u0932\u0947\u0902 \u0914\u0930 \u0907\u0938\u0915\u093e \u0935\u0949\u0907\u0938 \u0928\u094b\u091f \u0938\u0941\u0928\u0947\u0902", "\u0a86 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0a96\u0acb\u0ab2\u0acb \u0a85\u0aa8\u0ac7 \u0aa4\u0ac7\u0aa8\u0ac0 \u0ab5\u0ac9\u0a87\u0ab8 \u0aa8\u0acb\u0a9f \u0ab8\u0abe\u0a82\u0aad\u0ab3\u0acb"]
+  });
+  (function () {
+    var row294 = $("vnoteRow294"); if (!row294 || !row294.parentNode) return;
+    var VNKEY380 = "vp-vnotes.v1";
+    function readAll380() { try { var m = JSON.parse(localStorage.getItem(VNKEY380) || "null"); return (m && typeof m === "object" && !Array.isArray(m)) ? m : {}; } catch (e) { return {}; } }
+    var card = document.createElement("details"); card.className = "note-find"; card.id = "vnoteLibCard380"; card.style.marginTop = "10px";
+    card.innerHTML = "<summary id='vnoteLibSum380'></summary><div id='vnoteLibList380'></div><p class='hint' id='vnoteLibHint380'></p>";
+    row294.parentNode.insertBefore(card, row294.nextSibling);
+    var libPlayer = null, libPlayingId = null;
+    function stopLib() { if (libPlayer) { try { libPlayer.pause(); } catch (e) {} libPlayer = null; } libPlayingId = null; }
+    window.__vpVnLibStop380 = function () { stopLib(); paintLib(); };
+    function paintLib() {
+      $("vnoteLibSum380").textContent = T("Voice notes library");
+      $("vnoteLibHint380").textContent = T("Every video with a voice note on this device. Tap one to open its video and hear the note.");
+      var box = $("vnoteLibList380"); box.textContent = "";
+      var all = readAll380();
+      var ids = Object.keys(all).filter(function (id) { return all[id] && typeof all[id].d === "string" && all[id].d; });
+      if (!ids.length) { var p = document.createElement("p"); p.className = "hint"; p.textContent = T("No voice notes yet. Record one while a video plays."); box.appendChild(p); return; }
+      ids.sort(function (a, b) { return (all[b].t || 0) - (all[a].t || 0); });
+      ids.slice(0, 40).forEach(function (id) {
+        var m = all[id];
+        var r = document.createElement("div"); r.className = "row"; r.style.marginTop = "8px";
+        var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.style.textAlign = "left";
+        b.textContent = (libPlayingId === id ? "\u23F8 " : "\uD83C\uDF99 ") + (titleFor(id) || id) + " (" + (m.s || "?") + "s)";
+        b.setAttribute("aria-label", T("Open this video and play its voice note") + ": " + (titleFor(id) || id));
+        b.addEventListener("click", function () {
+          if (libPlayingId === id) { stopLib(); paintLib(); return; }
+          if (window.__vpVnStop294) { try { window.__vpVnStop294(); } catch (e) {} }
+          stopLib();
+          if (id !== curId) { linkInput.value = "https://youtu.be/" + id; loadVideo(0, null, -1, false); }
+          libPlayer = new Audio(m.d);
+          libPlayingId = id;
+          libPlayer.onended = function () { stopLib(); paintLib(); };
+          libPlayer.play().then(paintLib, function () { stopLib(); paintLib(); });
+          window.scrollTo({ top: 0, behavior: window.vpReducedMotion() ? "auto" : "smooth" });
+        });
+        r.appendChild(b); box.appendChild(r);
+      });
+    }
+    card.addEventListener("toggle", function () { if (card.open) paintLib(); });
+    window.addEventListener("storage", function (e) { if (e && e.key === VNKEY380) paintLib(); });
+    (window.__relang = window.__relang || []).push(paintLib); paintLib();
+    window.__vpVnoteLibPaint380 = paintLib;
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Voice notes library", "#vnoteLibCard380"); }, 1500); });
+
   // Round 365 fix 1: this key was registered inside the playlist-row renderer, so on a
   // device with no playlists it never reached TR_MSG and the feature finder (and the old
   // What's new entry) showed the English label in Hindi and Gujarati - seen live as the
@@ -49755,6 +49822,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Loop library", "loop library all saved loops every video a-b practice play jump across videos list", "#loopLibCard296"],
       ["Saved lyrics library", "saved lyrics library all songs words every video play sing along list", "#lyricLibCard377"],
       ["Saved moments library", "saved moments library all marked videos every video bookmarks spots list jump first moment", "#momLibCard378"],
+      ["Voice notes library", "voice notes library all spoken memos audio notes every video listen play recordings microphone", "#vnoteLibCard380"],
       ["Park the playing video", "park playing video not now watch later skip save for later next queue mood", "#parkBtn296"],
       ["Welcome back", "welcome back greeting yesterday watched queue continue resume first open day hello", "#greetCard296"],
       ["Colour-blind safe look", "colour blind color safe palette accent accessibility underline active state hue vision deuteranopia", "#cbSafe296"],
