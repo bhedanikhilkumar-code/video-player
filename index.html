@@ -24,6 +24,25 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="VideoPlayer">
 <script>
+// Round 435: finish an import Undo before any app state is read on the new page.
+// Restoring in the old page let its still-running player/pagehide hooks overwrite
+// the snapshot before reload. The one-use record survives a blocked reload safely.
+(function(){
+  var key='vp-import-restore435',raw;
+  try{
+    raw=sessionStorage.getItem(key);if(!raw)return;var snap=JSON.parse(raw);
+    if(!snap||typeof snap!=='object'||Array.isArray(snap)||!Object.keys(snap).every(function(k){return typeof snap[k]==='string';}))throw Error('snapshot');
+    var keys=[];for(var i=0;i<localStorage.length;i++)keys.push(localStorage.key(i));
+    keys.forEach(function(k){if(!Object.prototype.hasOwnProperty.call(snap,k))localStorage.removeItem(k);});
+    Object.keys(snap).forEach(function(k){localStorage.setItem(k,snap[k]);});
+    sessionStorage.removeItem(key);sessionStorage.removeItem('vp-import-undo');
+  }catch(e){
+    // Keep the original Undo record available if storage refuses the restore.
+    window.addEventListener('load',function(){if(window.toast)window.toast(window.T?window.T('Could not undo the import.'):'Could not undo the import.');});
+  }
+})();
+</script>
+<script>
 window.vpReducedMotion = function () {
   return document.documentElement.classList.contains("calm-motion") || !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
 };
@@ -25282,11 +25301,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     uBtn.addEventListener("click", function () {
       try {
         var snap = JSON.parse(sessionStorage.getItem(UK) || "null"); if (!snap) { uPaint(); return; }
-        var keys = []; for (var i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
-        keys.forEach(function (k) { localStorage.removeItem(k); });
-        Object.keys(snap).forEach(function (k) { localStorage.setItem(k, snap[k]); });
-        sessionStorage.removeItem(UK);
-        window.addEventListener("pagehide", function () { try { Object.keys(snap).forEach(function (k) { localStorage.setItem(k, snap[k]); }); } catch (e) {} });
+        if(typeof snap!=="object"||Array.isArray(snap)||!Object.keys(snap).every(function(k){return typeof snap[k]==="string";}))throw Error("snapshot");
+        sessionStorage.setItem("vp-import-restore435",JSON.stringify(snap));
+        uBtn.disabled=true;
         toast(T("Import undone - reloading\u2026"));
         setTimeout(function () { location.reload(); }, 700);
       } catch (e) { toast(T("Could not undo the import.")); }
