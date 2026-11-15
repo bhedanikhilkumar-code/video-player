@@ -42096,6 +42096,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       for (var j = 0; j < kids.length; j++) { kids[j].classList.toggle("cur308", Number(kids[j].dataset.chapI) === cur); }
     }, 1000);
     (window.__relang = window.__relang || []).push(function () { if (!box.hidden) paint308(); });
+    // Round 408 new 1 reads the same rows for its "now in chapter" line - one fetch, two readers.
+    window.__vpChap308get = function () { return { rows: rows, id: rowsFor }; };
   })();
 
 
@@ -46227,6 +46229,67 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Share a saved loop", "#loopLibCard296"); }, 2120); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Manage saved loops", "#loopLibCard296"); }, 2140); });
+
+  // Round 408 new 1: the chapter you are in, named under the seek bar. Community chapters
+  // (306) list a video's parts in a panel and the ticks (308) glow at the playhead, but
+  // neither says plainly which part you are watching right now - the one thing YouTube's
+  // own player shows under the title. A small glass line under the chapter ticks names the
+  // current part ("Now in chapter: Guitar solo . 4:12"), follows playback second by second
+  // and, tapped, restarts that part - handy when a line went by too fast. It reads the same
+  // fetched rows through the getter the ticks now share (no second network fetch), hides
+  // for videos the community has not named, and asks for no setting. Checked first: the
+  // panel rows carry no current marker and no element showed the live chapter name (grep
+  // "current chapter" = 0). Hindi and Gujarati text inside the main closure, feature
+  // finder and What's new (staggered above round 407) included.
+  Object.assign(TR_MSG, {
+    "Now in chapter": ["\u0905\u092d\u0940 \u0905\u0927\u094d\u092f\u093e\u092f \u092e\u0947\u0902", "\u0ab9\uab56\u0ac0 \u0aaa\u0acd\u0ab0\u0a95\u0ab0\u0aa3\u0aae\u0abe\u0a82"],
+    "Now in chapter:": ["\u0905\u092d\u0940 \u0905\u0927\u094d\u092f\u093e\u092f \u092e\u0947\u0902:", "\u0ab9\uab56\u0ac0 \u0aaa\u0acd\u0ab0\u0a95\u0ab0\u0aa3\u0aae\u0abe\u0a82:"],
+    "Tap to restart this chapter": ["\u0907\u0938 \u0905\u0927\u094d\u092f\u093e\u092f \u0915\u094b \u0926\u094b\u092c\u093e\u0930\u093e \u0936\u0941\u0930\u0942 \u0915\u0930\u0928\u0947 \u0915\u0947 \u0932\u093f\u090f \u091f\u0948\u092a \u0915\u0930\u0947\u0902", "\u0a86 \u0aaa\u0acd\u0ab0\u0a95\u0ab0\u0aa3 \u0aab\u0ab0\u0ac0 \u0ab6\u0ab0\u0ac2 \u0a95\u0ab0\u0ab5\u0abe \u0a9f\u0ac7\u0aaa \u0a95\u0ab0\u0acb"]
+  });
+  (function () {
+    var ticks = $("chapTicks308"); if (!ticks || !ticks.parentNode) return;
+    var stl = document.createElement("style");
+    stl.textContent = "#chapNow408{display:inline-flex;align-items:center;gap:6px;max-width:100%;margin-top:4px;font-size:12.5px;font-weight:600;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}"
+      + "#chapNow408 .cn-dot408{flex:none;width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 6px var(--teal)}"
+      + "#chapNow408 .cn-t408{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}"
+      + "html.low-fx #chapNow408 .cn-dot408,html.calm-motion #chapNow408 .cn-dot408{box-shadow:none}";
+    document.head.appendChild(stl);
+    var btn = document.createElement("button"); btn.type = "button"; btn.className = "chip"; btn.id = "chapNow408"; btn.hidden = true;
+    ticks.parentNode.insertBefore(btn, ticks.nextSibling);
+    var lastKey = "";
+    function paint408() {
+      var g = window.__vpChap308get ? window.__vpChap308get() : null;
+      var rows = g && g.id && g.id === curId ? g.rows : [];
+      if (!rows.length || !(duration > 0) || !curId) { btn.hidden = true; lastKey = ""; return; }
+      var cur = -1;
+      for (var i = 0; i < rows.length; i++) { if (rows[i].a >= duration) continue; if (curTime >= rows[i].a) cur = i; else break; }
+      if (cur < 0) { btn.hidden = true; lastKey = ""; return; }
+      var r = rows[cur];
+      var key = curId + ":" + cur;
+      btn.hidden = false;
+      if (key === lastKey) return;
+      lastKey = key;
+      btn.textContent = "";
+      var dot = document.createElement("span"); dot.className = "cn-dot408"; dot.setAttribute("aria-hidden", "true");
+      var tx = document.createElement("span"); tx.className = "cn-t408";
+      tx.textContent = T("Now in chapter:") + " " + (r.name || (T("Chapter") + " " + (cur + 1))) + " \u00b7 " + fmt(r.a);
+      btn.appendChild(dot); btn.appendChild(tx);
+      btn.setAttribute("aria-label", T("Now in chapter") + " " + (r.name || (T("Chapter") + " " + (cur + 1))) + " " + fmt(r.a) + ". " + T("Tap to restart this chapter"));
+    }
+    btn.addEventListener("click", function () {
+      var g = window.__vpChap308get ? window.__vpChap308get() : null;
+      var rows = g && g.id && g.id === curId ? g.rows : [];
+      if (!rows.length || !ready) return;
+      var cur = -1;
+      for (var i = 0; i < rows.length; i++) { if (rows[i].a >= duration) continue; if (curTime >= rows[i].a) cur = i; else break; }
+      if (cur < 0) return;
+      manualSeek(Math.max(0, rows[cur].a), "chapNow408"); send("playVideo");
+    });
+    setInterval(paint408, 1000);
+    (window.__relang = window.__relang || []).push(function () { lastKey = ""; paint408(); });
+    paint408();
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Now in chapter", "#chapNow408"); }, 2160); });
 
 })();
 
@@ -51208,6 +51271,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       ["Loop library", "loop library all saved loops every video a-b practice play jump across videos list", "#loopLibCard296"],
       ["Share a saved loop", "share saved loop link copy send friend practice a-b library loop", "#loopLibCard296"],
       ["Manage saved loops", "manage saved loops rename remove delete practice loop library clean up edit name old drill", "#loopLibCard296"],
+      ["Now in chapter", "now in chapter current chapter name now playing which part section live position seek bar restart community", "#chapNow408"],
       ["Saved lyrics library", "saved lyrics library all songs words every video play sing along list", "#lyricLibCard377"],
       ["Saved moments library", "saved moments library all marked videos every video bookmarks spots list jump first moment", "#momLibCard378"],
       ["Voice notes library", "voice notes library all spoken memos audio notes every video listen play recordings microphone", "#vnoteLibCard380"],
