@@ -4504,7 +4504,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       txt += " · " + T("about ") + (h ? h + " " + T("hr") + " " + m + " " + T("min") : m + " " + T("min"));
       if (sp !== 1) txt += " " + T("at current speed");
       if (known < lib.queue.length) txt += " · " + known + "/" + lib.queue.length + " " + T("lengths known");
-      else { var qEnd = new Date(Date.now() + Math.round(secs / sp) * 1000); txt += " · " + T("ends ~") + window.__vpDoneBy(qEnd); }
+      // Round 461 fix: the "ends ~" clock also ran while a loop meant the queue never
+      // finishes - the video's own Loop chip or an A-B repeat stalls the first video
+      // forever, and Loop queue (round 317) restarts a finished queue, so no finish
+      // time exists in any of them. The count and total stay; only the clock goes.
+      else if (!(window.__vpLoopingForever461 && window.__vpLoopingForever461()) && !prefs.qLoop317) { var qEnd = new Date(Date.now() + Math.round(secs / sp) * 1000); txt += " · " + T("ends ~") + window.__vpDoneBy(qEnd); }
     }
     el.textContent = txt;
     if (typeof paintQueueStarts === "function") paintQueueStarts();
@@ -8424,9 +8428,16 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // One place that paints the time read-out, so it can show elapsed/total or time left.
   // Ends at: the wall-clock time this video finishes at the current speed.
   var endsAtEl = $("endsAt");
+  // Round 461 fix: with the Loop chip or an A-B repeat on, the video never reaches its
+  // end, but every finish clock still named one (seen live: Loop on, "Ends at 5:16 am"
+  // beside a video that was looping, and the queue's own "ends ~" with it). One guard
+  // shared by the Ends at label, the queue total and the row "starts ~" tags.
+  function vpLoopingForever461() { return !!(prefs.loop || (typeof abEnabled !== "undefined" && abEnabled && abA != null && abB != null)); }
+  window.__vpLoopingForever461 = vpLoopingForever461;
   function paintEndsAt(t) {
     if (!endsAtEl) return;
     if (!curId || !(duration > 0)) { endsAtEl.hidden = true; endsAtEl.textContent = ""; return; }
+    if (vpLoopingForever461()) { endsAtEl.textContent = T("Looping - plays until you stop it"); endsAtEl.hidden = false; return; }
     var left = Math.max(0, (duration - (t || 0)) / (prefs.speed > 0 ? prefs.speed : 1));
     var d = new Date(Date.now() + left * 1000);
     // Round 253 fix 2: the Ends at clock formatted itself with hardcoded English AM/PM,
@@ -8527,6 +8538,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     prefs.loop = !prefs.loop; savePrefs(); loopBtn.setAttribute("aria-pressed", String(prefs.loop));
     loopBtn.classList.toggle("active", prefs.loop);
     loopBtn.textContent = prefs.loop ? T("🔁 Loop on") : T("🔁 Loop off");
+    // Round 461 fix: the finish clocks used to keep showing the old end time for up to
+    // 20 seconds after the loop flipped; repaint them with the toggle.
+    paintEndsAt(typeof curTime === "number" ? curTime : 0);
+    if (typeof updateQueueTime === "function") updateQueueTime();
   });
 
   /* Repeat this video N times (round 208 new 1): the Loop chip repeats endlessly, but for a
@@ -8879,6 +8894,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   (window.__relang = window.__relang || []).push(renderPracticeLoops); renderPracticeLoops();
   loopBtn.setAttribute("aria-pressed", String(prefs.loop));
   function updateAB() {
+    // Round 461 fix: setting or clearing an A-B repeat changes whether a finish time
+    // exists at all; repaint the clocks with the toggle, like the Loop chip does.
+    if (typeof paintEndsAt === "function") paintEndsAt(typeof curTime === "number" ? curTime : 0);
+    if (typeof updateQueueTime === "function") updateQueueTime();
     if (abToggle) { abToggle.textContent = T("Repeat A-B") + ": " + (abEnabled ? T("on") : T("off")); abToggle.setAttribute("aria-pressed", String(abEnabled)); }
     // The Set A / Set B buttons were static HTML and stayed English in Hindi/Gujarati;
     // updateAB already runs on every language switch, so paint them here.
@@ -12809,9 +12828,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (dOut > 0) acc += Math.max(0, dOut - Math.min(Math.floor(curTime), dOut));
       else known = false;
     }
+    // Round 461 fix: with the playing video on Loop or A-B repeat, nothing behind it
+    // ever starts, but every later row still wore a "starts ~" clock.
+    var loopForever461 = window.__vpLoopingForever461 && window.__vpLoopingForever461();
     Array.prototype.forEach.call(queueList.children, function (li, idx) {
       var oldTag = li.querySelector(".q-start"); if (oldTag) oldTag.remove();
-      if (!known || idx <= sPos || idx >= lib.queue.length) return;
+      if (!known || loopForever461 || idx <= sPos || idx >= lib.queue.length) return;
       var d = queueRowDur(lib.queue[idx].id);
       var ts = window.__vpDoneBy(new Date(Date.now() + Math.round(acc / sp) * 1000));
       var tag = document.createElement("span");
@@ -24295,6 +24317,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Time in the tab title (see how much is left from another tab)": ["टैब टाइटल में समय (दूसरे टैब से भी देखें कितना बचा है)", "ટૅબ ટાઇટલમાં સમય (બીજા ટૅબમાંથી પણ જુઓ કેટલું બાકી છે)"],
     "Tab title time on": ["टैब टाइटल में समय चालू", "ટૅબ ટાઇટલમાં સમય ચાલુ"],
     "Tab title time off": ["टैब टाइटल में समय बंद", "ટૅબ ટાઇટલમાં સમય બંધ"],
+    "Looping - plays until you stop it": ["लूप चालू - रोकने तक चलता रहेगा", "લૂપ ચાલુ - રોકશો ત્યાં સુધી ચાલતું રહેશે"],
     "left": ["बाकी", "બાકી"]  // round 217 fix 3: was 'बचा', which overrode the app's standard 'बाकी' everywhere (time-left label, history rows, tab title)
   });
   (function () {
