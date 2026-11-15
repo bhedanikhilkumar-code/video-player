@@ -6079,7 +6079,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var copyQueueBtn = $("copyQueueBtn");
   if (copyQueueBtn) copyQueueBtn.addEventListener("click", function () {
     if (!lib.queue.length) { showLibErr(T("Queue is empty. Add links with Add to queue.")); return; }
-    var text = lib.queue.map(function (x, i) { return (i + 1) + ". " + (x.title || x.id) + "\nhttps://youtu.be/" + x.id; }).join("\n");
+    var qSecs412 = 0, qKnown412 = 0;
+    var text = lib.queue.map(function (x, i) { var d = copyLen412(x); if (d) { qKnown412++; qSecs412 += d; } return (i + 1) + ". " + (x.title || x.id) + (d ? " (" + fmt(d) + ")" : "") + "\nhttps://youtu.be/" + x.id; }).join("\n");
+    if (qKnown412) text += "\n" + T("Total known length") + ": ~" + fmt(qSecs412) + (qKnown412 < lib.queue.length ? " (" + qKnown412 + "/" + lib.queue.length + " " + T("lengths known") + ")" : "");
     function done(ok) { if (ok) copyTick(copyQueueBtn); toast(ok ? T("Queue copied as a list") : T("Could not copy. Try again.")); }
     function fallback() {
       try { var ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly", ""); ta.style.cssText = "position:fixed;opacity:0;top:0;left:0"; document.body.appendChild(ta); ta.select(); var ok2 = document.execCommand("copy"); ta.remove(); done(!!ok2); } catch (e) { done(false); }
@@ -6126,7 +6128,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function () { done(true); }, fallback); else fallback();
   }
+  // Round 412 new 1: Copy list with lengths - the Watch later, Favourites and Recently
+  // watched Copy list chips pasted bare titles, so a shared list could not say how long a
+  // watch would take. When a length has been learned (played once, or fetched), each line
+  // now carries it in brackets, and the queue Copy list ends with a ~total line - the same
+  // learned durations the length pills and Sort by length already trust.
+  function copyLen412(x) { var d = (infoCache[x.id] && infoCache[x.id].dur) || 0; if (!d) { var hi = findIn(lib.hist, x.id); if (hi >= 0 && lib.hist[hi].dur) d = lib.hist[hi].dur; } return typeof d === "number" && d > 0 ? d : 0; }
+  function copyLenExtra412(x) { var d = copyLen412(x); return d ? " (" + fmt(d) + ")" : ""; }
   var laterCopyBtn = $("laterCopyBtn"), favCopyBtn = $("favCopyBtn"), histCopyBtn = $("histCopyBtn"), contCopyBtn = $("contCopyBtn");
+  Object.assign(TR_MSG, {
+    "Total known length": ["\u091c\u094d\u091e\u093e\u0924 \u0915\u0941\u0932 \u0932\u0902\u092c\u093e\u0908", "\u0a96\u0aac\u0ab0 \u0aaa\u0aa1\u0ac7\u0ab2 \u0a95\u0ac1\u0ab2 \u0ab2\u0a82\u0aac\u0abe\u0a88"],
+    "lengths known": ["\u0932\u0902\u092c\u093e\u0908 \u091c\u094d\u091e\u093e\u0924", "\u0ab2\u0a82\u0aac\u0abe\u0a88 \u0a96\u0aac\u0ab0"]
+  });
+
   // Copy list for Continue watching (round 219 extra new): every other saved list had a
   // one-tap copy, but the current rotation - the half-watched videos you are actually in
   // the middle of - did not. Same numbered titles and links as the other copy chips, so a
@@ -6139,12 +6153,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // Round 228 fix: Copy list scanned raw lib.later, so with the Only-unwatched or the length
   // filter on, or a view sort picked, the clipboard held videos the card was not showing (and
   // missed the on-screen order) - the same class of bug the Continue watching chips had.
-  if (laterCopyBtn) laterCopyBtn.addEventListener("click", function () { copyLibList(laterView(), "Nothing saved for later yet. Load a video and tap Watch later.", "Watch later list copied", laterCopyBtn); });
+  if (laterCopyBtn) laterCopyBtn.addEventListener("click", function () { copyLibList(laterView(), "Nothing saved for later yet. Load a video and tap Watch later.", "Watch later list copied", laterCopyBtn, copyLenExtra412); });
   // Round 228 fix: favourites and history Copy list scanned the raw lists, so with the
   // Only-unwatched filter or a view sort on, the clipboard held rows the card was hiding and
   // missed the on-screen order. Both now copy the same visible list the card shows.
-  if (favCopyBtn) favCopyBtn.addEventListener("click", function () { copyLibList(favView(), "No favourites yet. Load a video and tap Add to favourites.", "Favourites list copied", favCopyBtn); });
-  if (histCopyBtn) histCopyBtn.addEventListener("click", function () { copyLibList(histView(), "Videos you play will show up here.", "History list copied", histCopyBtn); });
+  if (favCopyBtn) favCopyBtn.addEventListener("click", function () { copyLibList(favView(), "No favourites yet. Load a video and tap Add to favourites.", "Favourites list copied", favCopyBtn, copyLenExtra412); });
+  if (histCopyBtn) histCopyBtn.addEventListener("click", function () { copyLibList(histView(), "Videos you play will show up here.", "History list copied", histCopyBtn, copyLenExtra412); });
   function copyListBtnsPaint() { [laterCopyBtn, favCopyBtn, histCopyBtn, contCopyBtn].forEach(function (bb) { if (bb) bb.textContent = T("Copy list"); }); }
   (window.__relang = window.__relang || []).push(copyListBtnsPaint);
   copyListBtnsPaint();
@@ -20989,6 +21003,8 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ["Playlist resume", "#plList"],
     ["Copied link prompt", "#clipCard"],
   ];
+  // Round 412 new 1 on the What's new card.
+  WNEW.unshift(["Copy list with lengths", "#copyQueueBtn"]); WNEW.length = Math.min(10, WNEW.length);
   // Round 256: the two new sort names need Hindi/Gujarati for the What's new card
   // (their chips were translated in their own commits; the card renders through T()).
   Object.assign(TR_MSG, {
@@ -21103,6 +21119,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Glass text fields": ["\u0917\u094d\u0932\u093e\u0938 \u091f\u0947\u0915\u094d\u0938\u094d\u091f \u092b\u093c\u0940\u0932\u094d\u0921", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0a9f\u0ac7\u0a95\u0acd\u0ab8\u0acd\u0a9f \u0aab\u0ac0\u0ab2\u0acd\u0aa1"],
     "Glass colour orb": ["\u0917\u094d\u0932\u093e\u0938 \u0930\u0902\u0917 \u0917\u094b\u0932\u093e", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0ab0\u0a82\u0a97 \u0a97\u0acb\u0ab3\u0acb"],
     "Glass number boxes": ["\u0917\u094d\u0932\u093e\u0938 \u0928\u0902\u092c\u0930 \u092c\u0949\u0915\u094d\u0938", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aa8\u0a82\u0aac\u0ab0 \u0aac\u0acb\u0a95\u0acd\u0ab8"],
+    "Copy list with lengths": ["लंबाइयों के साथ सूची कॉपी करें", "લંબાઈ સાથે યાદી કોપી કરો"],
     "Glass dropdowns": ["\u0917\u094d\u0932\u093e\u0938 \u0921\u094d\u0930\u0949\u092a\u0921\u093e\u0909\u0928", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0aa1\u0acd\u0ab0\u0acb\u0aaa\u0aa1\u0abe\u0a89\u0aa8"],
     "Glass shortcuts sheet": ["\u0917\u094d\u0932\u093e\u0938 \u0936\u0949\u0930\u094d\u091f\u0915\u091f \u0936\u0940\u091f", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0ab6\u0acb\u0ab0\u0acd\u0a9f\u0a95\u0a9f \u0ab6\u0ac0\u0a9f"],
     "Glass chevrons": ["\u0917\u094d\u0932\u093e\u0938 \u0936\u0947\u0935\u0930\u0949\u0928", "\u0a97\u0acd\u0ab2\u0abe\u0ab8 \u0ab6\u0ac7\u0ab5\u0ab0\u0acb\u0aa8"],
@@ -50937,6 +50954,7 @@ if (window.__vpApplyLang) window.__vpApplyLang();
       };
     }
     var FEATS = [
+      ["Copy list with lengths", "copy list lengths durations total known length queue watch later favourites history clipboard share plan how long watch time", "#copyQueueBtn"],
       ["Archive Watch later rows", "archive watch later park away hide row shelf keep saved unarchive put back clean list tidy backlog", "#laterArchBtn388"],
       ["Search finds the Archived shelf", "archived shelf search find parked rows hidden library search box title auto open shelf visible again", "#archList388"],
       ["Archived in the search scope", "archived scope picker search in only shelf parked rows narrow filter chip", "#libScope"],,
