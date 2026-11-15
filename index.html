@@ -55758,5 +55758,31 @@ summary{min-height:28px;box-sizing:border-box}
   if (document.readyState === "complete") setTimeout(start, 0); else window.addEventListener("load", function () { setTimeout(start, 600); });
 })();
 </script>
+<script>
+/* Round 423 fix 1: a select clipped the choice it showed. The dropdown arrow reserves 44px on the
+   right, so narrow selects ("Choose a playlist", "Pick a video", "Favourites", the Gujarati
+   "No playlist") cut the selected text off mid-word. Each visible select now gets a min-width
+   that fits its selected text (measured with its own font), capped at the width of its row. */
+(function () {
+  "use strict";
+  var cv = document.createElement("canvas").getContext("2d"), tm = null;
+  function fit(s) {
+    try {
+      var o = s.options[s.selectedIndex]; if (!o) return;
+      var cs = getComputedStyle(s); if (cs.display === "none") return;
+      cv.font = cs.fontStyle + " " + cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
+      var ls = parseFloat(cs.letterSpacing) || 0;
+      var need = cv.measureText(o.text).width + ls * o.text.length + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) * 2 + 2;
+      s.style.minWidth = Math.ceil(need) + "px"; s.style.maxWidth = "100%";
+    } catch (e) {}
+  }
+  function all() { tm = null; document.querySelectorAll("select").forEach(fit); }
+  function later() { if (!tm) tm = setTimeout(all, 200); }
+  document.addEventListener("change", function (e) { if (e.target && e.target.tagName === "SELECT") fit(e.target); }, true);
+  new MutationObserver(later).observe(document.body, { subtree: true, childList: true, characterData: true });
+  (window.__relang = window.__relang || []).push(function () { setTimeout(all, 350); });
+  if (document.readyState === "complete") setTimeout(all, 300); else window.addEventListener("load", function () { setTimeout(all, 700); });
+})();
+</script>
 </body>
           </html>
