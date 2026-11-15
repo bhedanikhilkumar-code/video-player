@@ -8226,7 +8226,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var bar = $("favCtlBar"), chips = $("favCtlChips"); if (!bar || !chips) return;
     var ranked = FAVCTL_DEFS.filter(function (d) { return (favCtl.counts[d.sel] | 0) > 0 && favCtl.hidden.indexOf(d.sel) < 0; });
     ranked.sort(function (a, b) { return (favCtl.counts[b.sel] | 0) - (favCtl.counts[a.sel] | 0) || a.i - b.i; });
-    ranked = ranked.slice(0, 5).filter(function (d) { var el = null; try { el = document.querySelector(d.sel); } catch (e) {} return el && el.offsetParent !== null; });
+    // Round 439 fix 4: hidden advanced cards must not consume the five slots.
+    // In Simple mode, five high-ranked hidden cards used to hide the entire bar,
+    // even when the sixth-ranked everyday control was visible and useful.
+    ranked = ranked.filter(function (d) { var el = null; try { el = document.querySelector(d.sel); } catch (e) {} return el && el.offsetParent !== null; }).slice(0, 5);
     chips.innerHTML = "";
     if (!ranked.length) { bar.hidden = true; return; }
     bar.hidden = false;
@@ -16372,6 +16375,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   }
   function setSimple(on) {
     prefs.simpleMode = on === true; savePrefs(); applySimple(); paintSimple();
+    favCtlRender(); // Visibility and the five eligible shortcuts changed with the mode.
     toast(on ? T("Simple mode on - advanced cards hidden. Nothing is deleted.") : T("Simple mode off - everything is back."));
   }
   if (smBtn) smBtn.addEventListener("click", function () { setSimple(!(prefs.simpleMode === true)); });
