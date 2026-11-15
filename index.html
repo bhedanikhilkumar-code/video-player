@@ -38951,7 +38951,16 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       sheetImg.src = m.d; sheetImg.alt = T("Photo note");
       sheet.style.display = "flex";
     });
-    window.__vpVphotoShow298 = function (id) { var m = id ? vphotos[id] : memoP(); if (!m) return; sheetImg.src = m.d; sheetImg.alt = T("Photo note"); sheet.style.display = "flex"; };
+    // Round 381 fix 3: read the asked-for photo fresh from the store - the Photo notes
+    // library repaints when another tab saves, and the closure map would not know it, so a
+    // tap on a freshly listed row silently did nothing.
+    window.__vpVphotoShow298 = function (id) {
+      var m = null;
+      if (id) { try { var all = JSON.parse(localStorage.getItem(VP_KEY) || "null"); if (all && typeof all === "object" && !Array.isArray(all)) m = all[id] || null; } catch (e) {} }
+      else m = memoP();
+      if (!m || typeof m.d !== "string" || !m.d) return;
+      sheetImg.src = m.d; sheetImg.alt = T("Photo note"); sheet.style.display = "flex";
+    };
     delB.addEventListener("click", function () { if (!curId || !vphotos[curId]) return; delete vphotos[curId]; vpSave(); closeSheet(); toast(T("Photo note deleted.")); paint298p(); });
     setInterval(function () { if (curId !== lastPaintId) paint298p(); }, 1500);
     (window.__relang = window.__relang || []).push(paint298p); paint298p();
