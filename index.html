@@ -5253,20 +5253,25 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   var laterQueueBtn = $("laterQueueBtn");
   if (laterQueueBtn) laterQueueBtn.addEventListener("click", function () {
-    var snap = lib.queue.slice(), sp = qPos, add = [];
+    // Round 454 fix: with the queue at the 50-cap this claimed "No unwatched videos" even
+    // when unwatched videos existed, and a partial add silently dropped the rest. Cap drops
+    // are counted now and both messages say the queue is full.
+    var snap = lib.queue.slice(), sp = qPos, add = [], eligible = 0, leftOut = 0;
     lib.later.forEach(function (it) {
       if (laterSnoozed(it)) return;
       var hi = findIn(lib.hist, it.id);
       var watched = it.done === true || (hi >= 0 && lib.hist[hi].done === true);
       if (watched || findIn(lib.queue, it.id) >= 0) return;
-      if (lib.queue.length + add.length >= 50) return;
+      eligible++;
+      if (lib.queue.length + add.length >= 50) { leftOut++; return; }
       add.push({ id: it.id, title: it.title || "" });
     });
-    if (!add.length) { showLibErr(T("No unwatched videos to add to the queue.")); return; }
+    if (!add.length) { showLibErr(eligible && leftOut ? T("The queue is full at 50 videos.") : T("No unwatched videos to add to the queue.")); return; }
     showLibErr("");
     add.forEach(function (x) { lib.queue.push(x); });
     saveLib(); renderLib();
     toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    if (leftOut) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
   });
   (window.__relang = window.__relang || []).push(function () { if (laterQueueBtn) { laterQueueBtn.textContent = T("➕ Queue unwatched"); laterQueueBtn.setAttribute("aria-label", T("Add every unwatched Watch-later video to the queue")); } });
   if (laterQueueBtn) laterQueueBtn.setAttribute("aria-label", T("Add every unwatched Watch-later video to the queue"));
@@ -6018,18 +6023,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   (window.__relang = window.__relang || []).push(histQueuePaint);
   histQueuePaint();
   if (histQueueBtn) histQueueBtn.addEventListener("click", function () {
-    var snap = lib.queue.slice(), sp = qPos, add = [];
+    // Round 454 fix: with the queue at the 50-cap this claimed "No unfinished videos" even
+    // when unfinished videos existed, and a partial add silently dropped the rest. Cap drops
+    // are counted now and both messages say the queue is full.
+    var snap = lib.queue.slice(), sp = qPos, add = [], eligible = 0, leftOut = 0;
     lib.hist.forEach(function (h) {
       if (!h || !h.id || h.done === true || !(h.t >= 10)) return;
       if (findIn(lib.queue, h.id) >= 0) return;
-      if (lib.queue.length + add.length >= 50) return;
+      eligible++;
+      if (lib.queue.length + add.length >= 50) { leftOut++; return; }
       add.push({ id: h.id, title: h.title || "" });
     });
-    if (!add.length) { showLibErr(T("No unfinished videos to add to the queue.")); return; }
+    if (!add.length) { showLibErr(eligible && leftOut ? T("The queue is full at 50 videos.") : T("No unfinished videos to add to the queue.")); return; }
     showLibErr("");
     add.forEach(function (x) { lib.queue.push(x); });
     saveLib(); renderLib();
     toastUndo(add.length === 1 ? T("1 video added to the queue") : add.length + " " + T("videos added to the queue"), function () { lib.queue = snap; qPos = sp; saveLib(); renderLib(); }, T("Queue restored"));
+    if (leftOut) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
   });
   clearHistBtn.addEventListener("click", function () {
     var snap = lib.hist.slice(), res = null;
