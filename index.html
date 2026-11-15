@@ -4422,7 +4422,14 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // playing right now at its FULL length, so halfway through a 10-minute video
     // the clock said 10 minutes for it instead of the 5 that are actually left.
     // The part already watched is now taken off (only when the length is known).
-    if (qPos >= 0 && qPos < lib.queue.length && curId && lib.queue[qPos] && lib.queue[qPos].id === curId && curTime > 0) {
+    // Round 411 fix 3: the watched-part subtraction above only ran when qPos tracked
+    // the playing row, so a video loaded from the link box, a share link or the
+    // Continue banner (qPos = -1 while its row sits in the queue) still counted at FULL
+    // length - the very overcount round 209 fixed for the normal case. Find the row the
+    // same non-moving way __vpQNextStart292 does.
+    var qTPos = qPos;
+    if (qTPos < 0 && curId) { var qTIx = findIn(lib.queue, curId); if (qTIx >= 0) qTPos = qTIx; }
+    if (qTPos >= 0 && qTPos < lib.queue.length && curId && lib.queue[qTPos] && lib.queue[qTPos].id === curId && curTime > 0) {
       var dCur = infoCache[curId] && infoCache[curId].dur;
       if (typeof dCur === "number" && dCur > 0) secs = Math.max(0, secs - Math.min(Math.floor(curTime), dCur));
     }
