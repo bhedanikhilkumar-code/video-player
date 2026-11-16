@@ -1,0 +1,4 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p,pick,files})=>{
+ await pick(files.slice(0,1));await p.locator('#frameMarkup490>summary').click();await p.locator('#fmCapture490').click();await p.locator('#fmText490').fill('One mark');await p.locator('#fmCentre490').click();await p.locator('#fmUndo490').focus();await p.keyboard.press('Control+z');await p.waitForTimeout(150);assert.equal(await p.locator('#frameMarkup490').evaluate(e=>e.contains(document.activeElement)),true,'last undo must keep keyboard focus inside the editor');await p.keyboard.press('Control+Shift+z');assert.equal(await p.locator('#fmUndo490').isEnabled(),true);console.log('PASS last undo retains editor keyboard focus and delayed Shift+Z still redoes');
+}).catch(e=>{console.error(e);process.exitCode=1});
