@@ -55319,7 +55319,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
 .lp-gal285-grid button{padding:0;border:1px solid var(--hairline);border-radius:12px;overflow:hidden;background:#000;cursor:pointer;min-height:0}
 .lp-gal285-grid img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}
 .lp-gal285-view{position:fixed;inset:0;z-index:9800;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(8,8,12,.82);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);padding:20px;box-sizing:border-box}
-.lp-gal285-view[hidden]{display:none!important}
+.lp-gal285-view{width:100%;height:100%;max-width:none;max-height:none;margin:0;border:0;color:#fff}.lp-gal285-view::backdrop{background:transparent}.lp-gal285-view[hidden]{display:none!important}
 .lp-gal285-view img{max-width:100%;max-height:70vh;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .lp-gal285-view .row{justify-content:center}
 :root[data-theme="dark"] .lp-gal285{background:linear-gradient(145deg,rgba(42,40,52,.85),rgba(28,26,38,.6));border-color:rgba(255,255,255,.14)}
@@ -55348,8 +55348,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     + '<div class="row"><button class="chip" type="button" id="lpGalAdd285"></button><button class="chip" type="button" id="lpGalClear285"></button></div>'
     + '<div class="lp-gal285-grid" id="lpGalGrid285"></div><p class="hint" id="lpGalMsg285" role="status"></p>';
   anchor.parentNode.insertBefore(det, anchor.nextSibling);
-  var view = document.createElement("div");
-  view.className = "lp-gal285-view"; view.id = "lpGalView285"; view.hidden = true;
+  var view = document.createElement("dialog");
+  view.className = "lp-gal285-view"; view.id = "lpGalView285"; view.hidden = true;view.setAttribute("role","dialog");view.setAttribute("aria-modal","true");
   view.innerHTML = '<img alt=""><div class="row"><button class="chip" type="button" id="lpGalDl285"></button><button class="chip" type="button" id="lpGalDel285"></button><button class="chip" type="button" id="lpGalClose285"></button></div>';
   document.body.appendChild(view);
   var grid = $("lpGalGrid285"), msg = $("lpGalMsg285"), viewImg = view.querySelector("img");
@@ -55393,11 +55393,14 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }).catch(function () {});
   }
   function open285(row) {
+    if(viewImg.src)URL.revokeObjectURL(viewImg.src);
     cur285 = row;
     viewImg.src = URL.createObjectURL(row.blob);
-    view.hidden = false;
+    view.hidden = false;view.showModal();$("lpGalClose285").focus();
   }
-  function close285() { view.hidden = true; if (viewImg.src) URL.revokeObjectURL(viewImg.src); viewImg.removeAttribute("src"); cur285 = null; }
+  function close285() { if(view.open)view.close();view.hidden = true; if (viewImg.src) URL.revokeObjectURL(viewImg.src); viewImg.removeAttribute("src"); cur285 = null; }
+  view.addEventListener("cancel",function(e){e.preventDefault();close285();});
+  view.addEventListener("keydown",function(e){if(e.key!=="Tab")return;var buttons=Array.from(view.querySelectorAll("button:not([disabled])")),first=buttons[0],last=buttons[buttons.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}});
   $("lpGalClose285").addEventListener("click", close285);
   view.addEventListener("click", function (e) { if (e.target === view) close285(); });
   $("lpGalDl285").addEventListener("click", function () {
@@ -55444,6 +55447,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     tx("readwrite", function (s) { s.clear(); }).then(function () { render(); say(T("Gallery cleared.")); }).catch(function () {});
   });
   function relang285() {
+    view.setAttribute("aria-label",T("Saved frames"));viewImg.alt=T("Saved frames");
     $("lpGalSum285").textContent = T("Saved frames");
     grid.querySelectorAll("button").forEach(function(b){if(b._frame285)labelThumb285(b,b._frame285,b._index285);});
     $("lpGalHint285").textContent = T("Frames saved here stay inside the app on this device - open one full size, download it as a PNG, or delete it. Nothing is uploaded.");
