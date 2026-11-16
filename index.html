@@ -8305,8 +8305,45 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var FAVCTL_KEY = "vp-ctl-use.v1";
   var FAVCTL_DEFS = ["#ctl-sound", "#ctl-speed", "#ctl-quality", "#ctl-saver", "#ctl-subs", "#ctl-repeat", "#ctl-sleep", "#ctl-focus", "#ctl-gestures", "#ctl-share", "#ctl-marks", "#ctl-notes", "#ctl-lyrics", "#lhQueue", "#lhPlaylists", "#lhLater", "#lhFavs", "#lhHist", "#lhStats", "#dl", "#lp"].map(function (sel, i) { return { sel: sel, i: i }; });
   var favCtl = { counts: {}, hidden: [] };
-  try { var fc0 = JSON.parse(localStorage.getItem(FAVCTL_KEY) || "null"); if (fc0 && typeof fc0 === "object") { if (fc0.counts && typeof fc0.counts === "object") favCtl.counts = fc0.counts; if (Array.isArray(fc0.hidden)) favCtl.hidden = fc0.hidden.filter(function (s) { return typeof s === "string"; }); } } catch (e) {}
-  function favCtlSave() { try { localStorage.setItem(FAVCTL_KEY, JSON.stringify(favCtl)); } catch (e) {} }
+  function favCtlRead() {
+    var out = { counts: {}, hidden: [] };
+    try { var d = JSON.parse(localStorage.getItem(FAVCTL_KEY) || "null"); if (d && typeof d === "object") { if (d.counts && typeof d.counts === "object" && !Array.isArray(d.counts)) Object.keys(d.counts).forEach(function (k) { var v = d.counts[k] | 0; if (typeof k === "string" && v > 0) out.counts[k] = v; }); if (Array.isArray(d.hidden)) out.hidden = d.hidden.filter(function (s) { return typeof s === "string"; }); } } catch (e) {}
+    return out;
+  }
+  favCtl = favCtlRead();
+  // Round 467 fix 6: the counts were written whole from this tab's memory, so with the
+  // app open in two tabs every tap in one tab froze the other tab's counts at whatever
+  // they were when it loaded, and a dropped chip came back when the stale tab saved -
+  // the same two-tab flaw as fixes 1 to 5. A save now adds only THIS tab's count delta
+  // (taps since its baseline) onto what is stored, so taps in both tabs add up, and the
+  // dropped list merges by set (a chip this tab dropped stays dropped, a chip another
+  // tab dropped joins the list). A change from another tab is adopted at once,
+  // repainting the bar.
+  var fcBase467 = JSON.stringify(favCtl);
+  function favCtlSave() {
+    var base = { counts: {}, hidden: [] };
+    try { base = JSON.parse(fcBase467) || base; } catch (e) {}
+    var latest = favCtlRead();
+    Object.keys(favCtl.counts).concat(Object.keys(base.counts || {})).forEach(function (k) {
+      var cur = favCtl.counts[k] | 0, bas = (base.counts && base.counts[k]) | 0;
+      if (cur === bas) return;
+      var nv = (latest.counts[k] | 0) + (cur - bas);
+      if (nv > 0) latest.counts[k] = nv; else delete latest.counts[k];
+    });
+    var curH = favCtl.hidden, basH = base.hidden || [];
+    var removedH = basH.filter(function (x) { return curH.indexOf(x) < 0; });
+    latest.hidden = latest.hidden.filter(function (x) { return removedH.indexOf(x) < 0; });
+    curH.forEach(function (x) { if (latest.hidden.indexOf(x) < 0) latest.hidden.push(x); });
+    favCtl = latest;
+    fcBase467 = JSON.stringify(favCtl);
+    try { localStorage.setItem(FAVCTL_KEY, JSON.stringify(favCtl)); } catch (e) {}
+  }
+  window.addEventListener("storage", function (e) {
+    if (e.key !== FAVCTL_KEY && e.key !== null) return;
+    favCtl = favCtlRead();
+    fcBase467 = JSON.stringify(favCtl);
+    if (typeof favCtlRender === "function") favCtlRender();
+  });
   function favCtlLabel(d) {
     var el = null; try { el = document.querySelector(d.sel); } catch (e) {}
     if (el) {
