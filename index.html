@@ -28213,7 +28213,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Peek": ["देखें", "જુઓ"],
     "Peek inside this restore point": ["इस रिस्टोर पॉइंट के अंदर देखें", "આ રિસ્ટોર પોઇન્ટમાં જુઓ"],
     "This point has no saved videos.": ["इस पॉइंट में कोई वीडियो सेव नहीं है.", "આ પોઇન્ટમાં કોઈ સાચવેલો વીડિયો નથી."],
-    "Peek inside a restore point": ["रिस्टोर पॉइंट के अंदर देखें", "રિસ્ટોર પોઇન્ટમાં જુઓ"]
+    "Peek inside a restore point": ["रिस्टोर पॉइंट के अंदर देखें", "રિસ્ટોર પોઇન્ટમાં જુઓ"],
+    "Only this list": ["सिर्फ़ यह लिस्ट", "ફક્ત આ યાદી"],
+    "Restore only this list from this point? Your current lists are saved as a restore point first.": ["इस पॉइंट से सिर्फ़ यह लिस्ट वापस लाएँ? आपकी मौजूदा लिस्ट पहले रिस्टोर पॉइंट में सेव हो जाएँगी.", "આ પોઇન્ટથી ફક્ત આ યાદી પાછી લાવો? તમારી હાલની યાદી પહેલાં રિસ્ટોર પોઇન્ટમાં સેવ થશે."],
+    "Restore one list from a restore point": ["रिस्टोर पॉइंट से एक लिस्ट वापस लाएँ", "રિસ્ટોર પોઇન્ટથી એક યાદી પાછી લાવો"]
   });
   (function(){var host=$('plList');if(!host)return;
   var KEY='vp-restorepoints.v1',MAXP=6;
@@ -28237,20 +28240,45 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // Expanded points stay open across the card's repaints (language change included).
   // Checked first: the card showed only counts (line() above; grep "peek" = 0).
   var rpPeek482={};
-  function rpPeekList482(frag,label,arr,per){
+  function rpPeekList482(frag,label,arr,per,which,p){
     arr=arr||[];if(!arr.length)return;
-    var h=document.createElement('div');h.style.cssText='font-weight:600;margin:6px 0 2px';h.textContent=label+' ('+arr.length+')';frag.appendChild(h);
+    var h=document.createElement('div');h.style.cssText='font-weight:600;margin:6px 0 2px';h.textContent=label+' ('+arr.length+')';
+    if(which){var ob482=document.createElement('button');ob482.type='button';ob482.className='chip';ob482.style.cssText='margin-left:8px;padding:2px 10px;font-size:12px';ob482.textContent=T('Only this list');ob482.setAttribute('aria-label',T('Restore one list from a restore point')+': '+label);ob482.addEventListener('click',function(){restoreOne482(p,which);});h.appendChild(ob482);}
+    frag.appendChild(h);
     arr.slice(0,per).forEach(function(x){if(!x||!x.id)return;var li=document.createElement('div');li.textContent='\u2022 '+(x.title||(T('Video ')+x.id));li.style.cssText='overflow:hidden;text-overflow:ellipsis;white-space:nowrap';frag.appendChild(li);});
     if(arr.length>per){var m=document.createElement('div');m.textContent='+'+(arr.length-per)+' '+T('more');frag.appendChild(m);}
   }
   function rpPeekDom482(p){
     var frag=document.createDocumentFragment();
-    rpPeekList482(frag,T('Queue'),p.d.queue,6);
-    rpPeekList482(frag,T('Favourites'),p.d.favs,6);
-    rpPeekList482(frag,T('Watch later'),p.d.later,6);
-    (p.d.playlists||[]).forEach(function(pl){if(!pl||typeof pl.name!=='string')return;rpPeekList482(frag,T('Playlists')+': '+pl.name,pl.items,4);});
+    rpPeekList482(frag,T('Queue'),p.d.queue,6,'queue',p);
+    rpPeekList482(frag,T('Favourites'),p.d.favs,6,'favs',p);
+    rpPeekList482(frag,T('Watch later'),p.d.later,6,'later',p);
+    var plShown482=false;
+    (p.d.playlists||[]).forEach(function(pl){if(!pl||typeof pl.name!=='string')return;rpPeekList482(frag,T('Playlists')+': '+pl.name,pl.items,4,plShown482?null:'playlists',p);plShown482=true;});
     if(!frag.childNodes.length){var e=document.createElement('div');e.textContent=T('This point has no saved videos.');frag.appendChild(e);}
     return frag;
+  }
+  // Round 482 new 2: Restore one list from a restore point. A restore always swapped ALL
+  // four lists at once, so fixing a queue you broke by mistake also clobbered the
+  // favourites and Watch later you had since improved - the 'before' point softens that,
+  // but you still lose the newer state until you notice and restore back. Each list
+  // heading inside a peek now carries an 'Only this list' chip: the same confirm and the
+  // same automatic before-restore point as a full restore, but only that one list is
+  // swapped (playlists move together - they are one store). Checked first: restore()
+  // above always writes all four lists; no per-list restore existed (grep "only this" = 0).
+  function restoreOne482(p,which){
+    if(which==='playlists'){
+      window.vpConfirm(T('Playlists')+'. '+T('Restore only this list from this point? Your current lists are saved as a restore point first.'),T('Restore')).then(function(ok){if(!ok)return;
+        add('before',false);var pl=(p.d.playlists||[]).filter(function(x){return x&&typeof x.name==='string'&&Array.isArray(x.items);});playlists.splice(0,playlists.length);pl.forEach(function(x){playlists.push(x);});savePlaylists();renderPlaylists();$('rpMsg').textContent=T('Lists restored.');paint();});
+      return;
+    }
+    var label=which==='queue'?T('Queue'):which==='favs'?T('Favourites'):T('Watch later');
+    window.vpConfirm(label+'. '+T('Restore only this list from this point? Your current lists are saved as a restore point first.'),T('Restore')).then(function(ok){if(!ok)return;
+      add('before',false);
+      if(which==='queue'){lib.queue=(p.d.queue||[]).filter(validItem);qPos=-1;}
+      else if(which==='favs'){lib.favs=(p.d.favs||[]).filter(validItem);}
+      else{lib.later=(p.d.later||[]).filter(validItem);}
+      saveLib();renderLib();$('rpMsg').textContent=T('Lists restored.');paint();});
   }
   function restore(p){var q=(p.d.queue||[]).filter(validItem),f=(p.d.favs||[]).filter(validItem),l=(p.d.later||[]).filter(validItem),pl=(p.d.playlists||[]).filter(function(x){return x&&typeof x.name==='string'&&Array.isArray(x.items);});
     add('before',false);lib.queue=q;lib.favs=f;lib.later=l;playlists.splice(0,playlists.length);pl.forEach(function(x){playlists.push(x);});qPos=-1;
@@ -51331,6 +51359,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Dim watched rows", "#dimWatchedBtn481"); }, 10020); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Rename from the info card", "#infoRenameBtn481"); }, 10120); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Peek inside a restore point", "#restoreCard"); }, 10220); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Restore one list from a restore point", "#restoreCard"); }, 10320); });
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
   // round's fix 1 showed what that means: one block throwing while the page loads silently
@@ -55848,6 +55877,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       };
     }
     var FEATS = [
+      ["Restore one list from a restore point", "restore only one list queue favourites watch later playlists selective partial from snapshot point swap back", "#restoreCard"],
       ["Peek inside a restore point", "restore point peek look inside titles snapshot before restore backup which videos list", "#restoreCard"],
       ["Dim watched rows", "dim watched faded rows grey gray unwatched stand out library display opacity seen done", "#dimWatchedBtn481"],
       ["Rename from the info card", "rename video playing now watching info card own name pencil change title", "#infoRenameBtn481"],
