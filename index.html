@@ -17646,6 +17646,27 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Channel speeds included: ": ["चैनल स्पीड शामिल: ", "ચેનલ સ્પીડ સામેલ: "],
     "Channel speeds restored: ": ["चैनल स्पीड वापस मिलीं: ", "ચેનલ સ્પીડ પાછી મળી: "]
   });
+  // Round 467 merge helpers: several small stores were each written whole from one
+  // tab's memory, so with the app open in two tabs (or the installed app plus a
+  // browser tab) the tab that saved last silently wiped the other tab's entries - the
+  // flaw rounds 239, 260, 261 and 466 closed for notes, playlists, moments, voice
+  // notes, photo notes, timestamp notes, per-video memory and chapters. These helpers
+  // snapshot the store at load and merge only the keys this tab changed into whatever
+  // is stored now, so both tabs' entries survive; a change from another tab is adopted
+  // at once through the storage event.
+  function vpSnap467(o) { var b = {}; Object.keys(o).forEach(function (k) { b[k] = JSON.stringify(o[k]); }); return b; }
+  function vpReadObj467(key) { try { var m = JSON.parse(localStorage.getItem(key) || "null"); return (m && typeof m === "object" && !Array.isArray(m)) ? m : {}; } catch (e) { return {}; } }
+  function vpMergeSave467(key, cur, base, cap) {
+    var latest = vpReadObj467(key);
+    Object.keys(cur).concat(Object.keys(base)).forEach(function (k) {
+      if (JSON.stringify(cur[k]) === base[k]) return;
+      if (cur[k] !== undefined) latest[k] = cur[k]; else delete latest[k];
+    });
+    var ks = Object.keys(latest);
+    if (cap && ks.length > cap) ks.slice(0, ks.length - cap).forEach(function (k) { delete latest[k]; });
+    try { localStorage.setItem(key, JSON.stringify(latest)); } catch (e) {}
+    return latest;
+  }
   var CHSPD_KEY = "vp-chanspeed.v1", chSpeed = {}, chSpeedAppliedId = null;
   try {
     var _cs = JSON.parse(localStorage.getItem(CHSPD_KEY) || "null");
@@ -17654,7 +17675,16 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       if (typeof k === "string" && k.trim() && isFinite(v) && v >= 0.25 && v <= 2) chSpeed[k] = v;
     });
   } catch (e) {}
-  function chSpeedSave() { try { var ks = Object.keys(chSpeed); while (ks.length > 30) delete chSpeed[ks.shift()]; localStorage.setItem(CHSPD_KEY, JSON.stringify(chSpeed)); } catch (e) {} }
+  var chSpeedBase467 = vpSnap467(chSpeed);
+  function chSpeedSave() { chSpeed = vpMergeSave467(CHSPD_KEY, chSpeed, chSpeedBase467, 30); chSpeedBase467 = vpSnap467(chSpeed); }
+  window.addEventListener("storage", function (e) {
+    if (e.key !== CHSPD_KEY && e.key !== null) return;
+    var m = vpReadObj467(CHSPD_KEY), clean = {};
+    Object.keys(m).forEach(function (k) { var v = Number(m[k]); if (typeof k === "string" && k.trim() && isFinite(v) && v >= 0.25 && v <= 2) clean[k] = v; });
+    chSpeed = clean; chSpeedBase467 = vpSnap467(chSpeed);
+    if (typeof chSpeedRender === "function") chSpeedRender();
+    if (typeof chSpeedClearPaint === "function") chSpeedClearPaint();
+  });
   function chSpeedFind(n) { n = (n || "").toLowerCase(); var ks = Object.keys(chSpeed); for (var i = 0; i < ks.length; i++) if (ks[i].toLowerCase() === n) return ks[i]; return null; }
   function chSpeedCurName() { var c = typeof chanCur === "function" ? chanCur() : null; return c ? c.n : ""; }
   var chSpeedBtn = $("chSpeedBtn"), chSpeedHint = $("chSpeedHint");
