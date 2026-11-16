@@ -51815,7 +51815,13 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       function settled(){messageKey='Captured at {t}. Playback is paused; edits affect only this image.';}
       e.preventDefault();var m=makeMark(position(e));
       if(tool.value==='text'){marks.push(m);settled();render();return;}
-      pointer=e.pointerId;draft=m;canvas.setPointerCapture(pointer);render();
+      pointer=e.pointerId;draft=m;
+      // Round 491 fix 2: setPointerCapture throws NotFoundError when the pointer is not
+      // active (synthetic/assistive events, stale ids - seen live), which aborted this
+      // handler before render() and left the stroke without an end. Guard it; drawing
+      // still works and pointerup on the canvas ends the stroke when capture failed.
+      try{canvas.setPointerCapture(pointer);}catch(capErr){}
+      render();
     });
     canvas.addEventListener('pointermove',function(e){if(e.pointerId!==pointer||!draft)return;var p=position(e);if(draft.tool==='pen'){if(draft.points.length<2000)draft.points.push(p);}else draft.points[1]=p;render();});
     function end(e,cancel){if(e.pointerId!==pointer||!draft)return;if(!cancel){marks.push(draft);settled();}draft=null;pointer=null;render();}
