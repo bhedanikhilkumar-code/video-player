@@ -6709,6 +6709,17 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     favSortMode = favSortMode === "new" ? "az" : (favSortMode === "az" ? "rate" : (favSortMode === "rate" ? "short" : (favSortMode === "short" ? "long" : "new"))); try { localStorage.setItem("vp-favsort.v1", favSortMode); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
     renderLib();
   });
+  // Round 479 fix 4: the Favourites sort chip kept its choice in its own key, read once on
+  // load, so sorting A-Z here left other open tabs on the old order until a reload. A
+  // storage listener now adopts the saved sort everywhere and re-renders the list.
+  window.addEventListener("storage", function (e) {
+    if (e.key !== "vp-favsort.v1" && e.key !== null) return;
+    try {
+      var m479 = localStorage.getItem("vp-favsort.v1");
+      m479 = (m479 === "az" || m479 === "rate" || m479 === "short" || m479 === "long") ? m479 : "new";
+      if (favSortMode !== m479) { favSortMode = m479; renderLib(); }
+    } catch (err) {}
+  });
   (function () { var r = document.querySelector('.lib-listtools[data-for="lhFavs"]'); if (r) r.appendChild(favSortBtn); })();
   /* Same title sort for Watch later and Recently watched. Newest first stays the default. */
   function makeSortView(key) {
