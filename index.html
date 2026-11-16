@@ -29316,7 +29316,36 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   function dayKey(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
   var td={d:dayKey(),v:[]};try{var r0=JSON.parse(localStorage.getItem(KEY)||'null');if(r0&&typeof r0==='object'&&/^\d{4}-\d{2}-\d{2}$/.test(r0.d)&&Array.isArray(r0.v)){var seen={};td.d=r0.d;r0.v.forEach(function(x){if(x&&typeof x.id==='string'&&/^[\w-]{11}$/.test(x.id)&&!seen[x.id]&&td.v.length<5){seen[x.id]=1;td.v.push({id:x.id,t:String(x.t||'').slice(0,120)});}});}}catch(e){}
   function fresh(){if(td.d!==dayKey()){td={d:dayKey(),v:[]};save();}}
-  function save(){try{localStorage.setItem(KEY,JSON.stringify(td));}catch(e){if(typeof storageWarn==='function')storageWarn();}}
+  // Round 472 fix 4: Today's list had the same two-tab flaw as the tags, weekly plan and
+  // review stores (fixes 1 to 3) - every save wrote the whole list from this tab's
+  // memory, so with the app open in two tabs a video one tab added (or removed) was lost
+  // when the stale tab saved next. A save now merges per video: items the other tab
+  // added stay, items this tab removed go, and a change from another tab is adopted at
+  // once, repainting the card when it is open. The daily fresh start still wins whole.
+  var tdBase472={};td.v.forEach(function(x){tdBase472[x.id]=1;});
+  function save(){
+    var cur=td,latest=vpReadObj467(KEY),out;
+    if(!latest||typeof latest!=="object"||latest.d!==cur.d){out={d:cur.d,v:cur.v.slice(0,5)};}
+    else{
+      var inBase=tdBase472,inCur={};cur.v.forEach(function(x){inCur[x.id]=1;});
+      out={d:cur.d,v:[]};var seen={};
+      (Array.isArray(latest.v)?latest.v:[]).forEach(function(x){
+        if(!x||typeof x.id!=="string"||seen[x.id])return;
+        if(inBase[x.id]&&!inCur[x.id])return;
+        if(out.v.length<5){seen[x.id]=1;out.v.push(inCur[x.id]?cur.v.filter(function(y){return y.id===x.id;})[0]:x);}
+      });
+      cur.v.forEach(function(x){if(!seen[x.id]&&out.v.length<5){seen[x.id]=1;out.v.push(x);}});
+    }
+    try{localStorage.setItem(KEY,JSON.stringify(out));}catch(e){if(typeof storageWarn==='function')storageWarn();}
+    td=out;tdBase472={};out.v.forEach(function(x){tdBase472[x.id]=1;});
+  }
+  window.addEventListener("storage",function(e){
+    if(e.key!==KEY&&e.key!==null)return;
+    var m=vpReadObj467(KEY),c={d:dayKey(),v:[]};
+    if(m&&typeof m.d==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(m.d)&&Array.isArray(m.v)){var seen={};c.d=m.d;m.v.forEach(function(x){if(x&&typeof x.id==="string"&&/^[\w-]{11}$/.test(x.id)&&!seen[x.id]&&c.v.length<5){seen[x.id]=1;c.v.push({id:x.id,t:String(x.t||"").slice(0,120)});}});}
+    td=c;tdBase472={};c.v.forEach(function(x){tdBase472[x.id]=1;});
+    if(card.open)paint();
+  });
   var card=document.createElement('details');card.id='todayCard';card.className='r239-card';
   card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="row" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0"><select id="tdPick" style="flex:1;min-width:0"></select><button type="button" class="chip" id="tdAdd"></button></div><p class="hint" id="tdProg"></p><div id="tdList"></div><p class="hint" id="tdMsg" role="status"></p>';
   host.parentNode.insertBefore(card,host);
