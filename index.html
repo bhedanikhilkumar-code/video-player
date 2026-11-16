@@ -3653,6 +3653,12 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     setTimeout(function () { try { toast(T("Could not save: browser storage is full or blocked. Your latest changes may be lost - export a backup."), 6000); } catch (e) {} }, 900);
   }
   window.vpStorageWarning276 = storageWarn;
+  // Round 475 fix 1: one save path for the direct writers. Round 474 fix 1 restored the
+  // storage-full warning for the stores routed through the merge helper, but these
+  // per-store saves still wrote straight to localStorage inside a bare catch, so on a
+  // full device a resume point, a rating, a per-video memory, a favourite sort, a sleep
+  // clock or a mini-player side looked saved and was gone on reload, with no warning.
+  function vpSafeSet475(k, v) { try { localStorage.setItem(k, v); } catch (e) { storageWarn(); } }
   /* Toast feedback: one short note at the bottom for actions that used to be silent or
      only changed a far-away status line. role=status so screen readers announce it. */
   var toastEl = null, toastTimer = 0;
@@ -5334,7 +5340,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   if (laterAutoBtn) laterAutoBtn.addEventListener("click", function () {
     laterAuto = !laterAuto;
-    try { localStorage.setItem("vp-later-auto.v1", laterAuto ? "1" : "0"); } catch (e) {}
+    try { vpSafeSet475("vp-later-auto.v1", laterAuto ? "1" : "0"); } catch (e) {}
     laterAutoRender();
     toast(laterAuto ? T("Finished videos will leave Watch later on their own.") : T("Finished videos stay in Watch later."));
   });
@@ -5540,10 +5546,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var n = Object.keys(m).filter(function (k) { var v = Math.round(Number(m[k])); return v >= 1 && v <= 5; }).length;
     if (!n) { showLibErr(T("No ratings to clear.")); return; }
     showLibErr("");
-    try { localStorage.setItem("vp-rate.v1", "{}"); } catch (e) {}
+    try { vpSafeSet475("vp-rate.v1", "{}"); } catch (e) {}
     try { window.dispatchEvent(new Event("vp-rate-changed")); } catch (e) {}
     toastUndo(n === 1 ? T("1 rating cleared") : n + " " + T("ratings cleared"), function () {
-      try { localStorage.setItem("vp-rate.v1", raw); } catch (e) {}
+      try { vpSafeSet475("vp-rate.v1", raw); } catch (e) {}
       try { window.dispatchEvent(new Event("vp-rate-changed")); } catch (e) {}
     }, T("Ratings restored"));
   });
@@ -5723,7 +5729,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // was on, the card kept drawing its own order over this physical one, so the toast claimed
     // a sort you never saw and the manual order silently changed. Drop the view sort back to
     // the manual order first, so the sorted list is the one on screen.
-    if (typeof favSortMode !== "undefined" && favSortMode !== "new") { favSortMode = "new"; try { localStorage.setItem("vp-favsort.v1", "new"); } catch (e) {} }
+    if (typeof favSortMode !== "undefined" && favSortMode !== "new") { favSortMode = "new"; try { vpSafeSet475("vp-favsort.v1", "new"); } catch (e) {} }
     lib.favs = named.concat(unnamed); saveLib(); renderLib();
     toastUndo(dir === 1 ? T("Favourites sorted: A to Z") : T("Favourites sorted: Z to A"), function () { lib.favs = snap; saveLib(); renderLib(); }, T("Favourites restored"));
     favSortAzNext = !favSortAzNext; favSortAzPaint();
@@ -5768,7 +5774,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var favSortLenBtn = $("favSortLenBtn"), favSortLenShort = true;
   function favSortLenPaint() { if (favSortLenBtn) { favSortLenBtn.textContent = favSortLenShort ? T("Sort by length") : T("Sort: longest first"); favSortLenBtn.setAttribute("aria-label", T("Sort favourites by length")); } }
   if (favSortLenBtn) favSortLenBtn.addEventListener("click", function () {
-    var ok = sortLen292Do(lib.favs, function (a) { lib.favs = a; }, function () { if (typeof favSortMode !== "undefined" && favSortMode !== "new") { favSortMode = "new"; try { localStorage.setItem("vp-favsort.v1", "new"); } catch (e) {} } }, favSortLenShort, favSortLenShort ? "Favourites sorted: shortest first" : "Favourites sorted: longest first", "Favourites restored");
+    var ok = sortLen292Do(lib.favs, function (a) { lib.favs = a; }, function () { if (typeof favSortMode !== "undefined" && favSortMode !== "new") { favSortMode = "new"; try { vpSafeSet475("vp-favsort.v1", "new"); } catch (e) {} } }, favSortLenShort, favSortLenShort ? "Favourites sorted: shortest first" : "Favourites sorted: longest first", "Favourites restored");
     if (!ok) return;
     favSortLenShort = !favSortLenShort; favSortLenPaint();
   });
@@ -6661,8 +6667,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     return {
       isAZ: function () { return mode === "az"; },
       mode: function () { return mode; },
-      set: function (m) { mode = (m === "az" || m === "rate" || m === "short" || m === "long" || m === "old") ? m : "new"; try { localStorage.setItem(key, mode); } catch (e) {} },
-      toggle: function () { mode = mode === "new" ? "az" : (mode === "az" ? "rate" : (mode === "rate" ? "short" : (mode === "short" ? "long" : (mode === "long" ? "old" : "new")))); try { localStorage.setItem(key, mode); } catch (e) {} },
+      set: function (m) { mode = (m === "az" || m === "rate" || m === "short" || m === "long" || m === "old") ? m : "new"; try { vpSafeSet475(key, mode); } catch (e) {} },
+      toggle: function () { mode = mode === "new" ? "az" : (mode === "az" ? "rate" : (mode === "rate" ? "short" : (mode === "short" ? "long" : (mode === "long" ? "old" : "new")))); try { vpSafeSet475(key, mode); } catch (e) {} },
       view: function (items) {
         if (mode === "new") return items;
         // Round 213 new: Oldest first - the one natural order the cycle did not have. Rows
@@ -6810,7 +6816,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       (window.__relang = window.__relang || []).push(function () { if (b.refresh) b.refresh(); });
       return b;
     }
-    var fm317 = mkMix317('.lib-listtools[data-for="lhFavs"]', function () { return lib.favs; }, function () { favSortMode = "new"; try { localStorage.setItem("vp-favsort.v1", "new"); } catch (e) {} }, "Favourites order mixed", "Favourites restored", "Mix favourites order", "favMixBtn317");
+    var fm317 = mkMix317('.lib-listtools[data-for="lhFavs"]', function () { return lib.favs; }, function () { favSortMode = "new"; try { vpSafeSet475("vp-favsort.v1", "new"); } catch (e) {} }, "Favourites order mixed", "Favourites restored", "Mix favourites order", "favMixBtn317");
     var lm317 = mkMix317('.lib-listtools[data-for="lhLater"]', function () { return lib.later; }, function () { if (typeof laterSort !== "undefined" && laterSort) laterSort.set("new"); }, "Watch later order mixed", "Watch later restored", "Mix watch-later order", "laterMixBtn317");
     window.__vpMixRefresh317 = function () { if (fm317 && fm317.refresh) fm317.refresh(); if (lm317 && lm317.refresh) lm317.refresh(); };
   })();
@@ -6848,7 +6854,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       (window.__relang = window.__relang || []).push(function () { if (b.refresh) b.refresh(); });
       return b;
     }
-    var fr317 = mkRev317('.lib-listtools[data-for="lhFavs"]', function () { return lib.favs; }, function () { favSortMode = "new"; try { localStorage.setItem("vp-favsort.v1", "new"); } catch (e) {} }, "Favourites order reversed", "Favourites restored", "Reverse favourites order", "favRevBtn317");
+    var fr317 = mkRev317('.lib-listtools[data-for="lhFavs"]', function () { return lib.favs; }, function () { favSortMode = "new"; try { vpSafeSet475("vp-favsort.v1", "new"); } catch (e) {} }, "Favourites order reversed", "Favourites restored", "Reverse favourites order", "favRevBtn317");
     var lr317 = mkRev317('.lib-listtools[data-for="lhLater"]', function () { return lib.later; }, function () { if (typeof laterSort !== "undefined" && laterSort) laterSort.set("new"); }, "Watch later order reversed", "Watch later restored", "Reverse watch-later order", "laterRevBtn317");
     window.__vpRevRefresh317 = function () { if (fr317 && fr317.refresh) fr317.refresh(); if (lr317 && lr317.refresh) lr317.refresh(); };
   })();
@@ -7322,7 +7328,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (laIdx >= 0) { var laItem = lib.later.splice(laIdx, 1)[0]; saveLib(); renderLib(); toastUndo(T("Removed from Watch later - you finished it"), function () { lib.later.splice(Math.min(laIdx, lib.later.length), 0, laItem); saveLib(); renderLib(); }, T("Watch later restored")); }
       }
       if (finished) { localStorage.removeItem(RK); return; }
-      if (curTime >= 5) localStorage.setItem(RK, JSON.stringify({ id: curId, t: Math.floor(curTime), title: infoTitle.textContent || "", ts: now }));
+      if (curTime >= 5) vpSafeSet475(RK, JSON.stringify({ id: curId, t: Math.floor(curTime), title: infoTitle.textContent || "", ts: now }));
     } catch (e) {}
   }
   window.addEventListener("pagehide", function() { saveResume(true); });
@@ -7350,7 +7356,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       });
       var ks = Object.keys(latest);
       if (ks.length > 60) { ks.sort(function (a, b) { return ((latest[a] && latest[a].ts) || 0) - ((latest[b] && latest[b].ts) || 0); }); ks.slice(0, ks.length - 60).forEach(function (k) { delete latest[k]; }); }
-      localStorage.setItem(VM_KEY, JSON.stringify(latest)); vmem = latest; vmBase466 = vmSnap466(vmem);
+      vpSafeSet475(VM_KEY, JSON.stringify(latest)); vmem = latest; vmBase466 = vmSnap466(vmem);
     } catch (e) {}
   }
   window.addEventListener("storage", function (e) {
@@ -8000,7 +8006,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (from != null && to != null && to <= from) to = null;
     if (!parseVideoId(link) && /^https?:\/\//i.test(link)) {
       // Not a YouTube link: hand it to the downloader card instead of the player.
-      try { localStorage.setItem("vp-dl-url", JSON.stringify({ u: link, ts: Date.now() })); } catch (e) {}
+      try { vpSafeSet475("vp-dl-url", JSON.stringify({ u: link, ts: Date.now() })); } catch (e) {}
       var dl = document.getElementById("dlUrl"); if (dl) dl.value = link;
       window.addEventListener("load", function () { var c = document.getElementById("dl"); if (c) { if (window.vpExpandSection) window.vpExpandSection("dl"); c.scrollIntoView(); } });
       return;
@@ -8422,7 +8428,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     curH.forEach(function (x) { if (latest.hidden.indexOf(x) < 0) latest.hidden.push(x); });
     favCtl = latest;
     fcBase467 = JSON.stringify(favCtl);
-    try { localStorage.setItem(FAVCTL_KEY, JSON.stringify(favCtl)); } catch (e) {}
+    try { vpSafeSet475(FAVCTL_KEY, JSON.stringify(favCtl)); } catch (e) {}
   }
   window.addEventListener("storage", function (e) {
     if (e.key !== FAVCTL_KEY && e.key !== null) return;
@@ -9051,7 +9057,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (window.__vpLoopLibPaint296) window.__vpLoopLibPaint296();
   });
   function savePracticeLoops() {
-    try { localStorage.setItem(PRACTICE_KEY, JSON.stringify(practiceLoops)); practiceBaseline407 = JSON.stringify(practiceLoops); return true; }
+    try { vpSafeSet475(PRACTICE_KEY, JSON.stringify(practiceLoops)); practiceBaseline407 = JSON.stringify(practiceLoops); return true; }
     catch (e) { toast(T("Could not save. Device storage may be full.")); return false; }
   }
   var savedPractice = document.createElement("div"); savedPractice.id = "savedPractice";
@@ -9696,7 +9702,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (sleepEnd - Date.now() <= 660000) { toast(T("Less than 11 minutes left - use Off to stop the timer.")); return; }
     sleepEnd -= 600000;
     try { localStorage.setItem("vp-sleep-end.v1", String(sleepEnd)); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
-    if (sleepClockTxt) { sleepClockTxt = sleepStopClock(sleepEnd); try { localStorage.setItem("vp-sleep-clock.v1", JSON.stringify({ end: sleepEnd, txt: sleepClockTxt })); } catch (e) {} }
+    if (sleepClockTxt) { sleepClockTxt = sleepStopClock(sleepEnd); try { vpSafeSet475("vp-sleep-clock.v1", JSON.stringify({ end: sleepEnd, txt: sleepClockTxt })); } catch (e) {} }
     sleepRender();
     toast("-10 " + T("min") + " - " + T("Pauses in ") + fmt(Math.max(0, Math.ceil((sleepEnd - Date.now()) / 1000))));
   });
@@ -9712,7 +9718,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     try { localStorage.setItem("vp-sleep-end.v1", String(sleepEnd)); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
     // Round 204 fix: extending a clock-time timer left the old clock time on the label and in
     // storage, so "Pauses in 24:00 (12:22 AM)" lied about the new stop time.
-    if (sleepClockTxt) { sleepClockTxt = sleepStopClock(sleepEnd); try { localStorage.setItem("vp-sleep-clock.v1", JSON.stringify({ end: sleepEnd, txt: sleepClockTxt })); } catch (e) {} }
+    if (sleepClockTxt) { sleepClockTxt = sleepStopClock(sleepEnd); try { vpSafeSet475("vp-sleep-clock.v1", JSON.stringify({ end: sleepEnd, txt: sleepClockTxt })); } catch (e) {} }
     sleepRender();
     toast("+10 " + T("min") + " - " + T("Pauses in ") + fmt(Math.max(0, Math.ceil((sleepEnd - Date.now()) / 1000))));
   });
@@ -9731,7 +9737,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var d = new Date(); d.setHours(Number(m[1]), Number(m[2]), 0, 0);
     if (d.getTime() <= Date.now() + 30000) d.setDate(d.getDate() + 1);
     sleepSet(0, d.getTime());
-    try { localStorage.setItem("vp-sleep-clock.v1", JSON.stringify({ end: d.getTime(), txt: sleepClockTxt })); } catch (e) {}
+    try { vpSafeSet475("vp-sleep-clock.v1", JSON.stringify({ end: d.getTime(), txt: sleepClockTxt })); } catch (e) {}
   });
   // Round 252 fix 5: a restored timer trusted the clock text saved with it, so it kept the
   // language it was first written in after the app language changed (and timers saved before
@@ -9827,7 +9833,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     try { if (localStorage.getItem("vp-mini-side.v1") === "left") root.classList.add("mini-left"); } catch (e) {}
     side.addEventListener("click", function () {
       var left = root.classList.toggle("mini-left");
-      try { localStorage.setItem("vp-mini-side.v1", left ? "left" : "right"); } catch (e) {}
+      try { vpSafeSet475("vp-mini-side.v1", left ? "left" : "right"); } catch (e) {}
     });
     (window.__relang = window.__relang || []).push(function () { side.setAttribute("aria-label", T("Move mini player to the other side")); });
   })();
@@ -9890,7 +9896,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       dg = null;
       dock302.style.left = ""; dock302.style.top = ""; dock302.style.right = ""; dock302.style.bottom = "";
       cornerApply302(c);
-      try { localStorage.setItem("vp-mini-corner.v1", c); } catch (x) {}
+      try { vpSafeSet475("vp-mini-corner.v1", c); } catch (x) {}
       if (c === "bl") { root302.classList.add("mini-left"); try { localStorage.setItem("vp-mini-side.v1", "left"); } catch (x) {} }
       else if (c === "br") { root302.classList.remove("mini-left"); try { localStorage.setItem("vp-mini-side.v1", "right"); } catch (x) {} }
       toast(T("Mini player snaps to the nearest corner."), 1200);
@@ -26215,7 +26221,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       if (rated.length < 2) { toast(T("Need at least 2 rated favourites to sort.")); return; }
       var snap = lib.favs.slice(), dir = nextBest ? -1 : 1;
       rated.sort(function (a, b) { return dir * (vpRateOf(a.id) - vpRateOf(b.id)); });
-      if (typeof favSortMode !== "undefined" && favSortMode !== "new") { favSortMode = "new"; try { localStorage.setItem("vp-favsort.v1", "new"); } catch (e) {} }
+      if (typeof favSortMode !== "undefined" && favSortMode !== "new") { favSortMode = "new"; try { vpSafeSet475("vp-favsort.v1", "new"); } catch (e) {} }
       lib.favs = rated.concat(unrated); saveLib(); renderLib();
       toastUndo(dir === -1 ? T("Favourites sorted: best rated first") : T("Favourites sorted: lowest rated first"), function () { lib.favs = snap; saveLib(); renderLib(); }, T("Favourites restored"));
       nextBest = !nextBest; paint();
@@ -30619,7 +30625,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (played.length < 2) { toast(T("Play some favourites first - at least 2 with a play count are needed to sort.")); return; }
       var snap = lib.favs.slice(), dir = nextMost ? -1 : 1;
       played.sort(function (a, b) { return dir * (playsOf(a.id) - playsOf(b.id)); });
-      if (typeof favSortMode !== "undefined" && favSortMode !== "new") { favSortMode = "new"; try { localStorage.setItem("vp-favsort.v1", "new"); } catch (e) {} }
+      if (typeof favSortMode !== "undefined" && favSortMode !== "new") { favSortMode = "new"; try { vpSafeSet475("vp-favsort.v1", "new"); } catch (e) {} }
       lib.favs = played.concat(fresh); saveLib(); renderLib();
       toastUndo(dir === -1 ? T("Favourites sorted: most played first") : T("Favourites sorted: least played first"), function () { lib.favs = snap; saveLib(); renderLib(); }, T("Favourites restored"));
       nextMost = !nextMost; paint();
