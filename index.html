@@ -51808,15 +51808,20 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     canvas.addEventListener('pointerdown',function(e){
       if(!hasFrame||pointer!==null||e.button!==0||!room())return;
       if(tool.value==='text'&&!text.value.trim())return notice('Write the label text first.');
+      // Round 491 fix 1: a warning like 'Write the label text first.' stayed on screen after
+      // the very next successful stamp or stroke, because only a fresh warning replaced the
+      // message (seen live: stamp text after the warning and the warning was still there).
+      // Any successful change now settles the message back to the capture note.
+      function settled(){messageKey='Captured at {t}. Playback is paused; edits affect only this image.';}
       e.preventDefault();var m=makeMark(position(e));
-      if(tool.value==='text'){marks.push(m);render();return;}
+      if(tool.value==='text'){marks.push(m);settled();render();return;}
       pointer=e.pointerId;draft=m;canvas.setPointerCapture(pointer);render();
     });
     canvas.addEventListener('pointermove',function(e){if(e.pointerId!==pointer||!draft)return;var p=position(e);if(draft.tool==='pen'){if(draft.points.length<2000)draft.points.push(p);}else draft.points[1]=p;render();});
-    function end(e,cancel){if(e.pointerId!==pointer||!draft)return;if(!cancel)marks.push(draft);draft=null;pointer=null;render();}
+    function end(e,cancel){if(e.pointerId!==pointer||!draft)return;if(!cancel){marks.push(draft);settled();}draft=null;pointer=null;render();}
     canvas.addEventListener('pointerup',function(e){end(e,false);});canvas.addEventListener('pointercancel',function(e){end(e,true);});canvas.addEventListener('lostpointercapture',function(e){end(e,true);});
-    centre.addEventListener('click',function(){if(!room())return;if(!text.value.trim())return notice('Write the label text first.');var m=makeMark({x:canvas.width*.5,y:canvas.height*.45});m.tool='text';m.centred=true;marks.push(m);render();});
-    undo.addEventListener('click',function(){draft=null;pointer=null;marks.pop();render();});clear.addEventListener('click',function(){draft=null;pointer=null;marks=[];render();});
+    centre.addEventListener('click',function(){if(!room())return;if(!text.value.trim())return notice('Write the label text first.');var m=makeMark({x:canvas.width*.5,y:canvas.height*.45});m.tool='text';m.centred=true;marks.push(m);settled();render();});
+    undo.addEventListener('click',function(){draft=null;pointer=null;marks.pop();settled();render();});clear.addEventListener('click',function(){draft=null;pointer=null;marks=[];settled();render();});
     discard.addEventListener('click',function(){hasFrame=false;draft=null;pointer=null;marks=[];original.width=original.height=canvas.width=canvas.height=1;editor.hidden=true;notice('Capture a new frame to begin.');capture.focus();});
     save.addEventListener('click',function(){if(!hasFrame||draft)return;var exportStamp=stamp;try{canvas.toBlob(function(blob){if(!blob)return notice('PNG could not be saved. Your captured image is still here.');var url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='video-frame-'+Math.round(exportStamp*1000)+'-marked.png';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},30000);notice('PNG downloaded. Your original video is unchanged.');},'image/png');}catch(e){notice('PNG could not be saved. Your captured image is still here.');}});
     var style=document.createElement('style');style.textContent=`
