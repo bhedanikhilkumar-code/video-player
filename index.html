@@ -28383,7 +28383,15 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   });
   (function(){var host=$('plList');if(!host)return;var KEY='vp-plan.v1';
   var plan={};try{var p0=JSON.parse(localStorage.getItem(KEY)||'{}');if(p0&&typeof p0==='object'&&!Array.isArray(p0))for(var d=0;d<7;d++)if(typeof p0[d]==='string'&&p0[d])plan[d]=p0[d].slice(0,60);}catch(e){}
-  function save(){try{localStorage.setItem(KEY,JSON.stringify(plan));}catch(e){if(typeof storageWarn==='function')storageWarn();}}
+  // Round 472 fix 2: the weekly plan had the same two-tab flaw as the tags store (fix 1) -
+  // every save wrote the whole plan from this tab's memory, so with the app open in two
+  // tabs a weekday picked in one tab was lost when the stale tab changed another weekday.
+  // A save now merges only the weekdays this tab changed into what is stored (clearing a
+  // weekday still propagates), and a change from another tab is adopted at once,
+  // repainting the card when it is open.
+  var planBase472=vpSnap467(plan);
+  function save(){plan=vpMergeSave467(KEY,plan,planBase472,7);planBase472=vpSnap467(plan);}
+  window.addEventListener("storage",function(e){if(e.key!==KEY&&e.key!==null)return;var m=vpReadObj467(KEY),c={};for(var d=0;d<7;d++)if(typeof m[d]==='string'&&m[d])c[d]=m[d].slice(0,60);plan=c;planBase472=vpSnap467(plan);if(card.open)paint();});
   // Round 247 fix 1: renaming a playlist used to leave the plan pointing at the old name (flagged as renamed or deleted); Rename now carries it.
   window.__vpPlanRename=function(o,n){var ch=false;for(var d=0;d<7;d++)if(plan[d]===o){plan[d]=n;ch=true;}if(ch){save();if(card.open)paint();}};
   var card=document.createElement('details');card.id='weekPlanCard';card.className='r239-card';
