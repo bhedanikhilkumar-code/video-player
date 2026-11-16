@@ -51612,13 +51612,31 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var CH_KEY = "vp-chapters.v1", chList = $("lpChList"), chAdd = $("lpChAdd");
   var chStore = {};
   try { var chIn = JSON.parse(localStorage.getItem(CH_KEY) || "null"); if (chIn && typeof chIn === "object") chStore = chIn; } catch (e) {}
+  // Round 466 fix 5: chapters you add to your own files were written whole from this tab's memory, so
+  // with the app open in two tabs the tab that saved last wiped the chapters the other tab had made for
+  // other files - the two-tab flaw of fixes 1 to 4. A save now merges only the files this tab changed
+  // into what is stored (the 50-file cap still applies to the merged result), and a change from another
+  // tab is adopted at once.
+  function chSnap466(o) { var b = {}; Object.keys(o).forEach(function (k) { b[k] = JSON.stringify(o[k]); }); return b; }
+  var chBase466 = chSnap466(chStore);
+  function chRead466() { try { var m = JSON.parse(localStorage.getItem(CH_KEY) || "null"); return (m && typeof m === "object" && !Array.isArray(m)) ? m : {}; } catch (e) { return {}; } }
   function chSave() {
     try {
-      var ks = Object.keys(chStore);
-      while (ks.length > 50) { delete chStore[ks.shift()]; }
-      localStorage.setItem(CH_KEY, JSON.stringify(chStore));
+      var latest = chRead466();
+      Object.keys(chStore).concat(Object.keys(chBase466)).forEach(function (k) {
+        if (JSON.stringify(chStore[k]) === chBase466[k]) return;
+        if (chStore[k] && chStore[k].length) latest[k] = chStore[k]; else delete latest[k];
+      });
+      var ks = Object.keys(latest);
+      while (ks.length > 50) { delete latest[ks.shift()]; }
+      localStorage.setItem(CH_KEY, JSON.stringify(latest)); chStore = latest; chBase466 = chSnap466(chStore);
     } catch (e) {}
   }
+  window.addEventListener("storage", function (e) {
+    if (e.key !== CH_KEY && e.key !== null) return;
+    chStore = chRead466(); chBase466 = chSnap466(chStore);
+    if (typeof chRender === "function") { try { chRender(); } catch (e2) {} }
+  });
   function chCur() { return posKey ? (chStore[posKey] = chStore[posKey] || []) : null; }
   function chFmt(t) { t = Math.max(0, Math.floor(t)); var m = Math.floor(t / 60), s = t % 60; return m + ":" + (s < 10 ? "0" : "") + s; }
   function chRender() {
