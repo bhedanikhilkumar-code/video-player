@@ -28254,7 +28254,22 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   var card=document.createElement('details');card.id='restoreCard';card.className='r239-card';
   card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="row"><button type="button" class="chip" id="rpSave"></button><button type="button" class="chip" id="rpImport483"></button><input type="file" id="rpImportFile483" accept="application/json,.json" hidden></div><div id="rpRows"></div><p class="hint" id="rpMsg" role="status"></p>';
   host.parentNode.insertBefore(card,host);
-  function load(){try{var a=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(a)?a.filter(function(p){return p&&typeof p.ts==='number'&&p.d&&typeof p.d==='object';}):[];}catch(e){return [];}}
+  // Round 484 fix 1: a malformed snapshot crashed the card instead of being cleaned.
+  // Round 483's import takes a point file from anywhere and kept its lists as they came,
+  // so a hand-edited or corrupt file could file a point whose queue was a string, whose
+  // favourites were a number or whose playlists were junk: the row then counted a
+  // string's letters as videos and printed 'Favourites undefined' (seen live with a
+  // planted bad point), Peek listed letters, and Restore died on a TypeError the moment
+  // it called .filter on a string. The playlist import next door has always cleaned its
+  // items on the way in (validItem at line ~15755); this card now does the same - every
+  // point is sanitised at load(), the one place paint, Peek, Pin, Rename, Delete+Undo,
+  // Export and Restore all read through, so counts stay honest, peeks list real videos
+  // and a restore can never swap in junk. Import refuses a file with no valid videos.
+  // Checked first: load() only checked ts/d were present, never the lists inside them.
+  function cleanList484(v){return Array.isArray(v)?v.filter(validItem):[];}
+  function cleanPl484(v){return Array.isArray(v)?v.filter(function(x){return x&&typeof x.name==='string'&&Array.isArray(x.items);}).map(function(x){return {name:x.name,items:cleanList484(x.items)};}):[];}
+  function cleanD484(d){if(!d||typeof d!=='object'||Array.isArray(d))return {queue:[],favs:[],later:[],playlists:[]};return {queue:cleanList484(d.queue),favs:cleanList484(d.favs),later:cleanList484(d.later),playlists:cleanPl484(d.playlists)};}
+  function load(){try{var a=JSON.parse(localStorage.getItem(KEY)||'[]');return Array.isArray(a)?a.filter(function(p){return p&&typeof p.ts==='number'&&p.d&&typeof p.d==='object';}).map(function(p){p.d=cleanD484(p.d);return p;}):[];}catch(e){return [];}}
   function store(a){while(a.length){try{localStorage.setItem(KEY,JSON.stringify(a));return true;}catch(e){a.pop();}}try{localStorage.removeItem(KEY);}catch(e2){}return false;}
   function cur(){return JSON.parse(JSON.stringify({queue:lib.queue,favs:lib.favs,later:lib.later,playlists:playlists}));}
   function total(d){return (d.queue||[]).length+(d.favs||[]).length+(d.later||[]).length+(d.playlists||[]).length;}
@@ -28375,7 +28390,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if(typeof toastUndo==='function')toastUndo(T('Restore point deleted.'),function(){var a8=load();if(!a8.some(function(q8){return q8.ts===p.ts;})){a8.unshift(p);a8=trim483(a8);store(a8);paint();}},T('Restore point back'));});d.appendChild(x);box.appendChild(d);
       if(pkOpen482){var pd482=document.createElement('div');pd482.className='hint';pd482.style.cssText='margin:0 0 8px 4px;padding:8px 10px;border:1px solid var(--hairline);border-radius:12px;background:var(--card)';pd482.appendChild(rpPeekDom482(p));box.appendChild(pd482);}});}
   $('rpImport483').addEventListener('click',function(){$('rpImportFile483').click();});
-  $('rpImportFile483').addEventListener('change',function(){var f=this.files&&this.files[0];this.value='';if(!f)return;var rd=new FileReader();rd.onload=function(){var o;try{o=JSON.parse(String(rd.result||'{}'));}catch(e){$('rpMsg').textContent=T('This file is not a restore point.');return;}var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=='object'||Array.isArray(pt.d)){$('rpMsg').textContent=T('This file is not a restore point.');return;}var a6=load();if(a6.some(function(q6){return JSON.stringify(q6.d)===JSON.stringify(pt.d);})){$('rpMsg').textContent=T('That restore point is already here.');return;}var np483={ts:(typeof pt.ts==='number'&&isFinite(pt.ts)&&pt.ts>0)?pt.ts:Date.now(),kind:'manual',d:pt.d};if(typeof pt.name==='string'&&pt.name.trim())np483.name=pt.name.slice(0,60);if(pt.pin===true)np483.pin=true;while(a6.some(function(q7){return q7.ts===np483.ts;}))np483.ts++;a6.unshift(np483);a6=trim483(a6);store(a6);$('rpMsg').textContent=T('Restore point imported.');paint();};rd.readAsText(f);});
+  $('rpImportFile483').addEventListener('change',function(){var f=this.files&&this.files[0];this.value='';if(!f)return;var rd=new FileReader();rd.onload=function(){var o;try{o=JSON.parse(String(rd.result||'{}'));}catch(e){$('rpMsg').textContent=T('This file is not a restore point.');return;}var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=='object'||Array.isArray(pt.d)){$('rpMsg').textContent=T('This file is not a restore point.');return;}var a6=load();if(a6.some(function(q6){return JSON.stringify(q6.d)===JSON.stringify(pt.d);})){$('rpMsg').textContent=T('That restore point is already here.');return;}var nd484=cleanD484(pt.d);if(!total(nd484)){$('rpMsg').textContent=T('This file is not a restore point.');return;}var np483={ts:(typeof pt.ts==='number'&&isFinite(pt.ts)&&pt.ts>0)?pt.ts:Date.now(),kind:'manual',d:nd484};if(typeof pt.name==='string'&&pt.name.trim())np483.name=pt.name.slice(0,60);if(pt.pin===true)np483.pin=true;while(a6.some(function(q7){return q7.ts===np483.ts;}))np483.ts++;a6.unshift(np483);a6=trim483(a6);store(a6);$('rpMsg').textContent=T('Restore point imported.');paint();};rd.readAsText(f);});
   $('rpSave').addEventListener('click',function(){var r=add('manual',true);$('rpMsg').textContent=r===1?T('Restore point saved.'):r===-1?T('Nothing changed since the last restore point.'):T('Could not save: browser storage is full or blocked.');paint();});
   // Round 483 fix 2: a second open tab never saw this tab's restore points. The card only
   // painted on open, on its own taps and on language change, so with the app open twice the
