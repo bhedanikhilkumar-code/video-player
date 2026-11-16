@@ -8334,6 +8334,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var h = $("fadeOutHint"); if (h) h.textContent = T("In the last seconds of a video the sound sinks slowly to silence, so a song never cuts off mid-note. Your normal volume comes back for the next video.");
   }
   (window.__relang = window.__relang || []).push(renderFadeOut); renderFadeOut();
+  // Round 479 fix 2: Fade out had the same one-tab blind spot as Fade in (round 479 fix 1) -
+  // its saved choice was read once on load, so other open tabs kept the old value until a
+  // reload. This storage listener adopts the choice everywhere, repaints the chips, and
+  // restores the volume when the last-seconds fade is turned off in another tab.
+  window.addEventListener("storage", function (e) {
+    if (e.key !== "vp-fadeout.v1" && e.key !== null) return;
+    try {
+      var v479b = Number(localStorage.getItem("vp-fadeout.v1"));
+      if (!(v479b === 5 || v479b === 10 || v479b === 20)) v479b = 0;
+      if (foSec !== v479b) { foSec = v479b; if (!v479b) foRestore(); renderFadeOut(); }
+    } catch (err) {}
+  });
 
   /* Tell a friend (round 208 new 5): the app saves nothing about its viewers and
      runs no ads, so the only way it grows is people showing it to each other. A chip
