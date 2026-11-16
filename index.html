@@ -7080,6 +7080,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (prefs.speed !== 1) { send("setPlaybackRate", [prefs.speed]); window.__vpRateAutoT = Date.now(); }
       vmemApply();
     }
+    // Round 470 fix 3: a video whose oembed answer carries no title (live streams, some
+    // premieres) stayed "Video <id>" in the info card and every list row for good - the
+    // only title source was that one request. The player itself always delivers the title
+    // in infoDelivery's videoData, so when nothing has learned this video's title yet, take
+    // it (and the channel) from the player: fill the meta cache, write it into the lists
+    // (setTitle repaints every row), learn the channel for the row labels, and refresh the
+    // info card. One-shot per video - titleFor turns truthy once learned.
+    if ((data.event === "infoDelivery" || data.event === "initialDelivery") && data.info && typeof data.info === "object") {
+      var vd470 = data.info.videoData;
+      if (vd470 && typeof vd470 === "object" && vd470.video_id === curId && curId && !titleFor(curId) && typeof vd470.title === "string" && vd470.title.trim()) {
+        var t470 = vd470.title.trim().slice(0, 200), a470 = typeof vd470.author === "string" ? vd470.author.trim().slice(0, 120) : "";
+        infoCache[curId] = Object.assign(infoCache[curId] || {}, { title: t470, author: a470 });
+        try { setTitle(curId, t470); } catch (e470) {}
+        if (a470 && typeof window.__vpChanLearn === "function") { try { window.__vpChanLearn(curId); } catch (e470b) {} }
+        if (typeof showInfo === "function") { try { showInfo(curId); } catch (e470c) {} }
+      }
+    }
     if (data.event === "onStateChange" && typeof data.info === "number") {
       if ((sleepPaused || playbackCovered345()) && data.info === 1) { send("pauseVideo"); return; }
       if (data.info === 5) rateHudSkipUntil = Date.now() + 2500;
