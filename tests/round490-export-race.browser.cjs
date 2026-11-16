@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict');
 require('./round445-harness.cjs')(async({p,pick,files})=>{
- await pick(files.slice(0,1));await p.locator('#frameMarkup490 summary').click();
+ await pick(files.slice(0,1));await p.locator('#frameMarkup490 > summary').click();
  await p.locator('#lpVideo').evaluate(v=>{v.currentTime=4});await p.waitForFunction(()=>!document.querySelector('#lpVideo').seeking);await p.locator('#fmCapture490').click();
  await p.locator('#fmCanvas490').evaluate(c=>{const real=c.toBlob.bind(c);c.toBlob=(callback,...args)=>real(blob=>{window.finishFrameExport490=()=>callback(blob)},...args)});
  await p.locator('#fmSave490').click();await p.waitForFunction(()=>window.finishFrameExport490);

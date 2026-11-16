@@ -1,8 +1,8 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),languageTap=require('./language-tap.cjs');
 require('./round445-harness.cjs')(async({p,pick,files,boot})=>{
- await pick(files.slice(0,1));await p.locator('#frameMarkup490 summary').click();
+ await pick(files.slice(0,1));await p.locator('#frameMarkup490 > summary').click();
  await p.locator('#lpVideo').evaluate(v=>{v.currentTime=4;});await p.waitForFunction(()=>!document.querySelector('#lpVideo').seeking);
- await p.locator('#fmCapture490').click();assert.equal(await p.locator('#fmCanvas490').isVisible(),true);assert.equal(await p.locator('#lpVideo').evaluate(v=>v.paused),true);assert.ok((await p.locator('#frameMarkup490 [role=status]').textContent()).includes('0:04'));
+ await p.locator('#fmCapture490').click();assert.equal(await p.locator('#fmCanvas490').isVisible(),true);assert.equal(await p.locator('#lpVideo').evaluate(v=>v.paused),true);assert.ok((await p.locator('#frameMarkup490 > [role=status]').textContent()).includes('0:04'));
  const hash=()=>p.locator('#fmCanvas490').evaluate(c=>c.toDataURL());const original=await hash();
  await p.locator('#fmText490').fill('Look here');await p.locator('#fmCentre490').click();assert.notEqual(await hash(),original);assert.equal(await p.locator('#fmUndo490').isEnabled(),true);await p.locator('#fmUndo490').click();assert.equal(await hash(),original);
  for(const tool of ['pen','rect','arrow','text']){
@@ -27,7 +27,7 @@ require('./round445-harness.cjs')(async({p,pick,files,boot})=>{
  await p.locator('#fmDiscard490').click();assert.equal(await p.locator('#fmCanvas490').isVisible(),false);
  await p.locator('#fmCapture490').click();assert.equal(await p.locator('#fmCanvas490').isVisible(),true);
  // Draft is intentionally ephemeral, with no new storage or saved preferences.
- await p.reload();await p.waitForFunction(()=>window.__vpMainOk325);await pick(files.slice(0,1));await p.locator('#frameMarkup490 summary').click();assert.equal(await p.locator('#fmCanvas490').isVisible(),false);
+ await p.reload();await p.waitForFunction(()=>window.__vpMainOk325);await pick(files.slice(0,1));await p.locator('#frameMarkup490 > summary').click();assert.equal(await p.locator('#fmCanvas490').isVisible(),false);
  await p.reload();await p.waitForFunction(()=>window.__vpMainOk325);assert.equal(await p.locator('#frameMarkup490').count(),1);
  console.log('PASS frame capture, all four tools, stroke controls, undo, clear, cancel/confirm replacement, PNG, immediate soft pause, 390px en/hi/gu, dark/contrast/calm/low-end, discard, fresh/repeat reset');
 }).catch(e=>{console.error(e);process.exitCode=1});
