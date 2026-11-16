@@ -28282,6 +28282,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // backup. A video missing from every list keeps its tag but is shown by its id.
   Object.assign(TR_MSG, {
     "Video tags": ["वीडियो टैग", "વીડિયો ટેગ"],
+    "Tag from Recently watched": ["हाल में देखे से टैग", "તાજેતરમાં જોયેલામાંથી ટેગ"],
     "Tag videos with your own words, then play or queue everything with a tag.": ["वीडियो को अपने शब्दों से टैग करें, फिर किसी टैग के सारे वीडियो चलाएँ या कतार में डालें.", "વીડિયોને તમારા શબ્દોથી ટેગ કરો, પછી કોઈ ટેગના બધા વીડિયો ચલાવો કે કતારમાં ઉમેરો."],
     "Video to tag": ["टैग करने का वीडियो", "ટેગ કરવાનો વીડિયો"],
     "Tag (e.g. workout)": ["टैग (जैसे वर्कआउट)", "ટેગ (જેમ કે વર્કઆઉટ)"],
@@ -28327,7 +28328,12 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   function norm(s){return String(s||'').toLowerCase().replace(/\s+/g,' ').trim().slice(0,20);}
   function titleOf(id){var all=[].concat(lib.favs,lib.queue,lib.later,lib.hist);for(var i=0;i<all.length;i++)if(all[i]&&all[i].id===id&&all[i].title)return all[i].title;playlists.forEach(function(p){});return titleFor(id)||id;}
   function candidates(){var seen={},out=[];if(curId&&/^[a-zA-Z0-9_-]{11}$/.test(curId)){seen[curId]=1;out.push({id:curId,title:T('Now playing')+': '+(titleFor(curId)||curId)});}
-    [lib.favs,lib.queue,lib.later].forEach(function(l){l.forEach(function(x){if(validItem(x)&&!seen[x.id]&&out.length<100){seen[x.id]=1;out.push({id:x.id,title:x.title||x.id});}});});return out;}
+    // Round 472 new 1: Recently watched joins the pick list - a video you just watched
+    // could only be tagged after favouriting, queueing or saving it first, so a quick
+    // "that was good, file it under guitar" straight after watching meant an extra step
+    // (hit live while testing: a watched-only video was not in the picker). History rows
+    // pass the same validItem check and share the 100-video cap.
+    [lib.favs,lib.queue,lib.later,lib.hist].forEach(function(l){l.forEach(function(x){if(validItem(x)&&!seen[x.id]&&out.length<100){seen[x.id]=1;out.push({id:x.id,title:x.title||x.id});}});});return out;}
   function counts(){var c={};Object.keys(tags).forEach(function(id){tags[id].forEach(function(t){c[t]=(c[t]||0)+1;});});return c;}
   function idsOf(t){return Object.keys(tags).filter(function(id){return tags[id].indexOf(t)>=0;});}
   function say(m){$('tgMsg').textContent=m;}
@@ -28361,6 +28367,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     a.push(t);tags[id]=a;save();$('tgIn').value='';sel=t;paint();say(T('Tagged:')+' '+t+' - '+titleOf(id));});
   $('tgIn').addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();$('tgAdd').click();}});
   card.addEventListener('toggle',function(){if(card.open)paint();});
+  window.addEventListener("load",function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Tag from Recently watched","#tagsCard");},8120);});
   var oldRL4=renderLib;renderLib=function(){oldRL4();if(card.open&&!(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('#tagsCard')))paint();};
   (window.__relang=window.__relang||[]).push(paint);paint();
   })();
