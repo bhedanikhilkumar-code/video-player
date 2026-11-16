@@ -1,5 +1,5 @@
 // Offline app shell is saved during install, before the first lost connection.
-var CACHE = "vp-shell-v14";
+var CACHE = "vp-shell-v15";
 var SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
 // Offline library thumbnails (round 287): the app shell already opens offline, but every
 // library row lost its picture without a connection. YouTube thumbnails the library has
@@ -7,8 +7,31 @@ var SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/ic
 // when the network is down or slow, so the queue, Watch later and history still look
 // complete offline. Only thumbnails are cached this way - never videos or pages.
 var THUMBS = "vp-thumbs-v1", THUMB_MAX = 400;
+// Installation and explicit repair use the same validation. A 200 Wi-Fi portal
+// must not become the new offline app and evict a working older shell on activate.
+async function verifiedShellEntry(path) {
+  var ac = new AbortController(), timer = setTimeout(function() { ac.abort(); }, 10000);
+  try {
+    var r = await fetch(new Request(new URL(path, location.origin), {cache:"no-store", credentials:"same-origin", signal:ac.signal}));
+    if (!r.ok) throw Error("http");
+    var mime = r.headers.get("content-type") || "";
+    if (path === "/") {
+      var text = await r.clone().text();
+      if (!/text\/html/i.test(mime) || text.indexOf("window.__vpMainOk325 = true") < 0) throw Error("not-app");
+    } else if (path.endsWith(".webmanifest")) {
+      var manifest = await r.clone().json();
+      if (!manifest.name || !Array.isArray(manifest.icons) || !manifest.icons.length) throw Error("not-manifest");
+    } else if (!/^image\//i.test(mime)) throw Error("not-image");
+    return {path:path, response:r};
+  } finally { clearTimeout(timer); }
+}
 self.addEventListener("install", function(e) {
-  e.waitUntil(caches.open(CACHE).then(function(cache) { return cache.addAll(SHELL); }).then(function() { return self.skipWaiting(); }));
+  e.waitUntil(Promise.all(SHELL.map(verifiedShellEntry)).then(async function(entries) {
+    var cache = await caches.open(CACHE);
+    var ordered = entries.filter(function(x) { return x.path !== "/"; }).concat(entries.filter(function(x) { return x.path === "/"; }));
+    for (var item of ordered) await cache.put(item.path, item.response);
+    return self.skipWaiting();
+  }));
 });
 self.addEventListener("activate", function(e) {
   e.waitUntil(caches.keys().then(function(keys) {
@@ -145,21 +168,7 @@ self.addEventListener("message", function(e) {
     if (e.data.type === "VP_OFFLINE_STATUS342") return answer(await status());
     var entries;
     try {
-      entries = await Promise.all(SHELL.map(async function(path) {
-        var ac = new AbortController(), timer = setTimeout(function() { ac.abort(); }, 10000);
-        try {
-          var r = await fetch(new Request(new URL(path, location.origin), {cache:"no-store", credentials:"same-origin", signal:ac.signal}));
-          if (!r.ok) throw Error("http");
-          var mime = r.headers.get("content-type") || "";
-          if (path === "/") {
-            var text = await r.clone().text();
-            if (!/text\/html/i.test(mime) || text.indexOf("window.__vpMainOk325 = true") < 0) throw Error("not-app");
-          } else if (path.endsWith(".webmanifest")) {
-            var manifest = await r.clone().json(); if (!manifest.name || !manifest.icons) throw Error("not-manifest");
-          } else if (!/^image\//i.test(mime)) throw Error("not-image");
-          return {path:path, response:r};
-        } finally { clearTimeout(timer); }
-      }));
+      entries = await Promise.all(SHELL.map(verifiedShellEntry));
     } catch(err) { return answer({ok:false,error:"network"}); }
     try {
       var cache = await caches.open(CACHE), done = 0;
