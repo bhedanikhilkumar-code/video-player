@@ -15755,7 +15755,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
           // (50 videos, 30 playlists, duplicate names get a (2)).
           var rawText = String(rd.result || "");
           if (/^\s*#EXTM3U/i.test(rawText) || /\.m3u8?$/i.test(f.name || "")) {
-            var mName = "", mItems = [], mTitle = "", mSkip = 0;
+            var mName = "", mItems = [], mTitle = "", mSkip = 0, mOver489 = 0;
             rawText.split(/\r?\n/).forEach(function (ln) {
               var t = ln.trim(); if (!t) return;
               var pm = t.match(/^#PLAYLIST:(.*)$/i); if (pm) { mName = cleanName(pm[1]); return; }
@@ -15764,7 +15764,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
               var mm = t.match(/(?:v=|youtu\.be\/|shorts\/|embed\/|live\/)([\w-]{11})/);
               var mid = mm ? mm[1] : (/^[\w-]{11}$/.test(t) ? t : "");
               if (!mid || mItems.some(function (x) { return x.id === mid; })) { if (!mm && !/^[\w-]{11}$/.test(t)) mSkip++; mTitle = ""; return; }
-              if (mItems.length < 50) mItems.push({ id: mid, title: mTitle });
+              if (mItems.length < 50) mItems.push({ id: mid, title: mTitle }); else mOver489++;
               mTitle = "";
             });
             if (!mItems.length) { plSay(T("That file had no YouTube links.")); return; }
@@ -15773,7 +15773,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
             if (!mName) mName = T("Imported playlist");
             var mBase = mName, mk = 2; while (plFind(mName) >= 0) { mName = (mBase.slice(0, 34) + " (" + mk + ")"); mk++; }
             playlists.push({ name: mName, items: mItems }); savePlaylists(); renderPlaylists();
-            plSay(T("Imported playlist") + " \"" + mName + "\"" + T(" with ") + mItems.length + " " + (mItems.length === 1 ? T("video") : T("videos")) + "." + (mSkip ? " " + mSkip + " " + T("lines were not YouTube links - skipped.") : ""));
+            plSay(T("Imported playlist") + " \"" + mName + "\"" + T(" with ") + mItems.length + " " + (mItems.length === 1 ? T("video") : T("videos")) + "." + (mOver489 ? " " + T("A playlist holds up to 50 videos - the other ") + mOver489 + T(" were left out.") : "") + (mSkip ? " " + mSkip + " " + T("lines were not YouTube links - skipped.") : ""));
             toast(T("Playlist saved"));
             return;
           }
@@ -15781,12 +15781,13 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
           if (d && Array.isArray(d.playlists)) { plSay(T("That file is a full backup. Use Import backup above to restore it.")); return; }
           if (!d || typeof d.name !== "string" || !Array.isArray(d.items)) { plSay(T("That file did not have a playlist.")); return; }
           var nm = cleanName(d.name);
-          var items = d.items.filter(validItem).slice(0, 50).map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "" }; });
+          var validAll489 = d.items.filter(validItem), over489 = Math.max(0, validAll489.length - 50);
+          var items = validAll489.slice(0, 50).map(function (x) { return { id: x.id, title: typeof x.title === "string" ? x.title : "" }; });
           if (!nm || !items.length) { plSay(T("That file did not have a playlist.")); return; }
           if (playlists.length >= PL_MAX) { plSay(T("You can keep up to ") + PL_MAX + T(" playlists. Delete one first.")); return; }
           var base = nm, k = 2; while (plFind(nm) >= 0) { nm = (base.slice(0, 34) + " (" + k + ")"); k++; }
           playlists.push({ name: nm, items: items }); savePlaylists(); renderPlaylists();
-          plSay(T("Imported playlist") + " \"" + nm + "\"" + T(" with ") + items.length + " " + (items.length === 1 ? T("video") : T("videos")) + ".");
+          plSay(T("Imported playlist") + " \"" + nm + "\"" + T(" with ") + items.length + " " + (items.length === 1 ? T("video") : T("videos")) + "." + (over489 ? " " + T("A playlist holds up to 50 videos - the other ") + over489 + T(" were left out.") : ""));
           toast(T("Playlist saved"));
         } catch (e) { plSay(T("That file could not be read. Use a backup file made by this app.")); }
       };
@@ -37339,6 +37340,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     "Chapter list copied": ["चैप्टर सूची कॉपी हुई", "ચેપ્ટર યાદી કૉપી થઈ"],
     "Copy the chapter list": ["चैप्टर सूची कॉपी करें", "ચેપ્ટર યાદી કૉપી કરો"],
     "That file had no YouTube links.": ["उस फ़ाइल में कोई YouTube लिंक नहीं था.", "તે ફાઇલમાં કોઈ YouTube લિંક નહોતી."],
+    "A playlist holds up to 50 videos - the other ": ["एक प्लेलिस्ट में 50 वीडियो तक आते हैं - बाकी ", "એક પ્લેલિસ્ટમાં 50 વીડિયો સુધી આવે છે - બાકીના "],
+    " were left out.": [" छोड़ दिए गए.", " છોડી દીધા."],
     "lines were not YouTube links - skipped.": ["लाइनें YouTube लिंक नहीं थीं - छोड़ दी गईं.", "લાઇનો YouTube લિંક નહોતી - છોડી દીધી."],
     "Import an .m3u playlist": [".m3u प्लेलिस्ट इम्पोर्ट करें", ".m3u પ્લેલિસ્ટ ઇમ્પોર્ટ કરો"],
     "Soft pause: rapid resume stays playing": ["सॉफ्ट पॉज़: तुरंत जारी करने पर वीडियो चलता रहता है", "સૉફ્ટ પોઝ: તરત ચાલુ કરતાં વીડિયો ચાલતો રહે છે"],
