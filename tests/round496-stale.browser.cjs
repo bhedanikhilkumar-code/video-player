@@ -1,0 +1,9 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p,pick,files})=>{
+ await pick(files.slice(0,1));await p.addStyleTag({content:'html{scroll-behavior:auto!important}'});await p.locator('#lpGal285>summary').click();for(let n=1;n<=2;n++){await p.locator('#lpGalAdd285').click();await p.waitForFunction(n=>document.querySelectorAll('#lpGalGrid285>button').length===n,n);}
+ await p.locator('#galReview494').click();await p.waitForFunction(()=>!document.querySelector('#galReviewPlay494').disabled);
+ await p.evaluate(()=>{const tx=IDBDatabase.prototype.transaction;window.failRead496=true;IDBDatabase.prototype.transaction=function(names,mode,...args){if(window.failRead496&&this.name==='vp-frames.v1'&&mode==='readonly')throw new DOMException('Read unavailable','SecurityError');return tx.call(this,names,mode,...args);};window.dispatchEvent(new Event('vp-frames-changed496'));});
+ await p.waitForFunction(()=>!document.querySelector('#lpGalRetry494').hidden);assert.equal(await p.locator('#galReviewDialog494').evaluate(e=>e.open),false,'failed read must release active review');assert.equal(await p.locator('#galReview494').isDisabled(),true,'no stale review source after read failure');assert.equal(await p.locator('#galCompareA492 option').count(),0);assert.equal(await p.locator('#galCompareLoad492').isDisabled(),true);
+ await p.evaluate(()=>window.failRead496=false);await p.locator('#lpGalRetry494').click();await p.waitForFunction(()=>document.querySelectorAll('#lpGalGrid285>button').length===2);assert.equal(await p.locator('#galReview494').isEnabled(),true);await p.locator('#galReview494').click();await p.waitForFunction(()=>!document.querySelector('#galReviewPlay494').disabled);await p.keyboard.press('Escape');
+ console.log('PASS gallery read failure clears stale selectors, closes and releases active review, and retry recovers real frames');
+}).catch(e=>{console.error(e);process.exitCode=1});
