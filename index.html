@@ -28209,7 +28209,11 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "No restore points yet.": ["अभी कोई रिस्टोर पॉइंट नहीं.", "હજુ કોઈ રિસ્ટોર પોઇન્ટ નથી."],
     "Restore the lists from this point? Your current lists are saved as a restore point first.": ["इस पॉइंट की लिस्ट वापस लाएँ? आपकी मौजूदा लिस्ट पहले रिस्टोर पॉइंट में सेव हो जाएँगी.", "આ પોઇન્ટની યાદી પાછી લાવો? તમારી હાલની યાદી પહેલાં રિસ્ટોર પોઇન્ટમાં સેવ થશે."],
     "Lists restored.": ["लिस्ट वापस आ गईं.", "યાદી પાછી આવી ગઈ."],
-    "Restore point deleted.": ["रिस्टोर पॉइंट हटाया.", "રિસ્ટોર પોઇન્ટ કાઢ્યો."]
+    "Restore point deleted.": ["रिस्टोर पॉइंट हटाया.", "રિસ્ટોર પોઇન્ટ કાઢ્યો."],
+    "Peek": ["देखें", "જુઓ"],
+    "Peek inside this restore point": ["इस रिस्टोर पॉइंट के अंदर देखें", "આ રિસ્ટોર પોઇન્ટમાં જુઓ"],
+    "This point has no saved videos.": ["इस पॉइंट में कोई वीडियो सेव नहीं है.", "આ પોઇન્ટમાં કોઈ સાચવેલો વીડિયો નથી."],
+    "Peek inside a restore point": ["रिस्टोर पॉइंट के अंदर देखें", "રિસ્ટોર પોઇન્ટમાં જુઓ"]
   });
   (function(){var host=$('plList');if(!host)return;
   var KEY='vp-restorepoints.v1',MAXP=6;
@@ -28223,6 +28227,31 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   function add(kind,force){var d=cur();if(!total(d)&&!force)return 0;var a=load();if(a.length&&JSON.stringify(a[0].d)===JSON.stringify(d))return -1;a.unshift({ts:Date.now(),kind:kind,d:d});a=a.slice(0,MAXP);return store(a)?1:-2;}
   function kindLabel(k){return T(k==='auto'?'Automatic':k==='before'?'Before a restore':'Saved by you');}
   function line(d){return T('Queue')+' '+(d.queue||[]).length+' · '+T('Favourites')+' '+(d.favs||[]).length+' · '+T('Watch later')+' '+(d.later||[]).length+' · '+T('Playlists')+' '+(d.playlists||[]).length;}
+  // Round 482 new 1: Peek inside a restore point. A point only told its counts ("Queue 3 ·
+  // Favourites 1"), so restoring meant trusting a date and a number - you could not see
+  // WHICH videos a snapshot held before swapping your lists for it. Each point row gains a
+  // Peek chip that unfolds the saved titles (queue, favourites, Watch later, then each
+  // playlist with its count), six per list with a "+N more" line, so you restore the right
+  // point, not the nearest one. The peek is a view only: nothing is restored, and an
+  // untitled row falls back to 'Video <id>' in the current language, like the list rows.
+  // Expanded points stay open across the card's repaints (language change included).
+  // Checked first: the card showed only counts (line() above; grep "peek" = 0).
+  var rpPeek482={};
+  function rpPeekList482(frag,label,arr,per){
+    arr=arr||[];if(!arr.length)return;
+    var h=document.createElement('div');h.style.cssText='font-weight:600;margin:6px 0 2px';h.textContent=label+' ('+arr.length+')';frag.appendChild(h);
+    arr.slice(0,per).forEach(function(x){if(!x||!x.id)return;var li=document.createElement('div');li.textContent='\u2022 '+(x.title||(T('Video ')+x.id));li.style.cssText='overflow:hidden;text-overflow:ellipsis;white-space:nowrap';frag.appendChild(li);});
+    if(arr.length>per){var m=document.createElement('div');m.textContent='+'+(arr.length-per)+' '+T('more');frag.appendChild(m);}
+  }
+  function rpPeekDom482(p){
+    var frag=document.createDocumentFragment();
+    rpPeekList482(frag,T('Queue'),p.d.queue,6);
+    rpPeekList482(frag,T('Favourites'),p.d.favs,6);
+    rpPeekList482(frag,T('Watch later'),p.d.later,6);
+    (p.d.playlists||[]).forEach(function(pl){if(!pl||typeof pl.name!=='string')return;rpPeekList482(frag,T('Playlists')+': '+pl.name,pl.items,4);});
+    if(!frag.childNodes.length){var e=document.createElement('div');e.textContent=T('This point has no saved videos.');frag.appendChild(e);}
+    return frag;
+  }
   function restore(p){var q=(p.d.queue||[]).filter(validItem),f=(p.d.favs||[]).filter(validItem),l=(p.d.later||[]).filter(validItem),pl=(p.d.playlists||[]).filter(function(x){return x&&typeof x.name==='string'&&Array.isArray(x.items);});
     add('before',false);lib.queue=q;lib.favs=f;lib.later=l;playlists.splice(0,playlists.length);pl.forEach(function(x){playlists.push(x);});qPos=-1;
     saveLib();savePlaylists();renderLib();renderPlaylists();$('rpMsg').textContent=T('Lists restored.');paint();}
@@ -28234,7 +28263,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Restore');b.setAttribute('aria-label',T('Restore')+': '+new Date(p.ts).toLocaleString((prefs.lang==='hi'?'hi-IN':prefs.lang==='gu'?'gu-IN':'en-US')));
       b.addEventListener('click',function(){window.vpConfirm(line(p.d)+'. '+T('Restore the lists from this point? Your current lists are saved as a restore point first.'),T('Restore')).then(function(ok){if(ok)restore(p);});});d.appendChild(b);
       var x=document.createElement('button');x.type='button';x.className='chip';x.textContent=T('Delete');x.setAttribute('aria-label',T('Delete')+': '+new Date(p.ts).toLocaleString((prefs.lang==='hi'?'hi-IN':prefs.lang==='gu'?'gu-IN':'en-US')));
-      x.addEventListener('click',function(){var b2=load().filter(function(q2){return q2.ts!==p.ts;});store(b2);$('rpMsg').textContent=T('Restore point deleted.');paint();});d.appendChild(x);box.appendChild(d);});}
+      var pk482=document.createElement('button');pk482.type='button';pk482.className='chip';pk482.textContent=T('Peek');var pkOpen482=rpPeek482[p.ts]===true;pk482.setAttribute('aria-expanded',pkOpen482?'true':'false');pk482.setAttribute('aria-label',T('Peek inside this restore point')+': '+new Date(p.ts).toLocaleString((prefs.lang==='hi'?'hi-IN':prefs.lang==='gu'?'gu-IN':'en-US')));
+      pk482.addEventListener('click',function(){if(rpPeek482[p.ts])delete rpPeek482[p.ts];else rpPeek482[p.ts]=true;paint();});d.appendChild(pk482);
+      x.addEventListener('click',function(){var b2=load().filter(function(q2){return q2.ts!==p.ts;});store(b2);$('rpMsg').textContent=T('Restore point deleted.');paint();});d.appendChild(x);box.appendChild(d);
+      if(pkOpen482){var pd482=document.createElement('div');pd482.className='hint';pd482.style.cssText='margin:0 0 8px 4px;padding:8px 10px;border:1px solid var(--hairline);border-radius:12px;background:var(--card)';pd482.appendChild(rpPeekDom482(p));box.appendChild(pd482);}});}
   $('rpSave').addEventListener('click',function(){var r=add('manual',true);$('rpMsg').textContent=r===1?T('Restore point saved.'):r===-1?T('Nothing changed since the last restore point.'):T('Could not save: browser storage is full or blocked.');paint();});
   card.addEventListener('toggle',function(){if(card.open)paint();});
   (window.__relang=window.__relang||[]).push(paint);paint();
@@ -51298,6 +51330,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Rename a video", "#lhQueue"); }, 9920); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Dim watched rows", "#dimWatchedBtn481"); }, 10020); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Rename from the info card", "#infoRenameBtn481"); }, 10120); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Peek inside a restore point", "#restoreCard"); }, 10220); });
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
   // round's fix 1 showed what that means: one block throwing while the page loads silently
@@ -55815,6 +55848,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       };
     }
     var FEATS = [
+      ["Peek inside a restore point", "restore point peek look inside titles snapshot before restore backup which videos list", "#restoreCard"],
       ["Dim watched rows", "dim watched faded rows grey gray unwatched stand out library display opacity seen done", "#dimWatchedBtn481"],
       ["Rename from the info card", "rename video playing now watching info card own name pencil change title", "#infoRenameBtn481"],
       ["Rename a video", "rename video custom own name title change call untitled live stream video id pencil edit label", "#lhQueue"],
