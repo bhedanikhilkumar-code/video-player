@@ -2430,6 +2430,7 @@ setTimeout(done,3000);})();
         <h3 id="whatsNewH">What's new</h3>
         <p class="hint" id="whatsNewHint">The latest additions to the app - tap one to jump straight to it.</p>
         <ul class="wnew-list" id="whatsNewList"></ul>
+        <details class="faq" id="wnewArch475" hidden><summary id="wnewArchSum475"></summary><ul class="wnew-list" id="wnewArchList475"></ul></details>
       </div>
       <div class="row faq-search-row"><input id="faqSearch" type="search" placeholder="Search help" aria-label="Search help questions" autocomplete="off" spellcheck="false"></div>
       <p class="hint" id="faqSearchMsg" role="status" hidden></p>
@@ -21668,6 +21669,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Saved searches": ["सेव की हुई खोजें", "સાચવેલી શોધ"],
     "Playlist resume": ["प्लेलिस्ट जारी रखें", "પ્લેલિસ્ટ ચાલુ રાખો"]
   });
+  var WNEW_ARCH = [];
   var WNEW = [
     ["Listening practice", "#listeningCard261"],
     ["Transcript reader", "#transcriptCard261"],
@@ -21853,6 +21855,28 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       b.addEventListener("click", function () { favCtlJump(w[1]); });
       li.appendChild(b); ul.appendChild(li);
     });
+    // Round 475 new 1: the card hard-caps at 10 rows and every later announcement pushed
+    // the oldest row out for good, so a feature added two busy rounds ago could never be
+    // found from here again. The overflow now falls into an "Earlier additions" fold
+    // under the list (kept in memory for this visit, newest first, capped at 30): same
+    // look, same jump. Nothing new is saved - the staggered announcements rebuild it on
+    // every load.
+    var arch = $("wnewArch475"), archList = $("wnewArchList475"), archSum = $("wnewArchSum475");
+    if (arch && archList && archSum) {
+      arch.hidden = !WNEW_ARCH.length;
+      archSum.textContent = T("Show earlier additions") + (WNEW_ARCH.length ? " (" + WNEW_ARCH.length + ")" : "");
+      archList.innerHTML = "";
+      WNEW_ARCH.forEach(function (w2) {
+        var li2 = document.createElement("li");
+        var b2 = document.createElement("button"); b2.type = "button"; b2.className = "wnew-item";
+        var nm2 = document.createElement("span"); nm2.className = "wnew-name"; nm2.textContent = T(w2[0]);
+        var go2 = document.createElement("span"); go2.className = "wnew-go"; go2.setAttribute("aria-hidden", "true"); go2.textContent = "\u2192";
+        b2.appendChild(nm2); b2.appendChild(go2);
+        b2.setAttribute("aria-label", T(w2[0]) + " - " + T("Jump to it"));
+        b2.addEventListener("click", function () { favCtlJump(w2[1]); });
+        li2.appendChild(b2); archList.appendChild(li2);
+      });
+    }
   }
   (window.__relang = window.__relang || []).push(wnewRender);
   wnewRender();
@@ -37560,9 +37584,26 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.__vpWnew283 = function (name, sel) {
     try {
       for (var wi = WNEW.length - 1; wi >= 0; wi--) { if (WNEW[wi] && WNEW[wi][0] === name) WNEW.splice(wi, 1); }
-      WNEW.unshift([name, sel]); WNEW.length = Math.min(10, WNEW.length); wnewRender();
+      WNEW.unshift([name, sel]);
+      if (WNEW.length > 10) {
+        WNEW.splice(10).forEach(function (old) {
+          for (var ai = WNEW_ARCH.length - 1; ai >= 0; ai--) { if (WNEW_ARCH[ai] && WNEW_ARCH[ai][0] === old[0]) WNEW_ARCH.splice(ai, 1); }
+          WNEW_ARCH.unshift(old);
+        });
+        WNEW_ARCH.length = Math.min(30, WNEW_ARCH.length);
+      }
+      wnewRender();
     } catch (e) {}
   };
+  // Round 475 new 1: names and What's new entry for the fold above. Checked first: the
+  // card hard-capped at 10 with no memory of older rows (round 212's render comment), and
+  // no "earlier additions" list existed (grep "earlier additions" = 0). Translations and
+  // the feature finder entry are included; staggered at 8920ms, past round 474's 8820ms.
+  Object.assign(TR_MSG, {
+    "Earlier additions": ["पहले जोड़े गए फ़ीचर", "પહેલાં ઉમેરાયેલા ફીચર"],
+    "Show earlier additions": ["पहले जोड़े गए फ़ीचर दिखाएं", "પહેલાં ઉમેરાયેલા ફીચર બતાવો"]
+  });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Earlier additions", "#whatsNewCard"); }, 8920); });
   /* Round 284 fix 5: scripts outside this closure (the local view-mode IIFE) also read and
      write the saved rotation - expose prefs and its saver the same way __vpWnew283 exposes
      What's new, by reference, so both sides always see the same object. */
@@ -55631,6 +55672,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Rename a saved moment", "rename moment bookmark saved timestamp name edit pencil", "#markAddBtn"],
       ["Responsive language switching", "language hindi gujarati switch responsive batching", "#langBtn"],
       ["What's new", "new latest recent additions updates features whats new", "#whatsNewCard"],
+      ["Earlier additions", "earlier additions previous older whats new features archive history list show more", "#wnewArch475"],
       ["Start view", "start view open opens landing scroll section on launch visit home", "#startViewRow318"],
       ["Watch later added date", "watch later added date when saved how old days ago", "#lhLater"],
       ["Length on Watch later rows", "watch later length duration minutes how long each row pick fit break short", "#lhLater"],
