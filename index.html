@@ -20804,12 +20804,27 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // can highlight the exact line being sung instead of an even scroll.
   var LYR_SYNC_KEY = "vp-lyr-sync.v1", lyrSync = {};
   try { var lsIn = JSON.parse(localStorage.getItem(LYR_SYNC_KEY) || "null"); if (lsIn && typeof lsIn === "object" && !Array.isArray(lsIn)) lyrSync = lsIn; } catch (e) {}
-  function lyrSyncSave() { try { localStorage.setItem(LYR_SYNC_KEY, JSON.stringify(lyrSync)); } catch (e) { if (typeof storageWarn === "function") storageWarn(); } }
+  var lyrSyncBase467 = vpSnap467(lyrSync);
+  function lyrSyncSave() { lyrSync = vpMergeSave467(LYR_SYNC_KEY, lyrSync, lyrSyncBase467, 0); lyrSyncBase467 = vpSnap467(lyrSync); }
+  window.addEventListener("storage", function (e) {
+    if (e.key !== LYR_SYNC_KEY && e.key !== null) return;
+    lyrSync = vpReadObj467(LYR_SYNC_KEY); lyrSyncBase467 = vpSnap467(lyrSync);
+  });
   function lyrSyncValid(id) { var a = id ? lyrSync[id] : null; return !!(Array.isArray(a) && a.length && a.length === lyricsLinesFor(id).length); }
   try { var lyrIn = JSON.parse(localStorage.getItem(LYR_KEY) || "null"); if (lyrIn && typeof lyrIn === "object" && !Array.isArray(lyrIn)) lyrics = lyrIn; } catch (e) {}
   var lyricsUi = { show: false, scroll: true };
   try { var luIn = JSON.parse(localStorage.getItem(LYR_UI_KEY) || "null"); if (luIn && typeof luIn === "object") { lyricsUi.show = !!luIn.show; lyricsUi.scroll = luIn.scroll !== false; } } catch (e) {}
-  function lyricsSave() { try { localStorage.setItem(LYR_KEY, JSON.stringify(lyrics)); return true; } catch (e) { storageWarn(); return false; } }
+  var lyricsBase467 = vpSnap467(lyrics);
+  // Round 467 fix 8: pasted lyrics (and the tap-to-sync line times) were written whole
+  // from this tab's memory, so with the app open in two tabs the tab that saved lyrics
+  // for one video wiped the words another tab had pasted for a different video - the
+  // same two-tab flaw as fixes 1 to 7. A save now merges only the videos this tab
+  // changed into what is stored, and a change from another tab is adopted at once.
+  function lyricsSave() { try { lyrics = vpMergeSave467(LYR_KEY, lyrics, lyricsBase467, 0); lyricsBase467 = vpSnap467(lyrics); return true; } catch (e) { storageWarn(); return false; } }
+  window.addEventListener("storage", function (e) {
+    if (e.key !== LYR_KEY && e.key !== null) return;
+    lyrics = vpReadObj467(LYR_KEY); lyricsBase467 = vpSnap467(lyrics);
+  });
   function lyricsUiSave() { try { localStorage.setItem(LYR_UI_KEY, JSON.stringify(lyricsUi)); } catch (e) {} }
   var lyrOv = null, lyrLines = [], lyrForId = null, lyrForText = null, lyrForSync = false;
   (function () {
