@@ -51010,7 +51010,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "1 video matches": ["1 \u0935\u0940\u0921\u093f\u092f\u094b \u092e\u093f\u0932\u093e", "1 \u0ab5\u0ac0\u0aa1\u0abf\u0aaf\u0acb \u0aae\u0ab3\u0acd\u0aaf\u0acb"],
     "Queued the smart list.": ["\u0938\u094d\u092e\u093e\u0930\u094d\u091f \u0932\u093f\u0938\u094d\u091f \u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0a1a\u0922\u093c\u0940.", "\u0ab8\u0acd\u0aae\u0abe\u0ab0\u0acd\u0a9f \u0ab2\u0abf\u0ab8\u0acd\u0a9f \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0a9a\u0aa2\u0acd\u0aa2\u0ac0."],
     "Playing the smart list shuffled.": ["\u0938\u094d\u092e\u093e\u0930\u094d\u091f \u0932\u093f\u0938\u094d\u091f \u0936\u092b\u093c\u0932 \u0939\u094b\u0915\u0930 \u0a1a\u0932 \u0930\u0939\u0940.", "\u0ab8\u0acd\u0aae\u0abe\u0ab0\u0acd\u0a9f \u0ab2\u0abf\u0ab8\u0acd\u0a9f \u0ab6\u0aab\u0ab2 \u0aa5\u0a88 \u0a9a\u0abe\u0ab2\u0ac7 \u0a9b\u0ac7."],
-    "Save a Smart list as a playlist": ["\u0938\u094d\u092e\u093e\u0930\u094d\u091f \u0932\u093f\u0938\u094d\u091f \u0915\u094b \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u092c\u0928\u093e\u090f\u0902", "\u0ab8\u0acd\u0aae\u0abe\u0ab0\u0acd\u0a9f \u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0ac7 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f \u0aac\u0aa8\u0abe\u0ab5\u0acb"]
+    "Save a Smart list as a playlist": ["\u0938\u094d\u092e\u093e\u0930\u094d\u091f \u0932\u093f\u0938\u094d\u091f \u0915\u094b \u092a\u094d\u0932\u0947\u0932\u093f\u0938\u094d\u091f \u092c\u0928\u093e\u090f\u0902", "\u0ab8\u0acd\u0aae\u0abe\u0ab0\u0acd\u0a9f \u0ab2\u0abf\u0ab8\u0acd\u0a9f\u0aa8\u0ac7 \u0aaa\u0acd\u0ab2\u0ac7\u0ab2\u0abf\u0ab8\u0acd\u0a9f \u0aac\u0aa8\u0abe\u0ab5\u0acb"],
+    "Play next or queue from a Smart list row": ["\u0938\u094d\u092e\u093e\u0930\u094d\u091f \u0932\u093f\u0938\u094d\u091f \u0930\u094b \u0938\u0947 \u0905\u0917\u0932\u093e \u091a\u0932\u093e\u090f\u0902 \u092f\u093e \u0915\u0924\u093e\u0930 \u092e\u0947\u0902 \u0921\u093e\u0932\u0947\u0902", "\u0ab8\u0acd\u0aae\u0abe\u0ab0\u0acd\u0a9f \u0ab2\u0abf\u0ab8\u0acd\u0a9f \u0ab0\u0acb\u0aa5\u0ac0 \u0a86\u0a97\u0ab3 \u0a9a\u0ab2\u0abe\u0ab5\u0acb \u0a95\u0ac7 \u0a95\u0aa4\u0abe\u0ab0\u0aae\u0abe\u0a82 \u0aa8\u0abe\u0a96\u0acb"]
   });
   (function () {
     var card478 = null, list478 = null, count478 = null, ruleBtns478 = [];
@@ -51050,7 +51051,13 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (!pool.length) { var em = document.createElement("p"); em.className = "hint"; em.textContent = T("Nothing matches these rules yet."); list478.appendChild(em); return; }
       var ul = document.createElement("ul"); ul.className = "lib-list";
       pool.forEach(function (item) {
-        ul.appendChild(buildItem(item, T("\u2606 Save"), function () { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }));
+        // Round 479 new 2: a Smart list match only had the Save star, so acting on one match
+        // meant opening it first. Each row now also gets Play next and Add to queue, the
+        // same actions queue rows have.
+        ul.appendChild(buildItem(item, T("\u2606 Save"), function () { if (findIn(lib.favs, item.id) < 0) toggleFav(item.id); }, null, false, [
+          { label: T("Play next"), fn: function (it) { queuePlayNext(it); } },
+          { label: "+ " + T("Queue"), aria: T("Add to queue"), fn: function (it) { var n = queueAdd(it.id); toast(n > 0 ? T("Added to queue") : T("Nothing new to add: those videos are already in your queue.")); } }
+        ]));
       });
       list478.appendChild(ul);
     }
@@ -51148,6 +51155,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Smart list", "#smartCard478"); }, 9620); });
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
   // round's fix 1 showed what that means: one block throwing while the page loads silently
@@ -55667,6 +55675,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var FEATS = [
       ["Smart list", "smart list filtered view across lists rules unwatched length sources watch later favourites playlists history combined tonight", "#smartCard478"],
       ["Save a Smart list as a playlist", "smart list save as playlist keep filtered mix rules matches collect save playlist disk", "#slPlBtn479"],
+      ["Play next or queue from a Smart list row", "smart list row actions play next add to queue match single one video", "#smartCard478"],
       ["Recently watched grouped by day", "recently watched history group by day date today yesterday sections diary calendar when did i watch evening night", "#histDayBtn478"],
       ["Copy summary from the mini player", "copy summary mini player docked floating title channel length time link share send friend clipboard", "#miniSum477"],
       ["Add to playlist from the mini player", "add to playlist mini player docked floating save collect organise picker playlists file song", "#miniPl477"],
