@@ -50017,6 +50017,97 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Channel names on list rows", "#queueList"); }, 7820); });
   })();
 
+  // Round 470 new 1: Saved while offline - tapping Load with no internet used to lose the
+  // link you had just pasted: the offline guard showed a message and stopped, so once the
+  // network came back you had to find and paste the link all over again. A load tried while
+  // offline now saves the video into a small "Waiting for internet" card under the link box
+  // (up to 20, duplicates skipped) with Play / Queue / Remove on each row, and coming back
+  // online toasts that saved links are waiting. Two-tab safe (every write re-reads the stored
+  // list and changes it by video id only), live across tabs through the storage event, rides
+  // the backup (vp- key), translated and re-translated with the app language. Checked first:
+  // no pending-link store existed (grep pendingLink/offlineInbox/"waiting for internet" = 0).
+  Object.assign(TR_MSG, {
+    "Saved while offline": ["\u0911\u092b\u093c\u0932\u093e\u0907\u0928 \u092e\u0947\u0902 \u0938\u0939\u0947\u091c\u093e \u0917\u092f\u093e", "\u0a93\u0aab\u0ab2\u0abe\u0a87\u0aa8\u0aae\u0abe\u0a82 \u0ab8\u0abe\u0a9a\u0ab5\u0acd\u0aaf\u0ac1\u0a82"],
+    "Waiting for internet": ["\u0907\u0902\u091f\u0930\u0928\u0947\u091f \u0915\u0940 \u092a\u094d\u0930\u0924\u0940\u0915\u094d\u0937\u093e \u092e\u0947\u0902", "\u0a87\u0aa8\u0acd\u0a9f\u0ab0\u0aa8\u0ac7\u0a9f\u0aa8\u0ac0 \u0ab0\u0abe\u0ab9 \u0a9c\u0acb\u0ab5\u0abe\u0aaf \u0a9b\u0ac7"],
+    "Saved while offline - it will wait here for internet.": ["\u0911\u092b\u093c\u0932\u093e\u0907\u0928 \u092e\u0947\u0902 \u0938\u0939\u0947\u091c\u093e \u0917\u092f\u093e - \u092f\u0939 \u0907\u0902\u091f\u0930\u0928\u0947\u091f \u0915\u0940 \u092a\u094d\u0930\u0924\u0940\u0915\u094d\u0937\u093e \u092e\u0947\u0902 \u0930\u0939\u0947\u0917\u093e.", "\u0a93\u0aab\u0ab2\u0abe\u0a87\u0aa8\u0aae\u0abe\u0a82 \u0ab8\u0abe\u0a9a\u0ab5\u0acd\u0aaf\u0ac1\u0a82 - \u0aa4\u0ac7 \u0a87\u0aa8\u0acd\u0a9f\u0ab0\u0aa8\u0ac7\u0a9f\u0aa8\u0ac0 \u0ab0\u0abe\u0ab9 \u0a9c\u0acb\u0ab6\u0ac7."],
+    "Back online - saved links are waiting.": ["\u0911\u0928\u0932\u093e\u0907\u0928 \u0935\u093e\u092a\u0938 - \u0938\u0939\u0947\u091c\u0947 \u0932\u093f\u0902\u0915 \u0907\u0902\u0924\u091c\u093c\u093e\u0930 \u092e\u0947\u0902 \u0939\u0948\u0902.", "\u0aab\u0ab0\u0ac0 \u0a93\u0aa8\u0ab2\u0abe\u0a87\u0aa8 - \u0ab8\u0abe\u0a9a\u0ab5\u0ac7\u0ab2\u0ac0 \u0ab2\u0abf\u0a82\u0a95\u0acd\u0ab8 \u0ab0\u0abe\u0ab9 \u0a9c\u0ac1\u0a8f \u0a9b\u0ac7."],
+    "This link was already saved.": ["\u092f\u0939 \u0932\u093f\u0902\u0915 \u092a\u0939\u0932\u0947 \u0938\u0947 \u0938\u0939\u0947\u091c\u093e \u0939\u0941\u0906 \u0939\u0948.", "\u0a86 \u0ab2\u0abf\u0a82\u0a95 \u0aaa\u0ab9\u0ac7\u0ab2\u0ac7\u0aa5\u0ac0 \u0ab8\u0abe\u0a9a\u0ab5\u0ac7\u0ab2\u0ac0 \u0a9b\u0ac7."]
+  });
+  (function () {
+    var OFF_KEY = "vp-offline-links.v1", OFF_MAX = 20;
+    function offRead() {
+      try {
+        var a = JSON.parse(localStorage.getItem(OFF_KEY) || "[]");
+        if (!Array.isArray(a)) return [];
+        return a.filter(function (x) { return x && typeof x.id === "string" && /^[A-Za-z0-9_-]{11}$/.test(x.id); }).slice(0, OFF_MAX);
+      } catch (e) { return []; }
+    }
+    function offWrite(a) { try { localStorage.setItem(OFF_KEY, JSON.stringify(a.slice(0, OFF_MAX))); } catch (e) {} }
+    function offAdd(id) {
+      var a = offRead();
+      if (a.some(function (x) { return x.id === id; })) return false;
+      a.push({ id: id, at: Date.now() }); offWrite(a); return true;
+    }
+    function offRemove(id) { offWrite(offRead().filter(function (x) { return x.id !== id; })); }
+    var card470 = document.createElement("div");
+    card470.id = "offLinks470"; card470.hidden = true; card470.setAttribute("role", "group");
+    var st470 = document.createElement("style");
+    st470.textContent = "#offLinks470{margin-top:10px;padding:12px 14px;border-radius:16px;background:var(--glass-bg,rgba(255,255,255,.55));border:1px solid rgba(255,255,255,.4);box-shadow:0 8px 24px rgba(0,0,0,.08);backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4)}"
+      + "#offLinks470[hidden]{display:none!important}"
+      + "#offLinks470 .ol470-h{margin:0 0 8px;font-weight:700;font-size:14px}"
+      + "#offLinks470 .ol470-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(127,127,127,.18)}"
+      + "#offLinks470 .ol470-t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}"
+      + ".high-contrast #offLinks470{border:2px solid currentColor}";
+    document.head.appendChild(st470);
+    linkError.parentNode.insertBefore(card470, linkError.nextSibling);
+    function paintOff470() {
+      var a = offRead();
+      card470.hidden = a.length === 0;
+      card470.innerHTML = "";
+      if (!a.length) return;
+      card470.setAttribute("aria-label", T("Waiting for internet"));
+      var h = document.createElement("p"); h.className = "ol470-h"; h.textContent = T("Waiting for internet") + " (" + a.length + ")";
+      card470.appendChild(h);
+      a.forEach(function (item) {
+        var row = document.createElement("div"); row.className = "ol470-row";
+        var t = document.createElement("span"); t.className = "ol470-t"; t.textContent = titleFor(item.id) || item.id; t.title = t.textContent;
+        var play = document.createElement("button"); play.className = "chip"; play.type = "button"; play.textContent = T("Play");
+        play.addEventListener("click", function () {
+          if (navigator.onLine === false) { toast(T("You're offline. Playing videos needs internet - everything works again when you're back online.")); return; }
+          offRemove(item.id); paintOff470();
+          linkInput.value = "https://youtu.be/" + item.id; loadVideo(null, null, undefined, true);
+        });
+        var q = document.createElement("button"); q.className = "chip"; q.type = "button"; q.textContent = T("Queue");
+        q.addEventListener("click", function () {
+          offRemove(item.id); paintOff470();
+          var added = queueAdd("https://youtu.be/" + item.id);
+          toast(added ? T("Added to the queue.") : T("Already in the queue - nothing new was added."));
+        });
+        var x = document.createElement("button"); x.className = "chip"; x.type = "button"; x.textContent = "\u2715"; x.setAttribute("aria-label", T("Remove"));
+        x.addEventListener("click", function () { offRemove(item.id); paintOff470(); });
+        row.appendChild(t); row.appendChild(play); row.appendChild(q); row.appendChild(x);
+        card470.appendChild(row);
+      });
+    }
+    var baseLoad470 = loadVideo;
+    loadVideo = function (startSec, endSec, queueIndex, autoplay) {
+      if (navigator.onLine === false) {
+        var id470 = parseVideoId(linkInput.value);
+        if (id470) {
+          toast(offAdd(id470) ? T("Saved while offline - it will wait here for internet.") : T("This link was already saved."));
+          paintOff470();
+        }
+      }
+      return baseLoad470(startSec, endSec, queueIndex, autoplay);
+    };
+    window.addEventListener("online", function () { if (offRead().length) toast(T("Back online - saved links are waiting.")); paintOff470(); });
+    window.addEventListener("offline", paintOff470);
+    window.addEventListener("storage", function (e) { if (e.key === OFF_KEY) paintOff470(); });
+    (window.__relang = window.__relang || []).push(paintOff470);
+    paintOff470();
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Saved while offline", "#offLinks470"); }, 7920); });
+  })();
+
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -55252,6 +55343,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Search saved loops", "search loop library drills filter video title name time browse all more results practice", "#loopLibCard296"],
       ["Hop between parts", "next previous chapter part hop jump skip podcast section navigate", "#chapNext464"],
       ["Channel names on list rows", "channel name author creator shown on queue watch later history favourites search list rows who made the video at a glance", "#queueList"],
+      ["Saved while offline", "offline no internet save link for later waiting for internet pending links play queue when back online network down", "#offLinks470"],
       ["Now in chapter", "now in chapter current chapter name now playing which part section live position seek bar restart community", "#chapNow408"],
       ["QR for handoff", "qr handoff continue another device scan code phone laptop tv move watching queue position camera", "#handoffQr410"],
       ["Share from this chapter", "share from this chapter link starts chapter beginning send friend lecture tutorial part section copy", "#chapShare410"],
