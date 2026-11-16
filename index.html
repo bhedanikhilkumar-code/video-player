@@ -51831,6 +51831,81 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   })();
   window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Frame markup studio','#frameMarkup490');},11320);});
 
+  // Round 490 new 2: typo-tolerant title discovery, separate from exact/operator search.
+  Object.assign(TR_MSG, {
+    "Find a title by rough spelling": ["लगभग सही नाम से वीडियो खोजें", "અંદાજિત નામથી વીડિયો શોધો"],
+    "Forgot the exact spelling? Search saved titles and your custom names. This does not change your library search or play anything.": ["सही नाम याद नहीं? सेव किए नामों और अपने रखे नामों में खोजें. इससे लाइब्रेरी खोज नहीं बदलती और कुछ चलता नहीं.", "ચોક્કસ નામ યાદ નથી? સાચવેલાં નામો અને તમે રાખેલાં નામોમાં શોધો. આનાથી લાઇબ્રેરી શોધ બદલાતી નથી કે કંઈ ચાલતું નથી."],
+    "Rough video title": ["वीडियो का लगभग सही नाम", "વીડિયોનું અંદાજિત નામ"],
+    "Type at least 3 letters. Plain words only; search operators are not used here.": ["कम से कम 3 अक्षर लिखें. सिर्फ शब्द लिखें; यहां खोज ऑपरेटर नहीं चलते.", "ઓછામાં ઓછા 3 અક્ષર લખો. ફક્ત શબ્દો લખો; અહીં શોધ ઑપરેટર ચાલતા નથી."],
+    "Checking saved titles…": ["सेव किए नामों में खोज रहे हैं…", "સાચવેલાં નામોમાં શોધીએ છીએ…"],
+    "Possible matches: {n}. Showing up to 6; choose one to find it in your lists.": ["संभावित मेल: {n}. अधिकतम 6 दिखाए; अपनी लिस्ट में खोजने के लिए एक चुनें.", "સંભવિત મેળ: {n}. વધુમાં વધુ 6 બતાવ્યા; તમારી યાદીમાં શોધવા એક પસંદ કરો."],
+    "No close title found. Try fewer words or a different spelling.": ["करीब का नाम नहीं मिला. कम शब्द या दूसरी वर्तनी आज़माएं.", "નજીકનું નામ મળ્યું નહીં. ઓછા શબ્દો કે બીજી જોડણી અજમાવો."],
+    "Find this video in my lists": ["यह वीडियो मेरी लिस्ट में खोजें", "આ વીડિયો મારી યાદીમાં શોધો"],
+    "Similar-title suggestions are hidden in Spoiler-free mode.": ["स्पॉइलर-फ़्री मोड में मिलते-जुलते नामों के सुझाव छिपे हैं.", "સ્પોઇલર-ફ્રી મોડમાં મળતાં નામોનાં સૂચનો છુપાયેલાં છે."],
+    "This title search uses up to 8 words at a time.": ["इस नाम खोज में एक बार में अधिकतम 8 शब्द चलते हैं.", "આ નામ શોધમાં એક વારમાં વધુમાં વધુ 8 શબ્દો ચાલે છે."]
+  });
+  (function(){
+    if(!libSearch)return;
+    var card=document.createElement('details');card.id='roughTitle490';card.className='rough490';
+    var head=document.createElement('summary');card.appendChild(head);
+    var hint=document.createElement('p');hint.className='hint';card.appendChild(hint);
+    var label=document.createElement('label');label.htmlFor='roughInput490';card.appendChild(label);
+    var input=document.createElement('input');input.id='roughInput490';input.type='search';input.maxLength=100;input.autocomplete='off';card.appendChild(input);
+    var status=document.createElement('p');status.className='hint';status.setAttribute('role','status');card.appendChild(status);
+    var results=document.createElement('ol');results.className='rough-results490';card.appendChild(results);
+    var anchor=$('libSearchMsg');(anchor||libSearch).insertAdjacentElement('afterend',card);
+    var generation=0,timer=0,statusKey='Type at least 3 letters. Plain words only; search operators are not used here.',matches=0;
+    function words(s){return String(s||'').normalize('NFKC').toLowerCase().match(/[\p{L}\p{N}\p{M}]+/gu)||[];}
+    // Bounded optimal-string-alignment distance; adjacent swapped letters cost one.
+    // Rows are short and cached per query so repeated title words are compared once.
+    function distance(a,b,limit){
+      a=Array.from(a);b=Array.from(b);if(Math.abs(a.length-b.length)>limit)return limit+1;
+      var prev=Array.from({length:b.length+1},function(_,i){return i;}),older=null;
+      for(var i=1;i<=a.length;i++){
+        var row=[i],minimum=i;
+        for(var j=1;j<=b.length;j++){var d=Math.min(row[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));if(older&&i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d=Math.min(d,older[j-2]+1);row[j]=d;minimum=Math.min(minimum,d);}
+        if(minimum>limit)return limit+1;older=prev;prev=row;
+      }
+      return prev[b.length];
+    }
+    function paintLabels(){head.textContent=T('Find a title by rough spelling');hint.textContent=T('Forgot the exact spelling? Search saved titles and your custom names. This does not change your library search or play anything.');label.textContent=T('Rough video title');status.textContent=T(statusKey).replace('{n}',matches);results.querySelectorAll('button').forEach(function(b){b.textContent=T('Find this video in my lists');b.setAttribute('aria-label',T('Find this video in my lists')+': '+b.dataset.title);});}
+    function stop(key){generation++;clearTimeout(timer);results.textContent='';statusKey=key;paintLabels();}
+    async function search(){
+      var token=++generation;results.textContent='';
+      if(prefs.spoiler285)return stop('Similar-title suggestions are hidden in Spoiler-free mode.');
+      var terms=Array.from(new Set(words(input.value)));
+      if(terms.join('').length<3)return stop('Type at least 3 letters. Plain words only; search operators are not used here.');
+      if(terms.length>8)return stop('This title search uses up to 8 words at a time.');
+      statusKey='Checking saved titles…';paintLabels();
+      var pool=[],seen={};function add(items){(items||[]).forEach(function(it){if(it&&/^[a-zA-Z0-9_-]{11}$/.test(it.id)&&!seen[it.id]){seen[it.id]=true;pool.push(it);}});}
+      add(lib.queue);add(lib.favs);add(lib.later);add(lib.hist);playlists.forEach(function(pl){add(pl.items);});add(archData388);
+      var found=[],memo=new Map();
+      function score(q,w){var key=q+'\0'+w;if(memo.has(key))return memo.get(key);var v=Infinity,ql=Array.from(q).length,wl=Array.from(w).length;
+        if(q===w)v=0;else if(ql>=3&&w.indexOf(q)>=0)v=.15+(wl-ql)/Math.max(1,wl)*.2;
+        else if(ql>=3&&ql<=32&&wl<=32){var limit=ql<5?1:ql<9?2:3,d=distance(q,w,limit);if(d<=limit&&d/Math.max(ql,wl)<=.34)v=d/Math.max(ql,wl)+.3;}
+        memo.set(key,v);return v;}
+      for(var i=0;i<pool.length;i++){
+        if(token!==generation||!card.open)return;
+        var it=pool[i],title=customName480(it.id)||it.title||'',tokens=Array.from(new Set(words(title+' '+(it.title||'')))).slice(0,80),total=0;
+        // One title word cannot satisfy several different query words.
+        var used={};for(var ti=0;ti<terms.length;ti++){var best=Infinity,which=-1;for(var wi=0;wi<tokens.length;wi++){if(used[wi])continue;var value=score(terms[ti],tokens[wi]);if(value<best){best=value;which=wi;}}if(which<0){total=Infinity;break;}used[which]=true;total+=best;}
+        if(isFinite(total))found.push({it:it,title:title,score:total/terms.length});
+        if(i%60===59)await new Promise(function(resolve){setTimeout(resolve,0);});
+      }
+      if(token!==generation||!card.open)return;
+      found.sort(function(a,b){return a.score-b.score||a.title.localeCompare(b.title);});matches=found.length;statusKey=matches?'Possible matches: {n}. Showing up to 6; choose one to find it in your lists.':'No close title found. Try fewer words or a different spelling.';
+      found.slice(0,6).forEach(function(x){var li=document.createElement('li'),title=document.createElement('span');title.textContent=x.title||x.it.id;li.appendChild(title);var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Find this video in my lists');b.dataset.title=x.title||x.it.id;b.addEventListener('click',function(){libSearch.value=x.it.id;var all=$('libScope');all=all&&all.querySelector('[data-scope="all"]');if(all)all.click();libSearch.dispatchEvent(new Event('input',{bubbles:true}));libSearch.focus();});li.appendChild(b);results.appendChild(li);});paintLabels();
+    }
+    function schedule(){generation++;clearTimeout(timer);results.textContent='';timer=setTimeout(search,180);}
+    input.addEventListener('input',schedule);card.addEventListener('toggle',function(){if(card.open)search();else{generation++;clearTimeout(timer);}});
+    var renderBefore490=renderLib;renderLib=function(){renderBefore490();if(card.open)schedule();};
+    (window.__relang=window.__relang||[]).push(function(){paintLabels();if(card.open&&prefs.spoiler285)stop('Similar-title suggestions are hidden in Spoiler-free mode.');});
+    window.addEventListener('storage',function(){if(card.open)schedule();});window.addEventListener('focus',function(){if(card.open)schedule();});
+    var style=document.createElement('style');style.textContent=`#roughTitle490{margin:14px 0;padding:16px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(140deg,var(--card),color-mix(in srgb,var(--card) 75%,transparent));box-shadow:inset 0 1px 0 #ffffff55;min-width:0}#roughTitle490 summary{cursor:pointer;font-weight:700}#roughTitle490 label{display:block;font-size:13px;margin:10px 0 6px}#roughInput490{width:100%;min-width:0;box-sizing:border-box;font:inherit;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink)}#roughTitle490 .rough-results490{padding-left:20px;margin:0}#roughTitle490 li{padding:10px 0;overflow-wrap:anywhere}#roughTitle490 li span{display:block;margin-bottom:6px}:root.high-contrast #roughTitle490,:root.high-contrast #roughInput490{background:var(--bg);border:2px solid currentColor}html.spoiler285 #roughTitle490 .rough-results490{display:none}`;
+    document.head.appendChild(style);paintLabels();
+  })();
+  window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Find a title by rough spelling','#roughTitle490');},11420);});
+
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
@@ -56365,6 +56440,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       };
     }
     var FEATS = [
+      ["Find a title by rough spelling", "fuzzy typo misspelled title spelling similar saved video discovery Hindi नाम Gujarati નામ", "#roughTitle490"],
       ["Frame markup studio", "draw annotate annotation frame screenshot rectangle arrow pen text PNG local video mark Hindi फ़्रेम Gujarati ફ્રેમ", "#frameMarkup490"],
       ["Library search builder", "visual search builder combine filters exact phrase exclude words note moment progress length favourite queue Hindi खोज नियम Gujarati શોધ નિયમ", "#searchBuilder487"],
       ["Restore one list from a restore point", "restore only one list queue favourites watch later playlists selective partial from snapshot point swap back", "#restoreCard"],
