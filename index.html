@@ -28308,7 +28308,17 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   });
   (function(){var host=$('plList');if(!host)return;var KEY='vp-tags.v1';
   var tags={};try{var t0=JSON.parse(localStorage.getItem(KEY)||'{}');if(t0&&typeof t0==='object'&&!Array.isArray(t0))Object.keys(t0).forEach(function(id){if(/^[a-zA-Z0-9_-]{11}$/.test(id)&&Array.isArray(t0[id])){var a=t0[id].filter(function(x){return typeof x==='string'&&x;}).map(function(x){return x.slice(0,20);}).slice(0,8);if(a.length)tags[id]=a;}});}catch(e){}
-  function save(){try{localStorage.setItem(KEY,JSON.stringify(tags));}catch(e){if(typeof storageWarn==='function')storageWarn();}}
+  function cleanTags472(m){var c={};Object.keys(m||{}).forEach(function(id){if(/^[a-zA-Z0-9_-]{11}$/.test(id)&&Array.isArray(m[id])){var a=m[id].filter(function(x){return typeof x==='string'&&x;}).map(function(x){return x.slice(0,20);}).slice(0,8);if(a.length)c[id]=a;}});return c;}
+  // Round 472 fix 1: the tags store was written whole from this tab's memory on every save,
+  // the same two-tab flaw round 467 fixed for six other stores: with the app open in two
+  // tabs, a tag added in one tab was wiped by the stale tab's next save (reproduced live:
+  // tab 2 added a tag, tab 1 then added another and tab 2's tag was gone). A save now
+  // merges only the videos this tab changed into what is stored (the round-467 merge
+  // helper keeps deletions working), and a change from another tab is adopted at once,
+  // repainting the card when it is open.
+  var tagsBase472=vpSnap467(tags);
+  function save(){tags=vpMergeSave467(KEY,tags,tagsBase472);tagsBase472=vpSnap467(tags);}
+  window.addEventListener("storage",function(e){if(e.key!==KEY&&e.key!==null)return;tags=cleanTags472(vpReadObj467(KEY));tagsBase472=vpSnap467(tags);if(card.open)paint();});
   var card=document.createElement('details');card.id='tagsCard';card.className='r239-card';
   card.innerHTML='<summary></summary><p class="hint r239-desc"></p><div class="row tg-row"><select id="tgVid"></select><input type="text" id="tgIn" maxlength="20"><button type="button" class="chip" id="tgAdd"></button></div><div id="tgChips" class="tg-chips"></div><div id="tgList"></div><div class="row" id="tgAct" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div><p class="hint" id="tgMsg" role="status"></p>';
   host.parentNode.insertBefore(card,host);
