@@ -3659,6 +3659,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // full device a resume point, a rating, a per-video memory, a favourite sort, a sleep
   // clock or a mini-player side looked saved and was gone on reload, with no warning.
   function vpSafeSet475(k, v) { try { localStorage.setItem(k, v); } catch (e) { storageWarn(); } }
+  window.vpStorageWarn475 = storageWarn; // downloader block lives outside this closure
   /* Toast feedback: one short note at the bottom for actions that used to be silent or
      only changed a far-away status line. role=status so screen readers announce it. */
   var toastEl = null, toastTimer = 0;
@@ -9946,8 +9947,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       dock302.style.left = ""; dock302.style.top = ""; dock302.style.right = ""; dock302.style.bottom = "";
       cornerApply302(c);
       try { vpSafeSet475("vp-mini-corner.v1", c); } catch (x) {}
-      if (c === "bl") { root302.classList.add("mini-left"); try { localStorage.setItem("vp-mini-side.v1", "left"); } catch (x) {} }
-      else if (c === "br") { root302.classList.remove("mini-left"); try { localStorage.setItem("vp-mini-side.v1", "right"); } catch (x) {} }
+      if (c === "bl") { root302.classList.add("mini-left"); vpSafeSet475("vp-mini-side.v1", "left"); }
+      else if (c === "br") { root302.classList.remove("mini-left"); vpSafeSet475("vp-mini-side.v1", "right"); }
       toast(T("Mini player snaps to the nearest corner."), 1200);
     }
     grip302.addEventListener("pointerup", dgEnd);
@@ -14299,7 +14300,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     kept.forEach(function (x) { if (lowLocal.indexOf(x.toLowerCase()) < 0) merged.push(x); });
     rsList = merged.slice(0, 6);
     rsBase467 = rsList.map(function (x) { return x.toLowerCase(); });
-    try { localStorage.setItem(RS_KEY, JSON.stringify(rsList)); } catch (e) {}
+    vpSafeSet475(RS_KEY, JSON.stringify(rsList));
   }
   window.addEventListener("storage", function (e) {
     if (e.key !== RS_KEY && e.key !== null) return;
@@ -14434,7 +14435,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   [["shuffleQueueBtn","shuffle"],["repeatQueueBtn","repeat"],["autoNextBtn","auto"]].forEach(function(x) {
     $(x[0]).addEventListener("click", function() { queueModes[x[1]] = !queueModes[x[1]]; if (!queueModes.shuffle) shuffleForcedNext465 = []; resetShuffle(); renderQueueModes();
-      try { localStorage.setItem("vp-queue-modes.v1",JSON.stringify(queueModes)); } catch(e) {}
+      vpSafeSet475("vp-queue-modes.v1", JSON.stringify(queueModes));
       renderQueueModeMsg();
     });
   });
@@ -14565,7 +14566,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     if (musicMode) { setMini(false); $("player").appendChild(musicQueue); }
     else musicHome.parentNode.insertBefore(musicQueue, musicHome.nextSibling);
     requestAnimationFrame(updateMini);
-    try { localStorage.setItem("vp-music-mode.v1", musicMode ? "1" : "0"); } catch (e) {}
+    vpSafeSet475("vp-music-mode.v1", musicMode ? "1" : "0");
   }
   $("musicModeBtn").addEventListener("click", function () { setMusicMode(!musicMode); });
   function scrollQueueCurrent() {
@@ -14609,7 +14610,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   plSortBtn.addEventListener("click", function () {
     plSortMode = plSortMode === "new" ? "az" : plSortMode === "az" ? "recent" : "new";
     plSortAZ = plSortMode === "az";
-    try { localStorage.setItem("vp-plsort.v1", plSortMode); } catch (e) {}
+    vpSafeSet475("vp-plsort.v1", plSortMode);
     plSortRefresh(); renderPlaylists();
   });
   function plSortRefresh() {
@@ -19668,7 +19669,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     [0, 2, 3, 5].forEach(function (n) {
       var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.v = n; b.textContent = n === 0 ? T("Off") : String(n); b.setAttribute("aria-pressed", "false");
       b.addEventListener("click", function () {
-        stillN = n; stillCount = 0; try { localStorage.setItem(SW_KEY, String(n)); } catch (e) {}
+        stillN = n; stillCount = 0; vpSafeSet475(SW_KEY, String(n));
         stillRender(); stillHide();
         toast(n ? T("Still watching? will ask after ") + n + T(" auto-played videos with no tap.") : T("Still watching? check off."));
       });
@@ -20038,7 +20039,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   }
   if (pmBtn) pmBtn.addEventListener("click", function () {
     pauseMarks = !pauseMarks; pmPrev = -1; pmHold = -1;
-    try { localStorage.setItem(PM_KEY, pauseMarks ? "1" : "0"); } catch (e) {}
+    vpSafeSet475(PM_KEY, pauseMarks ? "1" : "0");
     if (typeof vpPop === "function") vpPop(pmBtn);
     pmRender();
     toast(pauseMarks ? T("The video will pause at each saved moment.") : T("Pause at moments off."));
@@ -20263,9 +20264,9 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       $("laterNudgeText").textContent = "\ud83d\udd52 " + T("Waiting in Watch later: ") + (o.title || o.id) + " (" + days + " " + T(days === 1 ? "day" : "days") + ")";
       box._id = o.id; box.hidden = false;
     }
-    $("laterNudgeX").addEventListener("click", function () { try { localStorage.setItem(KEY, today()); } catch (e) {} hide(); toast(T("Reminder hidden until tomorrow")); });
+    $("laterNudgeX").addEventListener("click", function () { vpSafeSet475(KEY, today()); hide(); toast(T("Reminder hidden until tomorrow")); });
     $("laterNudgeGo").addEventListener("click", function () {
-      try { localStorage.setItem(KEY, today()); } catch (e) {}
+      vpSafeSet475(KEY, today());
       hide(); linkInput.value = "https://youtu.be/" + box._id; loadVideo();
     });
     document.addEventListener("vp-youtube-selected", hide);
@@ -21059,7 +21060,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     if (e.key !== LYR_KEY && e.key !== null) return;
     lyrics = vpReadObj467(LYR_KEY); lyricsBase467 = vpSnap467(lyrics);
   });
-  function lyricsUiSave() { try { localStorage.setItem(LYR_UI_KEY, JSON.stringify(lyricsUi)); } catch (e) {} }
+  function lyricsUiSave() { vpSafeSet475(LYR_UI_KEY, JSON.stringify(lyricsUi)); }
   var lyrOv = null, lyrLines = [], lyrForId = null, lyrForText = null, lyrForSync = false;
   (function () {
     var st = document.createElement("style");
@@ -30805,7 +30806,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     function ratings() { try { return JSON.parse(localStorage.getItem("vp-rate.v1") || "{}") || {}; } catch (e) { return {}; } }
     function rate(id, n) {
       var m = ratings(); m[id] = n;
-      try { localStorage.setItem("vp-rate.v1", JSON.stringify(m)); } catch (e) { return; }
+      try { localStorage.setItem("vp-rate.v1", JSON.stringify(m)); } catch (e) { storageWarn(); return; }
       try { window.dispatchEvent(new Event("vp-rate-changed")); } catch (e) {}
       toast(T("Rated {n} stars").replace("{n}", n)); paint();
     }
@@ -50813,7 +50814,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   function warm() { if (warmed) return; warmed = true; try { fetch(API + "/health", { mode: "no-cors" }); } catch (e) {} }
   urlIn.addEventListener("focus", warm);
   document.getElementById("dl").addEventListener("pointerdown", warm, { once: true });
-  function saveDlUrl(u) { try { localStorage.setItem("vp-dl-url", JSON.stringify({ u: u, ts: Date.now() })); } catch (e) {} }
+  function saveDlUrl(u) { try { localStorage.setItem("vp-dl-url", JSON.stringify({ u: u, ts: Date.now() })); } catch (e) { try { if (typeof window.vpStorageWarn475 === "function") window.vpStorageWarn475(); } catch (e2) {} } }
   try {
     var rawDl = localStorage.getItem("vp-dl-url");
     if (rawDl) {
