@@ -13,6 +13,9 @@ require('./round445-harness.cjs')(async({p,c,boot})=>{
  assert.notEqual(await p.locator('#libSearch').inputValue(),'','builder reset leaves applied search alone');
  await p.locator('#sbPhrase487').fill('is:fav "quoted"');assert.equal(await p.locator('#searchBuilder487 [role=status]').textContent(),'Saved-video matches: 0','operator-like user text stays literal');
  await p.locator('#sbReset487').click();await p.locator('#sbWords487').fill('Rick');
+ await p.setViewportSize({width:1100,height:1100});
+ assert.ok(await p.locator('#searchBuilder487').evaluate(e=>e.scrollWidth<=e.clientWidth+1),'sidebar layout does not overflow');
+ assert.equal(await p.locator('.sb-grid487').evaluate(e=>getComputedStyle(e).gridTemplateColumns.split(' ').length),1,'narrow desktop sidebar uses one field per row');
  await p.setViewportSize({width:390,height:844});
  for(const lang of ['en','hi','gu']){
   for(let i=0;i<3&&await p.locator('html').getAttribute('lang')!==lang;i++)await languageTap(p);
