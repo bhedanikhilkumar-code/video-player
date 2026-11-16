@@ -49632,14 +49632,24 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       var canPrev = ix > 0 || (ix === 0 && curTime - rows[0].a > 3);
       var canNext = ix < rows.length - 1;
       prev464.disabled = !canPrev; next464.disabled = !canNext;
-      prev464.textContent = "\u23EE " + T("Previous part");
-      next464.textContent = T("Next part") + " \u23ED";
       var pRow = null;
       if (canPrev) { if (ix >= 0 && curTime - rows[ix].a > 3) pRow = rows[ix]; else if (ix > 0) pRow = rows[ix - 1]; }
-      prev464.setAttribute("aria-label", (canPrev ? T("Go to the part before this one") : T("First part - nothing before it")) + (pRow && pRow.name ? ": " + pRow.name : ""));
       var nRow = canNext && ix + 1 < rows.length ? rows[ix + 1] : null;
-      next464.setAttribute("aria-label", (canNext ? T("Go to the part after this one") : T("Last part - nothing after it")) + (nRow && nRow.name ? ": " + nRow.name : ""));
+      // Round 464 fix 1: the full accessible name is set here, visible text first (the
+      // round 449 lesson) - a plain description-only label made the round-336 Label-in-Name
+      // pass prepend the chip's text ~250ms after every repaint, so the name flip-flopped
+      // each second. The key check above keeps the repaint itself from churning the
+      // observer when nothing changed.
+      var key464 = ix + "|" + canPrev + "|" + canNext + "|" + (pRow ? pRow.name : "") + "|" + (nRow ? nRow.name : "") + "|" + prefs.lang;
+      if (key464 !== lastKey464) {
+        lastKey464 = key464;
+        prev464.textContent = "\u23EE " + T("Previous part");
+        next464.textContent = T("Next part") + " \u23ED";
+        prev464.setAttribute("aria-label", T("Previous part") + " - " + (canPrev ? T("Go to the part before this one") : T("First part - nothing before it")) + (pRow && pRow.name ? ": " + pRow.name : ""));
+        next464.setAttribute("aria-label", T("Next part") + " - " + (canNext ? T("Go to the part after this one") : T("Last part - nothing after it")) + (nRow && nRow.name ? ": " + nRow.name : ""));
+      }
     }
+    var lastKey464 = "";
     prev464.addEventListener("click", function () {
       var rows = rows464(); if (!rows.length || !ready) return;
       var ix = curIx464(rows); if (ix < 0) return;
@@ -49654,7 +49664,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       manualSeek(Math.max(0, rows[ix + 1].a), "chapNext464"); send("playVideo");
     });
     setInterval(paint464, 1000);
-    (window.__relang = window.__relang || []).push(paint464);
+    (window.__relang = window.__relang || []).push(function () { lastKey464 = ""; paint464(); });
     paint464();
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Hop between parts", "#chapNext464"); }, 7720); });
   })();
