@@ -50719,6 +50719,25 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       }
     } catch (err) {}
   });
+
+  // Round 477 fix 3: the Watch later length filter (All / under 10 min / 10-30 min /
+  // over 30 min) was the last chip on that row with no cross-tab mirror - vp-laterlen.v1
+  // was read once at load and only written on tap, so filtering to short videos in one
+  // tab left the other tab showing everything, its chip still reading "Length: All",
+  // until a reload. The other tab's range is now adopted at once: laterLenMode updates,
+  // the chip repaints (label, pressed state, active ring) and the list refilters.
+  window.addEventListener("storage", function (e) {
+    if (e.key !== "vp-laterlen.v1" && e.key !== null) return;
+    try {
+      var ll477 = localStorage.getItem("vp-laterlen.v1");
+      ll477 = (ll477 === "u10" || ll477 === "m30" || ll477 === "o30") ? ll477 : "all";
+      if (typeof laterLenMode !== "undefined" && laterLenMode !== ll477) {
+        laterLenMode = ll477;
+        if (typeof laterLenBtn !== "undefined" && laterLenBtn && laterLenBtn.refresh) laterLenBtn.refresh();
+        renderLib();
+      }
+    } catch (err) {}
+  });
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
