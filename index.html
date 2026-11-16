@@ -20352,7 +20352,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       var o = oldest(); if (!o || curId) return;
       var days = Math.max(1, Math.floor((Date.now() - o.ts) / 864e5));
       $("laterNudgeText").textContent = "\ud83d\udd52 " + T("Waiting in Watch later: ") + (customName480(o.id) || o.title || o.id) + " (" + days + " " + T(days === 1 ? "day" : "days") + ")";
-      box._id = o.id; box.hidden = false;
+      box._id = o.id; shownId483 = o.id; box.hidden = false;
     }
     $("laterNudgeX").addEventListener("click", function () { vpSafeSet475(KEY, today()); hide(); toast(T("Reminder hidden until tomorrow")); });
     $("laterNudgeGo").addEventListener("click", function () {
@@ -20360,6 +20360,21 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
       hide(); linkInput.value = "https://youtu.be/" + box._id; loadVideo();
     });
     document.addEventListener("vp-youtube-selected", hide);
+    // Round 483 fix 4: the nudge painted once, 1.8s after load, and never again - so a
+    // language switch left it speaking the old language until the next reload (seen live:
+    // Gujarati "પછી જુઓમાં રાહ જોઈ રહ્યું" inside an English page, hours after switching).
+    // Every other always-on banner repaints through __relang; the nudge now signs up too,
+    // re-rendering only the text of the card already showing (no re-arm of the once-a-day
+    // logic, no re-show after the cross or after a video starts).
+    var shownId483 = null;
+    function relang483() {
+      if (box.hidden || !shownId483) return;
+      var o = null; lib.later.forEach(function (it) { if (it && it.id === shownId483) o = it; });
+      if (!o) return;
+      var days = Math.max(1, Math.floor((Date.now() - o.ts) / 864e5));
+      $("laterNudgeText").textContent = "\ud83d\udd52 " + T("Waiting in Watch later: ") + (customName480(o.id) || o.title || o.id) + " (" + days + " " + T(days === 1 ? "day" : "days") + ")";
+    }
+    (window.__relang = window.__relang || []).push(relang483);
     setTimeout(show, 1800);
   })();
   function sortedMarks() { var a = (curId && marks[curId]) ? marks[curId].slice() : []; a.sort(function (x, y) { return x.t - y.t; }); return a; }
