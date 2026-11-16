@@ -5,13 +5,13 @@ require('./round445-harness.cjs')(async({p,c,boot})=>{
  await p.locator('#sbWords487').fill('Rick');await p.locator('#sbOmit487').fill('trailer');await p.locator('#sbList487').selectOption('is:fav');await p.locator('#sbNote487').check();
  assert.equal(await p.locator('#libSearch').inputValue(),'','editing rules does not change active search');
  assert.equal(await p.locator('#sbQuery487').textContent(),'"Rick" -"trailer" is:fav has:note');
- assert.equal(await p.locator('#searchBuilder487 [role=status]').textContent(),'1 matching saved videos');
+ assert.equal(await p.locator('#searchBuilder487 [role=status]').textContent(),'Saved-video matches: 1');
  assert.equal(await p.locator('.sb-preview487 li').count(),1);await p.locator('#sbApply487').click();
  assert.equal(await p.locator('#libSearch').inputValue(),'"Rick" -"trailer" is:fav has:note');
  assert.ok(await p.locator('#libSearchMsg').textContent().then(x=>x.includes('Showing')));
  await p.locator('#sbReset487').click();assert.equal(await p.locator('#sbQuery487').textContent(),'Any saved list');
  assert.notEqual(await p.locator('#libSearch').inputValue(),'','builder reset leaves applied search alone');
- await p.locator('#sbPhrase487').fill('is:fav "quoted"');assert.equal(await p.locator('#searchBuilder487 [role=status]').textContent(),'0 matching saved videos','operator-like user text stays literal');
+ await p.locator('#sbPhrase487').fill('is:fav "quoted"');assert.equal(await p.locator('#searchBuilder487 [role=status]').textContent(),'Saved-video matches: 0','operator-like user text stays literal');
  await p.locator('#sbReset487').click();await p.locator('#sbWords487').fill('Rick');
  await p.setViewportSize({width:390,height:844});
  for(const lang of ['en','hi','gu']){
