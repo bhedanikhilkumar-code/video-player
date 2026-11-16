@@ -49586,6 +49586,78 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Start over or queue from the resume card", "#resumeBox"); }, 7120); });
   })();
 
+  // Round 464 new 1: hop between a video's parts. The chapter line (round 408) names the
+  // part you are in and restarts it on tap, the panel (306) and the seek-bar ticks (308)
+  // jump to a part you pick, and the seek tip (463) names the part under the cursor - but
+  // moving ONE part forward or back, the way YouTube's own next/previous-chapter buttons
+  // do, still meant opening the panel and hunting for the neighbouring row. A small pair
+  // of chips beside the chapter line hops straight there: prev restarts the current part
+  // when you are more than 3 seconds into it (like YouTube's own button), otherwise jumps
+  // to the part before; next jumps to the next part's first second. They read the same
+  // shared chapter rows (window.__vpChap308get - no new fetch), hide for videos the
+  // community has not named, and disable at the first/last part instead of going dead.
+  // Checked first: next/previous existed only for queue videos and saved moments (grep
+  // "next chapter" / "previous part" = 0). Hindi and Gujarati text inside the main
+  // closure, feature finder and What's new (staggered at 7720ms, past round 463's 7620ms)
+  // included.
+  Object.assign(TR_MSG, {
+    "Previous part": ["\u092a\u093f\u091b\u0932\u093e \u092d\u093e\u0917", "\u0aaa\u0ab9\u0ac7\u0ab2\u0abe\u0aa8\u0acb \u0aad\u0abe\u0a97"],
+    "Next part": ["\u0905\u0917\u0932\u093e \u092d\u093e\u0917", "\u0a86\u0a97\u0ab3\u0aa8\u0acb \u0aad\u0abe\u0a97"],
+    "Hop between parts": ["\u092d\u093e\u0917\u094b\u0902 \u092e\u0947\u0902 \u0918\u0942\u092e\u0947\u0902", "\u0aad\u0abe\u0a97\u0acb \u0ab5\u0a9a\u0acd\u0a9a\u0ac7 \u0aab\u0ac7\u0ab0\u0acb"],
+    "Go to the part before this one": ["\u0907\u0938\u0938\u0947 \u092a\u0939\u0932\u0947 \u0935\u093e\u0932\u0947 \u092d\u093e\u0917 \u092a\u0930 \u091c\u093e\u090f\u0902", "\u0a86 \u0aaa\u0ab9\u0ac7\u0ab2\u0abe\u0aa8\u0abe \u0aad\u0abe\u0a97 \u0aaa\u0ab0 \u0a9c\u0abe\u0a93"],
+    "Go to the part after this one": ["\u0907\u0938\u0915\u0947 \u092c\u093e\u0926 \u0935\u093e\u0932\u0947 \u092d\u093e\u0917 \u092a\u0930 \u091c\u093e\u090f\u0902", "\u0a86 \u0aaa\u0a9b\u0ac0\u0aa8\u0abe \u0aad\u0abe\u0a97 \u0aaa\u0ab0 \u0a9c\u0abe\u0a93"],
+    "First part - nothing before it": ["\u092a\u0939\u0932\u093e \u092d\u093e\u0917 - \u0907\u0938\u0938\u0947 \u092a\u0939\u0932\u0947 \u0915\u0941\u091b \u0928\u0939\u0940\u0902", "\u0aaa\u0ab9\u0ac7\u0ab2\u0acb \u0aad\u0abe\u0a97 - \u0a86 \u0aaa\u0ab9\u0ac7\u0ab2\u0abe\u0a82 \u0a95\u0a88\u0a82 \u0aa8\u0aa5\u0ac0"],
+    "Last part - nothing after it": ["\u0906\u0916\u093f\u0930\u0940 \u092d\u093e\u0917 - \u0907\u0938\u0915\u0947 \u092c\u093e\u0926 \u0915\u0941\u091b \u0928\u0939\u0940\u0902", "\u0a9b\u0ab2\u0acd\u0ab2\u0acb \u0aad\u0abe\u0a97 - \u0a86 \u0aaa\u0a9b\u0ac0 \u0a95\u0a88\u0a82 \u0aa8\u0aa5\u0ac0"]
+  });
+  (function () {
+    var anchor464 = $("chapShare410") || $("chapNow408"); if (!anchor464 || !anchor464.parentNode) return;
+    var prev464 = document.createElement("button"); prev464.type = "button"; prev464.className = "chip"; prev464.id = "chapPrev464"; prev464.hidden = true;
+    var next464 = document.createElement("button"); next464.type = "button"; next464.className = "chip"; next464.id = "chapNext464"; next464.hidden = true;
+    prev464.style.marginLeft = "6px"; next464.style.marginLeft = "6px";
+    anchor464.parentNode.insertBefore(next464, anchor464.nextSibling);
+    anchor464.parentNode.insertBefore(prev464, next464);
+    function rows464() {
+      var g = window.__vpChap308get ? window.__vpChap308get() : null;
+      if (!g || !g.id || g.id !== curId || !g.rows || !g.rows.length || !(duration > 0) || !curId) return [];
+      return g.rows.filter(function (r) { return r.a < duration; });
+    }
+    function curIx464(rows) { var ix = -1; for (var i = 0; i < rows.length; i++) { if (curTime >= rows[i].a) ix = i; else break; } return ix; }
+    function paint464() {
+      var rows = rows464();
+      var line = $("chapNow408");
+      var show = rows.length > 0 && !!(line && !line.hidden);
+      prev464.hidden = !show; next464.hidden = !show;
+      if (!show) return;
+      var ix = curIx464(rows);
+      var canPrev = ix > 0 || (ix === 0 && curTime - rows[0].a > 3);
+      var canNext = ix < rows.length - 1;
+      prev464.disabled = !canPrev; next464.disabled = !canNext;
+      prev464.textContent = "\u23EE " + T("Previous part");
+      next464.textContent = T("Next part") + " \u23ED";
+      var pRow = null;
+      if (canPrev) { if (ix >= 0 && curTime - rows[ix].a > 3) pRow = rows[ix]; else if (ix > 0) pRow = rows[ix - 1]; }
+      prev464.setAttribute("aria-label", (canPrev ? T("Go to the part before this one") : T("First part - nothing before it")) + (pRow && pRow.name ? ": " + pRow.name : ""));
+      var nRow = canNext && ix + 1 < rows.length ? rows[ix + 1] : null;
+      next464.setAttribute("aria-label", (canNext ? T("Go to the part after this one") : T("Last part - nothing after it")) + (nRow && nRow.name ? ": " + nRow.name : ""));
+    }
+    prev464.addEventListener("click", function () {
+      var rows = rows464(); if (!rows.length || !ready) return;
+      var ix = curIx464(rows); if (ix < 0) return;
+      var target = (curTime - rows[ix].a > 3) ? rows[ix].a : (ix > 0 ? rows[ix - 1].a : null);
+      if (target == null) return;
+      manualSeek(Math.max(0, target), "chapPrev464"); send("playVideo");
+    });
+    next464.addEventListener("click", function () {
+      var rows = rows464(); if (!rows.length || !ready) return;
+      var ix = curIx464(rows);
+      if (ix >= rows.length - 1) return;
+      manualSeek(Math.max(0, rows[ix + 1].a), "chapNext464"); send("playVideo");
+    });
+    setInterval(paint464, 1000);
+    (window.__relang = window.__relang || []).push(paint464);
+    paint464();
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Hop between parts", "#chapNext464"); }, 7720); });
+  })();
 
 })();
 
@@ -54802,6 +54874,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Share a saved loop", "share saved loop link copy send friend practice a-b library loop", "#loopLibCard296"],
       ["Manage saved loops", "manage saved loops rename remove delete practice loop library clean up edit name old drill", "#loopLibCard296"],
       ["Search saved loops", "search loop library drills filter video title name time browse all more results practice", "#loopLibCard296"],
+      ["Hop between parts", "next previous chapter part hop jump skip podcast section navigate", "#chapNext464"],
       ["Now in chapter", "now in chapter current chapter name now playing which part section live position seek bar restart community", "#chapNow408"],
       ["QR for handoff", "qr handoff continue another device scan code phone laptop tv move watching queue position camera", "#handoffQr410"],
       ["Share from this chapter", "share from this chapter link starts chapter beginning send friend lecture tutorial part section copy", "#chapShare410"],
