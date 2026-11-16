@@ -1,5 +1,5 @@
 // Offline app shell is saved during install, before the first lost connection.
-var CACHE = "vp-shell-v12";
+var CACHE = "vp-shell-v13";
 var SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
 // Offline library thumbnails (round 287): the app shell already opens offline, but every
 // library row lost its picture without a connection. YouTube thumbnails the library has
@@ -82,10 +82,21 @@ self.addEventListener("fetch", function(e) {
   // app: after 4 seconds a page load falls back to the saved copy while the network request
   // keeps going and refreshes the cache for next time.
   var key = req.mode === "navigate" ? "/" : url.pathname;
-  var net = fetch(req).then(function(res) {
-    if (res.ok) {
+  var net = fetch(req).then(async function(res) {
+    // Round 490: a successful navigation is not necessarily our app. README/assets
+    // and captive-portal HTML used to replace "/", breaking the next offline open.
+    var navigation = req.mode === "navigate";
+    var appPath = url.pathname === "/" || url.pathname === "/index.html";
+    var validApp = false;
+    if (navigation && appPath && res.ok && /text\/html/i.test(res.headers.get("content-type") || "")) {
+      try { validApp = (await res.clone().text()).indexOf("window.__vpMainOk325 = true") >= 0; } catch (ignore) {}
+    }
+    if (res.ok && (!navigation || validApp)) {
       var copy = res.clone();
-      e.waitUntil(caches.open(CACHE).then(function(c) { return c.put(key, copy); }));
+      e.waitUntil(caches.open(CACHE).then(function(c) { return c.put(key, copy); }).catch(function() {}));
+    }
+    if (navigation && appPath && res.ok && !validApp) {
+      return caches.open(CACHE).then(function(c) { return c.match(key); }).then(function(hit) { return hit || res; });
     }
     // HTTP failures are still resolved fetches. A saved app must win over a temporary
     // 404/5xx page just as it wins over a disconnected network. Never cache the error.
