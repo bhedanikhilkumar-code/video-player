@@ -50692,6 +50692,33 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     try { on477 = localStorage.getItem("vp-music-mode.v1") === "1"; } catch (err) {}
     if (on477 !== musicMode) setMusicMode(on477);
   });
+
+  // Round 477 fix 2: list sort orders changed in one tab never reached the other - the
+  // Watch later, Recently watched and playlist sort stores (vp-latersort.v1,
+  // vp-histsort.v1, vp-plsort.v1) were read once at load and only written on tap, so two
+  // open tabs sorted the same list differently until a reload (the same class as fix 1
+  // and round 476 fix 2). The other tab's choice is now adopted at once: the mode
+  // updates, the sort chip repaints and the list resorts. The set() write-back of the
+  // same value is a harmless no-op. Favourites are left out on purpose - its sort spans
+  // three chips with their own state, not one mode.
+  window.addEventListener("storage", function (e) {
+    if (e.key !== "vp-latersort.v1" && e.key !== "vp-histsort.v1" && e.key !== "vp-plsort.v1" && e.key !== null) return;
+    try {
+      if ((e.key === "vp-latersort.v1" || e.key === null) && typeof laterSort !== "undefined" && laterSort) {
+        var lm477 = localStorage.getItem("vp-latersort.v1") || "new";
+        if (laterSort.mode() !== lm477) { laterSort.set(lm477); if (typeof laterSortBtn !== "undefined" && laterSortBtn && laterSortBtn.refresh) laterSortBtn.refresh(); renderLib(); }
+      }
+      if ((e.key === "vp-histsort.v1" || e.key === null) && typeof histSort !== "undefined" && histSort) {
+        var hm477 = localStorage.getItem("vp-histsort.v1") || "new";
+        if (histSort.mode() !== hm477) { histSort.set(hm477); if (typeof histSortBtn !== "undefined" && histSortBtn && histSortBtn.refresh) histSortBtn.refresh(); renderLib(); }
+      }
+      if ((e.key === "vp-plsort.v1" || e.key === null) && typeof plSortMode !== "undefined") {
+        var pm477 = localStorage.getItem("vp-plsort.v1");
+        pm477 = (pm477 === "az" || pm477 === "recent") ? pm477 : "new";
+        if (plSortMode !== pm477) { plSortMode = pm477; plSortAZ = pm477 === "az"; plSortRefresh(); renderPlaylists(); }
+      }
+    } catch (err) {}
+  });
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
