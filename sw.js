@@ -1,5 +1,5 @@
 // Offline app shell is saved during install, before the first lost connection.
-var CACHE = "vp-shell-v13";
+var CACHE = "vp-shell-v14";
 var SHELL = ["/", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
 // Offline library thumbnails (round 287): the app shell already opens offline, but every
 // library row lost its picture without a connection. YouTube thumbnails the library has
@@ -82,6 +82,11 @@ self.addEventListener("fetch", function(e) {
   // app: after 4 seconds a page load falls back to the saved copy while the network request
   // keeps going and refreshes the cache for next time.
   var key = req.mode === "navigate" ? "/" : url.pathname;
+  // CacheStorage can be unavailable or evicted even while a worker is installed.
+  // A failed cache read means no saved copy, never an unresolved navigation.
+  function savedShell() {
+    return caches.open(CACHE).then(function(c) { return c.match(key); }).catch(function() { return undefined; });
+  }
   var net = fetch(req).then(async function(res) {
     // Round 490: a successful navigation is not necessarily our app. README/assets
     // and captive-portal HTML used to replace "/", breaking the next offline open.
@@ -96,11 +101,11 @@ self.addEventListener("fetch", function(e) {
       e.waitUntil(caches.open(CACHE).then(function(c) { return c.put(key, copy); }).catch(function() {}));
     }
     if (navigation && appPath && res.ok && !validApp) {
-      return caches.open(CACHE).then(function(c) { return c.match(key); }).then(function(hit) { return hit || res; });
+      return savedShell().then(function(hit) { return hit || res; });
     }
     // HTTP failures are still resolved fetches. A saved app must win over a temporary
     // 404/5xx page just as it wins over a disconnected network. Never cache the error.
-    if (!res.ok) return caches.open(CACHE).then(function(c) { return c.match(key); }).then(function(hit) { return hit || res; });
+    if (!res.ok) return savedShell().then(function(hit) { return hit || res; });
     return res;
   });
   e.waitUntil(net.catch(function() {}));
@@ -108,11 +113,11 @@ self.addEventListener("fetch", function(e) {
     var settled = false, timer = null;
     function done(r) { if (settled) return; settled = true; clearTimeout(timer); resolve(r); }
     if (req.mode === "navigate") timer = setTimeout(function() {
-      caches.match(key).then(function(r) { if (r) done(r); });
+      savedShell().then(function(r) { if (r) done(r); });
     }, 4000);
     net.then(done, function() {
       if (settled) return;
-      caches.match(key).then(function(res) {
+      savedShell().then(function(res) {
         if (res) return done(res);
         if (req.mode !== "navigate") return done(Response.error());
         done(new Response('<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>You are offline | Video Player</title><body style="font:18px system-ui;padding:32px;max-width:560px;margin:auto"><h1>You are offline</h1><p>Connect to the internet and reopen Video Player once to save the app for offline use. Videos need an internet connection. Your saved library is still on this device.</p><p><a href="/">Try again</a></p></body></html>', {headers: {"Content-Type":"text/html; charset=utf-8"}}));
