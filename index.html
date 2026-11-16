@@ -4348,6 +4348,24 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         for (var j=shuffleBag.length-1;j>0;j--) {var r=Math.floor(Math.random()*(j+1)), t=shuffleBag[j];shuffleBag[j]=shuffleBag[r];shuffleBag[r]=t;}
         if (!shuffleBag.length && queueModes.repeat) shuffleBag.push(qPos < 0 ? 0 : qPos);
       }
+      // Round 465 fix 2: rows promised as "play next" win over the random bag. The
+      // promise is by id, so queue edits between the promise and the advance cannot
+      // shift it onto the wrong row; ids already playing or no longer queued are
+      // dropped. pop() takes the bag's END, so the promised rows are pushed there in
+      // reverse - the first promised plays first.
+      if (shuffleForcedNext465.length) {
+        var forcedIdx465 = [];
+        shuffleForcedNext465 = shuffleForcedNext465.filter(function (fid) {
+          var fix = findIn(lib.queue, fid);
+          if (fix < 0 || fix === qPos || forcedIdx465.indexOf(fix) >= 0) return false;
+          forcedIdx465.push(fix); return true;
+        });
+        if (forcedIdx465.length) {
+          shuffleBag = shuffleBag.filter(function (bi) { return forcedIdx465.indexOf(bi) < 0; });
+          for (var fj = forcedIdx465.length - 1; fj >= 0; fj--) shuffleBag.push(forcedIdx465[fj]);
+          shuffleFinished = false;
+        }
+      }
       if (!shuffleBag.length) return false;
       next = shuffleBag.pop(); if (!shuffleBag.length) shuffleFinished = true;
     } else if (next >= lib.queue.length) { if (!queueModes.repeat) return false; next = 0; }
@@ -4448,6 +4466,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     linkInput.value = lib.queue[i].id;
     loadVideo(null, null, i, true);
   }
+  // Round 465 fix 2: under Shuffle, "Play next" and "Queue as next" inserted the row
+  // right after the playing one and toasted "Will play next", but the next playNext()
+  // saw a changed queue signature, rebuilt the shuffle bag at random and played the
+  // promised row at a RANDOM position. The promised ids are remembered here and moved
+  // to the front of the bag when the queue advances, most recently promised first
+  // (mirroring the list-order insert at qPos + 1).
+  var shuffleForcedNext465 = [];
+  function queueForceNext465(ids) {
+    for (var k = ids.length - 1; k >= 0; k--) {
+      var fid = ids[k];
+      shuffleForcedNext465 = shuffleForcedNext465.filter(function (x) { return x !== fid; });
+      shuffleForcedNext465.unshift(fid);
+    }
+  }
   // Move a queued video to right after the one playing now (or to the top when nothing is playing).
   function queuePlayNext(item) {
     var idx = lib.queue.indexOf(item);
@@ -4470,6 +4502,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       lib.queue.splice(at, 0, item);
     }
     resetShuffle();
+    queueForceNext465([item.id]);
     saveLib(); renderLib();
     toast(T("Will play next"));
   }
@@ -6133,7 +6166,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var items = movedQ.concat(add.map(function (id) { return { id: id, title: titleFor(id) }; }));
     lib.queue = lib.queue.slice(0, at).concat(items, lib.queue.slice(at));
     items.forEach(function (x) { if (!x.title) fetchTitle(x.id); });
-    resetShuffle(); saveLib(); renderLib(); linkInput.value = "";
+    resetShuffle(); queueForceNext465(items.map(function (x) { return x.id; })); saveLib(); renderLib(); linkInput.value = "";
     toast(items.length === 1 ? T("Queued to play next") : items.length + " " + T("videos queued to play next"));
     if (!iframe) playQueueAt(at);
     if (newIds.length > add.length) showLibErr(T("The queue holds up to 50 videos. Extra links were skipped."));
@@ -14091,7 +14124,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     });
   }
   [["shuffleQueueBtn","shuffle"],["repeatQueueBtn","repeat"],["autoNextBtn","auto"]].forEach(function(x) {
-    $(x[0]).addEventListener("click", function() { queueModes[x[1]] = !queueModes[x[1]]; resetShuffle(); renderQueueModes();
+    $(x[0]).addEventListener("click", function() { queueModes[x[1]] = !queueModes[x[1]]; if (!queueModes.shuffle) shuffleForcedNext465 = []; resetShuffle(); renderQueueModes();
       try { localStorage.setItem("vp-queue-modes.v1",JSON.stringify(queueModes)); } catch(e) {}
       renderQueueModeMsg();
     });
