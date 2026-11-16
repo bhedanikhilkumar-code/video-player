@@ -8279,6 +8279,18 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var l = $("fadeInLab"); if (l) l.textContent = T("Fade in");
   }
   (window.__relang = window.__relang || []).push(renderFadeIn); renderFadeIn();
+  // Round 479 fix 1: Fade in did not follow to other open tabs. The saved choice was read
+  // once on load (like Sleep timer), so setting it here left other tabs on the old value
+  // until a reload. A storage listener now adopts the choice everywhere - the e.key null
+  // case covers "Reset all", which clears storage without naming each key.
+  window.addEventListener("storage", function (e) {
+    if (e.key !== "vp-fadein.v1" && e.key !== null) return;
+    try {
+      var v479 = Number(localStorage.getItem("vp-fadein.v1"));
+      if (!(v479 === 2 || v479 === 4 || v479 === 8)) v479 = 0;
+      if (fadeSec !== v479) { fadeSec = v479; if (!v479) fadeStop(true); renderFadeIn(); }
+    } catch (err) {}
+  });
 
   /* Fade out at the end (round 208 new 3): Fade in starts a video gently, but an ending
      still cuts off mid-note. Pick 5, 10 or 20 seconds and the sound sinks smoothly to
