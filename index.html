@@ -52041,6 +52041,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Recover after interrupted frame saves","#lpGal285");},13320);});
   Object.assign(TR_MSG, {"No stale frames after a storage error": ["स्टोरेज की गलती पर पुराने फ़्रेम कंट्रोल नहीं", "સ્ટોરેજની ભૂલ પર જૂના ફ્રેમ કંટ્રોલ નહીં"]});
   window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("No stale frames after a storage error","#lpGalRetry494");},13420);});
+  Object.assign(TR_MSG, {"Gallery messages keep their language": ["गैलरी के संदेश चुनी भाषा में रहें", "ગેલેરીના સંદેશ પસંદ કરેલી ભાષામાં રહે"]});
+  window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283("Gallery messages keep their language","#lpGalMsg285");},13520);});
   // Round 496: portable gallery archive; images never go to a server.
   window.addEventListener('load',function(){
     var host=$('lpGal285');if(!host||!window.indexedDB)return;
@@ -55622,20 +55624,22 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     });
   }
   function labelThumb285(b,row,index){var title=b.querySelector('.lp-gal-caption492');if(title)title.textContent=row.name||T('Saved frame {n}').replace('{n}',index+1);b.setAttribute('aria-label',(row.name?row.name+' · ':'')+T('Open saved frame {n}, {w} × {h}, {date}').replace('{n}',index+1).replace('{w}',row.w).replace('{h}',row.h).replace('{date}',new Date(row.ts).toLocaleString(document.documentElement.lang||'en')));}
-  function say(m) { msg.textContent = m; }
-  function render() {
+  var galleryMessageKey496='';
+  function say(key) { galleryMessageKey496=key;msg.textContent=key?T(key):''; }
+  function render(successKey496) {
+    var success496=typeof successKey496==='string'?successKey496:'';
     var generation494 = ++renderGeneration494;
-    galleryReadError494=false;galleryRetry494.hidden=true;say(T('Loading saved frames…'));
+    galleryReadError494=false;galleryRetry494.hidden=true;say('Loading saved frames…');
     urls285.forEach(function (u) { URL.revokeObjectURL(u); }); urls285 = [];
     grid.textContent = "";
-    tx("readonly", function (s) { return s.getAll(); }).then(function (rows) {
+    return tx("readonly", function (s) { return s.getAll(); }).then(function (rows) {
       if (generation494 !== renderGeneration494) return;
       rows = rows || [];
       rows.sort(function (a, b) { return b.id - a.id; });
       refreshCompare492(rows);slideLabels494();
       if (slide494.open) slideClose494();
-      if (!rows.length) { say(T("No frames yet. Add one while a local file plays.")); return; }
-      say("");
+      if (!rows.length) { say(success496||"No frames yet. Add one while a local file plays."); return; }
+      say(success496);
       rows.forEach(function (row,index) {
         var b = document.createElement("button"); b.type = "button";b._frame285=row;b._index285=index;labelThumb285(b,row,index);
         var img = document.createElement("img"); img.alt = "";
@@ -55644,7 +55648,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         b.addEventListener("click", function () { open285(row); });
         grid.appendChild(b);
       });
-    }).catch(function () {if(generation494!==renderGeneration494)return;galleryReadError494=true;galleryRetry494.hidden=false;cmpReset492();refreshCompare492([]);if(slide494.open)slideClose494();slideLabels494();say(T('Saved frames could not be read. Check browser storage access, then retry.'));});
+    }).catch(function () {if(generation494!==renderGeneration494)return;galleryReadError494=true;galleryRetry494.hidden=false;cmpReset492();refreshCompare492([]);if(slide494.open)slideClose494();slideLabels494();say('Saved frames could not be read. Check browser storage access, then retry.');});
   }
   function open285(row) {
     if(viewImg.src)URL.revokeObjectURL(viewImg.src);
@@ -55669,7 +55673,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   $("lpGalDel285").addEventListener("click", function () {
     if (!cur285) return;
     var id = cur285.id;
-    tx("readwrite", function (s) { s.delete(id); }).then(function () { close285(); render(); say(T("Frame deleted.")); }).catch(function () {});
+    tx("readwrite", function (s) { s.delete(id); }).then(function () { close285(); render("Frame deleted."); }).catch(function () {});
   });
   function addRow285(b, w, h) {
     return tx("readwrite", function (s) {
@@ -55678,32 +55682,33 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         var keys = e.target.result || [];
         for (var i = 0; i < keys.length - MAX285; i++) s.delete(keys[i]);
       };
-    }).then(function () { render(); });
+    }).then(function () { return render("Frame added to the gallery."); });
   }
   // Round 491 new 1: the frame markup studio hands its marked PNG to the gallery here.
   window.__vpFrameGalAdd = function (blob, w, h) { return addRow285(blob, w, h); };
   $("lpGalAdd285").addEventListener("click", function () {
-    if (vid.hidden || !vid.src || !vid.videoWidth) { say(T("Open and play a local file first.")); return; }
+    if (vid.hidden || !vid.src || !vid.videoWidth) { say("Open and play a local file first."); return; }
     try {
       var c = document.createElement("canvas");
       c.width = vid.videoWidth; c.height = vid.videoHeight;
       c.getContext("2d").drawImage(vid, 0, 0);
       c.toBlob(function (b) {
-        if (!b) { say(T("This frame could not be saved (the browser blocked it).")); return; }
-        addRow285(b, c.width, c.height).then(function () { say(T("Frame added to the gallery.")); })
-          .catch(function () { say(T("Storage is full - delete some frames first.")); });
+        if (!b) { say("This frame could not be saved (the browser blocked it)."); return; }
+        addRow285(b, c.width, c.height)
+          .catch(function () { say("Storage is full - delete some frames first."); });
       }, "image/png");
-    } catch (e) { say(T("This frame could not be saved (the browser blocked it).")); }
+    } catch (e) { say("This frame could not be saved (the browser blocked it)."); }
   });
   $("lpGalClear285").addEventListener("click", function () {
     var now = Date.now();
-    if (now - clearArm285 > 4000) { clearArm285 = now; say(T("Tap again to clear all frames.")); return; }
+    if (now - clearArm285 > 4000) { clearArm285 = now; say("Tap again to clear all frames."); return; }
     clearArm285 = 0;
-    tx("readwrite", function (s) { s.clear(); }).then(function () { render(); say(T("Gallery cleared.")); }).catch(function () {});
+    tx("readwrite", function (s) { s.clear(); }).then(function () { render("Gallery cleared."); }).catch(function () {});
   });
   function relang285() {
+    say(galleryMessageKey496);
     refreshCompare492(compareRows492);
-    galleryRetry494.textContent=T('Retry reading saved frames');if(galleryReadError494)say(T('Saved frames could not be read. Check browser storage access, then retry.'));
+    galleryRetry494.textContent=T('Retry reading saved frames');if(galleryReadError494)say('Saved frames could not be read. Check browser storage access, then retry.');
     view.setAttribute("aria-label",T("Saved frames"));viewImg.alt=cur285&&cur285.name||T("Saved frames");nameLabel492.textContent=T('Frame name');nameSave492.textContent=T('Save frame name');nameNotice492(nameStatusKey492);if(cur285)nameTitle492.textContent=cur285.name||T('Saved frames');
     $("lpGalSum285").textContent = T("Saved frames");
     grid.querySelectorAll("button").forEach(function(b){if(b._frame285)labelThumb285(b,b._frame285,b._index285);});
@@ -56766,6 +56771,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       };
     }
     var FEATS = [
+      ["Gallery messages keep their language", "saved frame gallery empty saved deleted cleared status language Hindi Gujarati async announcement", "#lpGalMsg285"],
       ["No stale frames after a storage error", "gallery read storage failure stale comparison review clear selectors फ़्रेम ફ્રેમ", "#lpGalRetry494"],
       ["Recover after interrupted frame saves", "saved frame rename save interrupted aborted transaction retry error storage फ़्रेम ફ્રેમ", "#lpGal285"],
       ["Saved-frame archive restore", "gallery frames import restore backup preview PNG images names archive फ़ाइल ફાઇલ", "#frameArchive496"],
