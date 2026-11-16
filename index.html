@@ -14013,8 +14013,32 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     "Search again for": ["\u092b\u093f\u0930 \u0938\u0947 \u0916\u094b\u091c\u0947\u0902:", "\u0aab\u0ab0\u0ac0 \u0ab6\u0acb\u0aa7\u0acb:"]
   });
   var RS_KEY = "vp-search-hist.v1", rsList = [];
-  try { var rs0 = JSON.parse(localStorage.getItem(RS_KEY) || "null"); if (Array.isArray(rs0)) rsList = rs0.filter(function (x) { return typeof x === "string" && x.trim(); }).slice(0, 6); } catch (e) {}
-  function rsSave() { try { localStorage.setItem(RS_KEY, JSON.stringify(rsList)); } catch (e) {} }
+  function rsRead() { try { var a = JSON.parse(localStorage.getItem(RS_KEY) || "null"); return Array.isArray(a) ? a.filter(function (x) { return typeof x === "string" && x.trim(); }).slice(0, 6) : []; } catch (e) { return []; } }
+  rsList = rsRead();
+  // Round 467 fix 5: the list was written whole from this tab's memory, so with the app
+  // open in two tabs the tab that saved last wiped (or brought back) the other tab's
+  // searches - the same two-tab flaw as fixes 1 to 4. A save now re-reads what is
+  // stored, drops only the terms THIS tab deleted (in the load-time baseline, gone from
+  // this tab's list, so Clear still wins over older terms), unions in terms another tab
+  // added, and keeps this tab's order first; a change from another tab is adopted at
+  // once, repainting the chips. The 6-term cap still applies to the merged list.
+  var rsBase467 = rsList.map(function (x) { return x.toLowerCase(); });
+  function rsSave() {
+    var stored = rsRead();
+    var lowLocal = rsList.map(function (x) { return x.toLowerCase(); });
+    var kept = stored.filter(function (x) { var l = x.toLowerCase(); return rsBase467.indexOf(l) < 0 || lowLocal.indexOf(l) >= 0; });
+    var merged = rsList.slice();
+    kept.forEach(function (x) { if (lowLocal.indexOf(x.toLowerCase()) < 0) merged.push(x); });
+    rsList = merged.slice(0, 6);
+    rsBase467 = rsList.map(function (x) { return x.toLowerCase(); });
+    try { localStorage.setItem(RS_KEY, JSON.stringify(rsList)); } catch (e) {}
+  }
+  window.addEventListener("storage", function (e) {
+    if (e.key !== RS_KEY && e.key !== null) return;
+    rsList = rsRead();
+    rsBase467 = rsList.map(function (x) { return x.toLowerCase(); });
+    if (typeof rsRender === "function") rsRender();
+  });
   function rsRender() {
     var row = $("rsRow"), chips = $("rsChips"); if (!row || !chips) return;
     var lab = $("rsLab"); if (lab) lab.textContent = T("Recent:");
