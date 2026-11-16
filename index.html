@@ -24679,7 +24679,15 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     var _cmIn = JSON.parse(localStorage.getItem(CHANMAP_KEY) || "null");
     if (_cmIn && typeof _cmIn === "object" && !Array.isArray(_cmIn)) Object.keys(_cmIn).forEach(function (k) { var v = _cmIn[k]; if (typeof v === "string" && v.trim()) chanMap[k] = v.trim().slice(0, 60); });
   } catch (e) {}
-  function chanMapSave() { try { var ks = Object.keys(chanMap); while (ks.length > 200) delete chanMap[ks.shift()]; localStorage.setItem(CHANMAP_KEY, JSON.stringify(chanMap)); } catch (e) {} }
+  var chanMapBase467 = vpSnap467(chanMap);
+  function chanMapSave() { chanMap = vpMergeSave467(CHANMAP_KEY, chanMap, chanMapBase467, 200); chanMapBase467 = vpSnap467(chanMap); }
+  window.addEventListener("storage", function (e) {
+    if (e.key !== CHANMAP_KEY && e.key !== null) return;
+    var m = vpReadObj467(CHANMAP_KEY), clean = {};
+    Object.keys(m).forEach(function (k) { var v = m[k]; if (typeof v === "string" && v.trim()) clean[k] = v.trim().slice(0, 60); });
+    chanMap = clean; chanMapBase467 = vpSnap467(chanMap);
+    if (typeof topChanRender === "function") topChanRender();
+  });
   function chanMapLearn(id) {
     if (!id || typeof infoCache !== "object" || !infoCache) return;
     var a = infoCache[id] && infoCache[id].author;
