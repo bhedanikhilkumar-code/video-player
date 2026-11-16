@@ -14439,6 +14439,23 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       renderQueueModeMsg();
     });
   });
+  // Round 476 fix 2: queue playback modes were the last whole-write store with no storage
+  // listener - tags, the weekly plan, the review desk and Today's list all adopt the other
+  // tab's changes since rounds 467-472, but turn Shuffle on in tab 2 and tab 1 kept its stale
+  // modes in memory, so tab 1's next mode tap wrote its old object over tab 2's change and
+  // the chips in the two tabs disagreed until reload. A change from another tab is now
+  // adopted at once: the modes merge in (only real booleans), the three chips repaint and
+  // the hint under them is rewritten, so a later tap here builds on the other tab's state.
+  window.addEventListener("storage", function (e) {
+    if (e.key !== "vp-queue-modes.v1" && e.key !== null) return;
+    try {
+      var qm476 = JSON.parse(localStorage.getItem("vp-queue-modes.v1") || "null");
+      if (!qm476 || typeof qm476 !== "object") return;
+      var changed476 = false;
+      ["shuffle", "repeat", "auto"].forEach(function (k) { if (typeof qm476[k] === "boolean" && queueModes[k] !== qm476[k]) { queueModes[k] = qm476[k]; changed476 = true; } });
+      if (changed476) { if (!queueModes.shuffle) shuffleForcedNext465 = []; renderQueueModes(); renderQueueModeMsg(); }
+    } catch (err) {}
+  });
   // Round 211 fix: the hint under the queue playback chips was only rewritten when one of the
   // chips was tapped, so after a reload it always read 'Auto-next is on...' even when the saved
   // modes had Auto-next (or Shuffle, or Repeat queue) off - the chips said 'off' while the hint
