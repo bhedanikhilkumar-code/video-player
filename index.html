@@ -28220,7 +28220,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Unpin": ["अनपिन करें", "અનપિન કરો"],
     "Pin a restore point": ["रिस्टोर पॉइंट पिन करें", "રિસ્ટોર પોઇન્ટ પિન કરો"],
     "Pin this restore point - it is kept past the 6-point limit": ["इस रिस्टोर पॉइंट को पिन करें - यह 6-पॉइंट सीमा से आगे भी बना रहेगा", "આ રિસ્ટોર પોઇન્ટ પિન કરો - તે 6-પોઇન્ટ મર્યાદાથી આગળ પણ રહેશે"],
-    "Unpin this restore point": ["इस रिस्टोर पॉइंट को अनपिन करें", "આ રિસ્ટોર પોઇન્ટ અનપિન કરો"]
+    "Unpin this restore point": ["इस रिस्टोर पॉइंट को अनपिन करें", "આ રિસ્ટોર પોઇન્ટ અનપિન કરો"],
+    "Name a restore point": ["रिस्टोर पॉइंट को नाम दें", "રિસ્ટોર પોઇન્ટને નામ આપો"],
+    "Name for this restore point (empty clears the name)": ["इस रिस्टोर पॉइंट का नाम (खाली छोड़ने से नाम हट जाएगा)", "આ રિસ્ટોર પોઇન્ટનું નામ (ખાલી છોડવાથી નામ હટી જશે)"],
+    "Name this restore point": ["इस रिस्टोर पॉइंट को नाम दें", "આ રિસ્ટોર પોઇન્ટને નામ આપો"]
   });
   (function(){var host=$('plList');if(!host)return;
   var KEY='vp-restorepoints.v1',MAXP=6;
@@ -28243,6 +28246,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   // above was a plain slice(0, MAXP); grep "pin" in this card = queue pins only). Hindi
   // and Gujarati names inside the main closure, feature finder entry and What's new
   // (staggered at 10420ms, past round 482's 10320ms) included.
+  function renamePoint483(p){if(typeof window.vpAsk!=='function')return;var cur483=typeof p.name==='string'?p.name:'';window.vpAsk(T('Name for this restore point (empty clears the name)'),cur483).then(function(v){if(v===null||typeof v==='undefined')return;v=String(v).trim().slice(0,60);if(v===cur483)return;var a5=load();a5.forEach(function(q5){if(q5.ts===p.ts){if(v)q5.name=v;else delete q5.name;}});store(a5);paint();});}
   function trim483(a){var pin=a.filter(function(p){return p&&p.pin===true;}).slice(0,MAXP);var un=a.filter(function(p){return !p||p.pin!==true;}).slice(0,MAXP);return pin.concat(un).sort(function(x,y){return (y.ts||0)-(x.ts||0);});}
   function kindLabel(k){return T(k==='auto'?'Automatic':k==='before'?'Before a restore':'Saved by you');}
   function line(d){return T('Queue')+' '+(d.queue||[]).length+' · '+T('Favourites')+' '+(d.favs||[]).length+' · '+T('Watch later')+' '+(d.later||[]).length+' · '+T('Playlists')+' '+(d.playlists||[]).length;}
@@ -28303,14 +28307,26 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var box=$('rpRows');box.textContent='';var a=load();
     if(!a.length){var e=document.createElement('p');e.className='hint';e.textContent=T('No restore points yet.');box.appendChild(e);return;}
     a.forEach(function(p,i){var d=document.createElement('div');d.className='row';d.style.cssText='display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0';
-      var s=document.createElement('span');s.className='hint';s.style.flex='1 1 180px';s.textContent=(p.pin===true?'\uD83D\uDCCC ':'')+new Date(p.ts).toLocaleString((prefs.lang==='hi'?'hi-IN':prefs.lang==='gu'?'gu-IN':'en-US'),{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+' · '+kindLabel(p.kind)+' - '+line(p.d);d.appendChild(s);
+      var s=document.createElement('span');s.className='hint';s.style.flex='1 1 180px';s.textContent=(p.pin===true?'\uD83D\uDCCC ':'')+(typeof p.name==='string'&&p.name?p.name+' - ':'')+new Date(p.ts).toLocaleString((prefs.lang==='hi'?'hi-IN':prefs.lang==='gu'?'gu-IN':'en-US'),{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})+' · '+kindLabel(p.kind)+' - '+line(p.d);d.appendChild(s);
       var b=document.createElement('button');b.type='button';b.className='chip';b.textContent=T('Restore');b.setAttribute('aria-label',T('Restore')+': '+new Date(p.ts).toLocaleString((prefs.lang==='hi'?'hi-IN':prefs.lang==='gu'?'gu-IN':'en-US')));
-      b.addEventListener('click',function(){window.vpConfirm(line(p.d)+'. '+T('Restore the lists from this point? Your current lists are saved as a restore point first.'),T('Restore')).then(function(ok){if(ok)restore(p);});});d.appendChild(b);
+      b.addEventListener('click',function(){window.vpConfirm((typeof p.name==='string'&&p.name?p.name+'. ':'')+line(p.d)+'. '+T('Restore the lists from this point? Your current lists are saved as a restore point first.'),T('Restore')).then(function(ok){if(ok)restore(p);});});d.appendChild(b);
       var x=document.createElement('button');x.type='button';x.className='chip';x.textContent=T('Delete');x.setAttribute('aria-label',T('Delete')+': '+new Date(p.ts).toLocaleString((prefs.lang==='hi'?'hi-IN':prefs.lang==='gu'?'gu-IN':'en-US')));
       var pk482=document.createElement('button');pk482.type='button';pk482.className='chip';pk482.textContent=T('Peek');var pkOpen482=rpPeek482[p.ts]===true;pk482.setAttribute('aria-expanded',pkOpen482?'true':'false');pk482.setAttribute('aria-label',T('Peek inside this restore point')+': '+new Date(p.ts).toLocaleString((prefs.lang==='hi'?'hi-IN':prefs.lang==='gu'?'gu-IN':'en-US')));
       pk482.addEventListener('click',function(){if(rpPeek482[p.ts])delete rpPeek482[p.ts];else rpPeek482[p.ts]=true;paint();});d.appendChild(pk482);
       var pinB483=document.createElement('button');pinB483.type='button';pinB483.className='chip';pinB483.textContent=T(p.pin===true?'Unpin':'Pin');pinB483.setAttribute('aria-pressed',p.pin===true?'true':'false');pinB483.setAttribute('aria-label',T(p.pin===true?'Unpin this restore point':'Pin this restore point - it is kept past the 6-point limit'));pinB483.title=pinB483.getAttribute('aria-label');
       pinB483.addEventListener('click',function(){var a4=load();a4.forEach(function(q4){if(q4.ts===p.ts)q4.pin=!q4.pin;});store(a4);paint();});d.appendChild(pinB483);
+      // Round 483 new 2: Name a restore point. Points were labelled by date and kind only
+      // ("15 Nov, 6:25 am - Automatic"), so the snapshot you took before a risky clean-up
+      // looked exactly like the five automatic ones around it - with six points the date
+      // blur is why round 482's Peek exists, and a name answers it at a glance. Each row
+      // gains a Rename chip (same glass prompt as video and playlist rename): the name
+      // rides the point itself - it shows on the row, in the restore confirm and in
+      // peeks, rides the backup through fix 1, and an empty answer clears it. Checked
+      // first: points carried ts/kind/data only (load()/add() above; grep "p.name" = 0).
+      // Hindi and Gujarati names inside the main closure, feature finder entry and
+      // What's new (staggered at 10520ms, past new 1's 10420ms) included.
+      var rnB483=document.createElement('button');rnB483.type='button';rnB483.className='chip';rnB483.textContent=T('Rename');rnB483.setAttribute('aria-label',T('Name this restore point'));rnB483.title=T('Name this restore point');
+      rnB483.addEventListener('click',function(){renamePoint483(p);});d.appendChild(rnB483);
       x.addEventListener('click',function(){var b2=load().filter(function(q2){return q2.ts!==p.ts;});store(b2);$('rpMsg').textContent=T('Restore point deleted.');paint();});d.appendChild(x);box.appendChild(d);
       if(pkOpen482){var pd482=document.createElement('div');pd482.className='hint';pd482.style.cssText='margin:0 0 8px 4px;padding:8px 10px;border:1px solid var(--hairline);border-radius:12px;background:var(--card)';pd482.appendChild(rpPeekDom482(p));box.appendChild(pd482);}});}
   $('rpSave').addEventListener('click',function(){var r=add('manual',true);$('rpMsg').textContent=r===1?T('Restore point saved.'):r===-1?T('Nothing changed since the last restore point.'):T('Could not save: browser storage is full or blocked.');paint();});
@@ -51408,6 +51424,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Peek inside a restore point", "#restoreCard"); }, 10220); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Restore one list from a restore point", "#restoreCard"); }, 10320); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Pin a restore point", "#restoreCard"); }, 10420); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Name a restore point", "#restoreCard"); }, 10520); });
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
   // round's fix 1 showed what that means: one block throwing while the page loads silently
@@ -55928,6 +55945,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Restore one list from a restore point", "restore only one list queue favourites watch later playlists selective partial from snapshot point swap back", "#restoreCard"],
       ["Peek inside a restore point", "restore point peek look inside titles snapshot before restore backup which videos list", "#restoreCard"],
       ["Pin a restore point", "pin restore point keep safe snapshot not pushed out trim six limit protect important", "#restoreCard"],
+      ["Name a restore point", "name rename restore point label snapshot remember which backup why saved before cleanup", "#restoreCard"],
       ["Dim watched rows", "dim watched faded rows grey gray unwatched stand out library display opacity seen done", "#dimWatchedBtn481"],
       ["Rename from the info card", "rename video playing now watching info card own name pencil change title", "#infoRenameBtn481"],
       ["Rename a video", "rename video custom own name title change call untitled live stream video id pencil edit label", "#lhQueue"],
@@ -56945,6 +56963,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       // features only carried English keywords, so a Hindi or Gujarati search ("रिस्टोर",
       // "વાપસ") never reached them - the same gap round 361 and round 471's follow-up
       // closed for the other features. Native words registered the same way.
+      "Name a restore point": "\u0930\u093f\u0938\u094d\u091f\u094b\u0930 \u0928\u093e\u092e \u0ab0\u0abf\u0ab8\u0acd\u0a9f\u0acb\u0ab0 \u0aa8\u0abe\u0aae restore naam",
       "Pin a restore point": "\u0930\u093f\u0938\u094d\u091f\u094b\u0930 \u092a\u093f\u0928 \u092c\u0948\u0915\u0905\u092a \u0ab0\u0abf\u0ab8\u0acd\u0a9f\u0acb\u0ab0 \u0aaa\u0abf\u0aa8 \u0aac\u0ac7\u0a95\u0a85\u0aaa restore pin backup",
       "Peek inside a restore point": "\u0930\u093f\u0938\u094d\u091f\u094b\u0930 \u092c\u0948\u0915\u0905\u092a \u0926\u0947\u0916\u0947\u0902 \u091d\u093e\u0902\u0915\u094b \u0ab0\u0abf\u0ab8\u0acd\u0a9f\u0acb\u0ab0 \u0aac\u0ac7\u0a95\u0a85\u0aaa \u0a9c\u0ac1\u0a93 restore backup dekho jhankho juo",
       "Restore one list from a restore point": "\u0930\u093f\u0938\u094d\u091f\u094b\u0930 \u0935\u093e\u092a\u0938 \u0932\u093f\u0938\u094d\u091f \u0ab0\u0abf\u0ab8\u0acd\u0a9f\u0acb\u0ab0 \u0aaa\u0abe\u0a9b\u0ac0 \u0aaf\u0abe\u0aa6\u0ac0 restore wapas list yadi",
