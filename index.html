@@ -28231,7 +28231,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     "Restore point saved as a file.": ["रिस्टोर पॉइंट फ़ाइल में सेव हुआ.", "રિસ્ટોર પોઇન્ટ ફાઇલમાં સેવ થયો."],
     "Restore point imported.": ["रिस्टोर पॉइंट इम्पोर्ट हुआ.", "રિસ્ટોર પોઇન્ટ આયાત થયો."],
     "That restore point is already here.": ["वह रिस्टोर पॉइंट पहले से यहाँ है.", "તે રિસ્ટોર પોઇન્ટ પહેલેથી અહીં છે."],
-    "This file is not a restore point.": ["यह फ़ाइल रिस्टोर पॉइंट नहीं है.", "આ ફાઇલ રિસ્ટોર પોઇન્ટ નથી."]
+    "This file is not a restore point.": ["यह फ़ाइल रिस्टोर पॉइंट नहीं है.", "આ ફાઇલ રિસ્ટોર પોઇન્ટ નથી."],
+    "Restore point back": ["रिस्टोर पॉइंट वापस आया", "રિસ્ટોર પોઇન્ટ પાછો આવ્યો"]
   });
   (function(){var host=$('plList');if(!host)return;
   var KEY='vp-restorepoints.v1',MAXP=6;
@@ -28348,7 +28349,15 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       // What's new (staggered at 10520ms, past new 1's 10420ms) included.
       var rnB483=document.createElement('button');rnB483.type='button';rnB483.className='chip';rnB483.textContent=T('Rename');rnB483.setAttribute('aria-label',T('Name this restore point'));rnB483.title=T('Name this restore point');
       rnB483.addEventListener('click',function(){renamePoint483(p);});d.appendChild(rnB483);
-      x.addEventListener('click',function(){var b2=load().filter(function(q2){return q2.ts!==p.ts;});store(b2);$('rpMsg').textContent=T('Restore point deleted.');paint();});d.appendChild(x);box.appendChild(d);
+      x.addEventListener('click',function(){var b2=load().filter(function(q2){return q2.ts!==p.ts;});store(b2);$('rpMsg').textContent=T('Restore point deleted.');paint();
+      // Round 483 fix 3: deleting a restore point was one tap with no way back - and the
+      // chips sit a finger-width apart, so a miss-tap aimed at Peek or Pin destroys the
+      // very snapshot the card exists to keep. Every other destructive list action in the
+      // app already offers Undo (queue remove, day clear, trim); a deleted point now does
+      // too: one tap on the toast's Undo re-files it with its timestamp, name and pin,
+      // through the pin-aware trim. Checked first: this handler was a plain store+paint
+      // with no undo path (grep toastUndo in this card = 0).
+      if(typeof toastUndo==='function')toastUndo(T('Restore point deleted.'),function(){var a8=load();if(!a8.some(function(q8){return q8.ts===p.ts;})){a8.unshift(p);a8=trim483(a8);store(a8);paint();}},T('Restore point back'));});d.appendChild(x);box.appendChild(d);
       if(pkOpen482){var pd482=document.createElement('div');pd482.className='hint';pd482.style.cssText='margin:0 0 8px 4px;padding:8px 10px;border:1px solid var(--hairline);border-radius:12px;background:var(--card)';pd482.appendChild(rpPeekDom482(p));box.appendChild(pd482);}});}
   $('rpImport483').addEventListener('click',function(){$('rpImportFile483').click();});
   $('rpImportFile483').addEventListener('change',function(){var f=this.files&&this.files[0];this.value='';if(!f)return;var rd=new FileReader();rd.onload=function(){var o;try{o=JSON.parse(String(rd.result||'{}'));}catch(e){$('rpMsg').textContent=T('This file is not a restore point.');return;}var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=='object'||Array.isArray(pt.d)){$('rpMsg').textContent=T('This file is not a restore point.');return;}var a6=load();if(a6.some(function(q6){return JSON.stringify(q6.d)===JSON.stringify(pt.d);})){$('rpMsg').textContent=T('That restore point is already here.');return;}var np483={ts:(typeof pt.ts==='number'&&isFinite(pt.ts)&&pt.ts>0)?pt.ts:Date.now(),kind:'manual',d:pt.d};if(typeof pt.name==='string'&&pt.name.trim())np483.name=pt.name.slice(0,60);if(pt.pin===true)np483.pin=true;while(a6.some(function(q7){return q7.ts===np483.ts;}))np483.ts++;a6.unshift(np483);a6=trim483(a6);store(a6);$('rpMsg').textContent=T('Restore point imported.');paint();};rd.readAsText(f);});
