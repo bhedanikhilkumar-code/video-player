@@ -50078,6 +50078,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     function covered447() {
       if (document.querySelector("dialog[open]")) return true;
+      var frameEditor494 = $("frameMarkup490"), frameCanvas494 = $("fmCanvas490");
+      if (frameEditor494 && frameEditor494.open && frameCanvas494 && frameCanvas494.width > 1) return true;
       if (document.fullscreenElement) return true;
       try { if (document.pictureInPictureElement) return true; } catch (e) {}
       if (window.__vpCarVideo432) return true; // Car mode owns the screen
@@ -50151,6 +50153,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       if (!raf447) raf447 = requestAnimationFrame(function () { raf447 = 0; update447(); });
     }, { passive: true });
     window.addEventListener("resize", update447);
+    document.addEventListener("toggle", function(e) { if(e.target.id === "frameMarkup490") update447(); }, true);
     window.addEventListener("vp-ask-closed435", update447);
     document.addEventListener("fullscreenchange", update447);
     document.addEventListener("enterpictureinpicture", update447, true);
@@ -51863,7 +51866,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       try{var c=fresh.getContext('2d');c.drawImage(video,0,0,fresh.width,fresh.height);c.getImageData(0,0,1,1);}catch(e){return notice('This source does not allow frame capture. Try a video file from your device.');}
       // Only pause after we have a usable frame. Stop soft-pause drift at the snapshot.
       if(window.__vpLocalPause490)window.__vpLocalPause490();else HTMLMediaElement.prototype.pause.call(video);
-      original=fresh;canvas.width=fresh.width;canvas.height=fresh.height;stamp=video.currentTime;marks=[];history=[];future=[];crop=null;cropInputValues();draft=null;pointer=null;hasFrame=true;editor.hidden=false;notice('Captured at {t}. Playback is paused; edits affect only this image.');render();
+      original=fresh;canvas.width=fresh.width;canvas.height=fresh.height;stamp=video.currentTime;marks=[];history=[];future=[];crop=null;cropInputValues();draft=null;pointer=null;hasFrame=true;editor.hidden=false;notice('Captured at {t}. Playback is paused; edits affect only this image.');render();window.dispatchEvent(new Event('resize'));
     });
     // Round 491 fix 1: a warning like 'Write the label text first.' stayed on screen after
     // the very next successful stamp or stroke, because only a fresh warning replaced the
@@ -51892,7 +51895,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     redo.addEventListener('click',function(){if(!future.length)return;draft=null;pointer=null;history.push(marks.slice());marks=future.pop();settled();render();});
     clear.addEventListener('click',function(){if(!marks.length)return;draft=null;pointer=null;commitMarks([]);settled();render();});
     card.addEventListener('keydown',function(e){if(!hasFrame||!(e.ctrlKey||e.metaKey)||e.altKey||/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)||e.target.isContentEditable)return;var k=e.key.toLowerCase(),b=k==='z'?(e.shiftKey?redo:undo):k==='y'&&!e.metaKey?redo:null;if(b){e.preventDefault();e.stopPropagation();if(!b.disabled)b.click();}});
-    discard.addEventListener('click',function(){crop=null;cropOverlay.hidden=true;hasFrame=false;draft=null;pointer=null;marks=[];history=[];future=[];original.width=original.height=canvas.width=canvas.height=1;editor.hidden=true;notice('Capture a new frame to begin.');capture.focus();});
+    discard.addEventListener('click',function(){crop=null;cropOverlay.hidden=true;hasFrame=false;draft=null;pointer=null;marks=[];history=[];future=[];original.width=original.height=canvas.width=canvas.height=1;editor.hidden=true;notice('Capture a new frame to begin.');capture.focus();window.dispatchEvent(new Event('resize'));});
     save.addEventListener('click',function(){if(!hasFrame||draft)return;var exportStamp=stamp;try{canvas.toBlob(function(blob){if(!blob)return notice('PNG could not be saved. Your captured image is still here.');var url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='video-frame-'+Math.round(exportStamp*1000)+'-marked.png';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},30000);notice('PNG downloaded. Your original video is unchanged.');},'image/png');}catch(e){notice('PNG could not be saved. Your captured image is still here.');}});
     // Round 491 new 1: a marked frame could only leave the app as a downloaded PNG -
     // keeping it meant finding it again in Downloads. This chip hands the marked image
