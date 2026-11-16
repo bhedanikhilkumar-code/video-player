@@ -14442,7 +14442,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
     vsBtn.hidden = false;
-    var rec = null, busy = false;
+    var rec = null, busy = false, cancel487 = null;
     function vsState(on, note) {
       busy = on;
       vsBtn.classList.toggle("listening", on);
@@ -14450,20 +14450,33 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (note != null && vsMsg) vsMsg.textContent = note;
     }
     vsBtn.addEventListener("click", function () {
-      if (busy) { try { if (rec) rec.stop(); } catch (e) {} return; }
+      if (busy) { if (cancel487) cancel487(); return; }
       try { rec = new SR(); } catch (e) { if (vsMsg) vsMsg.textContent = T("Voice search did not work - type instead."); return; }
       rec.lang = prefs.lang === "hi" ? "hi-IN" : prefs.lang === "gu" ? "gu-IN" : "en-IN";
       rec.interimResults = false;
       rec.maxAlternatives = 1;
-      var heard = false, timer = 0;
+      // Each session owns its recognizer and timeout. An old end/result callback or
+      // timer must never stop a newly started search or overwrite its text.
+      var own487 = rec, heard = false, timer = 0;
+      function clear487() { if (timer) { clearTimeout(timer); timer = 0; } }
+      function finish487() {
+        clear487();
+        if (rec !== own487) return;
+        rec = null; cancel487 = null; vsState(false, null);
+      }
+      cancel487 = function () {
+        finish487(); heard = true;
+        try { own487.stop(); } catch (e) {}
+        if (vsMsg) vsMsg.textContent = "";
+      };
       function vsTimeout() {
-        if (heard) return;
-        heard = true;
-        try { rec.stop(); } catch (e) {}
-        vsState(false, null);
+        if (rec !== own487 || heard) return;
+        heard = true; finish487();
+        try { own487.stop(); } catch (e) {}
         if (vsMsg) vsMsg.textContent = T("Didn't catch that - tap the mic and try again.");
       }
       rec.onresult = function (ev) {
+        if (rec !== own487 || heard) return;
         heard = true;
         if (timer) { clearTimeout(timer); timer = 0; }
         var text = "";
@@ -14477,16 +14490,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         } else if (vsMsg) vsMsg.textContent = T("Didn't catch that - tap the mic and try again.");
       };
       rec.onerror = function (ev) {
+        if (rec !== own487) return;
         heard = true;
         if (timer) { clearTimeout(timer); timer = 0; }
         if (vsMsg) vsMsg.textContent = (ev && ev.error === "not-allowed") ? T("Microphone permission is off - allow it to use voice search.") : T("Voice search did not work - type instead.");
       };
       rec.onend = function () {
-        vsState(false, null);
+        if (rec !== own487) return;
+        finish487();
         if (!heard && vsMsg) vsMsg.textContent = "";
       };
       vsState(true, T("Listening - speak now"));
-      try { rec.start(); timer = setTimeout(vsTimeout, 8000); } catch (e) { vsState(false, null); }
+      timer = setTimeout(vsTimeout, 8000);
+      try { own487.start(); } catch (e) { finish487(); }
     });
     (window.__relang = window.__relang || []).push(function () { vsBtn.setAttribute("aria-label", T("Voice search")); });
   })();
