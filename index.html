@@ -8537,11 +8537,28 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     // the cursor, so landing on a saved moment meant stopping and reading the dots below the
     // bar. When the hovered spot is within a couple of seconds of a saved moment, the bubble
     // names it ("2:34 - Chorus"), so favourite spots are findable straight from the bar.
-    var hoverT293 = frac * duration, tipTxt293 = fmt(hoverT293);
+    var hoverT293 = frac * duration, tipTxt293 = fmt(hoverT293), tipNamed463 = false;
     if (curId && typeof marks !== "undefined" && marks && marks[curId]) {
       var mm293 = marks[curId];
       for (var mi293 = 0; mi293 < mm293.length; mi293++) {
-        if (Math.abs(mm293[mi293].t - hoverT293) <= 2.5) { tipTxt293 = fmt(mm293[mi293].t) + (mm293[mi293].name ? " - " + mm293[mi293].name : ""); break; }
+        if (Math.abs(mm293[mi293].t - hoverT293) <= 2.5) { tipTxt293 = fmt(mm293[mi293].t) + (mm293[mi293].name ? " - " + mm293[mi293].name : ""); tipNamed463 = true; break; }
+      }
+    }
+    // Round 463 new 1: the hover tip names the chapter under the cursor. The tip already
+    // named saved moments within a couple of seconds of one, and the chapter ticks (308)
+    // and the "now in chapter" line (408) name parts at the playhead - but hovering a spot
+    // answered only with a time, so finding where a podcast's part begins still meant
+    // tapping ticks one by one. When no moment claim wins, the bubble reads the same
+    // SponsorBlock chapter rows the ticks use (window.__vpChap308get, one fetch per video)
+    // and names the part under the cursor ("7:24 - Second verse"). No new fetch, no chip,
+    // no setting; chapters with no community name leave the plain time as before.
+    if (!tipNamed463 && curId && typeof window.__vpChap308get === "function") {
+      var ch463 = window.__vpChap308get();
+      if (ch463 && ch463.id === curId && ch463.rows && ch463.rows.length) {
+        for (var ci463 = 0; ci463 < ch463.rows.length; ci463++) {
+          var cA463 = ch463.rows[ci463].a, cB463 = (ci463 + 1 < ch463.rows.length) ? ch463.rows[ci463 + 1].a : duration;
+          if (hoverT293 >= cA463 && hoverT293 < cB463 && ch463.rows[ci463].name) { tipTxt293 = fmt(hoverT293) + " \u00b7 " + ch463.rows[ci463].name; break; }
+        }
       }
     }
     seekTip.textContent = tipTxt293;
@@ -8549,6 +8566,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     seekTip.style.top = (seek.offsetTop - 32) + "px";
     seekTip.hidden = false;
   }
+  Object.assign(TR_MSG, {
+    "Chapter names in the seek tip": ["\u0938\u0940\u0915 \u091f\u093f\u092a \u092e\u0947\u0902 \u0905\u0927\u094d\u092f\u093e\u092f \u0915\u093e \u0928\u093e\u092e", "\u0ab8\u0ac0\u0a95 \u0a9f\u0abf\u0aaa\u0aae\u0abe\u0a82 \u0aaa\u0acd\u0ab0\u0a95\u0ab0\u0aa3\u0aa8\u0ac1\u0a82 \u0aa8\u0abe\u0aae"]
+  });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Chapter names in the seek tip", "#seekTip"); }, 7620); });
   seek.addEventListener("pointermove", function (e) { seekTipShow(e.clientX); });
   seek.addEventListener("pointerdown", function (e) { seekTipShow(e.clientX); });
   seek.addEventListener("pointerleave", function () { if (seekTip && !seeking) seekTip.hidden = true; });
@@ -54058,6 +54079,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       };
     }
     var FEATS = [
+      ["Chapter names in the seek tip", "seek bar hover scrub bubble shows community chapter name part title under cursor find section podcast", "#seekTip"],
       ["Compact mini player", "mini player compact smaller tiny shrink collapse short dock floating less space phone screen video keeps playing one row", "#miniSizeBtn304"],
       ["Start over or queue from the resume card", "resume continue where you left off start over beginning queue top banner card rewatch from zero line up", "#resumeBox"],
       ["Start over or queue from Continue watching", "start over queue continue watching row rewatch from beginning zero play again line up behind current add to queue without opening", "#continueWrap"],
