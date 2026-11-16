@@ -4188,6 +4188,20 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       lenEl.textContent = T("Length") + " " + fmt(lenSec);
       box.appendChild(lenEl);
     }
+    // Round 468 new 1: the learned channel name on every list row. The app already learns
+    // each video's channel from the info card (vp-chanmap, behind Top channels and the
+    // per-channel settings), but a queue, Favourites, Watch later, history or search row
+    // only ever showed the bare title, so telling two similar videos apart - or spotting
+    // the channel you trust - meant playing each one. The row now shows the channel under
+    // the title, styled like the learned-length line, silent while the channel is not
+    // learned yet. The name itself is a proper noun and is never translated; rows already
+    // on screen are filled in place by paintChans468 when the channel is learned later.
+    var chan468 = (typeof chanMap === "object" && chanMap && chanMap[item.id]) || "";
+    if (chan468) {
+      var chanEl468 = document.createElement("span"); chanEl468.className = "later-age later-chan468";
+      chanEl468.textContent = chan468;
+      box.appendChild(chanEl468);
+    }
     // Round 138: a snoozed Watch later row dims and says when it comes back.
     if (typeof item.snoozeUntil === "number" && item.snoozeUntil > Date.now()) {
       li.classList.add("snoozed");
@@ -49933,6 +49947,44 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Hop between parts", "#chapNext464"); }, 7720); });
   })();
 
+  // Round 468 new 1 (live rows): the row builder draws the learned channel only for rows
+  // painted after the channel was learned - the info card arrives after the video loads,
+  // so rows already on screen stayed bare until the next full repaint. Fill them in place:
+  // on a fresh learn (window.__vpChanLearn) update just that video's rows, and when another
+  // tab's chanmap arrives through the storage event, sweep the rows on screen once. No full
+  // renderLib, so scroll and playback are untouched.
+  Object.assign(TR_MSG, {
+    "Channel names on list rows": ["\u0932\u093f\u0938\u094d\u091f \u0915\u0940 \u092a\u0902\u0915\u094d\u0924\u093f\u092f\u094b\u0902 \u092a\u0930 \u091a\u0948\u0928\u0932 \u0915\u093e \u0928\u093e\u092e", "\u0aaf\u0abe\u0aa6\u0ac0\u0aa8\u0ac0 \u0ab9\u0ab0\u0acb\u0ab2\u0acb \u0aaa\u0ab0 \u0a9a\u0ac7\u0aa8\u0ab2\u0aa8\u0ac1\u0a82 \u0aa8\u0abe\u0aae"]
+  });
+  (function () {
+    function paintChans468(id) {
+      if (!id || typeof chanMap !== "object" || !chanMap || !chanMap[id]) return;
+      var name = chanMap[id];
+      Array.prototype.forEach.call(document.querySelectorAll('.lib-item[data-vid="' + id + '"]'), function (li) {
+        var box = li.querySelector(".lib-open > span"); if (!box) return;
+        if (box.querySelector(".later-chan468")) return;
+        var el = document.createElement("span"); el.className = "later-age later-chan468"; el.textContent = name;
+        box.insertBefore(el, box.childNodes[1] || null);
+      });
+    }
+    if (typeof window.__vpChanLearn === "function") {
+      window.__vpChanLearn = (function (orig) {
+        return function (id) { orig(id); try { paintChans468(id); } catch (e) {} };
+      })(window.__vpChanLearn);
+    }
+    window.addEventListener("storage", function (e) {
+      if (e.key !== "vp-chanmap.v1") return;
+      setTimeout(function () {
+        var seen = {};
+        Array.prototype.forEach.call(document.querySelectorAll(".lib-item[data-vid]"), function (li) {
+          var id = li.getAttribute("data-vid"); if (!id || seen[id]) return; seen[id] = 1;
+          try { paintChans468(id); } catch (err) {}
+        });
+      }, 50);
+    });
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Channel names on list rows", "#queueList"); }, 7820); });
+  })();
+
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
@@ -55167,6 +55219,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       ["Manage saved loops", "manage saved loops rename remove delete practice loop library clean up edit name old drill", "#loopLibCard296"],
       ["Search saved loops", "search loop library drills filter video title name time browse all more results practice", "#loopLibCard296"],
       ["Hop between parts", "next previous chapter part hop jump skip podcast section navigate", "#chapNext464"],
+      ["Channel names on list rows", "channel name author creator shown on queue watch later history favourites search list rows who made the video at a glance", "#queueList"],
       ["Now in chapter", "now in chapter current chapter name now playing which part section live position seek bar restart community", "#chapNow408"],
       ["QR for handoff", "qr handoff continue another device scan code phone laptop tv move watching queue position camera", "#handoffQr410"],
       ["Share from this chapter", "share from this chapter link starts chapter beginning send friend lecture tutorial part section copy", "#chapShare410"],
