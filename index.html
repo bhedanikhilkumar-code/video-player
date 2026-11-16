@@ -7190,7 +7190,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     HTMLMediaElement.prototype.pause.call(e.target);
     e.stopImmediatePropagation();
   }, true);
+  var playbackCommand487 = 0;
   function send(func, args) {
+    if (func === "playVideo" || func === "pauseVideo" || func === "stopVideo") playbackCommand487++;
     if (func === "playVideo" && playbackCovered345()) return;
     if (iframe && iframe.contentWindow) {
       iframe.contentWindow.postMessage(JSON.stringify({ event: "command", func: func, args: args || [] }), YT_ORIGIN);
@@ -51599,14 +51601,32 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     // residual class rounds 476-480 closed for the queue toggles, music mode, the sleep
     // checkboxes and Dim watched. The box now follows the other tab's save at once.
     (window.__vpPrefsPaint480 = window.__vpPrefsPaint480 || []).push(function () { cb485.checked = prefs.notePause485 === true; });
-    var npPaused485 = false;
+    // Round 487: a blur is not permission to restart a different source, restart after
+    // another playback command, or restart when the user is turning this option off.
+    var npOwned487 = null;
+    function release487() { npOwned487 = null; }
+    document.addEventListener("vp-youtube-selected", release487);
+    cb485.addEventListener("pointerdown", release487);
+    cb485.addEventListener("keydown", release487);
+    document.addEventListener("visibilitychange", function () { if (document.hidden) release487(); });
+    document.addEventListener("play", function (e) { if (e.target === $("lpVideo")) release487(); }, true);
     box485.addEventListener("focus", function () {
-      if (prefs.notePause485 !== true || npPaused485) return;
-      if (ready && playing) { send("pauseVideo"); npPaused485 = true; }
+      if (prefs.notePause485 !== true || npOwned487) return;
+      var lv487 = $("lpVideo");
+      if (lv487 && !lv487.hidden && !lv487.paused && !lv487.ended) return;
+      if (curId && ready && playing) {
+        send("pauseVideo"); npOwned487 = { id: curId, command: playbackCommand487 };
+      }
     });
-    box485.addEventListener("blur", function () {
-      if (!npPaused485) return; npPaused485 = false;
-      if (ready && !playing) send("playVideo");
+    box485.addEventListener("blur", function (e) {
+      var owned = npOwned487; release487();
+      if (!owned || e.relatedTarget === cb485) return;
+      // A click's playback action follows blur. Wait until it has run before deciding
+      // whether we still own the pause, rather than fighting a manual pause/play tap.
+      setTimeout(function () {
+        if (prefs.notePause485 === true && !document.hidden && curId === owned.id &&
+            playbackCommand487 === owned.command && ready && !playing) send("playVideo");
+      }, 0);
     });
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Pause while writing a note", "#notePause485Row"); }, 11020); });

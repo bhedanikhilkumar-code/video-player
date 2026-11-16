@@ -1,0 +1,21 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p})=>{
+ await p.locator('#linkInput').fill('https://youtu.be/dQw4w9WgXcQ');await p.locator('#loadBtn').click();
+ const ev=async(event,info)=>p.evaluate(({event,info})=>window.dispatchEvent(new MessageEvent('message',{source:document.querySelector('#frameBox iframe').contentWindow,origin:'https://www.youtube-nocookie.com',data:{event,info}})),{event,info});
+ await ev('onReady');await ev('infoDelivery',{currentTime:40,duration:214});await ev('onStateChange',1);
+ const frame=await(await p.locator('#frameBox iframe').elementHandle()).contentFrame();
+ await frame.evaluate(()=>{window.cmds=[];window.addEventListener('message',e=>{try{window.cmds.push(JSON.parse(e.data));}catch{}})});
+ await p.locator('#notePause485').check();await p.locator('#noteBox').focus();await ev('onStateChange',2);
+ await p.waitForTimeout(100);
+ assert.ok(await frame.evaluate(()=>cmds.some(c=>c.func==='pauseVideo')),'focus pauses playback');
+ await p.locator('#notePause485').uncheck();await p.waitForTimeout(100);
+ assert.equal(await frame.evaluate(()=>cmds.filter(c=>c.func==='playVideo').length),0,'turning the option OFF must not resume the video during the checkbox blur');
+ await p.locator('#notePause485').check();await ev('onStateChange',1);
+ await frame.evaluate(()=>window.cmds=[]);await p.locator('#noteBox').focus();await ev('onStateChange',2);
+ await p.locator('#notesH').focus().catch(()=>{});await p.locator('#noteBox').evaluate(e=>e.blur());
+ await p.waitForTimeout(100);assert.equal(await frame.evaluate(()=>cmds.filter(c=>c.func==='playVideo').length),1,'ordinary blur still resumes the owned pause');
+ await ev('onStateChange',1);await frame.evaluate(()=>window.cmds=[]);await p.locator('#noteBox').focus();await ev('onStateChange',2);
+ await p.locator('#noteBox').evaluate(e=>{document.dispatchEvent(new Event('vp-youtube-selected'));e.blur();});
+ await p.waitForTimeout(100);assert.equal(await frame.evaluate(()=>cmds.filter(c=>c.func==='playVideo').length),0,'source selection cancels the old pause ownership');
+ console.log('PASS note pause: checkbox disable and source change do not resume; normal blur still resumes');
+}).catch(e=>{console.error(e);process.exitCode=1;});
