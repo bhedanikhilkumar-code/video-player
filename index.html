@@ -11065,6 +11065,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toast(T("Watch later feed") + ": " + T(prefs.laterFeed ? "on" : "off"));
   });
   (window.__relang = window.__relang || []).push(qFeedRender);
+  // Round 480 fix 2: repaint when another tab's prefs save adopts the flag here.
+  (window.__vpPrefsPaint480 = window.__vpPrefsPaint480 || []).push(qFeedRender);
   qFeedRender();
   // Favourites feed button (round 272 new 1), next to the Watch later feed button.
   Object.assign(TR_MSG, {
@@ -14549,6 +14551,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toast(T("Skip watched") + ": " + T(prefs.queueSkipWatched ? "on" : "off"));
   });
   (window.__relang = window.__relang || []).push(qSkipWRender);
+  // Round 480 fix 2: repaint when another tab's prefs save adopts the flag here.
+  (window.__vpPrefsPaint480 = window.__vpPrefsPaint480 || []).push(qSkipWRender);
   qSkipWRender();
 
   // Remove played videos (round 156): for podcast-style queues where a finished video is
@@ -14581,6 +14585,8 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     toast(T("Remove played") + ": " + T(prefs.queueConsume ? "on" : "off"));
   });
   (window.__relang = window.__relang || []).push(qConsumeRender);
+  // Round 480 fix 2: repaint when another tab's prefs save adopts the flag here.
+  (window.__vpPrefsPaint480 = window.__vpPrefsPaint480 || []).push(qConsumeRender);
   qConsumeRender();
   function qConsumeState(st) {
     if (st === 0) {
@@ -27204,6 +27210,13 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         if (prefs.theme !== themeWas) applyTheme();
         // Round 426 fix 2: an accent picked in the other tab repaints here too, not only after a reload.
         if (prefs.accent + "|" + prefs.accentCustom !== accentWas) { applyAccent(); applyTheme(); }
+        // Round 480 fix 2: the adoption above silently updated this tab's copy of every
+        // untouched setting, but the CHIPS showing those settings kept their old labels
+        // until a reload - the same residual class rounds 476-479 closed chip by chip
+        // (queue modes, music mode, the sleep checkboxes). Registered chips now repaint
+        // the moment the other tab's save lands: the queue's Skip watched, Skip Shorts,
+        // Remove played and Watch later feed toggles are the first to sign up.
+        if (Array.isArray(window.__vpPrefsPaint480)) { window.__vpPrefsPaint480.forEach(function (fn) { try { fn(); } catch (err) {} }); }
       } catch (err) {}
     });
   })();
@@ -30030,6 +30043,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     }
     b.addEventListener("click", function () { prefs.queueSkipShorts = !(prefs.queueSkipShorts === true); savePrefs(); paint(); });
     (window.__relang = window.__relang || []).push(paint);
+    // Round 480 fix 2: repaint when another tab's prefs save adopts the flag here.
+    (window.__vpPrefsPaint480 = window.__vpPrefsPaint480 || []).push(paint);
     paint();
   })();
   // Save the hour chart as a PNG (round 251 new 3): the When-you-watch bars in Watch
