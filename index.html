@@ -38871,7 +38871,30 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var card294 = $("ctl-notes"), times294 = $("noteTimes"); if (!card294 || !times294) return;
     var VN_KEY = "vp-vnotes.v1", vnotes = {};
     try { var vnIn = JSON.parse(localStorage.getItem(VN_KEY) || "null"); if (vnIn && typeof vnIn === "object" && !Array.isArray(vnIn)) vnotes = vnIn; } catch (e) {}
-    function vnSave() { var ok380; try { localStorage.setItem(VN_KEY, JSON.stringify(vnotes)); ok380 = true; } catch (e) { ok380 = false; } if (window.__vpVnoteLibPaint380) { try { window.__vpVnoteLibPaint380(); } catch (e) {} } return ok380; }
+    // Round 466 fix 1: voice notes were kept in memory per tab and written whole on every save or
+    // delete, so with the app open in two tabs the tab that saved or deleted last silently wiped
+    // (or brought back) the other tab's voice notes - the loss rounds 239/261/260 closed for notes,
+    // moments and playlists. A save now merges only this tab's own changes into what is stored,
+    // and a change made by another tab is adopted here at once.
+    var vnBase466 = Object.assign({}, vnotes);
+    function vnRead466() { try { var m = JSON.parse(localStorage.getItem(VN_KEY) || "null"); return (m && typeof m === "object" && !Array.isArray(m)) ? m : {}; } catch (e) { return {}; } }
+    function vnSave() {
+      var ok380;
+      try {
+        var latest466 = vnRead466();
+        Object.keys(vnotes).concat(Object.keys(vnBase466)).forEach(function (id) {
+          if (vnotes[id] === vnBase466[id]) return;
+          if (vnotes[id]) latest466[id] = vnotes[id]; else delete latest466[id];
+        });
+        localStorage.setItem(VN_KEY, JSON.stringify(latest466)); vnotes = latest466; vnBase466 = Object.assign({}, vnotes); ok380 = true;
+      } catch (e) { ok380 = false; }
+      if (window.__vpVnoteLibPaint380) { try { window.__vpVnoteLibPaint380(); } catch (e) {} } return ok380;
+    }
+    window.addEventListener("storage", function (e) {
+      if (e.key !== VN_KEY && e.key !== null) return;
+      vnotes = vnRead466(); vnBase466 = Object.assign({}, vnotes);
+      if (typeof paint294 === "function") paint294();
+    });
     var row = document.createElement("div"); row.className = "row"; row.id = "vnoteRow294"; row.style.cssText = "margin-top:6px;flex-wrap:wrap;gap:8px;align-items:center";
     times294.parentNode.insertBefore(row, times294.nextSibling);
     var recB = document.createElement("button"); recB.type = "button"; recB.className = "chip"; recB.id = "vnoteRec294"; row.appendChild(recB);
