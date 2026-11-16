@@ -4737,6 +4737,54 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       { label: T("Paste a link"), fn: function () { var lb = $("pasteLinkBtn"); if (lb) lb.click(); var li2 = $("link"); if (li2) li2.scrollIntoView({ behavior: window.vpReducedMotion() ? "auto" : "smooth", block: "center" }); var inp = $("linkInput"); if (inp) setTimeout(function () { inp.focus(); }, 350); } },
       { label: T("Import playlist"), fn: function () { var pb = $("plImportBtn"); if (pb) pb.click(); } }
     ]);
+    /* Round 473 new 1: Mark watched up to here. A binge session leaves a trail of half-
+       watched rows - a Short you skipped out of, a video you finished on the TV - and the
+       only clean-up paths were one video at a time (the \u2714 chip) or everything (Clear
+       watched, which DELETES rows). Every Recently watched and Watch later row now carries
+       a \u2714\u2912 chip: tap it and that row plus every unwatched row above it in the
+       list is marked watched in one go - resume points clear, exactly like the \u2714 chip
+       on the player. Rows above that were already watched are untouched, Watch later rows
+       never played get a history entry (the watched mark lives there), and one Undo puts
+       every changed row's previous mark and resume point back. Checked first: no
+       up-to-here mark existed (grep "mark up to"/"up to here" = 0; row chips offered Pin,
+       Snooze, Reason, playlist, queue and Remove only). Hindi and Gujarati text, feature
+       finder and What's new included. */
+    Object.assign(TR_MSG, {
+      "Mark watched up to here": ["यहां तक देखा हुआ करें", "અહીં સુધી જોયેલું કરો"],
+      "Marked {n} videos as watched up to this row": ["इस पंक्ति तक {n} वीडियो देखे हुए किए", "આ પંક્તિ સુધી {n} વીડિયો જોયેલા કર્યા"],
+      "Everything above is already watched": ["ऊपर का सब पहले से देखा हुआ है", "ઉપરનું બધું પહેલેથી જોયેલું છે"],
+      "Watch marks undone": ["देखे हुए के निशान वापस", "જોયેલાની નિશાની પાછી"]
+    });
+    function markUpToAction473(scope) {
+      return { label: "\u2714\u2912", aria: function () { return T("Mark watched up to here"); }, cls: "pin-chip", fn: function (item) {
+        var arr = scope === "later" ? lib.later : lib.hist;
+        var idx = findIn(arr, item.id); if (idx < 0) return;
+        var changed = [], made = false;
+        for (var i = 0; i <= idx; i++) {
+          var it = arr[i]; if (!it || !it.id) continue;
+          var hi = findIn(lib.hist, it.id);
+          if (hi < 0) {
+            if (scope !== "later") continue;
+            lib.hist.unshift({ id: it.id, title: it.title || titleFor(it.id), ts: Date.now(), t: 0, dur: 0, done: true });
+            changed.push({ id: it.id, was: null }); made = true;
+            continue;
+          }
+          if (!lib.hist[hi].done) { changed.push({ id: it.id, was: false, t: lib.hist[hi].t }); lib.hist[hi].done = true; lib.hist[hi].t = 0; }
+        }
+        if (!changed.length) { toast(T("Everything above is already watched")); return; }
+        if (made) histCapNow();
+        saveLib(); renderLib();
+        toastUndo(T("Marked {n} videos as watched up to this row").replace("{n}", changed.length), function () {
+          changed.forEach(function (c) {
+            var hi2 = findIn(lib.hist, c.id); if (hi2 < 0) return;
+            if (c.was === null) lib.hist.splice(hi2, 1); else { lib.hist[hi2].done = false; lib.hist[hi2].t = c.t; }
+          });
+          saveLib(); renderLib();
+        }, T("Watch marks undone"));
+        if (typeof updateWatchedBtn === "function") updateWatchedBtn();
+      } };
+    }
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Mark watched up to here", "#lhHist"); }, 8220); });
     // Round 324 new 3: Watch later fold. Favourites has drawn only its first 30 rows with
     // a Show all row since round 206, but Watch later - capped at 50, and on a parked
     // backlog often exactly that - still rendered every row on each library repaint, the
@@ -4765,7 +4813,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       if (v233) lib.later[li233].why = v233; else delete lib.later[li233].why;
       saveLib(); renderLib();
       toast(v233 ? T("Reason saved on the row.") : T("Reason removed."));
-    } }, plRowAction(), favRowAction(), queueRowAction(), archRowAction388()], "later", undefined, true);;
+    } }, plRowAction(), favRowAction(), queueRowAction(), archRowAction388(), markUpToAction473("later")], "later", undefined, true);;
     if (latAll324.length > 30 && !latSearchOn324) {
       var latFoldLi324 = document.createElement("li"); latFoldLi324.className = "lib-empty fav-fold-row";
       var latFoldBtn324 = document.createElement("button"); latFoldBtn324.className = "chip"; latFoldBtn324.type = "button"; latFoldBtn324.id = "laterFoldBtn324";
@@ -4825,7 +4873,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     } }, { label: T("Remove"), fn: function (item) {
       var i = findIn(lib.hist, item.id);
       if (i >= 0) { var snapH = lib.hist.slice(); lib.hist.splice(i, 1); saveLib(); renderLib(); if (typeof libSay === "function") libSay(T("Removed from history.")); toastUndo(T("Removed from history."), function () { lib.hist = snapH; saveLib(); renderLib(); }, T("History restored")); }
-    } }, plRowAction(), queueRowAction()], "hist");
+    } }, plRowAction(), queueRowAction(), markUpToAction473("hist")], "hist");
     updateFavBtn(); updateLaterBtn();
     updateQueueTime();
     if (typeof updateLaterTime === "function") updateLaterTime();
@@ -54827,6 +54875,7 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       };
     }
     var FEATS = [
+      ["Mark watched up to here", "mark watched up to here row catch up binge bulk done seen history watch later tick all above", "#lhHist"],
       ["Search feed", "search feed query results keep playing auto next unwatched match queue runs out library search words operators", "#qSearchFeedBtn471"],
       ["Chapter names in the seek tip", "seek bar hover scrub bubble shows community chapter name part title under cursor find section podcast", "#seekTip"],
       ["Compact mini player", "mini player compact smaller tiny shrink collapse short dock floating less space phone screen video keeps playing one row", "#miniSizeBtn304"],
@@ -55874,7 +55923,8 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       "Search operators": "\u0916\u094b\u091c \u0ab6\u0acb\u0aa7 khoj shodh",
       "Saved searches": "\u0916\u094b\u091c \u0ab6\u0acb\u0aa7 khoj shodh",
       "Pinned actions in Search": "\u092a\u093f\u0928 \u0aaa\u0abf\u0aa8 pin",
-      "Search feed": "\u0916\u094b\u091c \u092b\u093c\u0940\u0921 \u0ab6\u0acb\u0aa7 \u0aab\u0ac0\u0aa1 khoj shodh feed"
+      "Search feed": "\u0916\u094b\u091c \u092b\u093c\u0940\u0921 \u0ab6\u0acb\u0aa7 \u0aab\u0ac0\u0aa1 khoj shodh feed",
+      "Mark watched up to here": "\u0926\u0947\u0916\u093e \u0a9c\u0acb\u0af0\u0ab2\u0ac1\u0a82 dekha joyelu watched"
     };
     var simpleOn = document.documentElement.classList.contains("simple-mode");
     FEATS.forEach(function (f) {
