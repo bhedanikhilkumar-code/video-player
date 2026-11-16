@@ -49979,10 +49979,19 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
       if (!id || typeof chanMap !== "object" || !chanMap || !chanMap[id]) return;
       var name = chanMap[id];
       Array.prototype.forEach.call(document.querySelectorAll('.lib-item[data-vid="' + id + '"]'), function (li) {
-        var box = li.querySelector(".lib-open > span"); if (!box) return;
+        // Round 469 fix 1: ".lib-open > span" matched the FIRST span child, and on the
+        // playing queue row that is the animated equalizer bars (row-eq), not the text
+        // column - the channel line landed between the bars, cramped into the icon and
+        // hidden from screen readers by the bars' aria-hidden (seen live on the playing
+        // row). Pick the text column explicitly, and rescue a line already stranded in
+        // the bars. The insert point now matches the row builder too: title, Length,
+        // then the channel (it used to jump ahead of Length on live-filled rows only).
+        var box = li.querySelector(".lib-open > span:not(.row-eq)"); if (!box) return;
+        var stray = li.querySelector(".row-eq .later-chan468"); if (stray) stray.remove();
         if (box.querySelector(".later-chan468")) return;
         var el = document.createElement("span"); el.className = "later-age later-chan468"; el.textContent = name;
-        box.insertBefore(el, box.childNodes[1] || null);
+        var len = box.querySelector(".later-len");
+        box.insertBefore(el, len ? len.nextSibling : (box.childNodes[1] || null));
       });
     }
     if (typeof window.__vpChanLearn === "function") {
