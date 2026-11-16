@@ -50109,6 +50109,40 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Saved while offline", "#offLinks470"); }, 7920); });
   })();
 
+  // Round 470 fix 2: a video queued while the network was down kept a bare "Video <id>" title
+  // for good - queueAdd calls fetchTitle, whose oembed request fails offline, and nothing ever
+  // asked again, so the row showed the raw id until you played it (reproduced live: oembed
+  // blocked, queue row stayed "Video LXb3EKWsInQ" before AND after the connection returned).
+  // When the connection comes back, sweep the queue, history, favourites, Watch later and the
+  // saved playlists for entries with no learned title and ask once per video; setTitle fills
+  // every list row and repaints as each answer lands.
+  (function () {
+    var backfilling470 = false;
+    function backfillTitles470() {
+      if (backfilling470 || navigator.onLine === false) return;
+      backfilling470 = true;
+      try {
+        var ids = {}, want = [];
+        [lib.queue, lib.hist, lib.favs, lib.later].forEach(function (list) {
+          (list || []).forEach(function (item) {
+            if (!item || typeof item.id !== "string" || ids[item.id]) return;
+            if (item.title && item.title.trim()) return;
+            ids[item.id] = 1; want.push(item.id);
+          });
+        });
+        (playlists || []).forEach(function (p) {
+          (p.items || []).forEach(function (item) {
+            if (!item || typeof item.id !== "string" || ids[item.id]) return;
+            if (item.title && item.title.trim()) return;
+            ids[item.id] = 1; want.push(item.id);
+          });
+        });
+        want.slice(0, 60).forEach(function (id) { try { fetchTitle(id); } catch (e) {} });
+      } finally { backfilling470 = false; }
+    }
+    window.addEventListener("online", backfillTitles470);
+  })();
+
 })();
 
   // Round 325 new 1: Startup self-check. The whole app is one long main script, and this
