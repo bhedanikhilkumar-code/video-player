@@ -20,11 +20,14 @@ function slice(from, to) { const a = html.indexOf(from); assert.ok(a >= 0, from 
 }
 console.log('round271 new1 ok');
 // Fix 1: Tag videos, Weekly plan, Review desk and Today's list warn when storage is full.
+// Round 474: rounds 467-472 routed these saves through the shared merge helper, whose
+// empty catch silently dropped the warning. The contract now lives in the helper.
 {
-  for (const v of ['tags', 'plan', 'rv', 'td']) {
-    assert.ok(html.includes("function save(){try{localStorage.setItem(KEY,JSON.stringify(" + v + "));}catch(e){if(typeof storageWarn==='function')storageWarn();}}"), v + ' save must warn');
-    assert.ok(!html.includes("JSON.stringify(" + v + "));}catch(e){}}"), v + ' must not swallow errors');
+  assert.ok(html.includes('catch (e) { if (typeof storageWarn === "function") storageWarn(); }\n    return latest;'), 'merge helper must warn on a failed save');
+  for (const v of ['tags', 'plan', 'rv']) {
+    assert.ok(html.includes('function save(){' + v + '=vpMergeSave467('), v + ' save must route through the merge helper');
   }
+  assert.ok(html.includes("try{localStorage.setItem(KEY,JSON.stringify(out));}catch(e){if(typeof storageWarn==='function')storageWarn();}"), 'today save must warn');
 }
 console.log('round271 fix1 ok');
 // New 2: Skip by title words rules.

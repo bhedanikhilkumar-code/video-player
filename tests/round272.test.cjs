@@ -4,12 +4,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
 // Fix 1: Watch stats, Recently removed, channel list and lyrics sync warn when a save fails.
-for (const [fn, key] of [['saveStats', 'STATS_KEY'], ['binSave', 'BIN_KEY'], ['vpChansSave', 'CHANS_KEY'], ['lyrSyncSave', 'LYR_SYNC_KEY']]) {
+for (const [fn, key] of [['saveStats', 'STATS_KEY'], ['binSave', 'BIN_KEY'], ['vpChansSave', 'CHANS_KEY']]) {
   const i = html.indexOf('function ' + fn + '()'); assert.ok(i > 0, fn);
   const line = html.slice(i, html.indexOf('\n', i));
   assert.ok(line.includes('storageWarn()'), fn + ' must warn on a failed save');
   assert.ok(!/catch \(e\) \{\} \}$/.test(line), fn + ' must not swallow the error');
 }
+// Round 474: lyrSyncSave routes through the round-467 merge helper; the warning contract
+// lives there (the empty catch in the helper was the regression this round fixed).
+assert.ok(html.includes('function lyrSyncSave() { lyrSync = vpMergeSave467('), 'lyrSyncSave must route through the merge helper');
+assert.ok(html.includes('catch (e) { if (typeof storageWarn === "function") storageWarn(); }\n    return latest;'), 'merge helper must warn on a failed save');
 console.log('round272 fix1 ok');
 // Fix 2: stats cross-tab.
 assert.ok(html.includes('window.addEventListener("pagehide", function () { if (statsDirty) { statsDirty = false; saveStats(); } });'));
