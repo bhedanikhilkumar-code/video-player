@@ -1,0 +1,7 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p,pick,files})=>{
+ await pick(files.slice(0,1));await p.addStyleTag({content:'html{scroll-behavior:auto!important}'});await p.locator('#lpGal285>summary').click();await p.locator('#lpGalAdd285').click();await p.waitForFunction(()=>document.querySelectorAll('#lpGalGrid285>button').length===1);await p.locator('#lpGalGrid285>button').click();
+ await p.evaluate(()=>{const put=IDBObjectStore.prototype.put;window.abortName496=true;IDBObjectStore.prototype.put=function(...args){let r=put.apply(this,args);if(this.name==='frames'&&window.abortName496){window.abortName496=false;let t=this.transaction;r.addEventListener('success',()=>t.abort());}return r;};});
+ await p.locator('#lpGalName492').fill('Should not save');await p.locator('#lpGalNameSave492').click();await p.waitForFunction(()=>!document.querySelector('#lpGalNameSave492').disabled,{},{timeout:2000});assert.match(await p.locator('#lpGalView285 form p').textContent(),/could not be saved/);await p.locator('#lpGalNameSave492').click();await p.waitForFunction(()=>document.querySelector('#lpGalView285 form p').textContent.includes('Name saved'));await p.locator('#lpGalClose285').click();assert.match(await p.locator('#lpGalGrid285>button').textContent(),/Should not save/);
+ console.log('PASS real IndexedDB abort settles rename with failure and enables a successful retry');
+}).catch(e=>{console.error(e);process.exitCode=1});
