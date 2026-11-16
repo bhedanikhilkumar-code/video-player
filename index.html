@@ -40061,7 +40061,29 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     var anchor = $("vnoteRow294"), card294b = $("ctl-notes"); if (!card294b) return;
     var VP_KEY = "vp-vphotos.v1", vphotos = {};
     try { var vpIn = JSON.parse(localStorage.getItem(VP_KEY) || "null"); if (vpIn && typeof vpIn === "object" && !Array.isArray(vpIn)) vphotos = vpIn; } catch (e) {}
-    function vpSave() { var ok381; try { localStorage.setItem(VP_KEY, JSON.stringify(vphotos)); ok381 = true; } catch (e) { ok381 = false; } if (window.__vpVphotoLibPaint381) { try { window.__vpVphotoLibPaint381(); } catch (e) {} } return ok381; }
+    // Round 466 fix 2: photo notes had the voice-note flaw (fix 1) - held in memory per tab and written
+    // whole, so the tab that saved or deleted last wiped (or brought back) the other tab's photo notes.
+    // A save now merges only this tab's own changes into the stored notes and a change from another
+    // tab is adopted at once.
+    var vpBase466 = Object.assign({}, vphotos);
+    function vpRead466() { try { var m = JSON.parse(localStorage.getItem(VP_KEY) || "null"); return (m && typeof m === "object" && !Array.isArray(m)) ? m : {}; } catch (e) { return {}; } }
+    function vpSave() {
+      var ok381;
+      try {
+        var latest466 = vpRead466();
+        Object.keys(vphotos).concat(Object.keys(vpBase466)).forEach(function (id) {
+          if (vphotos[id] === vpBase466[id]) return;
+          if (vphotos[id]) latest466[id] = vphotos[id]; else delete latest466[id];
+        });
+        localStorage.setItem(VP_KEY, JSON.stringify(latest466)); vphotos = latest466; vpBase466 = Object.assign({}, vphotos); ok381 = true;
+      } catch (e) { ok381 = false; }
+      if (window.__vpVphotoLibPaint381) { try { window.__vpVphotoLibPaint381(); } catch (e) {} } return ok381;
+    }
+    window.addEventListener("storage", function (e) {
+      if (e.key !== VP_KEY && e.key !== null) return;
+      vphotos = vpRead466(); vpBase466 = Object.assign({}, vphotos);
+      if (typeof paint298p === "function") paint298p();
+    });
     var row = document.createElement("div"); row.className = "row"; row.id = "vphotoRow298"; row.style.cssText = "margin-top:6px;flex-wrap:wrap;gap:8px;align-items:center";
     if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(row, anchor.nextSibling);
     else card294b.appendChild(row);
