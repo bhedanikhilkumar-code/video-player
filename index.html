@@ -51757,7 +51757,9 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     "PNG could not be saved. Your captured image is still here.": ["PNG सेव नहीं हो सका. लिया हुआ चित्र अभी यहीं है.", "PNG સાચવી શકાયો નહીં. લીધેલું ચિત્ર હજી અહીં છે."],
     "Capture a new frame to begin.": ["शुरू करने के लिए नया फ़्रेम लें.", "શરૂ કરવા નવો ફ્રેમ લો."],
     "Marks: {n} of 60. Image: {w} × {h}.": ["निशान: 60 में से {n}. चित्र: {w} × {h}.", "નિશાન: 60માંથી {n}. ચિત્ર: {w} × {h}."],
-    "Capturing again replaces this unsaved image and its marks. Continue?": ["फिर फ़्रेम लेने पर यह बिना सेव किया चित्र और निशान हट जाएंगे. जारी रखें?", "ફરી ફ્રેમ લેતાં આ ન સાચવેલું ચિત્ર અને નિશાન દૂર થશે. આગળ વધવું?"]
+    "Capturing again replaces this unsaved image and its marks. Continue?": ["फिर फ़्रेम लेने पर यह बिना सेव किया चित्र और निशान हट जाएंगे. जारी रखें?", "ફરી ફ્રેમ લેતાં આ ન સાચવેલું ચિત્ર અને નિશાન દૂર થશે. આગળ વધવું?"],
+    "Keep in Saved frames": ["सेव फ़्रेम में रखें", "સાચવેલા ફ્રેમમાં રાખો"],
+    "Saved frames is not available in this browser.": ["इस ब्राउज़र में सेव फ़्रेम उपलब्ध नहीं.", "આ બ્રાઉઝરમાં સાચવેલા ફ્રેમ ઉપલબ્ધ નથી."]
   });
   (function () {
     var video=$('lpVideo'),anchor=$('lpPrecise'); if(!video||!anchor)return;
@@ -51777,7 +51779,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     var wl=element('label',null,row);element('span','Stroke width',wl);var width=element('input',null,wl);width.id='fmWidth490';width.type='range';width.min=2;width.max=16;width.step=2;width.value=6;
     var tl=element('label',null,editor);tl.className='fm-label490';element('span','Text for the image',tl);var text=element('input',null,tl);text.id='fmText490';text.type='text';text.maxLength=120;text.autocomplete='off';
     var actions=element('div',null,editor);actions.className='row';
-    var centre=button('fmCentre490','Add centred text',actions),undo=button('fmUndo490','Undo last mark',actions),clear=button('fmClear490','Clear all marks',actions),save=button('fmSave490','Save marked PNG',actions),discard=button('fmDiscard490','Discard captured image',actions);
+    var centre=button('fmCentre490','Add centred text',actions),undo=button('fmUndo490','Undo last mark',actions),clear=button('fmClear490','Clear all marks',actions),keep=button('fmKeep490','Keep in Saved frames',actions),save=button('fmSave490','Save marked PNG',actions),discard=button('fmDiscard490','Discard captured image',actions);
     var count=element('p',null,editor);count.className='hint';
     element('p','Draw on the captured frame with a mouse, pen or touch. Text can also be placed in the centre with the button. Undo and Clear keep the original frame.',editor).className='hint';
     anchor.parentNode.insertBefore(card,anchor.nextSibling);
@@ -51830,6 +51832,11 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     undo.addEventListener('click',function(){draft=null;pointer=null;marks.pop();settled();render();});clear.addEventListener('click',function(){draft=null;pointer=null;marks=[];settled();render();});
     discard.addEventListener('click',function(){hasFrame=false;draft=null;pointer=null;marks=[];original.width=original.height=canvas.width=canvas.height=1;editor.hidden=true;notice('Capture a new frame to begin.');capture.focus();});
     save.addEventListener('click',function(){if(!hasFrame||draft)return;var exportStamp=stamp;try{canvas.toBlob(function(blob){if(!blob)return notice('PNG could not be saved. Your captured image is still here.');var url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='video-frame-'+Math.round(exportStamp*1000)+'-marked.png';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},30000);notice('PNG downloaded. Your original video is unchanged.');},'image/png');}catch(e){notice('PNG could not be saved. Your captured image is still here.');}});
+    // Round 491 new 1: a marked frame could only leave the app as a downloaded PNG -
+    // keeping it meant finding it again in Downloads. This chip hands the marked image
+    // to the Saved frames gallery (round 285, IndexedDB on this device) through its
+    // bridge, so it can be viewed full size, downloaded later, or deleted in the app.
+    keep.addEventListener('click',function(){if(!hasFrame||draft)return;if(typeof window.__vpFrameGalAdd!=='function')return notice('Saved frames is not available in this browser.');try{canvas.toBlob(function(blob){if(!blob)return notice('This frame could not be saved (the browser blocked it).');window.__vpFrameGalAdd(blob,canvas.width,canvas.height).then(function(){notice('Frame added to the gallery.');},function(){notice('Storage is full - delete some frames first.');});},'image/png');}catch(e){notice('This frame could not be saved (the browser blocked it).');}});
     var style=document.createElement('style');style.textContent=`
       #frameMarkup490{margin:14px 0;padding:16px;border:1px solid var(--line);border-radius:22px;background:linear-gradient(135deg,color-mix(in srgb,var(--card) 92%,transparent),color-mix(in srgb,var(--card) 75%,transparent));box-shadow:inset 0 1px 0 #ffffff55;backdrop-filter:blur(12px);min-width:0}
       #frameMarkup490 summary{font-weight:700;cursor:pointer}#frameMarkup490 [hidden]{display:none!important}
@@ -51853,7 +51860,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     "No close title found. Try fewer words or a different spelling.": ["करीब का नाम नहीं मिला. कम शब्द या दूसरी वर्तनी आज़माएं.", "નજીકનું નામ મળ્યું નહીં. ઓછા શબ્દો કે બીજી જોડણી અજમાવો."],
     "Find this video in my lists": ["यह वीडियो मेरी लिस्ट में खोजें", "આ વીડિયો મારી યાદીમાં શોધો"],
     "Similar-title suggestions are hidden in Spoiler-free mode.": ["स्पॉइलर-फ़्री मोड में मिलते-जुलते नामों के सुझाव छिपे हैं.", "સ્પોઇલર-ફ્રી મોડમાં મળતાં નામોનાં સૂચનો છુપાયેલાં છે."],
-    "This title search uses up to 8 words at a time.": ["इस नाम खोज में एक बार में अधिकतम 8 शब्द चलते हैं.", "આ નામ શોધમાં એક વારમાં વધુમાં વધુ 8 શબ્દો ચાલે છે."]
+    "This title search uses up to 8 words at a time.": ["इस नाम खोज में एक बार में अधिकतम 8 शब्द चलते हैं.", "આ નામ શોધમાં એક વારમાં વધુમાં વધુ 8 શબ્દો ચાલે છે."],
+    "Keep a marked frame in Saved frames": ["निशान वाला फ़्रेम सेव फ़्रेम में रखें", "નિશાનવાળો ફ્રેમ સાચવેલા ફ્રેમમાં રાખો"]
   });
   (function(){
     if(!libSearch)return;
@@ -51916,6 +51924,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     document.head.appendChild(style);paintLabels();
   })();
   window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Find a title by rough spelling','#roughTitle490');},11420);});
+  window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Keep a marked frame in Saved frames','#frameMarkup490');},11520);});
 
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
@@ -55366,6 +55375,17 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     var id = cur285.id;
     tx("readwrite", function (s) { s.delete(id); }).then(function () { close285(); render(); say(T("Frame deleted.")); }).catch(function () {});
   });
+  function addRow285(b, w, h) {
+    return tx("readwrite", function (s) {
+      s.add({ ts: Date.now(), w: w, h: h, blob: b });
+      s.getAllKeys().onsuccess = function (e) {
+        var keys = e.target.result || [];
+        for (var i = 0; i < keys.length - MAX285; i++) s.delete(keys[i]);
+      };
+    }).then(function () { render(); });
+  }
+  // Round 491 new 1: the frame markup studio hands its marked PNG to the gallery here.
+  window.__vpFrameGalAdd = function (blob, w, h) { return addRow285(blob, w, h); };
   $("lpGalAdd285").addEventListener("click", function () {
     if (vid.hidden || !vid.src || !vid.videoWidth) { say(T("Open and play a local file first.")); return; }
     try {
@@ -55374,13 +55394,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       c.getContext("2d").drawImage(vid, 0, 0);
       c.toBlob(function (b) {
         if (!b) { say(T("This frame could not be saved (the browser blocked it).")); return; }
-        tx("readwrite", function (s) {
-          s.add({ ts: Date.now(), w: c.width, h: c.height, blob: b });
-          s.getAllKeys().onsuccess = function (e) {
-            var keys = e.target.result || [];
-            for (var i = 0; i < keys.length - MAX285; i++) s.delete(keys[i]);
-          };
-        }).then(function () { render(); say(T("Frame added to the gallery.")); })
+        addRow285(b, c.width, c.height).then(function () { say(T("Frame added to the gallery.")); })
           .catch(function () { say(T("Storage is full - delete some frames first.")); });
       }, "image/png");
     } catch (e) { say(T("This frame could not be saved (the browser blocked it).")); }
@@ -56452,6 +56466,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     var FEATS = [
       ["Find a title by rough spelling", "fuzzy typo misspelled title spelling similar saved video discovery Hindi नाम Gujarati નામ", "#roughTitle490"],
+      ["Keep a marked frame in Saved frames", "keep annotated marked frame gallery saved frames store in app without download", "#frameMarkup490"],
       ["Frame markup studio", "draw annotate annotation frame screenshot rectangle arrow pen text PNG local video mark Hindi फ़्रेम Gujarati ફ્રેમ", "#frameMarkup490"],
       ["Library search builder", "visual search builder combine filters exact phrase exclude words note moment progress length favourite queue Hindi खोज नियम Gujarati શોધ નિયમ", "#searchBuilder487"],
       ["Restore one list from a restore point", "restore only one list queue favourites watch later playlists selective partial from snapshot point swap back", "#restoreCard"],
