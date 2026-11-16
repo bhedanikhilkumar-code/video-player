@@ -7247,13 +7247,30 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   // (Position already resumes per video through Recently watched / Continue watching.)
   var VM_KEY = "vp-vmem.v1", vmem = {};
   try { var vmIn = JSON.parse(localStorage.getItem(VM_KEY) || "null"); if (vmIn && typeof vmIn === "object") vmem = vmIn; } catch (e) {}
+  // Round 466 fix 4: the per-video memory (speed, volume, intro/outro marks, watched map) was written
+  // whole from this tab's memory, so with the app open in two tabs the tab that saved last wiped the
+  // other tab's settings for every other video - the flaw fixes 1 to 3 closed for notes. A save now
+  // merges only the videos this tab changed into what is stored (the 60-video cap still applies to the
+  // merged result), and a change from another tab is adopted here at once.
+  function vmSnap466(o) { var b = {}; Object.keys(o).forEach(function (k) { b[k] = JSON.stringify(o[k]); }); return b; }
+  var vmBase466 = vmSnap466(vmem);
+  function vmRead466() { try { var m = JSON.parse(localStorage.getItem(VM_KEY) || "null"); return (m && typeof m === "object" && !Array.isArray(m)) ? m : {}; } catch (e) { return {}; } }
   function vmemSave() {
     try {
-      var ks = Object.keys(vmem);
-      if (ks.length > 60) { ks.sort(function (a, b) { return (vmem[a].ts || 0) - (vmem[b].ts || 0); }); ks.slice(0, ks.length - 60).forEach(function (k) { delete vmem[k]; }); }
-      localStorage.setItem(VM_KEY, JSON.stringify(vmem));
+      var latest = vmRead466();
+      Object.keys(vmem).concat(Object.keys(vmBase466)).forEach(function (id) {
+        if (JSON.stringify(vmem[id]) === vmBase466[id]) return;
+        if (vmem[id]) latest[id] = vmem[id]; else delete latest[id];
+      });
+      var ks = Object.keys(latest);
+      if (ks.length > 60) { ks.sort(function (a, b) { return ((latest[a] && latest[a].ts) || 0) - ((latest[b] && latest[b].ts) || 0); }); ks.slice(0, ks.length - 60).forEach(function (k) { delete latest[k]; }); }
+      localStorage.setItem(VM_KEY, JSON.stringify(latest)); vmem = latest; vmBase466 = vmSnap466(vmem);
     } catch (e) {}
   }
+  window.addEventListener("storage", function (e) {
+    if (e.key !== VM_KEY && e.key !== null) return;
+    vmem = vmRead466(); vmBase466 = vmSnap466(vmem);
+  });
   function vmemRec(patch) {
     if (!curId) return;
     var v = vmem[curId] = vmem[curId] || {};
