@@ -52,6 +52,11 @@ console.log('round272 fix4 ok');
   const vm = require('node:vm'); const a = html.indexOf('var feedCount272 = 0'); const b = html.indexOf('// Speed keys (round 148)', a);
   assert.ok(a > 0 && b > a);
   const toasts = []; let listener = null;
+  // Round 474 fix 2: round 471's search-feed block landed inside this slice and runs
+  // document.createElement, qFeedBtn, $ and window at eval time, so the test died with
+  // "document.createElement is not a function" before asserting anything (the same class
+  // of harness break rounds 318 and 322 patched). Stub the DOM surface it touches.
+  const elStub = () => ({ type: '', className: 'chip', id: '', textContent: '', style: {}, dataset: {}, setAttribute() {}, classList: { toggle() {}, add() {}, remove() {} }, addEventListener() {}, appendChild() {}, parentNode: { insertBefore() {} }, nextSibling: null });
   // Round 322 fix: the slice now also covers round 320's channel-feed block, whose
   // Object.assign(TR_MSG, ...) runs at eval time, so the test died with
   // ReferenceError: TR_MSG is not defined before asserting anything (the same class of
@@ -59,7 +64,7 @@ console.log('round272 fix4 ok');
   // Round 322 fix, part 2: the same slice ends with round 320's chip-building IIFE, which
   // reads qPlBtn311 (declared in round 311's block, outside the slice). Mirroring it as
   // null makes the IIFE return early, exactly like a page without that chip.
-  const ctx = vm.createContext({ TR_MSG: {}, qPlBtn311: null, prefs: { r271: { favFeed: true, feedMax: 3 }, laterFeed: false, never316: [] }, neverHas316(id) { return ctx.prefs.never316.indexOf(id) >= 0; }, curId: 'x', lib: { favs: Array.from({ length: 8 }, (_, i) => ({ id: 'fav' + i + 'aaaaaaa'.slice(0, 7), title: 't' + i })), hist: [], queue: [], later: [] }, findIn(l, id) { return l.findIndex(x => x.id === id); }, saveLib() {}, renderLib() {}, toast(m) { toasts.push(m); }, T: x => x, laterSnoozed: () => false, setTimeout: f => f(), document: { addEventListener(n, f) { listener = f; } } });
+  const ctx = vm.createContext({ TR_MSG: {}, qPlBtn311: null, prefs: { r271: { favFeed: true, feedMax: 3 }, laterFeed: false, never316: [] }, neverHas316(id) { return ctx.prefs.never316.indexOf(id) >= 0; }, curId: 'x', lib: { favs: Array.from({ length: 8 }, (_, i) => ({ id: 'fav' + i + 'aaaaaaa'.slice(0, 7), title: 't' + i })), hist: [], queue: [], later: [] }, findIn(l, id) { return l.findIndex(x => x.id === id); }, saveLib() {}, renderLib() {}, toast(m) { toasts.push(m); }, T: x => x, laterSnoozed: () => false, setTimeout: f => f(), document: { addEventListener(n, f) { listener = f; }, createElement() { return elStub(); } }, qFeedBtn: elStub(), $: function () { return null; }, window: { __relang: [], addEventListener() {} } });
   vm.runInContext(html.slice(a, b), ctx);
   for (let i = 0; i < 3; i++) { assert.equal(ctx.qFeedPull(), true); ctx.curId = ctx.lib.queue[ctx.lib.queue.length - 1].id; listener(); }
   assert.equal(ctx.qFeedPull(), false); assert.ok(toasts.some(t => t === 'Feed stopped after {n} videos.'.replace('{n}', 3)));
