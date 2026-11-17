@@ -53914,7 +53914,12 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       "Time to watch:": ["देखने का समय:", "જોવાનો સમય:"],
       "Play": ["चलाएं", "ચલાવો"],
       "Snooze 1 hour": ["1 घंटा स्नूज़", "1 કલાક સ્નૂઝ"],
-      "Not now": ["अभी नहीं", "હમણાં નહીં"]
+      "Not now": ["अभी नहीं", "હમણાં નહીં"],
+      "Reminder notification": ["रिमाइंडर नोटिफिकेशन", "રિમાઇન્ડર નોટિફિકેશન"],
+      "Reminder notification: on": ["रिमाइंडर नोटिफिकेशन: चालू", "રિમાઇન્ડર નોટિફિકેશન: ચાલુ"],
+      "Reminder notification: off": ["रिमाइंडर नोटिफिकेशन: बंद", "રિમાઇન્ડર નોટિફિકેશન: બંધ"],
+      "Notifications allowed. You will get one alert when a reminder is due.": ["नोटिफिकेशन चालू. रिमाइंडर बजने पर एक सूचना मिलेगी.", "નોટિફિકેશન ચાલુ. રિમાઇન્ડર વાગે ત્યારે એક સૂચના મળશે."],
+      "Reminder notifications off.": ["रिमाइंडर नोटिफिकेशन बंद.", "રિમાઇન્ડર નોટિફિકેશન બંધ."]
     });
     var anchor = document.getElementById("laterTime") || document.getElementById("laterList");
     if (!anchor || document.getElementById("remindCard517")) return;
@@ -53947,7 +53952,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     det.innerHTML = '<summary id="remSum517"></summary>' +
       '<p class="hint" id="remHint517"></p>' +
       '<div class="row"><label class="label" for="remVid517" id="remVidLab517"></label><select id="remVid517"></select></div>' +
-      '<div class="row"><button type="button" class="chip" id="remQ1h517"></button><button type="button" class="chip" id="remQ8pm517"></button><button type="button" class="chip" id="remQ9am517"></button><button type="button" class="chip" id="remSnd519" aria-pressed="true"></button></div>' +
+      '<div class="row"><button type="button" class="chip" id="remQ1h517"></button><button type="button" class="chip" id="remQ8pm517"></button><button type="button" class="chip" id="remQ9am517"></button><button type="button" class="chip" id="remSnd519" aria-pressed="true"></button><button type="button" class="chip" id="remNtf521" aria-pressed="false"></button></div>' +
       '<fieldset class="rem-schedule518"><legend id="remDateTitle518"></legend><p class="hint" id="remDateHint518"></p>' +
       '<label class="label" for="remDate518" id="remDateLab518"></label><input id="remDate518" type="date" aria-describedby="remDateHint518">' +
       '<div class="row"><label class="label" for="remTime517" id="remTimeLab517"></label><input id="remTime517" type="time"><button type="button" class="chip" id="remSet517"></button></div>' +
@@ -54104,7 +54109,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       if ((document.title || "").indexOf("\u23f0 ") === 0) { try { document.title = titleBase519; } catch (e) {} }
       titleBase519 = null;
     }
-    function hideDue517() { if (due517) due517.hidden = true; showing517 = null; titleAlertClear519(); }
+    function hideDue517() { if (due517) due517.hidden = true; showing517 = null; titleAlertClear519(); ntfClose521(); }
     // Round 519 new 1: a quiet two-beep chime when a reminder fires - the due card alone
     // was easy to miss with another video's sound up. WebAudio only plays after a tap on
     // the page, so when a reminder fires before the first tap of a fresh visit the chime
@@ -54159,6 +54164,45 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       if (nextOn) chime519(); // the tap that turns the sound on also previews it
     });
     (window.__relang = window.__relang || []).push(paintSnd519); paintSnd519();
+    // Round 521 new 1: a system notification when a reminder fires while the page sits in
+    // the background. The due card, the tab-title alarm and the chime all live inside the
+    // page, so a tab behind other windows or a minimised browser still said nothing you
+    // could notice. Opt-in: the chip asks for notification permission once on tap (never
+    // on load), remembered on this device in vp-remindntf521.v1 (a device choice, kept out
+    // of backups like the chime choice). It posts only while the page is hidden - someone
+    // watching the card needs no second alert - tapping the notification refocuses the tab,
+    // and dismissing the reminder in any tab closes it.
+    var NTF521 = "vp-remindntf521.v1", ntfRef521 = null;
+    function ntfOn521() { try { return localStorage.getItem(NTF521) === "1"; } catch (e) { return false; } }
+    function ntfSet521(on) { try { localStorage.setItem(NTF521, on ? "1" : "0"); } catch (e) { if (window.vpStorageWarning276) window.vpStorageWarning276(); } }
+    function paintNtf521() {
+      var b = document.getElementById("remNtf521"); if (!b) return;
+      var on = ntfOn521();
+      b.textContent = "\uD83D\uDD14 " + T(on ? "Reminder notification: on" : "Reminder notification: off");
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.setAttribute("aria-label", T("Reminder notification"));
+    }
+    function ntfClose521() { if (ntfRef521) { try { ntfRef521.close(); } catch (e) {} ntfRef521 = null; } }
+    function notify521(r) {
+      if (!ntfOn521() || !("Notification" in window) || Notification.permission !== "granted") return;
+      if (!document.hidden) return; // the visible card, tab title and chime already cover an open page
+      try {
+        var n = new Notification("\u23F0 " + T("Reminder due"), { body: T("Time to watch:") + " " + (r.title || r.id), tag: "vp-remind517-" + r.id });
+        n.onclick = function () { try { window.focus(); } catch (e) {} ntfClose521(); };
+        ntfRef521 = n;
+      } catch (e) {}
+    }
+    document.getElementById("remNtf521").addEventListener("click", function () {
+      if (ntfOn521()) { ntfSet521(false); paintNtf521(); ntfClose521(); toast(T("Reminder notifications off.")); return; }
+      if (!("Notification" in window)) { toast(T("This browser cannot send notifications.")); return; }
+      if (Notification.permission === "granted") { ntfSet521(true); paintNtf521(); toast(T("Notifications allowed. You will get one alert when a reminder is due.")); return; }
+      if (Notification.permission === "denied") { toast(T("Notifications are blocked - allow them in the browser settings to use this.")); return; }
+      Notification.requestPermission().then(function (r) {
+        if (r === "granted") { ntfSet521(true); paintNtf521(); toast(T("Notifications allowed. You will get one alert when a reminder is due.")); }
+        else toast(T("Notifications are blocked - allow them in the browser settings to use this."));
+      }).catch(function () { toast(T("This browser cannot send notifications.")); });
+    });
+    (window.__relang = window.__relang || []).push(paintNtf521); paintNtf521();
     function showDue517(r) {
       if (!due517) {
         due517 = document.createElement("div");
@@ -54198,7 +54242,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       document.getElementById("remDueNo517").textContent = T("Not now");
       due517.hidden = false;
       titleAlert519(r);
-      if (fresh519) chime519();
+      if (fresh519) { chime519(); notify521(r); }
     }
     // Round 517 fix 2: the first version removed a reminder from storage the moment it
     // fired, so with two tabs open the background tab's checker could eat it and the card
