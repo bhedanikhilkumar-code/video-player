@@ -53917,7 +53917,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     window.__vpCleanRemind517 = clean517;
     function read517() { try { return clean517(JSON.parse(localStorage.getItem(KEY517) || "[]")); } catch (e) { return []; } }
     function write517(rows) {
-      try { localStorage.setItem(KEY517, JSON.stringify(rows.slice(0, MAX517))); return true; }
+      try { localStorage.setItem(KEY517, JSON.stringify(rows.slice(0, MAX517))); reconcile518(); return true; }
       catch (e) {
         if (window.vpStorageWarning276) window.vpStorageWarning276();
         msg517.textContent = T("Reminder changes could not be saved. Nothing was changed. Try again after freeing storage.");
@@ -54090,15 +54090,18 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     (window.__relang = window.__relang || []).push(paint517);
     paint517();
 
-    window.addEventListener("storage", function (e) {
-      if (e.key !== KEY517) return;
+    function reconcile518() {
+      var rows = read517(), keys = {};
+      rows.forEach(function (r) { keys[r.id + "@" + r.at] = true; });
+      Object.keys(firedSess517).forEach(function (k) { if (!keys[k]) delete firedSess517[k]; });
+      if (showing517 && !keys[showing517.id + "@" + showing517.at]) hideDue517();
       render517();
-      if (showing517) {
-        var still = read517().some(function (r) { return r.id === showing517.id && r.at === showing517.at; });
-        if (!still) { hideDue517(); setTimeout(check517, 300); }
-      }
+      setTimeout(check517, 0);
+    }
+    window.addEventListener("storage", function (e) {
+      if (e.key === KEY517 || e.key === null) reconcile518();
     });
-    document.addEventListener("vp-remind517-change", function () { render517(); });
+    document.addEventListener("vp-remind517-change", reconcile518);
 
     setInterval(check517, 30000);
     setTimeout(check517, 3000);
