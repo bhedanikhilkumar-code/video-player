@@ -53273,6 +53273,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     function status() {
       var statusText509 = T(armed ? 'Cues armed. Changes apply only while this video plays.' : state || (cues.length ? 'Cues are disarmed.' : 'No cues yet. Add a time and an action.')) + (lastCue ? ' ' + T('Cue applied') + ': ' + label(lastCue.cue, lastCue.index) + ' · ' + action(lastCue.cue) : '');
+      if(armed && state)statusText509+=' '+T(state);
       if ($('pcStatus509').textContent !== statusText509) $('pcStatus509').textContent = statusText509;
       var next = armed ? cues.find(function (c, i) { return !fired.has(i) && c.time >= v.currentTime - .05; }) : null;
       var nextText509 = armed ? (next ? T('Next cue') + ': ' + cueTime(next) + ' · ' + action(next) : T('No remaining cues ahead.')) : '';
@@ -53330,11 +53331,12 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     $('pcForm509').addEventListener('submit', function (e) {
       e.preventDefault(); var t = Math.round(Number($('pcTime509').value) * 100) / 100;
       if (!ready() || !Number.isFinite(t) || t < 0 || t >= v.duration || (cues.length >= 40 && editIndex < 0)) { state = 'Choose a time inside the open video. Use at most 40 cues.'; status(); return; }
-      stop(); var actSel509 = $('pcAction509').value, valSel509 = actSel509 === 'seek' ? Math.round(Number($('pcSeekVal509').value) * 100) / 100 : Number($('pcValue509').value);
+      var actSel509 = $('pcAction509').value, valSel509 = actSel509 === 'seek' ? Math.round(Number($('pcSeekVal509').value) * 100) / 100 : Number($('pcValue509').value);
       if (actSel509 === 'seek' && (!Number.isFinite(valSel509) || valSel509 < 0 || valSel509 >= v.duration)) { state = 'Choose a time inside the open video. Use at most 40 cues.'; status(); return; }
       var c = {name: $('pcName509').value.trim().slice(0, 80), time: Math.round(t * 100) / 100, action: actSel509, value: actSel509 === 'pause' ? 1 : valSel509};
       var proposed513=cues.filter(function(_,i){return i!==editIndex;});proposed513.push(c);
       if(transportConflict513(proposed513)){state='Use only one pause or jump at each cue time. Nothing changed.';status();return;}
+      stop();
       if (editIndex >= 0) cues[editIndex] = c; else cues.push(c); editIndex = -1; cues.sort(function (a,b) { return a.time - b.time; }); $('pcName509').value = ''; lastCue = ''; paint(); $('pcName509').focus();
     });
     $('pcAction509').addEventListener('change', valueOptions); $('pcNow509').addEventListener('click', function () { if (ready()) $('pcTime509').value = v.currentTime.toFixed(2); });

@@ -1,0 +1,7 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p,pick})=>{
+ await pick();await p.locator('#lpVideo').evaluate(v=>v.pause());await p.locator('#playbackCues509 > summary').click();await p.locator('#pcTime509').fill('0.3');await p.locator('#pcValue509').selectOption('0.75');await p.locator('#pcAdd509').click();await p.locator('#pcArm509').click();await p.locator('#lpVideo').evaluate(v=>{v.currentTime=0;v.play();});await p.waitForFunction(()=>document.querySelector('#lpVideo').playbackRate===0.75);
+ await p.locator('#pcTime509').fill('20');await p.locator('#pcAction509').selectOption('seek');await p.locator('#pcSeekVal509').fill('100');await p.locator('#pcAdd509').click();
+ const snap=await p.evaluate(()=>window.__vpCues509.snapshot());assert.equal(snap.armed,true,'a rejected destination must not stop the running cue sheet');assert.equal(snap.cues.length,1);assert.equal(await p.locator('#lpVideo').evaluate(v=>v.playbackRate),0.75,'failed input must not reset cue-owned speed');assert.match(await p.locator('#pcStatus509').textContent(),/Choose a time inside/,'explain invalid input even while armed');await p.locator('#pcStop509').click();assert.equal(await p.locator('#lpVideo').evaluate(v=>v.playbackRate),1);
+ console.log('PASS invalid jump input preserves armed cues, speed, sheet and visible validation');
+}).catch(e=>{console.error(e);process.exitCode=1;});
