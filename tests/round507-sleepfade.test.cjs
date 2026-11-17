@@ -18,6 +18,10 @@ assert.ok(/e.key !== "vp-sleep-fadelen.v1"/.test(html),'storage listener syncs t
 // translations for the new strings live in the main closure
 ["Fade over:","30 sec","1 min","2 min","Fade length set to {n}.","Sleep fade length"].forEach(k=>{
  const re=new RegExp('"'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'": \\["[^\\"]+", "[^\\"]+"\\]');assert.ok(re.test(html),'translated: '+k);});
+// checkbox labels name the chosen length and repaint after the static table on load
+["Fade the sound out in the last {t}","Fade the picture to dark in the last {t}"].forEach(k=>{
+ const re=new RegExp('"'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'": \\["[^\\"]+", "[^\\"]+"\\]');assert.ok(re.test(html),'translated: '+k);});
+assert.ok(/vp-lang-done441", fadeLenPaint507/.test(html),'labels repaint after the first applyLang on load');
 // finder and What's new name the feature
 assert.ok(/\["Sleep fade length", "sleep fade length/.test(html),'feature finder entry');
 assert.ok(/__vpWnew283\("Sleep fade length", "#sleepFade"\)/.test(html),"What's new entry");
