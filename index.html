@@ -55141,7 +55141,10 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   function tsToSec(s) { var p = s.split(":"), n = p.length; return (+p[n - 3] || 0) * 3600 + (+p[n - 2] || 0) * 60 + parseFloat(p[n - 1]); }
   function secToTs(s) { if (s < 0) s = 0; var h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, ss = (s % 60).toFixed(3); return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(ss).padStart(6, "0"); }
   function shiftVtt(text, off) {
-    return text.replace(/(\d{2}:)?\d{2}:\d{2}\.\d{3}/g, function (m) { return secToTs(tsToSec(m) + off); });
+    // Round 499: a spoken clock time is caption CONTENT, not a cue boundary.
+    // Shift only the two timestamps on actual WebVTT timing lines; keep settings.
+    return text.replace(/^(\s*)((?:\d{2}:)?\d{2}:\d{2}\.\d{3})([ \t]+-->[ \t]+)((?:\d{2}:)?\d{2}:\d{2}\.\d{3})([^\n]*)$/gm,
+      function (all, space, start, arrow, end, settings) { return space + secToTs(tsToSec(start) + off) + arrow + secToTs(tsToSec(end) + off) + settings; });
   }
   function track() { return vid.querySelector("track"); }
   function fmtOff() { return (offset > 0 ? "+" : "") + offset.toFixed(1) + " s"; }
