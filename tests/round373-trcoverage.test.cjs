@@ -22,6 +22,18 @@ for (const m of all.matchAll(/TR_MSG\[\s*'((?:\\.|[^'])*)'\s*\]\s*=\s*\[/g)) key
 for (const m of all.matchAll(/Object\.assign\(TR_MSG,\s*(\{(?:[^{}]|\{[^{}]*\})*?\})\)/g)) {
   try { const o = eval("(" + m[1] + ")"); Object.keys(o).forEach((k) => keys.add(k)); } catch (e) {}
 }
+
+// Round 505 fix: also count guarded merges of the form
+//   var add = { ... }; Object.keys(add).forEach(function (k) { if (!TR_MSG[k]) TR_MSG[k] = add[k]; });
+// Round 503 (Colour-vision assist, Own subtitle look) adds rows this way on purpose so existing
+// words ("Off", "Light", "Medium", "Strong") keep their earlier translation. The runtime rows are
+// real - the audit simply could not see this fourth merge shape and reported them missing.
+const guardVars = new Set();
+for (const gm of all.matchAll(/Object\.keys\(\s*([A-Za-z_$][\w$]*)\s*\)\.forEach\(\s*function\s*\([^)]*\)\s*\{[^}]*?TR_MSG\[[^\]]*\]\s*=\s*[A-Za-z_$][\w$]*\[[^\]]*\]/g)) guardVars.add(gm[1]);
+for (const vn of guardVars) {
+  const declRe = new RegExp("var\\s+" + vn + "\\s*=\\s*(\\{(?:[^{}]|\\{[^{}]*\\})*?\\});", "g");
+  for (const dm of all.matchAll(declRe)) { try { const o = eval("(" + dm[1] + ")"); Object.keys(o).forEach((k) => keys.add(k)); } catch (e) {} }
+}
 const li = all.indexOf("TR_MSG = {");
 if (li >= 0) {
   let depth = 0, j = all.indexOf("{", li); const start = j;
