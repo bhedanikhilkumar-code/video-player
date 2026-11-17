@@ -52450,6 +52450,93 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
 
   });
 
+  // Round 503 new 1: Colour-vision assist. A viewer who confuses reds and greens (or blues
+  // and yellows) lost detail in charts, maps and game footage, and the picture looks only
+  // had taste presets. Protan / Deutan / Tritan correction shifts the colours the eye
+  // misses onto channels it separates, using an SVG matrix on the same frame and local
+  // video that Picture look filters (the video file itself is untouched). Three strengths,
+  // remembered in vp-cvd.v1 and carried by backup and Reset all settings. grep
+  // "colour-vision|colourblind|daltoni" was 0 before this round.
+  (function () {
+    var row = document.getElementById("cvdRow503"), chips = document.getElementById("cvdChips503"), lab = document.getElementById("cvdLab503");
+    if (!row || !chips) return;
+    var KEY = "vp-cvd.v1", cur = "off";
+    try { var sv = localStorage.getItem(KEY); if (/^(off|(pro|deu|tri)-[123])$/.test(sv || "")) cur = sv; } catch (e) {}
+    var SIM = { pro: [[.567, .433, 0], [.558, .442, 0], [0, .242, .758]], deu: [[.625, .375, 0], [.7, .3, 0], [0, .3, .7]], tri: [[.95, .05, 0], [0, .433, .567], [0, .475, .525]] };
+    var SHIFT = { pro: [[0, 0, 0], [.7, 1, 0], [.7, 0, 1]], deu: [[0, 0, 0], [.7, 1, 0], [.7, 0, 1]], tri: [[1, 0, .7], [0, 1, .7], [0, 0, 0]] };
+    var STR = { 1: .5, 2: .8, 3: 1 };
+    function matrix(kind, strength) {
+      var S = SIM[kind], M = SHIFT[kind], k = STR[strength] || .8, out = [], i, j, t;
+      for (i = 0; i < 3; i++) {
+        for (j = 0; j < 3; j++) {
+          var e = 0; for (t = 0; t < 3; t++) e += M[i][t] * ((t === j ? 1 : 0) - S[t][j]);
+          out.push(((i === j ? 1 : 0) + k * e).toFixed(4));
+        }
+        out.push(0); // no alpha/offset term in the row
+      }
+      return out;
+    }
+    // feColorMatrix rows are R,G,B,A,offset: 3 colour rows of 3 + a zero offset-free pad
+    function values(kind, strength) {
+      var m = matrix(kind, strength);
+      return [m[0], m[1], m[2], 0, 0, m[4], m[5], m[6], 0, 0, m[8], m[9], m[10], 0, 0, 0, 0, 0, 1, 0].join(" ");
+    }
+    window.__vpCvdMatrix503 = values;
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "0"); svg.setAttribute("height", "0"); svg.setAttribute("aria-hidden", "true"); svg.style.cssText = "position:absolute;width:0;height:0;overflow:hidden";
+    svg.innerHTML = '<filter id="vpCvd503" color-interpolation-filters="sRGB"><feColorMatrix id="vpCvdM503" type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 1 0"/></filter>';
+    document.body.appendChild(svg);
+    // the shared filter rule in the Picture look block carries var(--vp-cvd) as its last term
+    var KINDS = [["off", "Off"], ["pro", "Red-weak"], ["deu", "Green-weak"], ["tri", "Blue-weak"]];
+    var strRow = document.createElement("span"); strRow.className = "look-chips"; strRow.id = "cvdStr503"; row.appendChild(strRow);
+    var sBtns = [[1, "Light"], [2, "Medium"], [3, "Strong"]].map(function (p) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.s = String(p[0]); b.dataset.t = p[1];
+      b.addEventListener("click", function () { var k = cur.split("-")[0]; if (k === "off") { toast(T("Choose Red-weak, Green-weak or Blue-weak first.")); return; } set(k + "-" + p[0]); });
+      strRow.appendChild(b); return b;
+    });
+    var kBtns = KINDS.map(function (p) {
+      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.k = p[0]; b.dataset.t = p[1];
+      b.addEventListener("click", function () { set(p[0] === "off" ? "off" : p[0] + "-" + (cur === "off" ? 2 : cur.split("-")[1])); });
+      chips.appendChild(b); return b;
+    });
+    function set(v) { cur = v; try { if (v === "off") localStorage.removeItem(KEY); else localStorage.setItem(KEY, v); } catch (e) {} paint(); toast(v === "off" ? T("Colour-vision assist: off") : T("Colour-vision assist: ") + T(KINDS.filter(function (x) { return x[0] === v.split("-")[0]; })[0][1])); }
+    function paint() {
+      var k = cur.split("-")[0], s = cur.split("-")[1];
+      var m = document.getElementById("vpCvdM503");
+      if (k === "off") document.documentElement.style.setProperty("--vp-cvd", "brightness(1)");
+      else { m.setAttribute("values", values(k, s)); document.documentElement.style.setProperty("--vp-cvd", "url(#vpCvd503)"); }
+      lab.textContent = T("Colour-vision assist");
+      row.setAttribute("aria-label", T("Colour-vision assist: shift colours so they are easier to tell apart"));
+      kBtns.forEach(function (b) { b.textContent = T(b.dataset.t); var on = b.dataset.k === k; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
+      sBtns.forEach(function (b) { b.textContent = T(b.dataset.t); b.hidden = k === "off"; var on = b.dataset.s === s; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
+      strRow.hidden = k === "off";
+    }
+    window.__vpCvdRepaint503 = paint;
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+  })();
+
+  // Round 503 new 1 (translations, finder and What's new): inside the main closure so TR_MSG is in
+  // scope. Existing words (Off, Light, Medium, Strong) keep their current translation.
+  (function () {
+    var add = {
+      "Colour-vision assist": ["रंग-दृष्टि सहायक", "રંગ-દૃષ્ટિ સહાયક"],
+      "Colour-vision assist: shift colours so they are easier to tell apart": ["रंग-दृष्टि सहायक: रंग बदलें ताकि फ़र्क़ करना आसान हो", "રંગ-દૃષ્ટિ સહાયક: રંગ બદલો જેથી ફરક પારખવો સરળ બને"],
+      "Colour-vision assist: ": ["रंग-दृष्टि सहायक: ", "રંગ-દૃષ્ટિ સહાયક: "],
+      "Colour-vision assist: off": ["रंग-दृष्टि सहायक: बंद", "રંગ-દૃષ્ટિ સહાયક: બંધ"],
+      "Red-weak": ["लाल कमज़ोर", "લાલ નબળો"],
+      "Green-weak": ["हरा कमज़ोर", "લીલો નબળો"],
+      "Blue-weak": ["नीला कमज़ोर", "વાદળી નબળો"],
+      "Off": ["बंद", "બંધ"],
+      "Light": ["हल्का", "હળવું"],
+      "Medium": ["मध्यम", "મધ્યમ"],
+      "Strong": ["तेज़", "તીવ્ર"],
+      "Choose Red-weak, Green-weak or Blue-weak first.": ["पहले लाल कमज़ोर, हरा कमज़ोर या नीला कमज़ोर चुनें।", "પહેલાં લાલ નબળો, લીલો નબળો અથવા વાદળી નબળો પસંદ કરો."]
+    };
+    Object.keys(add).forEach(function (k) { if (!TR_MSG[k]) TR_MSG[k] = add[k]; });
+    if (window.__vpCvdRepaint503) window.__vpCvdRepaint503();
+  })();
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Colour-vision assist", "#cvdRow503"); }, 12320); });
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
@@ -52530,72 +52617,6 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Music mode from your own key", "#xkRow280"); }, 9120); });
 
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("V for voice search", "#sc31"); }, 11120); });
-
-  // Round 503 new 1: Colour-vision assist. A viewer who confuses reds and greens (or blues
-  // and yellows) lost detail in charts, maps and game footage, and the picture looks only
-  // had taste presets. Protan / Deutan / Tritan correction shifts the colours the eye
-  // misses onto channels it separates, using an SVG matrix on the same frame and local
-  // video that Picture look filters (the video file itself is untouched). Three strengths,
-  // remembered in vp-cvd.v1 and carried by backup and Reset all settings. grep
-  // "colour-vision|colourblind|daltoni" was 0 before this round.
-  (function () {
-    var row = document.getElementById("cvdRow503"), chips = document.getElementById("cvdChips503"), lab = document.getElementById("cvdLab503");
-    if (!row || !chips) return;
-    var KEY = "vp-cvd.v1", cur = "off";
-    try { var sv = localStorage.getItem(KEY); if (/^(off|(pro|deu|tri)-[123])$/.test(sv || "")) cur = sv; } catch (e) {}
-    var SIM = { pro: [[.567, .433, 0], [.558, .442, 0], [0, .242, .758]], deu: [[.625, .375, 0], [.7, .3, 0], [0, .3, .7]], tri: [[.95, .05, 0], [0, .433, .567], [0, .475, .525]] };
-    var SHIFT = { pro: [[0, 0, 0], [.7, 1, 0], [.7, 0, 1]], deu: [[0, 0, 0], [.7, 1, 0], [.7, 0, 1]], tri: [[1, 0, .7], [0, 1, .7], [0, 0, 0]] };
-    var STR = { 1: .5, 2: .8, 3: 1 };
-    function matrix(kind, strength) {
-      var S = SIM[kind], M = SHIFT[kind], k = STR[strength] || .8, out = [], i, j, t;
-      for (i = 0; i < 3; i++) {
-        for (j = 0; j < 3; j++) {
-          var e = 0; for (t = 0; t < 3; t++) e += M[i][t] * ((t === j ? 1 : 0) - S[t][j]);
-          out.push(((i === j ? 1 : 0) + k * e).toFixed(4));
-        }
-        out.push(0); // no alpha/offset term in the row
-      }
-      return out;
-    }
-    // feColorMatrix rows are R,G,B,A,offset: 3 colour rows of 3 + a zero offset-free pad
-    function values(kind, strength) {
-      var m = matrix(kind, strength);
-      return [m[0], m[1], m[2], 0, 0, m[4], m[5], m[6], 0, 0, m[8], m[9], m[10], 0, 0, 0, 0, 0, 1, 0].join(" ");
-    }
-    window.__vpCvdMatrix503 = values;
-    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("width", "0"); svg.setAttribute("height", "0"); svg.setAttribute("aria-hidden", "true"); svg.style.cssText = "position:absolute;width:0;height:0;overflow:hidden";
-    svg.innerHTML = '<filter id="vpCvd503" color-interpolation-filters="sRGB"><feColorMatrix id="vpCvdM503" type="matrix" values="1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 1 0"/></filter>';
-    document.body.appendChild(svg);
-    // the shared filter rule in the Picture look block carries var(--vp-cvd) as its last term
-    var KINDS = [["off", "Off"], ["pro", "Red-weak"], ["deu", "Green-weak"], ["tri", "Blue-weak"]];
-    var strRow = document.createElement("span"); strRow.className = "look-chips"; strRow.id = "cvdStr503"; row.appendChild(strRow);
-    var sBtns = [[1, "Light"], [2, "Medium"], [3, "Strong"]].map(function (p) {
-      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.s = String(p[0]); b.dataset.t = p[1];
-      b.addEventListener("click", function () { var k = cur.split("-")[0]; if (k === "off") { toast(T("Choose Red-weak, Green-weak or Blue-weak first.")); return; } set(k + "-" + p[0]); });
-      strRow.appendChild(b); return b;
-    });
-    var kBtns = KINDS.map(function (p) {
-      var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.k = p[0]; b.dataset.t = p[1];
-      b.addEventListener("click", function () { set(p[0] === "off" ? "off" : p[0] + "-" + (cur === "off" ? 2 : cur.split("-")[1])); });
-      chips.appendChild(b); return b;
-    });
-    function set(v) { cur = v; try { if (v === "off") localStorage.removeItem(KEY); else localStorage.setItem(KEY, v); } catch (e) {} paint(); toast(v === "off" ? T("Colour-vision assist: off") : T("Colour-vision assist: ") + T(KINDS.filter(function (x) { return x[0] === v.split("-")[0]; })[0][1])); }
-    function paint() {
-      var k = cur.split("-")[0], s = cur.split("-")[1];
-      var m = document.getElementById("vpCvdM503");
-      if (k === "off") document.documentElement.style.setProperty("--vp-cvd", "brightness(1)");
-      else { m.setAttribute("values", values(k, s)); document.documentElement.style.setProperty("--vp-cvd", "url(#vpCvd503)"); }
-      lab.textContent = T("Colour-vision assist");
-      row.setAttribute("aria-label", T("Colour-vision assist: shift colours so they are easier to tell apart"));
-      kBtns.forEach(function (b) { b.textContent = T(b.dataset.t); var on = b.dataset.k === k; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
-      sBtns.forEach(function (b) { b.textContent = T(b.dataset.t); b.hidden = k === "off"; var on = b.dataset.s === s; b.classList.toggle("active", on); b.setAttribute("aria-pressed", on ? "true" : "false"); });
-      strRow.hidden = k === "off";
-    }
-    window.__vpCvdRepaint503 = paint;
-    (window.__relang = window.__relang || []).push(paint);
-    paint();
-  })();
 
   window.__vpMainOk325 = true;
 
@@ -57190,6 +57211,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       };
     }
     var FEATS = [
+      ["Colour-vision assist", "colour blind colorblind color vision protanopia deuteranopia tritanopia red green blue weak daltonism accessibility correction Hindi रंग Gujarati રંગ", "#cvdRow503"],
       ["Frame preview follows your selection", "frame preview wrong name alt accessibility late delete race closes another saved image", "#lpGal285"],
       ["Explain failed frame deletions", "gallery frame delete clear failed error retry storage translated feedback", "#lpGal285"],
       ["Gallery messages keep their language", "saved frame gallery empty saved deleted cleared status language Hindi Gujarati async announcement", "#lpGalMsg285"],
