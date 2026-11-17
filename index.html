@@ -2130,6 +2130,7 @@ setTimeout(done,3000);})();
             <input id="subFile314" type="file" accept=".srt,.vtt,text/plain" hidden>
           </div>
           <p class="hint" id="subMsg314" role="status"></p>
+          <div class="look-row" id="subLook503" role="group" aria-label="Own subtitle look"><span class="label" id="subLookLab503">Own subtitle look</span><span class="look-chips" id="subLookCol503"></span><span class="look-chips" id="subLookBg503"></span><span id="subLookSample503" class="sublook-sample503" aria-hidden="true">Aa 123</span></div>
         </div>
 
         <div class="ctl-card" id="ctl-repeat">
@@ -15961,6 +15962,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // the three values its chips offer.
   VP_RAW_KEYS["vp-rewback.v1"] = /^(5|10|30)$/;
   VP_RAW_KEYS["vp-dim.v1"] = /^([0-9]|[1-6][0-9]|70)$/;
+  VP_RAW_KEYS["vp-sublook.v1"] = /^(w|y|c|g)-(glass|solid|clear)$/;
   VP_RAW_KEYS["vp-cvd.v1"] = /^(off|(pro|deu|tri)-[123](-sim)?)$/;
   VP_RAW_KEYS["vp-grid.v1"] = /^(thirds|cross|fine)$/;
   VP_RAW_KEYS["vp-zoom.v1"] = /^(1|1\.15|1\.3)$/;
@@ -52550,6 +52552,58 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     if (window.__vpCvdRepaint503) window.__vpCvdRepaint503();
   })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Colour-vision assist", "#cvdRow503"); }, 12320); });
+  // Round 503 new 3: Own subtitle look. The own-subtitle line (round 314) had one look -
+  // white on a frosted dark pill - and a size chip, but yellow-on-black, a solid backing
+  // for bright scenes or plain outlined text were not possible, which matters for low
+  // vision and for busy footage. Four text colours (white, yellow, cyan, green) and three
+  // backings (frosted, solid black, none with a heavy outline), with a live sample so the
+  // choice shows even with no subtitle loaded. High contrast mode still forces its own
+  // black backing. Remembered in vp-sublook.v1, in backup and Reset all settings.
+  (function () {
+    var colRow = document.getElementById("subLookCol503"), bgRow = document.getElementById("subLookBg503"), lab = document.getElementById("subLookLab503"), row = document.getElementById("subLook503"), sample = document.getElementById("subLookSample503");
+    if (!colRow || !bgRow) return;
+    var KEY = "vp-sublook.v1", c = "w", b = "glass";
+    try { var sv = localStorage.getItem(KEY); if (/^(w|y|c|g)-(glass|solid|clear)$/.test(sv || "")) { c = sv.charAt(0); b = sv.slice(2); } } catch (e) {}
+    var COLS = [["w", "White", "#ffffff"], ["y", "Yellow", "#ffe600"], ["c", "Cyan", "#4dfbff"], ["g", "Green", "#6dff6d"]];
+    var BGS = [["glass", "Frosted"], ["solid", "Solid black"], ["clear", "Outline only"]];
+    var st = document.createElement("style");
+    st.textContent = "html #subOv314,#subLookSample503{color:var(--vp-subcol,#fff)}html #subOv314{background:var(--vp-subbg,rgba(10,10,18,.62));text-shadow:var(--vp-subsh,0 1px 3px rgba(0,0,0,.9))}"
+      + "html.high-contrast #subOv314{background:#000;color:var(--vp-subcol,#fff)}"
+      + ".sublook-sample503{display:inline-block;padding:4px 12px;border-radius:10px;font-weight:700;font-size:15px;background:var(--vp-subbg,rgba(10,10,18,.62));text-shadow:var(--vp-subsh,0 1px 3px rgba(0,0,0,.9));color:var(--vp-subcol,#fff)}";
+    document.head.appendChild(st);
+    function mk(host, list, kind) {
+      return list.map(function (p) {
+        var x = document.createElement("button"); x.type = "button"; x.className = "chip"; x.dataset.v = p[0]; x.dataset.t = p[1];
+        x.addEventListener("click", function () { if (kind === "c") c = p[0]; else b = p[0]; set(); toast(T("Own subtitle look: ") + T(p[1])); });
+        host.appendChild(x); return x;
+      });
+    }
+    var cBtns = mk(colRow, COLS, "c"), bBtns = mk(bgRow, BGS, "b");
+    function set() { try { if (c === "w" && b === "glass") localStorage.removeItem(KEY); else localStorage.setItem(KEY, c + "-" + b); } catch (e) {} paint(); }
+    function paint() {
+      var col = COLS.filter(function (p) { return p[0] === c; })[0][2], r = document.documentElement.style;
+      r.setProperty("--vp-subcol", col);
+      r.setProperty("--vp-subbg", b === "solid" ? "#000" : b === "clear" ? "transparent" : "rgba(10,10,18,.62)");
+      r.setProperty("--vp-subsh", b === "clear" ? "-2px 0 #000,2px 0 #000,0 -2px #000,0 2px #000,0 0 5px #000" : "0 1px 3px rgba(0,0,0,.9)");
+      lab.textContent = T("Own subtitle look");
+      row.setAttribute("aria-label", T("Own subtitle look: text colour and backing for your own subtitle line"));
+      sample.textContent = T("Aa 123");
+      cBtns.forEach(function (x) { x.textContent = T(x.dataset.t); var on = x.dataset.v === c; x.classList.toggle("active", on); x.setAttribute("aria-pressed", on ? "true" : "false"); });
+      bBtns.forEach(function (x) { x.textContent = T(x.dataset.t); var on = x.dataset.v === b; x.classList.toggle("active", on); x.setAttribute("aria-pressed", on ? "true" : "false"); });
+    }
+    var add = {
+      "Own subtitle look": ["अपने सबटाइटल का रूप", "પોતાના સબટાઇટલનો દેખાવ"],
+      "Own subtitle look: ": ["अपने सबटाइटल का रूप: ", "પોતાના સબટાઇટલનો દેખાવ: "],
+      "Own subtitle look: text colour and backing for your own subtitle line": ["अपने सबटाइटल का रूप: आपकी सबटाइटल लाइन का रंग और पीछे की पट्टी", "પોતાના સબટાઇટલનો દેખાવ: તમારી સબટાઇટલ લાઇનનો રંગ અને પાછળની પટ્ટી"],
+      "White": ["सफ़ेद", "સફેદ"], "Yellow": ["पीला", "પીળો"], "Cyan": ["आसमानी", "આસમાની"], "Green": ["हरा", "લીલો"],
+      "Frosted": ["धुंधला शीशा", "ઝાંખો કાચ"], "Solid black": ["ठोस काला", "ઘન કાળો"], "Outline only": ["सिर्फ़ किनारी", "માત્ર કિનાર"],
+      "Aa 123": ["अआ 123", "અઆ 123"]
+    };
+    Object.keys(add).forEach(function (k) { if (!TR_MSG[k]) TR_MSG[k] = add[k]; });
+    (window.__relang = window.__relang || []).push(paint);
+    paint();
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Own subtitle look", "#subLook503"); }, 12420); });
+  })();
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
@@ -55416,7 +55470,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   // Break reminder, Keep screen awake, Fullscreen rotate and Stats on video as they were, although
   // the dialog promises settings go back to defaults. They are cleared with the rest now.
   var KEYS = ["vp-prefs.v1", "vp-keymap.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1", "vp-stillwatch.v1", "vp-ctl-use.v1",
-    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-mini-corner.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-cvd.v1", "vp-wallpaper.v1", "vp-latergroup.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1",
+    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-mini-corner.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-cvd.v1", "vp-sublook.v1", "vp-wallpaper.v1", "vp-latergroup.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1",
     // Round 282 fix 4: Reset all settings promised defaults but left the folded sections,
     // hidden quick-row chips, channel intro-skip picks, the four per-video memories
     // (speed, rotation, picture look, A-B loop), the rewind-on-resume choice and the
@@ -55480,7 +55534,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       LOOK_KEYS.forEach(function (k) { delete p[k]; });
       localStorage.setItem("vp-prefs.v1", JSON.stringify(p));
     } catch (e) {}
-    ["vp-look.v1", "vp-cvd.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-lpview.v1", "vp-wallpaper.v1"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
+    ["vp-look.v1", "vp-cvd.v1", "vp-sublook.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-lpview.v1", "vp-wallpaper.v1"].forEach(function(k){try{localStorage.removeItem(k);}catch(e){}});
     location.reload();
   });
 })();
@@ -57224,6 +57278,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       };
     }
     var FEATS = [
+      ["Own subtitle look", "subtitle caption colour color yellow cyan green white background solid outline low vision readable style Hindi रंग Gujarati રંગ", "#subLook503"],
       ["Colour-vision assist", "colour blind colorblind color vision protanopia deuteranopia tritanopia red green blue weak daltonism accessibility correction Hindi रंग Gujarati રંગ", "#cvdRow503"],
       ["Frame preview follows your selection", "frame preview wrong name alt accessibility late delete race closes another saved image", "#lpGal285"],
       ["Explain failed frame deletions", "gallery frame delete clear failed error retry storage translated feedback", "#lpGal285"],
