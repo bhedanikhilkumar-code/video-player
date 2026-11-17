@@ -54018,15 +54018,26 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         document.body.appendChild(due517);
         document.getElementById("remDuePlay517").addEventListener("click", function () {
           var r0 = showing517; hideDue517();
-          if (r0) playId(r0.id, r0.title || undefined);
-          setTimeout(check517, 400);
+          if (r0) {
+            write517(read517().filter(function (q) { return !(q.id === r0.id && q.at === r0.at); }));
+            playId(r0.id, r0.title || undefined);
+          }
+          render517(); setTimeout(check517, 400);
         });
         document.getElementById("remDueSnz517").addEventListener("click", function () {
           var r0 = showing517; hideDue517();
-          if (r0) { var rows = read517(); if (rows.length < MAX517) { rows.push({ id: r0.id, title: r0.title, at: Date.now() + 36e5 }); write517(rows); } }
+          if (r0) {
+            var rows = read517().filter(function (q) { return !(q.id === r0.id && q.at === r0.at); });
+            if (rows.length < MAX517) rows.push({ id: r0.id, title: r0.title, at: Date.now() + 36e5 });
+            write517(rows);
+          }
           render517(); setTimeout(check517, 400);
         });
-        document.getElementById("remDueNo517").addEventListener("click", function () { hideDue517(); setTimeout(check517, 400); });
+        document.getElementById("remDueNo517").addEventListener("click", function () {
+          var r0 = showing517; hideDue517();
+          if (r0) { write517(read517().filter(function (q) { return !(q.id === r0.id && q.at === r0.at); })); }
+          render517(); setTimeout(check517, 400);
+        });
       }
       showing517 = r;
       document.getElementById("remDueTx517").textContent = "⏰ " + T("Time to watch:") + " " + (r.title || r.id);
@@ -54035,13 +54046,21 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       document.getElementById("remDueNo517").textContent = T("Not now");
       due517.hidden = false;
     }
+    // Round 517 fix 2: the first version removed a reminder from storage the moment it
+    // fired, so with two tabs open the background tab's checker could eat it and the card
+    // never appeared where anyone was looking. A due reminder now STAYS saved until someone
+    // taps Play, Snooze or Not now (those remove it); every tab shows the card, and a tap in
+    // one tab closes the others through the storage event below. firedSess517 stops the same
+    // page from re-showing a card it is already showing or has queued.
+    var firedSess517 = {};
     function check517() {
+      if (showing517) return; // one card at a time; the Play/Snooze/Not now handlers re-run check517
       var now = Date.now(), rows = read517();
-      var due = rows.filter(function (r) { return r.at <= now; }).sort(function (a, b) { return a.at - b.at; })[0];
+      var due = rows.filter(function (r) { return r.at <= now && !firedSess517[r.id + "@" + r.at]; })
+        .sort(function (a, b) { return a.at - b.at; })[0];
       if (!due) return;
-      write517(rows.filter(function (r) { return !(r.id === due.id && r.at === due.at); }));
-      render517();
-      if (!showing517) showDue517(due); else setTimeout(check517, 800);
+      firedSess517[due.id + "@" + due.at] = 1; // marked only when actually shown, so queued reminders are not swallowed
+      showDue517(due);
     }
 
     function paint517() {
@@ -54066,7 +54085,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       render517();
       if (showing517) {
         var still = read517().some(function (r) { return r.id === showing517.id && r.at === showing517.at; });
-        if (!still) hideDue517();
+        if (!still) { hideDue517(); setTimeout(check517, 300); }
       }
     });
     document.addEventListener("vp-remind517-change", function () { render517(); });
