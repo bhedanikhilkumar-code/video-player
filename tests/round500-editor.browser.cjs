@@ -1,0 +1,10 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p,pick,files})=>{
+ await pick(files.slice(0,1));await p.addStyleTag({content:'html{scroll-behavior:auto!important}'});await p.locator('#clipItinerary500>summary').click();await p.locator('#ciName500').fill('Keep me');await p.locator('#ciStart500').fill('1');await p.locator('#ciEnd500').fill('4');await p.locator('#ciAdd500').click();
+ const edit=()=>p.locator('#ciList500 li').first().getByRole('button',{name:'Edit itinerary clip',exact:true}).click();
+ await edit();assert.equal(await p.locator('#ciName500').inputValue(),'Keep me');assert.equal(await p.locator('#ciPlay500').isDisabled(),true);await p.locator('#ciName500').fill('Unsaved');await p.locator('#ciEditCancel500').click();assert.match(await p.locator('#ciList500').textContent(),/Keep me/);assert.equal(await p.locator('#ciList500').textContent().then(t=>t.includes('Unsaved')),false);
+ await edit();await p.locator('#ciName500').fill('Changed');await p.locator('#ciStart500').fill('2');await p.locator('#ciEnd500').fill('6');await p.locator('#ciPasses500').fill('3');await p.locator('#ciRate500').selectOption('0.5');await p.locator('#ciAdd500').click();assert.equal(await p.locator('#ciList500 li').count(),1);assert.match(await p.locator('#ciList500').textContent(),/Changed · 2.00–6.00 s · 0.5× · 3×/);assert.equal(await p.locator('#ciPlay500').isEnabled(),true);
+ await edit();await p.locator('#ciEnd500').fill('1');await p.locator('#ciAdd500').click();assert.match(await p.locator('#ciList500').textContent(),/Changed · 2.00–6.00/);assert.equal(await p.locator('#ciEditCancel500').isVisible(),true);
+ await pick(files.slice(1,2));assert.equal(await p.locator('#ciList500 li').count(),0);assert.equal(await p.locator('#ciEditCancel500').isVisible(),false);assert.equal(await p.locator('#ciEditStatus500').textContent(),'');
+ console.log('PASS edit prefill, cancel preserves original, atomic save replaces same row, bounds preserve edit, source resets transaction');
+}).catch(e=>{console.error(e);process.exitCode=1;});
