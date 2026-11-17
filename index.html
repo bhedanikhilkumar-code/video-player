@@ -52604,6 +52604,98 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     paint();
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Own subtitle look", "#subLook503"); }, 12420); });
   })();
+  // Round 504: sampled scene navigation for device videos, not a fixed-interval contact sheet.
+  // A separate muted decoder leaves the playing video's clock and controls untouched.
+  (function () {
+    var v = $('lpVideo'), host = $('lpCtl'); if (!v || !host) return;
+    Object.assign(TR_MSG, {
+      'Scene change navigator': ['दृश्य बदलाव नेविगेटर', 'દૃશ્ય બદલાવ નેવિગેટર'],
+      'Scan scene changes': ['दृश्य बदलाव खोजें', 'દૃશ્ય બદલાવ શોધો'],
+      'Scan a device video for large picture changes. Sampled estimates, not frame-exact cuts. Nothing is uploaded; playback stays untouched.': ['डिवाइस वीडियो में बड़े चित्र बदलाव खोजें. ये नमूनों पर आधारित अनुमान हैं, सटीक कट नहीं. कुछ अपलोड नहीं होता; प्लेबैक नहीं बदलता.', 'ડિવાઇસ વીડિયોમાં મોટા ચિત્ર ફેરફાર શોધો. આ નમૂના આધારિત અંદાજ છે, ચોક્કસ કટ નથી. કંઈ અપલોડ થતું નથી; પ્લેબેક બદલાતું નથી.'],
+      'Choose a device video first. Audio and direct links cannot be scanned.': ['पहले डिवाइस वीडियो चुनें. ऑडियो और सीधे लिंक स्कैन नहीं हो सकते.', 'પહેલાં ડિવાઇસ વીડિયો પસંદ કરો. ઑડિયો અને સીધી લિંક સ્કેન થઈ શકતાં નથી.'],
+      'This scan supports videos up to two hours.': ['यह स्कैन दो घंटे तक के वीडियो के लिए है.', 'આ સ્કેન બે કલાક સુધીના વીડિયો માટે છે.'],
+      'Scanning picture changes': ['चित्र बदलाव खोज रहे हैं', 'ચિત્ર ફેરફાર શોધી રહ્યા છીએ'],
+      'Scan cancelled.': ['स्कैन रद्द किया.', 'સ્કેન રદ કર્યો.'],
+      'Could not scan this video. Try another device video.': ['यह वीडियो स्कैन नहीं हुआ. दूसरा डिवाइस वीडियो आज़माएं.', 'આ વીડિયો સ્કેન થયો નહીં. બીજો ડિવાઇસ વીડિયો અજમાવો.'],
+      'Estimated scene starts': ['अनुमानित दृश्य शुरुआत', 'અંદાજિત દૃશ્ય શરૂઆત'],
+      'Sample spacing (seconds)': ['नमूनों का अंतर (सेकंड)', 'નમૂનાઓનું અંતર (સેકન્ડ)'],
+      'Opening': ['शुरुआत', 'શરૂઆત'],
+      'Picture change': ['चित्र बदलाव', 'ચિત્ર ફેરફાર'],
+      'Jump to estimated scene': ['अनुमानित दृश्य पर जाएं', 'અંદાજિત દૃશ્ય પર જાઓ'],
+      'No large picture changes found. The opening is still available.': ['बड़े चित्र बदलाव नहीं मिले. शुरुआत फिर भी उपलब्ध है.', 'મોટા ચિત્ર ફેરફાર મળ્યા નહીં. શરૂઆત હજી ઉપલબ્ધ છે.'],
+      'Scan ready.': ['स्कैन तैयार है.', 'સ્કેન તૈયાર છે.']
+    });
+    var card = document.createElement('details'); card.className = 'lp-workbench'; card.id = 'sceneNav504';
+    card.innerHTML = '<summary></summary><p class="hint" data-scene-text="Scan a device video for large picture changes. Sampled estimates, not frame-exact cuts. Nothing is uploaded; playback stays untouched."></p><div class="row"><button class="chip" type="button" id="snScan504" data-scene-text="Scan scene changes"></button><button class="chip" type="button" id="snCancel504" data-scene-text="Cancel" hidden></button></div><p class="hint" id="snStatus504" role="status" aria-live="polite"></p><p class="hint" id="snInfo504" hidden></p><ol id="snScenes504" class="sn-scenes504"></ol>';
+    host.insertBefore(card, host.firstChild);
+    var scan = $('snScan504'), cancel = $('snCancel504'), status = $('snStatus504'), info = $('snInfo504'), list = $('snScenes504');
+    var samples = [], source = '', step = 0, run = 0, worker = null, cancelWait = null, state = '', progress = '', busy = false;
+    function fmt(t) { var s = Math.floor(Math.max(0,t)); return (s>=3600?Math.floor(s/3600)+':':'')+String(Math.floor(s/60)%60).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+    function stop() {
+      run++; busy = false; if (cancelWait) { var f = cancelWait; cancelWait = null; f(); }
+      if (worker) { worker.pause(); worker.removeAttribute('src'); worker.load(); worker = null; }
+      scan.disabled = false; cancel.hidden = true; card.removeAttribute('aria-busy');
+    }
+    function valid() { return !!source && (v.currentSrc || v.src) === source && !v.hidden; }
+    function selected() {
+      var out = []; samples.forEach(function (s, i) { if (!i || (s.score >= .18 && s.time - out[out.length-1].time >= 1)) out.push(s); }); return out.slice(0,60);
+    }
+    function jump(t) { if (!valid()) return; try { v.currentTime = Math.min(t,Math.max(0,v.duration-.05)); } catch(e) {} }
+    function render() {
+      var rows = selected(); list.replaceChildren();
+      rows.forEach(function (s,i) {
+        var li=document.createElement('li'), b=document.createElement('button'), img=document.createElement('img'), caption=document.createElement('span');
+        b.type='button'; b.className='sn-scene504'; img.src=s.image; img.alt=''; img.width=128; img.height=72; img.loading='lazy';
+        caption.textContent='~'+fmt(s.time)+' · '+T(i?'Picture change':'Opening'); b.setAttribute('aria-label',T('Jump to estimated scene')+' '+fmt(s.time));
+        b.appendChild(img); b.appendChild(caption); b.addEventListener('click',function(){jump(s.time);}); li.appendChild(b); list.appendChild(li);
+      });
+      info.hidden = !samples.length; info.textContent = T('Estimated scene starts')+': '+rows.length+' · '+T('Sample spacing (seconds)')+': '+step.toFixed(2);
+    }
+    function paint() {
+      card.querySelector('summary').textContent=T('Scene change navigator'); card.querySelectorAll('[data-scene-text]').forEach(function(el){el.textContent=T(el.dataset.sceneText);});
+      status.textContent=T(state)+(progress?' '+progress:''); render();
+    }
+    function reset() { stop(); samples=[]; source=''; step=0; state=''; progress=''; paint(); }
+    function wait(w,event,act) {
+      return new Promise(function(resolve,reject){
+        var timer=setTimeout(fail,8000); function clean(){clearTimeout(timer);w.removeEventListener(event,done);w.removeEventListener('error',fail);if(cancelWait===fail)cancelWait=null;}
+        function done(){clean();resolve();} function fail(){clean();reject(new Error('scene decode'));}
+        cancelWait=fail; w.addEventListener(event,done,{once:true});w.addEventListener('error',fail,{once:true});try{act();}catch(e){fail();}
+      });
+    }
+    cancel.addEventListener('click',function(){stop();samples=[];source='';progress='';state='Scan cancelled.';paint();});
+    scan.addEventListener('click',async function(){
+      var src=v.currentSrc||v.src;
+      if(v.hidden||!/^blob:/.test(src)||!v.videoWidth||!Number.isFinite(v.duration)||v.duration<=0){state='Choose a device video first. Audio and direct links cannot be scanned.';progress='';paint();return;}
+      if(v.duration>7200){state='This scan supports videos up to two hours.';paint();return;}
+      reset(); source=src; var token=run, w=document.createElement('video'); worker=w;w.muted=true;w.preload='auto';w.playsInline=true;
+      busy=true;scan.disabled=true;cancel.hidden=false;card.setAttribute('aria-busy','true');state='Scanning picture changes';progress='0%';paint();
+      var gathered=[], previous=null, canvas=document.createElement('canvas');canvas.width=64;canvas.height=36;var ctx=canvas.getContext('2d',{willReadFrequently:true});
+      try{
+        if(!ctx)throw new Error('canvas');
+        await wait(w,'loadeddata',function(){w.src=src;w.load();}); if(token!==run||!valid())return;
+        var count=Math.max(1,Math.min(120,Math.ceil(w.duration/0.5)));step=w.duration/count;
+        for(var i=0;i<count;i++){
+          var t=Math.min(w.duration-.01,i*step);
+          if(Math.abs(w.currentTime-t)>.001)await wait(w,'seeked',function(){w.currentTime=t;});
+          if(token!==run||!valid())return;
+          ctx.drawImage(w,0,0,64,36);var pixels=ctx.getImageData(0,0,64,36).data,diff=0;
+          if(previous)for(var j=0;j<pixels.length;j+=4)diff+=Math.abs(pixels[j]-previous[j])+Math.abs(pixels[j+1]-previous[j+1])+Math.abs(pixels[j+2]-previous[j+2]);
+          gathered.push({time:t,score:previous?diff/(64*36*3*255):1,image:canvas.toDataURL('image/jpeg',.65)}); previous=pixels;
+          progress=Math.round((i+1)*100/count)+'%';status.textContent=T(state)+' '+progress;
+          // Yield even when a same-time seek resolves immediately. The Cancel control remains usable.
+          await new Promise(function(resolve){setTimeout(resolve,0);});
+        }
+        if(token!==run||!valid())return;samples=gathered;state=selected().length>1?'Scan ready.':'No large picture changes found. The opening is still available.';progress='';
+      }catch(e){if(token===run){samples=[];source='';state='Could not scan this video. Try another device video.';progress='';}}
+      finally{if(token===run){stop();paint();}}
+    });
+    v.addEventListener('loadstart',reset);v.addEventListener('emptied',reset);document.addEventListener('vp-local-closed',reset);window.addEventListener('pagehide',reset);
+    (window.__relang=window.__relang||[]).push(paint);paint();
+    var st=document.createElement('style');st.textContent='#sceneNav504{margin-top:12px;min-width:0;overflow-wrap:anywhere}#sceneNav504 .row{flex-wrap:wrap}#sceneNav504 [hidden]{display:none!important}.sn-scenes504{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;list-style:none;padding:0}.sn-scenes504 li{min-width:0}.sn-scene504{display:flex;flex-direction:column;gap:7px;width:100%;padding:8px;border:1px solid var(--hairline);border-radius:14px;background:var(--card);color:var(--ink);font:inherit;text-align:left;cursor:pointer}.sn-scene504 img{width:100%;height:auto;aspect-ratio:16/9;object-fit:contain;border-radius:8px;background:#101820}.sn-scene504:focus-visible{outline:3px solid var(--teal);outline-offset:3px}html.high-contrast .sn-scene504{border:2px solid currentColor}';document.head.appendChild(st);
+    setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Scene change navigator','#sceneNav504');},14520);
+  })();
+
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
@@ -57278,6 +57370,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       };
     }
     var FEATS = [
+      ["Scene change navigator", "scene change shot detect scan picture cuts local device video visual navigation Hindi दृश्य Gujarati દૃશ્ય", "#sceneNav504"],
       ["Own subtitle look", "subtitle caption colour color yellow cyan green white background solid outline low vision readable style Hindi रंग Gujarati રંગ", "#subLook503"],
       ["Colour-vision assist", "colour blind colorblind color vision protanopia deuteranopia tritanopia red green blue weak daltonism accessibility correction Hindi रंग Gujarati રંગ", "#cvdRow503"],
       ["Frame preview follows your selection", "frame preview wrong name alt accessibility late delete race closes another saved image", "#lpGal285"],
