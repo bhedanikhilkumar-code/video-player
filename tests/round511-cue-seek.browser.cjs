@@ -26,6 +26,7 @@ require('./round445-harness.cjs')(async({p,pick})=>{
  const st=await p.locator('#pcStatus509').textContent();
  assert.ok(/Cue applied|क्यू लागू/.test(st),'applied cue is announced: '+st);
  // save the sheet on this device, then recall it: the seek cue round-trips
+ await p.locator('#pcExchange509 > summary').click();
  await p.locator('#pcSave509').click();
  await p.locator('#pcRecall509').click();
  const review=await p.locator('#pcReviewList509').textContent();

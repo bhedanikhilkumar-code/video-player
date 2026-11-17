@@ -40,6 +40,34 @@
 
 </div>
 
+## Retiming a playback cue sheet
+
+Open a device video, open **Playback cue sheet**, then **Retime playback cues**.
+This changes playback instructions, not the video file. It does not work on
+YouTube embeds.
+
+- **Shift all cues:** enter seconds to move the whole sheet. Use a negative
+  value to move it earlier.
+- **Align using two points:** match two original times to two desired times.
+  The app stretches cue times in that proportion. Speed and volume values
+  stay unchanged.
+- Jump destinations stay unchanged unless **Also retime jump destinations**
+  is selected. Preview shows the old and new cue times and any changed
+  jump destination, to hundredth-second precision.
+- **Preview timing changes** changes nothing. **Apply timing changes** applies
+  the reviewed sheet as one change and disarms cues. It never seeks or plays.
+  Any out-of-video result or conflicting pause/jump timestamp rejects the
+  entire operation, without clamping or dropping individual cues.
+- **Undo last timing change** restores the previous sheet while it is still
+  the same device file and no later cue edit has been made. Undo is tab-only
+  and does not rewrite a sheet already saved on the device.
+
+Use **Save cues on this device** or **Export cue sheet** after applying changes
+if you want to keep them. Opening a new file or reloading never applies timing
+changes or arms cues automatically. Existing limits still apply: 40 cues per
+sheet, device files only, and no automatic identification of an edited video.
+All controls and review labels support English, Hindi and Gujarati.
+
 ## Features
 
 <div align="center">
