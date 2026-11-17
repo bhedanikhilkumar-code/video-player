@@ -53159,7 +53159,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   // only knew sections, actions and features - finding one of YOUR videos by name still
   // meant opening Your videos and scrolling four lists. With the box open, typing now
   // also matches your own videos (favourites, watch later, queue, history, deduped in
-  // that order, six best) under a Your videos group on top of the results; Enter or a
+  // that order, six matches) under a Your videos group on top of the results; Enter or a
   // tap plays the pick through the same link-box load path the Recent switcher uses
   // (round 506). Nothing new is saved, and the video rows stay out of Recently used
   // and pinning. Checked first: the palette's only groups were Sections, Actions,
@@ -53172,16 +53172,24 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     q508 = String(q508 || "").trim().toLowerCase();
     if (!q508) return [];
     var out508 = [], seen508 = {};
-    [["favs", "Favourites"], ["later", "Watch later"], ["queue", "Queue"], ["hist", "History"]].forEach(function (pair508) {
-      (lib[pair508[0]] || []).forEach(function (x508) {
-        if (!x508 || !x508.id || seen508[x508.id] || out508.length >= 6) return;
-        var t508 = x508.title || (typeof titleFor === "function" ? titleFor(x508.id) : "") || "";
-        if (t508.toLowerCase().indexOf(q508) < 0) return;
+    var sources508 = [[lib.favs, "Favourites"], [lib.later, "Watch later"], [lib.queue, "Queue"], [lib.hist, "History"]];
+    // Saved-playlist-only and archived videos are part of the same collection too.
+    if (Array.isArray(playlists)) playlists.forEach(function (p508) { sources508.push([p508.items, "Playlists"]); });
+    if (typeof archData388 !== "undefined" && Array.isArray(archData388)) sources508.push([archData388, "Archived"]);
+    sources508.forEach(function (pair508) {
+      (Array.isArray(pair508[0]) ? pair508[0] : []).forEach(function (x508) {
+        if (!x508 || !/^[A-Za-z0-9_-]{11}$/.test(String(x508.id || "")) || seen508[x508.id]) return;
+        var t508 = customName480(x508.id) || x508.title || titleFor(x508.id) || ("Video " + x508.id);
+        // Share the library's words, quoted phrases, exclusions, ids, tags and is: filters.
+        if (!libSearchHit202({ id: x508.id, title: x508.title || t508 }, q508)) return;
         seen508[x508.id] = 1;
-        out508.push({ id: x508.id, title: t508 || ("Video " + x508.id), list: pair508[1] });
+        out508.push({ id: x508.id, title: t508, list: pair508[1] });
       });
     });
-    return out508;
+    // Prefer an exact title, then a title prefix, without changing ties' library order.
+    function rank508(x508) { var t508 = x508.title.toLowerCase(); return t508 === q508 ? 0 : t508.indexOf(q508) === 0 ? 1 : 2; }
+    out508.sort(function (a508, b508) { return rank508(a508) - rank508(b508); });
+    return out508.slice(0, 6);
   };
   window.__vpPalPlay508 = function (id508) {
     if (!/^[A-Za-z0-9_-]{11}$/.test(String(id508 || ""))) return;
