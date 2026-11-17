@@ -53893,6 +53893,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       "Watch reminder": ["देखने की याद", "જોવાની યાદ"],
       "Pick a saved video and a time. When the time comes - while the app is open - a card names the video with Play, Snooze one hour and Not now. Up to 5 reminders stay saved on this device, ride your backup, and the page must stay open for them to fire.": ["सेव किया वीडियो और समय चुनें. समय आने पर - ऐप खुला हो तो - एक कार्ड वीडियो का नाम दिखाता है, चलाएं, 1 घंटा स्नूज़ और अभी नहीं के साथ. 5 तक रिमाइंडर इस डिवाइस पर सेव रहते हैं, आपके बैकअप में भी जाते हैं, और बजने के लिए पेज खुला रहना चाहिए.", "સાચવેલો વીડિયો અને સમય પસંદ કરો. સમય આવે ત્યારે - ઍપ ખુલ્લી હોય તો - એક કાર્ડ વીડિયોનું નામ બતાવે છે, ચલાવો, 1 કલાક સ્નૂઝ અને હમણાં નહીં સાથે. 5 સુધીના રિમાઇન્ડર આ ડિવાઇસ પર સાચવાય છે, તમારા બૅકઅપમાં પણ જાય છે, અને વાગવા માટે પેજ ખુલ્લું રહેવું જોઈએ."],
       "Video": ["वीडियो", "વીડિયો"],
+      "Reminder due": ["रिमाइंडर बजा", "રિમાઇન્ડર વાગ્યું"],
       "Save a video to Watch later or Favourites first.": ["पहले कोई वीडियो बाद में देखें या पसंदीदा में सेव करें.", "પહેલા કોઈ વીડિયો પછી જુઓ કે મનપસંદમાં સાચવો."],
       "In 1 hour": ["1 घंटे में", "1 કલાકમાં"],
       "Tonight 8 pm": ["आज रात 8 बजे", "આજે રાત્રે 8 વાગ્યે"],
@@ -54081,7 +54082,25 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
 
     // Due card: one at a time; further due reminders queue behind it.
     var due517 = null, showing517 = null;
-    function hideDue517() { if (due517) due517.hidden = true; showing517 = null; }
+    // Round 519 fix 1: a due reminder only changed the page, so anyone in another tab
+    // (or with the app behind other windows) never saw it fire. While the due card is up
+    // the tab title leads with an alarm marker and the video name. It is written once per
+    // show - no ticking - so it never fights the video-title and tab-time title writers,
+    // and it is removed on Play, Snooze, Not now or a cross-tab close. The title from
+    // before the alert is restored only if the alert text is still there (another writer
+    // may have moved on); a language repaint re-shows the card and refreshes the text.
+    var titleBase519 = null;
+    function titleAlert519(r) {
+      if (titleBase519 === null) titleBase519 = document.title || "";
+      var want = ("\u23f0 " + T("Reminder due") + ": " + (r.title || r.id)).slice(0, 120);
+      if ((document.title || "") !== want) { try { document.title = want; } catch (e) {} }
+    }
+    function titleAlertClear519() {
+      if (titleBase519 === null) return;
+      if ((document.title || "").indexOf("\u23f0 ") === 0) { try { document.title = titleBase519; } catch (e) {} }
+      titleBase519 = null;
+    }
+    function hideDue517() { if (due517) due517.hidden = true; showing517 = null; titleAlertClear519(); }
     function showDue517(r) {
       if (!due517) {
         due517 = document.createElement("div");
@@ -54119,6 +54138,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       document.getElementById("remDueSnz517").textContent = "😴 " + T("Snooze 1 hour");
       document.getElementById("remDueNo517").textContent = T("Not now");
       due517.hidden = false;
+      titleAlert519(r);
     }
     // Round 517 fix 2: the first version removed a reminder from storage the moment it
     // fired, so with two tabs open the background tab's checker could eat it and the card
