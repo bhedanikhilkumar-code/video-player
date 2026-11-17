@@ -52272,6 +52272,13 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     $('ciSave500').addEventListener('click',function(){if(!ready()||!clips.length)return;var url=URL.createObjectURL(new Blob([JSON.stringify({format:'vp-clips',version:1,duration:video.duration,clips:clips},null,2)],{type:'application/json'}));var a=document.createElement('a');a.href=url;a.download='video-itinerary.vpclips.json';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},5000);state='Itinerary saved as JSON.';status();});
     $('ciImport500').addEventListener('click',function(){$('ciFile500').click();});
     $('ciFile500').addEventListener('change',async function(){var file=this.files&&this.files[0];this.value='';if(!file)return;var mine=++importGeneration,atSource=source;reading=false;staged=null;if(!ready()){state='Open a local file first.';paint();return;}if(file.size>128*1024){state='Use an itinerary JSON file under 128 KB.';paint();return;}reading=true;state='Reading itinerary file.';paint();try{var text=await file.text();if(mine!==importGeneration||atSource!==source)return;staged=cleanImport500(JSON.parse(text));stop(true);state='';}catch(e){if(mine===importGeneration)state=e.message==='length'?'This itinerary was made for a different video length. Open the matching file.':'Itinerary file is invalid or has more than 40 clips. Your current clips are unchanged.';}finally{if(mine===importGeneration){reading=false;paint();}}});
+    // Scene navigation stages a normal, validated import. Confirmation still owns replacement.
+    window.__vpSceneReview504 = function (atSource, data) {
+      if (!ready() || atSource !== (video.getAttribute('src') || '') || editIndex >= 0 || active >= 0) return false;
+      var next; try { next = cleanImport500(data); } catch(e) { return false; }
+      importGeneration++; reading=false; staged=next; state=''; paint();
+      card.open=true; exchange.open=true; $('ciReview500').scrollIntoView({block:'center'}); $('ciConfirm500').focus(); return true;
+    };
     $('ciConfirm500').addEventListener('click',function(){if(!staged||!ready()||editIndex>=0)return;stop(true);clips=staged;staged=null;state='Itinerary imported. Review the ranges, then press Play when ready.';paint();$('ciPlay500').focus();});
     $('ciCancel500').addEventListener('click',function(){importGeneration++;staged=null;reading=false;state='';paint();$('ciImport500').focus();});
     var resetBase500=reset;reset=function(){importGeneration++;reading=false;staged=null;resetBase500();};
@@ -52609,6 +52616,14 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   (function () {
     var v = $('lpVideo'), host = $('lpCtl'); if (!v || !host) return;
     Object.assign(TR_MSG, {
+      'Scenes to clip itinerary': ['दृश्यों से क्लिप यात्रा', 'દૃશ્યોમાંથી ક્લિપ ક્રમ'],
+      'Select scene': ['दृश्य चुनें', 'દૃશ્ય પસંદ કરો'],
+      'Selected scenes': ['चुने दृश्य', 'પસંદ દૃશ્યો'],
+      'Review selected scene clips': ['चुनी दृश्य क्लिप जांचें', 'પસંદ દૃશ્ય ક્લિપ તપાસો'],
+      'Clear scene selection': ['दृश्य चुनाव हटाएं', 'દૃશ્ય પસંદગી દૂર કરો'],
+      'A scene runs to the next detected change, or the end of the video. Select up to 40, then review before replacing the clip itinerary. Video is not exported.': ['दृश्य अगले मिले बदलाव या वीडियो के अंत तक चलता है. अधिकतम 40 चुनें, फिर क्लिप यात्रा बदलने से पहले जांचें. वीडियो एक्सपोर्ट नहीं होता.', 'દૃશ્ય પછીના મળેલા ફેરફાર અથવા વીડિયોના અંત સુધી ચાલે છે. વધુમાં વધુ 40 પસંદ કરો, પછી ક્લિપ ક્રમ બદલતાં પહેલાં તપાસો. વીડિયો નિકાસ થતો નથી.'],
+      'Select between 1 and 40 scenes, each at least half a second long.': ['1 से 40 दृश्य चुनें, हर दृश्य कम से कम आधा सेकंड हो.', '1 થી 40 દૃશ્ય પસંદ કરો, દરેક દૃશ્ય ઓછામાં ઓછું અડધી સેકન્ડનું હોવું જોઈએ.'],
+      'Stop the itinerary and finish or cancel its current edit, then try again.': ['क्लिप यात्रा रोकें और उसका बदलाव सहेजें या रद्द करें, फिर आज़माएं.', 'ક્લિપ ક્રમ રોકો અને તેનો ફેરફાર સાચવો અથવા રદ કરો, પછી અજમાવો.'],
       'Scene sensitivity': ['दृश्य संवेदनशीलता', 'દૃશ્ય સંવેદનશીલતા'],
       'More changes': ['ज़्यादा बदलाव', 'વધુ ફેરફાર'],
       'Balanced changes': ['संतुलित बदलाव', 'સંતુલિત ફેરફાર'],
@@ -52631,9 +52646,10 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       'Scan ready.': ['स्कैन तैयार है.', 'સ્કેન તૈયાર છે.']
     });
     var card = document.createElement('details'); card.className = 'lp-workbench'; card.id = 'sceneNav504';
-    card.innerHTML = '<summary></summary><p class="hint" data-scene-text="Scan a device video for large picture changes. Sampled estimates, not frame-exact cuts. Nothing is uploaded; playback stays untouched."></p><div class="row"><button class="chip" type="button" id="snScan504" data-scene-text="Scan scene changes"></button><button class="chip" type="button" id="snCancel504" data-scene-text="Cancel" hidden></button></div><p class="hint" id="snStatus504" role="status" aria-live="polite"></p><p class="hint" id="snInfo504" hidden></p><div id="snRefine504" hidden><label for="snSensitivity504" data-scene-text="Scene sensitivity"></label> <select class="chip" id="snSensitivity504"><option value="0.08" data-scene-text="More changes"></option><option value="0.18" selected data-scene-text="Balanced changes"></option><option value="0.32" data-scene-text="Only strong changes"></option></select><p class="hint" data-scene-text="Adjust the cached scan without decoding again. Fast movement and lighting changes can also appear. Short scenes between samples can be missed."></p></div><ol id="snScenes504" class="sn-scenes504"></ol>';
+    card.innerHTML = '<summary></summary><p class="hint" data-scene-text="Scan a device video for large picture changes. Sampled estimates, not frame-exact cuts. Nothing is uploaded; playback stays untouched."></p><div class="row"><button class="chip" type="button" id="snScan504" data-scene-text="Scan scene changes"></button><button class="chip" type="button" id="snCancel504" data-scene-text="Cancel" hidden></button></div><p class="hint" id="snStatus504" role="status" aria-live="polite"></p><p class="hint" id="snInfo504" hidden></p><div id="snRefine504" hidden><label for="snSensitivity504" data-scene-text="Scene sensitivity"></label> <select class="chip" id="snSensitivity504"><option value="0.08" data-scene-text="More changes"></option><option value="0.18" selected data-scene-text="Balanced changes"></option><option value="0.32" data-scene-text="Only strong changes"></option></select><p class="hint" data-scene-text="Adjust the cached scan without decoding again. Fast movement and lighting changes can also appear. Short scenes between samples can be missed."></p></div><details id="snClipTools504" hidden><summary data-scene-text="Scenes to clip itinerary"></summary><p class="hint" data-scene-text="A scene runs to the next detected change, or the end of the video. Select up to 40, then review before replacing the clip itinerary. Video is not exported."></p><p class="hint" id="snPicked504" role="status"></p><div class="row"><button type="button" class="chip" id="snClipReview504" data-scene-text="Review selected scene clips"></button><button type="button" class="chip" id="snPickClear504" data-scene-text="Clear scene selection"></button></div></details><ol id="snScenes504" class="sn-scenes504"></ol>';
     host.insertBefore(card, host.firstChild);
     var scan = $('snScan504'), cancel = $('snCancel504'), status = $('snStatus504'), info = $('snInfo504'), list = $('snScenes504');
+    var scenePicks504 = new Set();
     var samples = [], source = '', step = 0, run = 0, worker = null, cancelWait = null, state = '', progress = '', busy = false;
     function fmt(t) { var s = Math.floor(Math.max(0,t)); return (s>=3600?Math.floor(s/3600)+':':'')+String(Math.floor(s/60)%60).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
     function stop() {
@@ -52643,17 +52659,30 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     function valid() { return !!source && (v.currentSrc || v.src) === source && !v.hidden; }
     function selected() {
-      var out = []; samples.forEach(function (s, i) { if (!i || (s.score >= Number($('snSensitivity504').value) && s.time - out[out.length-1].time >= 1)) out.push(s); }); return out.slice(0,60);
+      var out = []; samples.forEach(function (s, i) { if (!i || (s.score >= Number($('snSensitivity504').value) && s.time - out[out.length-1].time >= 1)) out.push(s); }); return out;
     }
     function jump(t) { if (!valid()) return; try { v.currentTime = Math.min(t,Math.max(0,v.duration-.05)); } catch(e) {} }
+    function pickInfo504() {
+      $('snPicked504').textContent=T('Selected scenes')+': '+scenePicks504.size+' / 40';
+      $('snClipReview504').disabled=!valid() || scenePicks504.size<1 || scenePicks504.size>40;
+      $('snPickClear504').disabled=!scenePicks504.size;
+    }
+    $('snPickClear504').addEventListener('click',function(){scenePicks504.clear();render();});
+    $('snClipReview504').addEventListener('click',function(){
+      var rows=selected(), chosen=rows.map(function(s,i){return {name:T('Picture change')+' '+(i+1),start:s.time,end:i+1<rows.length?rows[i+1].time:v.duration,rate:1,repeats:1};}).filter(function(s){return scenePicks504.has(s.start);});
+      if(!valid()||!chosen.length||chosen.length>40||chosen.some(function(s){return s.end-s.start<.5;})){state='Select between 1 and 40 scenes, each at least half a second long.';paint();return;}
+      if(!window.__vpSceneReview504||!window.__vpSceneReview504(source,{format:'vp-clips',version:1,duration:v.duration,clips:chosen})){state='Stop the itinerary and finish or cancel its current edit, then try again.';paint();}
+    });
     function render() {
       var rows = selected(); list.replaceChildren();
       rows.forEach(function (s,i) {
         var li=document.createElement('li'), b=document.createElement('button'), img=document.createElement('img'), caption=document.createElement('span');
         b.type='button'; b.className='sn-scene504'; img.src=s.image; img.alt=''; img.width=128; img.height=72; img.loading='lazy';
         caption.textContent='~'+fmt(s.time)+' · '+T(i?'Picture change':'Opening'); b.setAttribute('aria-label',T('Jump to estimated scene')+' '+fmt(s.time));
-        b.appendChild(img); b.appendChild(caption); b.addEventListener('click',function(){jump(s.time);}); li.appendChild(b); list.appendChild(li);
+        b.appendChild(img); b.appendChild(caption); b.addEventListener('click',function(){jump(s.time);}); li.appendChild(b);
+        var lab=document.createElement('label'),check=document.createElement('input'),tx=document.createElement('span');lab.className='sn-pick504';check.type='checkbox';check.checked=scenePicks504.has(s.time);check.disabled=(i+1<rows.length?rows[i+1].time:v.duration)-s.time<.5;check.setAttribute('aria-label',T('Select scene')+' '+fmt(s.time));tx.textContent=T('Select scene');check.addEventListener('change',function(){if(check.checked)scenePicks504.add(s.time);else scenePicks504.delete(s.time);pickInfo504();});lab.appendChild(check);lab.appendChild(tx);li.appendChild(lab);list.appendChild(li);
       });
+      $('snClipTools504').hidden=!samples.length;pickInfo504();
       $('snRefine504').hidden = !samples.length;
       info.hidden = !samples.length; info.textContent = T('Estimated scene starts')+': '+rows.length+' · '+T('Sample spacing (seconds)')+': '+step.toFixed(2);
     }
@@ -52661,8 +52690,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       card.querySelector('summary').textContent=T('Scene change navigator'); card.querySelectorAll('[data-scene-text]').forEach(function(el){el.textContent=T(el.dataset.sceneText);});
       status.textContent=T(state)+(progress?' '+progress:''); render();
     }
-    $('snSensitivity504').addEventListener('change',function(){state=selected().length>1?'Scan ready.':'No large picture changes found. The opening is still available.';paint();});
-    function reset() { stop(); samples=[]; source=''; step=0; state=''; progress=''; paint(); }
+    $('snSensitivity504').addEventListener('change',function(){scenePicks504.clear();state=selected().length>1?'Scan ready.':'No large picture changes found. The opening is still available.';paint();});
+    function reset() { stop(); scenePicks504.clear(); samples=[]; source=''; step=0; state=''; progress=''; paint(); }
     function wait(w,event,act) {
       return new Promise(function(resolve,reject){
         var timer=setTimeout(fail,8000); function clean(){clearTimeout(timer);w.removeEventListener(event,done);w.removeEventListener('error',fail);if(cancelWait===fail)cancelWait=null;}
@@ -52670,7 +52699,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         cancelWait=fail; w.addEventListener(event,done,{once:true});w.addEventListener('error',fail,{once:true});try{act();}catch(e){fail();}
       });
     }
-    cancel.addEventListener('click',function(){stop();samples=[];source='';progress='';state='Scan cancelled.';paint();});
+    cancel.addEventListener('click',function(){stop();scenePicks504.clear();samples=[];source='';progress='';state='Scan cancelled.';paint();});
     scan.addEventListener('click',async function(){
       var src=v.currentSrc||v.src;
       if(v.hidden||!/^blob:/.test(src)||!v.videoWidth||!Number.isFinite(v.duration)||v.duration<=0){state='Choose a device video first. Audio and direct links cannot be scanned.';progress='';paint();return;}
@@ -52699,8 +52728,9 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     });
     v.addEventListener('loadstart',reset);v.addEventListener('emptied',reset);document.addEventListener('vp-local-closed',reset);window.addEventListener('pagehide',reset);
     (window.__relang=window.__relang||[]).push(paint);paint();
-    var st=document.createElement('style');st.textContent='#sceneNav504{margin-top:12px;min-width:0;overflow-wrap:anywhere}#sceneNav504 .row{flex-wrap:wrap}#sceneNav504 [hidden]{display:none!important}.sn-scenes504{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;list-style:none;padding:0}.sn-scenes504 li{min-width:0}.sn-scene504{display:flex;flex-direction:column;gap:7px;width:100%;padding:8px;border:1px solid var(--hairline);border-radius:14px;background:var(--card);color:var(--ink);font:inherit;text-align:left;cursor:pointer}.sn-scene504 img{width:100%;height:auto;aspect-ratio:16/9;object-fit:contain;border-radius:8px;background:#101820}.sn-scene504:focus-visible{outline:3px solid var(--teal);outline-offset:3px}html.high-contrast .sn-scene504{border:2px solid currentColor}';document.head.appendChild(st);
+    var st=document.createElement('style');st.textContent='#sceneNav504{margin-top:12px;min-width:0;overflow-wrap:anywhere}#sceneNav504 .row{flex-wrap:wrap}#sceneNav504 [hidden]{display:none!important}.sn-scenes504{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;list-style:none;padding:0}.sn-scenes504 li{min-width:0}.sn-scene504{display:flex;flex-direction:column;gap:7px;width:100%;padding:8px;border:1px solid var(--hairline);border-radius:14px;background:var(--card);color:var(--ink);font:inherit;text-align:left;cursor:pointer}.sn-scene504 img{width:100%;height:auto;aspect-ratio:16/9;object-fit:contain;border-radius:8px;background:#101820}.sn-scene504:focus-visible{outline:3px solid var(--teal);outline-offset:3px}html.high-contrast .sn-scene504{border:2px solid currentColor}.sn-pick504{display:flex;align-items:center;gap:8px;min-height:44px;padding:5px;font-size:14px}.sn-pick504 input{width:22px;height:22px;flex-shrink:0;accent-color:var(--teal)}#snClipTools504{border:1px solid var(--hairline);border-radius:14px;padding:10px}#snClipTools504 button{white-space:normal;max-width:100%;min-height:44px}';document.head.appendChild(st);
     setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Scene change navigator','#sceneNav504');},14520);
+    setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Scenes to clip itinerary','#snClipTools504');},14620);
   })();
 
 })();
@@ -57377,6 +57407,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       };
     }
     var FEATS = [
+      ["Scenes to clip itinerary", "select scene cuts review sampled segments clip itinerary local video Hindi दृश्य Gujarati દૃશ્ય", "#sceneNav504"],
       ["Scene change navigator", "scene change shot detect scan picture cuts local device video visual navigation Hindi दृश्य Gujarati દૃશ્ય", "#sceneNav504"],
       ["Own subtitle look", "subtitle caption colour color yellow cyan green white background solid outline low vision readable style Hindi रंग Gujarati રંગ", "#subLook503"],
       ["Colour-vision assist", "colour blind colorblind color vision protanopia deuteranopia tritanopia red green blue weak daltonism accessibility correction Hindi रंग Gujarati રંગ", "#cvdRow503"],
