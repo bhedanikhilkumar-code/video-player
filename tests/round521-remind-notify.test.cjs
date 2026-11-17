@@ -44,3 +44,11 @@ assert(wn>html.indexOf('__vpWnew283("Reminder sound", "#remindCard517"); }, 1612
 const fn=vm.runInNewContext('(function ntfOn521() { try { return localStorage.getItem("vp-remindntf521.v1") === "1"; } catch (e) { return false; } })');
 assert.equal(typeof fn,'function');
 console.log('round521 reminder notification wiring: ok');
+// Round 521 fix 1 regression: the due card's Play button must use this closure's own
+// queue functions - the cross-closure playId call threw ReferenceError on every tap live.
+const playH=html.slice(html.indexOf('getElementById("remDuePlay517").addEventListener'),html.indexOf('getElementById("remDueSnz517").addEventListener'));
+assert(!playH.includes('playId('),'no cross-closure playId call');
+assert(playH.includes('playQueueAt(qi521)'),'plays through the queue');
+assert(playH.includes('lib.queue.length >= 50'),'queue-full guard');
+assert(playH.indexOf('lib.queue.length >= 50')<playH.indexOf('write517(read517().filter'),'capacity checked before the reminder is removed');
+console.log('round521 reminder Play regression: ok');
