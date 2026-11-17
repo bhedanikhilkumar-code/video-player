@@ -52741,6 +52741,128 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Scenes to clip itinerary','#snClipTools504');},14620);
   })();
 
+  // Round 505 new 1b (user ask, 1:33am Nov 18): the Recommended shelf itself. VLC shows
+  // what to pick up next; a browser cannot scan a phone's storage, so the shelf suggests
+  // only from files he already opened here: unfinished files with a saved position first
+  // ("Continue from", like VLC's history progress), then the most-opened ones ("Played N
+  // times"). A row with a remembered handle (round ~450, Chrome/Edge) reopens in one tap;
+  // other rows ask for the same file again - the saved position still resumes it
+  // automatically. Hindi/Gujarati rows below; finder and What's new in the next commit.
+  Object.assign(TR_MSG, {
+    "Recommended": ["आपके लिए चुने गए", "તમારા માટે પસંદ કરેલા"],
+    "Suggestions use only files you opened in this app on this device. A browser cannot scan your phone's storage.": ["सुझाव सिर्फ उन फ़ाइलों से बनते हैं जो आपने इस ऐप में इस डिवाइस पर खोली हैं. ब्राउज़र आपके फ़ोन का स्टोरेज स्कैन नहीं कर सकता.", "સૂચનો ફક્ત એ જ ફાઇલો પરથી બને છે જે તમે આ ઍપમાં આ ડિવાઇસ પર ખોલી છે. બ્રાઉઝર તમારા ફોનનો સ્ટોરેજ સ્કેન કરી શકતું નથી."],
+    "No suggestions yet. Play a few device files and this shelf will suggest what to watch next.": ["अभी कोई सुझाव नहीं. कुछ डिवाइस फ़ाइलें चलाएं, फिर यह शेल्फ बताएगी कि आगे क्या देखें.", "હજી કોઈ સૂચનો નથી. થોડી ડિવાઇસ ફાઇલો ચલાવો, પછી આ શેલ્ફ આગળ શું જોવું તે બતાવશે."],
+    "Continue from ": ["यहाँ से जारी: ", "અહીંથી ચાલુ: "],
+    "Opened once": ["एक बार खुली", "એક વાર ખુલ્લી"],
+    "Pick to play": ["चुनकर चलाएं", "પસંદ કરી ચલાવો"],
+    "Hide": ["छिपाएं", "છુપાવો"],
+    "Hidden. It returns if you play it again.": ["छिपा दिया. फिर चलाने पर यह वापस आ जाएगा.", "છુપાવ્યું. ફરી ચલાવશો તો પાછું આવશે."],
+    "Pick the same file again - it resumes where you stopped.": ["वही फ़ाइल फिर चुनें - जहाँ रुके थे वहीं से चलेगी.", "એ જ ફાઇલ ફરી પસંદ કરો - જ્યાં અટક્યા હતા ત્યાંથી ચાલુ થશે."],
+    "Reopening ": ["फिर खुल रहा है ", "ફરી ખુલે છે "]
+  });
+  (function () {
+    var fileIn = document.getElementById("lpFile"); if (!fileIn) return;
+    var HK = "vp-lphist.v1", PK2 = "vp-lp-pos.v1";
+    var box = document.createElement("div"); box.id = "lpRecs505";
+    box.innerHTML = '<h3 id="lpRecsH505"></h3><p class="hint" id="lpRecsHint505"></p><p class="hint" id="lpRecsEmpty505" hidden></p><ul class="lib-list" id="lpRecsList505"></ul><p class="hint" id="lpRecsMsg505" role="status"></p>';
+    var st = document.createElement("style"); st.id = "lpRecsStyle505";
+    st.textContent = "#lpRecs505{margin-top:12px}#lpRecs505 .rec-sub{display:block;font-size:12px;opacity:.72;margin-top:2px}#lpRecs505 .rec-bar{height:4px;border-radius:99px;background:rgba(120,140,150,.28);margin-top:6px;overflow:hidden}#lpRecs505 .rec-fill{display:block;height:100%;border-radius:99px;background:var(--accent,#3a8a77)}";
+    document.head.appendChild(st);
+    function place() {
+      var rem = document.getElementById("lpRemember");
+      if (rem && rem.parentNode) rem.parentNode.insertBefore(box, rem);
+      else if (fileIn.parentNode) fileIn.parentNode.insertBefore(box, fileIn.nextSibling);
+    }
+    if (document.readyState === "complete" || document.readyState === "interactive") { place(); render(); } else window.addEventListener("DOMContentLoaded", function () { place(); render(); });
+    var H = function (id) { return document.getElementById(id); };
+    function readMap(k) { try { var m = JSON.parse(localStorage.getItem(k) || "{}"); return (m && typeof m === "object" && !Array.isArray(m)) ? m : {}; } catch (e) { return {}; } }
+    function fmt(t) { t = Math.max(0, Math.floor(t)); var m = Math.floor(t / 60), s = t % 60; return m + ":" + (s < 10 ? "0" : "") + s; }
+    function handleFor(name) {
+      if (!window.indexedDB) return Promise.resolve(null);
+      return new Promise(function (res) {
+        var r;
+        try { r = indexedDB.open("vp-remember.v1", 1); } catch (e) { res(null); return; }
+        r.onupgradeneeded = function () { r.result.createObjectStore("files"); };
+        r.onerror = function () { res(null); };
+        r.onsuccess = function () {
+          try {
+            var t = r.result.transaction("files", "readonly"), q = t.objectStore("files").get(name);
+            q.onsuccess = function () { res(q.result || null); };
+            q.onerror = function () { res(null); };
+          } catch (e) { res(null); }
+        };
+      });
+    }
+    function playRow(name, btn) {
+      btn.disabled = true;
+      handleFor(name).then(function (h) {
+        if (!h) { btn.disabled = false; fileIn.click(); H("lpRecsMsg505").textContent = T("Pick the same file again - it resumes where you stopped."); return; }
+        var step = h.requestPermission ? h.requestPermission({ mode: "read" }) : Promise.resolve("granted");
+        Promise.resolve(step).then(function (perm) {
+          if (perm !== "granted") { btn.disabled = false; H("lpRecsMsg505").textContent = T("Permission was not given, so the file cannot be re-opened."); return; }
+          h.getFile().then(function (f) {
+            btn.disabled = false;
+            if (window.vpOpenFiles && window.vpOpenFiles([f])) {
+              H("lpRecsMsg505").textContent = T("Source opened. Press Play if playback does not start.") + " " + f.name;
+              if (window.vpExpandSection) window.vpExpandSection("lp");
+              var lpSec = document.getElementById("lp"); if (lpSec) lpSec.scrollIntoView({ behavior: window.vpReducedMotion && window.vpReducedMotion() ? "auto" : "smooth" });
+            }
+          }, function () { btn.disabled = false; H("lpRecsMsg505").textContent = T("The file is gone or was moved. Pick it again."); });
+        }, function () { btn.disabled = false; H("lpRecsMsg505").textContent = T("The file is gone or was moved. Pick it again."); });
+      });
+    }
+    function hideRow(name) {
+      var m = readMap(HK); delete m[name];
+      try { localStorage.setItem(HK, JSON.stringify(m)); } catch (e) {}
+      var pm = readMap(PK2), changed = false;
+      Object.keys(pm).forEach(function (k) { if (k.split("|")[0] === name) { delete pm[k]; changed = true; } });
+      if (changed) { try { localStorage.setItem(PK2, JSON.stringify(pm)); } catch (e) {} }
+      H("lpRecsMsg505").textContent = T("Hidden. It returns if you play it again.");
+      render();
+    }
+    function render() {
+      H("lpRecsH505").textContent = T("Recommended");
+      H("lpRecsHint505").textContent = T("Suggestions use only files you opened in this app on this device. A browser cannot scan your phone's storage.");
+      var hist = readMap(HK), pos = readMap(PK2), items = [], seen = {};
+      Object.keys(pos).reverse().forEach(function (k) {
+        if (items.length >= 4) return;
+        var name = k.split("|")[0], secs = Number(pos[k]);
+        if (!name || seen[name] || !(secs > 0)) return;
+        var d = hist[name] && hist[name].d, sub = T("Continue from ") + fmt(secs);
+        if (d > 0) sub += " · " + Math.min(99, Math.round(secs * 100 / d)) + "%";
+        items.push({ name: name, sub: sub, pct: d > 0 ? Math.min(99, Math.round(secs * 100 / d)) : 0 });
+        seen[name] = 1;
+      });
+      Object.keys(hist).sort(function (a, b) { return (hist[b].p - hist[a].p) || (hist[b].t - hist[a].t); }).forEach(function (name) {
+        if (items.length >= 8 || seen[name]) return;
+        var e = hist[name], sub = e.p > 1 ? T("Played {n} times").replace("{n}", e.p) : T("Opened once");
+        items.push({ name: name, sub: sub, pct: 0 });
+        seen[name] = 1;
+      });
+      var list = H("lpRecsList505"); list.textContent = "";
+      H("lpRecsEmpty505").hidden = items.length > 0;
+      if (!items.length) H("lpRecsEmpty505").textContent = T("No suggestions yet. Play a few device files and this shelf will suggest what to watch next.");
+      items.forEach(function (it) {
+        var li = document.createElement("li"); li.className = "pl-item";
+        var top = document.createElement("div"); top.className = "pl-top";
+        var nm = document.createElement("span"); nm.className = "pl-name"; nm.textContent = it.name; top.appendChild(nm);
+        var sub = document.createElement("span"); sub.className = "rec-sub"; sub.textContent = it.sub; top.appendChild(sub);
+        if (it.pct > 0) { var bar = document.createElement("span"); bar.className = "rec-bar"; var fill = document.createElement("span"); fill.className = "rec-fill"; fill.style.width = it.pct + "%"; bar.appendChild(fill); top.appendChild(bar); }
+        var acts = document.createElement("div"); acts.className = "pl-acts";
+        var play = document.createElement("button"); play.type = "button"; play.className = "chip"; play.textContent = T("Play");
+        play.addEventListener("click", function () { playRow(it.name, play); });
+        var hide = document.createElement("button"); hide.type = "button"; hide.className = "chip pl-del"; hide.textContent = T("Hide");
+        hide.addEventListener("click", function () { hideRow(it.name); });
+        acts.appendChild(play); acts.appendChild(hide);
+        li.appendChild(top); li.appendChild(acts); list.appendChild(li);
+      });
+    }
+    (window.__relang = window.__relang || []).push(render);
+    var lastRef = 0;
+    document.addEventListener("vp-local-playing", function () { if (Date.now() - lastRef < 5000) return; lastRef = Date.now(); render(); });
+    window.addEventListener("storage", function (e) { if (e && (e.key === HK || e.key === PK2)) render(); });
+  })();
+
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
