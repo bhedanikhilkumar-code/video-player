@@ -1,0 +1,11 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p,pick,files,errors})=>{
+ await pick(files.slice(0,1));await p.addStyleTag({content:'html{scroll-behavior:auto!important}'});await p.locator('#clipItinerary500>summary').click();await p.locator('#captionClips501>summary').click();
+ await p.locator('#lpSubFile').setInputFiles({name:'accessibility.vtt',mimeType:'text/vtt',buffer:Buffer.from('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nShort preview\n\n00:00:10.000 --> 00:00:25.000\nLong preview\n')});await p.waitForFunction(()=>document.querySelector('#lpVideo track')?.track.cues?.length===2);await p.locator('#ccRead501').click();await p.locator('#ccSelectMatches501').click();await p.locator('#ccBuild501').click();
+ const preview=n=>p.locator('#ccPlan501 li').nth(n).getByRole('button',{name:'Preview this reviewed range',exact:true}).click();
+ await preview(0);await p.waitForFunction(()=>document.querySelector('#ccStatus501').textContent.includes('preview finished'));console.log('focus after finished:',await p.evaluate(()=>document.activeElement.outerHTML.slice(0,180)));assert.equal(await p.locator('#ccPlan501 li').first().getByRole('button',{name:'Preview this reviewed range',exact:true}).evaluate(e=>document.activeElement===e),true,'finishing an audition must not strand focus in the document body');
+ await preview(1);await p.waitForFunction(()=>document.querySelector('#lpVideo').currentTime>10.1);await p.locator('#lpVideo').evaluate(v=>v.pause());await p.waitForFunction(()=>document.querySelector('#ccStatus501').textContent.includes('Paused'));await p.locator('#lpVideo').evaluate(v=>v.play());await p.waitForFunction(()=>!document.querySelector('#ccStatus501').textContent.includes('Paused'));
+ // A keyboard-focused caption keeps its logical focus across an in-place repaint.
+ await p.locator('#ccAuditionStop501').click();await p.locator('#ccRows501 input').nth(1).focus();await p.evaluate(()=>window.__relang.forEach(fn=>fn()));assert.equal(await p.locator('#ccRows501 input').nth(1).evaluate(e=>document.activeElement===e),true);
+ assert.deepEqual(errors,[]);console.log('PASS caption audition focus return, paused/resumed announcements, logical checkbox focus across repaint');
+}).catch(e=>{console.error(e);process.exitCode=1;});
