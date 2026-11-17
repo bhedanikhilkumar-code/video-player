@@ -53093,7 +53093,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     function paintSel() {
       if (!bg) return;
       var lis = bg.querySelectorAll("#rswList506 li"), i = 0;
-      lis.forEach(function (li) { li.classList.toggle("rsw-sel", i === sel); if (i === sel) li.scrollIntoView({ block: "nearest" }); i++; });
+      lis.forEach(function (li) { li.classList.toggle("rsw-sel", i === sel); li.setAttribute("aria-selected", i === sel ? "true" : "false"); if (i === sel) li.scrollIntoView({ block: "nearest" }); i++; });
+      var list509 = bg.querySelector("#rswList506"); if (lis[sel]) list509.setAttribute("aria-activedescendant", lis[sel].id); else list509.removeAttribute("aria-activedescendant");
     }
     function close() {
       if (bg) { bg.remove(); bg = null; }
@@ -53113,17 +53114,17 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       focusBefore508 = document.activeElement;
       var its = items();
       bg = document.createElement("div"); bg.id = "rswBg506";
-      bg.innerHTML = '<div id="rswCard506" role="dialog" aria-modal="true" aria-labelledby="rswH506" aria-describedby="rswHint506"><button class="chip" id="rswClose506" type="button"></button><h3 id="rswH506"></h3><p class="hint" id="rswHint506"></p><p class="hint" id="rswEmpty506" hidden></p><ul id="rswList506"></ul></div>';
+      bg.innerHTML = '<div id="rswCard506" role="dialog" aria-modal="true" aria-labelledby="rswH506" aria-describedby="rswHint506"><button class="chip" id="rswClose506" type="button"></button><h3 id="rswH506"></h3><p class="hint" id="rswHint506"></p><p class="hint" id="rswEmpty506" hidden></p><ul id="rswList506" role="listbox" tabindex="0"></ul></div>';
       document.body.appendChild(bg);
       sel = curId ? Math.max(0, its.map(function (x) { return x.id; }).indexOf(curId)) : 0;
       bg.querySelector("#rswH506").textContent = T("Recent videos");
       bg.querySelector("#rswHint506").textContent = T("Pick up where you left off or replay a recent one. Arrows choose, Enter plays, Esc closes.");
       bg.querySelector("#rswClose506").textContent = T("Close");
       var empty = bg.querySelector("#rswEmpty506"), ul = bg.querySelector("#rswList506");
-      empty.hidden = its.length > 0;
+      empty.hidden = its.length > 0; ul.hidden = its.length === 0; ul.setAttribute("aria-label", T("Recent videos"));
       if (!its.length) empty.textContent = T("No recent videos yet. Play something first.");
       its.forEach(function (it, i) {
-        var li = document.createElement("li"); li.setAttribute("role", "button"); li.tabIndex = -1;
+        var li = document.createElement("li"); li.id = "rswOption509-" + i; li.setAttribute("role", "option");
         var img = document.createElement("img"); img.src = "https://i.ytimg.com/vi/" + it.id + "/default.jpg"; img.alt = ""; img.loading = "lazy";
         img.addEventListener("error", function () { img.style.visibility = "hidden"; });
         var txt = document.createElement("span"); txt.className = "rsw-t"; txt.textContent = it.title;
@@ -53140,15 +53141,15 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       bg.addEventListener("click", function (e) { if (e.target === bg) close(); });
       bg.querySelector("#rswClose506").addEventListener("click", close);
       paintSel();
-      var card = bg.querySelector("#rswCard506"); card.tabIndex = -1; card.focus();
+      var card = bg.querySelector("#rswCard506"); card.tabIndex = -1; (its.length ? ul : bg.querySelector("#rswClose506")).focus();
     }
     document.addEventListener("keydown", function (e) {
       if (!bg) return;
       // Round 508 fix: Tab used to leave this modal for the obscured page.
       if (e.key === "Tab") {
         e.preventDefault(); e.stopPropagation();
-        var card508 = bg.querySelector("#rswCard506"), close508 = bg.querySelector("#rswClose506");
-        (document.activeElement === close508 ? card508 : close508).focus();
+        var list509 = bg.querySelector("#rswList506"), close508 = bg.querySelector("#rswClose506");
+        (document.activeElement === close508 && !list509.hidden ? list509 : close508).focus();
         return;
       }
       // Let the Close button receive native Enter/Space activation instead of playing.
@@ -53157,14 +53158,13 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       }
       var its = items();
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
-      else if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); e.stopPropagation(); sel = Math.min(its.length - 1, sel + 1); paintSel(); }
-      else if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); e.stopPropagation(); sel = Math.max(0, sel - 1); paintSel(); }
+      else if (["ArrowDown", "ArrowRight", "ArrowUp", "ArrowLeft", "Home", "End"].indexOf(e.key) >= 0) { e.preventDefault(); e.stopPropagation(); if (!its.length) return; if (e.key === "Home") sel = 0; else if (e.key === "End") sel = its.length - 1; else sel = Math.max(0, Math.min(its.length - 1, sel + ((e.key === "ArrowDown" || e.key === "ArrowRight") ? 1 : -1))); paintSel(); bg.querySelector("#rswList506").focus(); }
       else if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); playSel(); }
     }, true);
     btn2.addEventListener("click", open);
     (window.__relang = window.__relang || []).push(function () {
       btn2.textContent = "⇄ " + T("Recent switcher");
-      if (bg) { bg.querySelector("#rswH506").textContent = T("Recent videos"); bg.querySelector("#rswHint506").textContent = T("Pick up where you left off or replay a recent one. Arrows choose, Enter plays, Esc closes."); bg.querySelector("#rswClose506").textContent = T("Close"); }
+      if (bg) { bg.querySelector("#rswH506").textContent = T("Recent videos"); bg.querySelector("#rswList506").setAttribute("aria-label", T("Recent videos")); bg.querySelector("#rswHint506").textContent = T("Pick up where you left off or replay a recent one. Arrows choose, Enter plays, Esc closes."); bg.querySelector("#rswClose506").textContent = T("Close"); }
     });
     window.__vpSwitch506 = { open: open, close: close, items: items };
     btn2.textContent = "⇄ " + T("Recent switcher");
