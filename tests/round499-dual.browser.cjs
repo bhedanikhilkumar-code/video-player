@@ -11,6 +11,9 @@ require('./round445-harness.cjs')(async({p,pick,files,errors})=>{
  const tracks=()=>p.evaluate(()=>Array.from(document.querySelector('#lpVideo').textTracks).map(t=>({label:t.label,mode:t.mode,cues:Array.from(t.cues||[]).map(c=>({text:c.text,line:c.line,start:c.startTime,end:c.endTime}))})));
  let ts=await tracks();assert.equal(ts.filter(t=>t.mode==='showing').length,2);assert.equal(ts.find(t=>t.label==='Companion captions').cues[0].line,0);
  await p.locator('#dualToggle499').click();assert.equal((await tracks()).find(t=>t.label==='Companion captions').mode,'disabled');await p.locator('#dualToggle499').click();
+ await p.locator('#dualOffset499').fill('2.5');await p.locator('#dualApply499').click();assert.equal((await tracks()).find(t=>t.label==='Companion captions').cues[0].start,2.5);
+ await p.locator('#dualOffset499').fill('-15');await p.locator('#dualApply499').click();ts=(await tracks()).find(t=>t.label==='Companion captions');assert.equal(ts.cues.length,1);assert.equal(ts.cues[0].start,0);assert.equal(ts.cues[0].end,15);
+ await p.locator('#dualReset499').click();assert.equal((await tracks()).find(t=>t.label==='Companion captions').cues[0].start,0);
  // Replacing the primary must not silently disable the companion.
  await p.locator('#lpSubFile').setInputFiles(caps('Again.srt',first));await p.waitForFunction(()=>Array.from(document.querySelector('#lpVideo').textTracks).filter(t=>t.mode==='showing').length===2);
  await p.locator('#dualFile499').setInputFiles(caps('bad.srt','bad'));await p.waitForFunction(()=>document.querySelector('#dualSub499').getAttribute('aria-busy')==='false');assert.match(await p.locator('#dualStatus499').textContent(),/no readable/);assert.equal((await tracks()).find(t=>t.label==='Companion captions').cues.length,2);
