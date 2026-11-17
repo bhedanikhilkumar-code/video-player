@@ -52609,6 +52609,11 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   (function () {
     var v = $('lpVideo'), host = $('lpCtl'); if (!v || !host) return;
     Object.assign(TR_MSG, {
+      'Scene sensitivity': ['दृश्य संवेदनशीलता', 'દૃશ્ય સંવેદનશીલતા'],
+      'More changes': ['ज़्यादा बदलाव', 'વધુ ફેરફાર'],
+      'Balanced changes': ['संतुलित बदलाव', 'સંતુલિત ફેરફાર'],
+      'Only strong changes': ['सिर्फ़ बड़े बदलाव', 'માત્ર મોટા ફેરફાર'],
+      'Adjust the cached scan without decoding again. Fast movement and lighting changes can also appear. Short scenes between samples can be missed.': ['फिर से डिकोड किए बिना स्कैन बदलें. तेज़ गति और रोशनी के बदलाव भी दिख सकते हैं. नमूनों के बीच छोटे दृश्य छूट सकते हैं.', 'ફરી ડિકોડ કર્યા વગર સ્કેન બદલો. ઝડપી હલનચલન અને પ્રકાશના ફેરફાર પણ દેખાઈ શકે છે. નમૂનાઓ વચ્ચે ટૂંકા દૃશ્યો છૂટી શકે છે.'],
       'Scene change navigator': ['दृश्य बदलाव नेविगेटर', 'દૃશ્ય બદલાવ નેવિગેટર'],
       'Scan scene changes': ['दृश्य बदलाव खोजें', 'દૃશ્ય બદલાવ શોધો'],
       'Scan a device video for large picture changes. Sampled estimates, not frame-exact cuts. Nothing is uploaded; playback stays untouched.': ['डिवाइस वीडियो में बड़े चित्र बदलाव खोजें. ये नमूनों पर आधारित अनुमान हैं, सटीक कट नहीं. कुछ अपलोड नहीं होता; प्लेबैक नहीं बदलता.', 'ડિવાઇસ વીડિયોમાં મોટા ચિત્ર ફેરફાર શોધો. આ નમૂના આધારિત અંદાજ છે, ચોક્કસ કટ નથી. કંઈ અપલોડ થતું નથી; પ્લેબેક બદલાતું નથી.'],
@@ -52626,7 +52631,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       'Scan ready.': ['स्कैन तैयार है.', 'સ્કેન તૈયાર છે.']
     });
     var card = document.createElement('details'); card.className = 'lp-workbench'; card.id = 'sceneNav504';
-    card.innerHTML = '<summary></summary><p class="hint" data-scene-text="Scan a device video for large picture changes. Sampled estimates, not frame-exact cuts. Nothing is uploaded; playback stays untouched."></p><div class="row"><button class="chip" type="button" id="snScan504" data-scene-text="Scan scene changes"></button><button class="chip" type="button" id="snCancel504" data-scene-text="Cancel" hidden></button></div><p class="hint" id="snStatus504" role="status" aria-live="polite"></p><p class="hint" id="snInfo504" hidden></p><ol id="snScenes504" class="sn-scenes504"></ol>';
+    card.innerHTML = '<summary></summary><p class="hint" data-scene-text="Scan a device video for large picture changes. Sampled estimates, not frame-exact cuts. Nothing is uploaded; playback stays untouched."></p><div class="row"><button class="chip" type="button" id="snScan504" data-scene-text="Scan scene changes"></button><button class="chip" type="button" id="snCancel504" data-scene-text="Cancel" hidden></button></div><p class="hint" id="snStatus504" role="status" aria-live="polite"></p><p class="hint" id="snInfo504" hidden></p><div id="snRefine504" hidden><label for="snSensitivity504" data-scene-text="Scene sensitivity"></label> <select class="chip" id="snSensitivity504"><option value="0.08" data-scene-text="More changes"></option><option value="0.18" selected data-scene-text="Balanced changes"></option><option value="0.32" data-scene-text="Only strong changes"></option></select><p class="hint" data-scene-text="Adjust the cached scan without decoding again. Fast movement and lighting changes can also appear. Short scenes between samples can be missed."></p></div><ol id="snScenes504" class="sn-scenes504"></ol>';
     host.insertBefore(card, host.firstChild);
     var scan = $('snScan504'), cancel = $('snCancel504'), status = $('snStatus504'), info = $('snInfo504'), list = $('snScenes504');
     var samples = [], source = '', step = 0, run = 0, worker = null, cancelWait = null, state = '', progress = '', busy = false;
@@ -52638,7 +52643,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     function valid() { return !!source && (v.currentSrc || v.src) === source && !v.hidden; }
     function selected() {
-      var out = []; samples.forEach(function (s, i) { if (!i || (s.score >= .18 && s.time - out[out.length-1].time >= 1)) out.push(s); }); return out.slice(0,60);
+      var out = []; samples.forEach(function (s, i) { if (!i || (s.score >= Number($('snSensitivity504').value) && s.time - out[out.length-1].time >= 1)) out.push(s); }); return out.slice(0,60);
     }
     function jump(t) { if (!valid()) return; try { v.currentTime = Math.min(t,Math.max(0,v.duration-.05)); } catch(e) {} }
     function render() {
@@ -52649,12 +52654,14 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         caption.textContent='~'+fmt(s.time)+' · '+T(i?'Picture change':'Opening'); b.setAttribute('aria-label',T('Jump to estimated scene')+' '+fmt(s.time));
         b.appendChild(img); b.appendChild(caption); b.addEventListener('click',function(){jump(s.time);}); li.appendChild(b); list.appendChild(li);
       });
+      $('snRefine504').hidden = !samples.length;
       info.hidden = !samples.length; info.textContent = T('Estimated scene starts')+': '+rows.length+' · '+T('Sample spacing (seconds)')+': '+step.toFixed(2);
     }
     function paint() {
       card.querySelector('summary').textContent=T('Scene change navigator'); card.querySelectorAll('[data-scene-text]').forEach(function(el){el.textContent=T(el.dataset.sceneText);});
       status.textContent=T(state)+(progress?' '+progress:''); render();
     }
+    $('snSensitivity504').addEventListener('change',function(){state=selected().length>1?'Scan ready.':'No large picture changes found. The opening is still available.';paint();});
     function reset() { stop(); samples=[]; source=''; step=0; state=''; progress=''; paint(); }
     function wait(w,event,act) {
       return new Promise(function(resolve,reject){
