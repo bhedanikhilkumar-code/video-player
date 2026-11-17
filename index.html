@@ -53313,7 +53313,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       armed = true; state = ''; lastCue = ''; paint(); $('pcStop509').focus(); if (!v.paused) tick();
     }
     $('pcForm509').addEventListener('submit', function (e) {
-      e.preventDefault(); var t = Number($('pcTime509').value);
+      e.preventDefault(); var t = Math.round(Number($('pcTime509').value) * 100) / 100;
       if (!ready() || !Number.isFinite(t) || t < 0 || t >= v.duration || (cues.length >= 40 && editIndex < 0)) { state = 'Choose a time inside the open video. Use at most 40 cues.'; status(); return; }
       stop(); var c = {name: $('pcName509').value.trim().slice(0, 80), time: Math.round(t * 100) / 100, action: $('pcAction509').value, value: Number($('pcValue509').value)};
       if (editIndex >= 0) cues[editIndex] = c; else cues.push(c); editIndex = -1; cues.sort(function (a,b) { return a.time - b.time; }); $('pcName509').value = ''; lastCue = ''; paint(); $('pcName509').focus();
@@ -53334,6 +53334,85 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     document.addEventListener('visibilitychange', function () { if (document.hidden && armed) stop('Cues stopped. Previous speed and volume restored where unchanged.'); }); window.addEventListener('pagehide', function () { stop(); });
     var st = document.createElement('style'); st.textContent = '#playbackCues509{margin:14px 0;padding:14px;border:1px solid var(--hairline);border-radius:18px;background:var(--card);color:var(--ink);min-width:0;overflow-wrap:anywhere}#playbackCues509 summary{font-weight:700;cursor:pointer}#playbackCues509 .pc-grid509{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px}#playbackCues509 label{display:block}#playbackCues509 input,#playbackCues509 select{box-sizing:border-box;width:100%;min-width:0;font:inherit;font-size:16px;border:1px solid var(--hairline);border-radius:12px;padding:10px;background:var(--card);color:var(--ink);margin:5px 0 12px}#playbackCues509 button{min-height:44px;max-width:100%;white-space:normal}#playbackCues509 .row{flex-wrap:wrap}#pcList509{padding-left:24px}#pcList509 li{padding:12px 4px;border-bottom:1px solid var(--hairline)}#playbackCues509 [hidden]{display:none!important}'; document.head.appendChild(st);
     valueOptions(); (window.__relang = window.__relang || []).push(paint); paint();
+    // Portable cue sheets carry only instructions and a name/size/duration check, never media.
+    Object.assign(TR_MSG, {
+      'Save or restore playback cues': ['प्लेबैक क्यू सहेजें या लौटाएं', 'પ્લેબૅક ક્યૂ સાચવો અથવા પાછા લાવો'],
+      'Export cue sheet': ['क्यू सूची एक्सपोर्ट करें', 'ક્યૂ યાદી નિકાસ કરો'],
+      'Import cue sheet': ['क्यू सूची आयात करें', 'ક્યૂ યાદી આયાત કરો'],
+      'The JSON contains names, times and actions, not your video. Open the same device file before importing. Review before replacing this tab\'s cues. Nothing arms or plays automatically.': ['JSON में नाम, समय और क्रियाएं हैं, आपका वीडियो नहीं. आयात से पहले वही डिवाइस फ़ाइल खोलें. इस टैब के क्यू बदलने से पहले जांचें. कुछ अपने आप चालू या प्ले नहीं होता.', 'JSON માં નામ, સમય અને ક્રિયાઓ છે, તમારો વીડિયો નહીં. આયાત પહેલાં તે જ ડિવાઇસ ફાઇલ ખોલો. આ ટૅબના ક્યૂ બદલતાં પહેલાં તપાસો. કંઈ આપમેળે ચાલુ કે પ્લે થતું નથી.'],
+      'Review imported cues': ['आयात किए क्यू जांचें', 'આયાત કરેલા ક્યૂ તપાસો'],
+      'Replace this tab\'s cues': ['इस टैब के क्यू बदलें', 'આ ટૅબના ક્યૂ બદલો'],
+      'Cue sheet does not match this device file. Open the original file and try again.': ['क्यू सूची इस डिवाइस फ़ाइल से नहीं मिलती. मूल फ़ाइल खोलकर फिर आज़माएं.', 'ક્યૂ યાદી આ ડિવાઇસ ફાઇલ સાથે મળતી નથી. મૂળ ફાઇલ ખોલીને ફરી અજમાવો.'],
+      'That cue sheet is invalid or too large (100 KB max, 40 cues).': ['यह क्यू सूची गलत या बहुत बड़ी है (अधिकतम 100 KB, 40 क्यू).', 'આ ક્યૂ યાદી ખોટી અથવા બહુ મોટી છે (વધુમાં વધુ 100 KB, 40 ક્યૂ).'],
+      'Cue sheet restored. Review it, then arm when ready.': ['क्यू सूची लौट आई. जांचें, फिर तैयार होने पर चालू करें.', 'ક્યૂ યાદી પાછી આવી. તપાસો, પછી તૈયાર હો ત્યારે ચાલુ કરો.'],
+      'The file changed. Import and review the sheet again.': ['फ़ाइल बदल गई. सूची फिर आयात करके जांचें.', 'ફાઇલ બદલાઈ ગઈ. યાદી ફરી આયાત કરીને તપાસો.']
+    });
+    var exchange = document.createElement('details'); exchange.id = 'pcExchange509';
+    exchange.innerHTML = '<summary data-pc="Save or restore playback cues"></summary><p class="hint" data-pc="The JSON contains names, times and actions, not your video. Open the same device file before importing. Review before replacing this tab\'s cues. Nothing arms or plays automatically."></p><div class="row"><button type="button" class="chip" id="pcExport509" data-pc="Export cue sheet"></button><button type="button" class="chip" id="pcImport509" data-pc="Import cue sheet"></button></div><input type="file" id="pcFile509" accept=".json,application/json" hidden><div id="pcReview509" hidden><h4 data-pc="Review imported cues"></h4><p id="pcReviewFile509" class="hint"></p><ol id="pcReviewList509"></ol><div class="row"><button type="button" class="chip" id="pcApply509" data-pc="Replace this tab\'s cues"></button><button type="button" class="chip" id="pcReject509" data-pc="Cancel"></button></div></div><p class="hint" id="pcExchangeStatus509" role="status"></p>';
+    card.appendChild(exchange);
+    var proposal = null, readEpoch = 0, exchangeState = '';
+    function identity() {
+      var api = window.__vpLocalQueue443, id = api && api.fileIdentity509 ? api.fileIdentity509() : null;
+      if (!ready() || !id) return null;
+      return {name:id.name, size:id.size, lastModified:id.lastModified, duration:Math.round(v.duration * 100) / 100};
+    }
+    function sameFile(a,b) { return !!a && !!b && a.name === b.name && a.size === b.size && Math.abs(a.duration - b.duration) < .1; }
+    function cleanSheet(data) {
+      if (!data || data.app !== 'hd-video-player-cues' || data.version !== 1 || !data.file || !Array.isArray(data.cues) || !data.cues.length || data.cues.length > 40) return null;
+      var f = data.file;
+      if (typeof f.name !== 'string' || !f.name || f.name.length > 500 || !Number.isSafeInteger(f.size) || f.size < 0 || !Number.isSafeInteger(f.lastModified) || f.lastModified < 0 || typeof f.duration !== 'number' || !Number.isFinite(f.duration) || f.duration <= 0) return null;
+      var rows = [];
+      for (var i = 0; i < data.cues.length; i++) {
+        var c = data.cues[i];
+        if (!c || typeof c.name !== 'string' || c.name.length > 80 || typeof c.time !== 'number' || !Number.isFinite(c.time) || c.time < 0 || Math.round(c.time*100)/100 >= f.duration || ['rate','volume','pause'].indexOf(c.action) < 0) return null;
+        if (c.action === 'rate' && [.25,.5,.75,1,1.25,1.5,2,2.5,3].indexOf(c.value) < 0) return null;
+        if (c.action === 'volume' && [0,.1,.25,.5,.75,1].indexOf(c.value) < 0) return null;
+        rows.push({name:c.name, time:Math.round(c.time*100)/100, action:c.action, value:c.action === 'pause' ? 1 : c.value});
+      }
+      rows.sort(function(a,b){return a.time-b.time;});
+      return {app:'hd-video-player-cues',version:1,file:{name:f.name,size:f.size,lastModified:f.lastModified,duration:f.duration},cues:rows};
+    }
+    function exchangePaint() {
+      exchange.querySelectorAll('[data-pc]').forEach(function(e){e.textContent=T(e.dataset.pc);});
+      $('pcExport509').disabled = !identity() || !cues.length || editIndex >= 0;
+      $('pcImport509').disabled = !identity() || editIndex >= 0;
+      $('pcReview509').hidden = !proposal;
+      $('pcExchangeStatus509').textContent = T(exchangeState);
+      $('pcReviewList509').textContent = '';
+      if (proposal) {
+        $('pcReviewFile509').textContent = proposal.sheet.file.name + ' · ' + fmt(proposal.sheet.file.duration) + ' · ' + proposal.sheet.cues.length;
+        proposal.sheet.cues.forEach(function(c,i){var li=document.createElement('li');li.textContent=cueTime(c)+' · '+label(c,i)+' · '+action(c);$('pcReviewList509').appendChild(li);});
+      }
+    }
+    function cancelReview() { readEpoch++; proposal=null; exchangePaint(); }
+    $('pcExport509').addEventListener('click', function(){
+      var id=identity();if(!id||!cues.length||editIndex>=0)return;
+      var data={app:'hd-video-player-cues',version:1,file:id,cues:cues},blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;a.download=id.name.replace(/\.[^.]+$/,'')+'-cues.json';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},1000);
+    });
+    $('pcImport509').addEventListener('click',function(){if(identity()&&editIndex<0)$('pcFile509').click();});
+    $('pcFile509').addEventListener('change', async function(){
+      var f=this.files[0];this.value='';if(!f)return;cancelReview();var mine=readEpoch,id=identity(),src=v.getAttribute('src');
+      if(f.size>100*1024){exchangeState='That cue sheet is invalid or too large (100 KB max, 40 cues).';exchangePaint();return;}
+      try {
+        var raw=await f.text();if(mine!==readEpoch)return;var sheet=cleanSheet(JSON.parse(raw));
+        if(!sheet){exchangeState='That cue sheet is invalid or too large (100 KB max, 40 cues).';exchangePaint();return;}
+        if(src!==v.getAttribute('src')||!sameFile(id,identity())){exchangeState='The file changed. Import and review the sheet again.';exchangePaint();return;}
+        if(!sameFile(sheet.file,id)){exchangeState='Cue sheet does not match this device file. Open the original file and try again.';exchangePaint();return;}
+        proposal={sheet:sheet,src:src};exchangeState='';exchangePaint();$('pcApply509').focus();
+      }catch(e){if(mine===readEpoch){exchangeState='That cue sheet is invalid or too large (100 KB max, 40 cues).';exchangePaint();}}
+    });
+    $('pcApply509').addEventListener('click',function(){
+      if(!proposal)return;if(proposal.src!==v.getAttribute('src')||!sameFile(proposal.sheet.file,identity())||editIndex>=0){proposal=null;exchangeState='The file changed. Import and review the sheet again.';exchangePaint();return;}
+      stop();cues=proposal.sheet.cues.map(function(c){return Object.assign({},c);});editIndex=-1;lastCue='';proposal=null;exchangeState='Cue sheet restored. Review it, then arm when ready.';paint();exchangePaint();$('pcArm509').focus();
+    });
+    $('pcReject509').addEventListener('click',function(){cancelReview();$('pcImport509').focus();});
+    new MutationObserver(function(){cancelReview();exchangeState='';exchangePaint();}).observe(v,{attributes:true,attributeFilter:['src']});
+    v.addEventListener('loadedmetadata',exchangePaint);
+    $('pcForm509').addEventListener('submit',function(){cancelReview();exchangePaint();});
+    card.addEventListener('click',function(){setTimeout(exchangePaint,0);});
+    (window.__relang=window.__relang||[]).push(exchangePaint);exchangePaint();
+    window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Save or restore playback cues','#pcExchange509');},15320);});
     window.__vpCues509 = {snapshot:function(){return {cues:JSON.parse(JSON.stringify(cues)),armed:armed,editing:editIndex>=0};}};
     window.addEventListener('load', function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283('Playback cue sheet', '#playbackCues509'); }, 15220); });
   })();
@@ -55626,6 +55705,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       lpPickCount = list.length; lpPickPaint(); updateLocalButtons();
     }
     window.__vpLocalQueue443 = {
+      fileIdentity509: function () { var f = current(); return f ? {name:f.name,size:f.size,lastModified:f.lastModified} : null; },
       snapshot: function () { sync(); return {files:localFiles.map(function(f){return f.name;}),index:localIndex,revision:revision,undo:!!history.length && (!current() || history[history.length-1].indexOf(current()) >= 0)}; },
       edit: function (action, i, version) {
         sync(); if (version !== revision || !Number.isInteger(i) || i < 0 || i >= localFiles.length) return false;
@@ -58048,6 +58128,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       };
     }
     var FEATS = [
+      ["Save or restore playback cues", "export import portable playback cue sheet JSON matching device video review speed volume pause", "#pcExchange509"],
       ["Playback cue sheet", "timestamp automation timed speed volume pause device local video cues cue sheet Hindi समय Gujarati સમય", "#playbackCues509"],
       ["Scenes to clip itinerary", "select scene cuts review sampled segments clip itinerary local video Hindi दृश्य Gujarati દૃશ્ય", "#sceneNav504"],
       ["Scene change navigator", "scene change shot detect scan picture cuts local device video visual navigation Hindi दृश्य Gujarati દૃશ્ય", "#sceneNav504"],

@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict');
 require('./round445-harness.cjs')(async({p,pick,boot})=>{
  await pick();await p.locator('#lpVideo').evaluate(v=>{v.pause();v.currentTime=0;v.playbackRate=1;v.volume=.8;});
- await p.locator('#playbackCues509 summary').click();
+ await p.locator('#playbackCues509 > summary').click();
  const add=async(name,time,action,value)=>{await p.locator('#pcName509').fill(name);await p.locator('#pcTime509').fill(String(time));await p.locator('#pcAction509').selectOption(action);if(value!==undefined)await p.locator('#pcValue509').selectOption(String(value));await p.locator('#pcAdd509').click();};
  await add('Slow practice',.2,'rate',.5);await add('Quiet section',.4,'volume',.25);await add('Review here',.7,'pause');
  assert.equal(await p.locator('#pcList509 li').count(),3);

@@ -1,6 +1,6 @@
 const assert=require('node:assert/strict');
 require('./round445-harness.cjs')(async({p,pick,origin})=>{
- await p.setViewportSize({width:1280,height:900});await pick();await p.locator('#lpVideo').evaluate(v=>v.pause());await p.locator('#playbackCues509 summary').click();
+ await p.setViewportSize({width:1280,height:900});await pick();await p.locator('#lpVideo').evaluate(v=>v.pause());await p.locator('#playbackCues509 > summary').click();
  const add=async(n,t,a,val)=>{await p.locator('#pcName509').fill(n);await p.locator('#pcTime509').fill(t);await p.locator('#pcAction509').selectOption(a);if(val)await p.locator('#pcValue509').selectOption(val);await p.locator('#pcAdd509').click();};
  await add('Listen closely','5','rate','0.75');await add('Quiet passage','12','volume','0.25');await add('Take a breath','20','pause');
  for(const lang of ['en','hi','gu']){
