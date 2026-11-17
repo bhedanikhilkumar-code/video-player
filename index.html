@@ -53877,6 +53877,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     "use strict";
     var KEY517 = "vp-remind517.v1", MAX517 = 5;
     Object.assign(TR_MSG, {
+      "Reminder changes could not be saved. Nothing was changed. Try again after freeing storage.": ["रिमाइंडर में बदलाव सेव नहीं हुए. कुछ नहीं बदला. स्टोरेज खाली करके फिर कोशिश करें.", "રિમાઇન્ડરના ફેરફાર સાચવી શકાયા નથી. કંઈ બદલાયું નથી. સ્ટોરેજ ખાલી કરીને ફરી પ્રયત્ન કરો."],
       "Watch reminder": ["देखने की याद", "જોવાની યાદ"],
       "Pick a saved video and a time. When the time comes - while the app is open - a card names the video with Play, Snooze one hour and Not now. Up to 5 reminders stay saved on this device, ride your backup, and the page must stay open for them to fire.": ["सेव किया वीडियो और समय चुनें. समय आने पर - ऐप खुला हो तो - एक कार्ड वीडियो का नाम दिखाता है, चलाएं, 1 घंटा स्नूज़ और अभी नहीं के साथ. 5 तक रिमाइंडर इस डिवाइस पर सेव रहते हैं, आपके बैकअप में भी जाते हैं, और बजने के लिए पेज खुला रहना चाहिए.", "સાચવેલો વીડિયો અને સમય પસંદ કરો. સમય આવે ત્યારે - ઍપ ખુલ્લી હોય તો - એક કાર્ડ વીડિયોનું નામ બતાવે છે, ચલાવો, 1 કલાક સ્નૂઝ અને હમણાં નહીં સાથે. 5 સુધીના રિમાઇન્ડર આ ડિવાઇસ પર સાચવાય છે, તમારા બૅકઅપમાં પણ જાય છે, અને વાગવા માટે પેજ ખુલ્લું રહેવું જોઈએ."],
       "Video": ["वीडियो", "વીડિયો"],
@@ -53915,7 +53916,14 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     window.__vpCleanRemind517 = clean517;
     function read517() { try { return clean517(JSON.parse(localStorage.getItem(KEY517) || "[]")); } catch (e) { return []; } }
-    function write517(rows) { try { localStorage.setItem(KEY517, JSON.stringify(rows.slice(0, MAX517))); } catch (e) { if (window.vpStorageWarning276) window.vpStorageWarning276(); } }
+    function write517(rows) {
+      try { localStorage.setItem(KEY517, JSON.stringify(rows.slice(0, MAX517))); return true; }
+      catch (e) {
+        if (window.vpStorageWarning276) window.vpStorageWarning276();
+        msg517.textContent = T("Reminder changes could not be saved. Nothing was changed. Try again after freeing storage.");
+        return false;
+      }
+    }
 
     var det = document.createElement("details");
     det.className = "faq"; det.id = "remindCard517";
@@ -53974,7 +53982,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         var x = document.createElement("button");
         x.type = "button"; x.className = "chip"; x.textContent = T("Cancel this reminder");
         x.addEventListener("click", function () {
-          write517(read517().filter(function (q) { return !(q.id === r.id && q.at === r.at); }));
+          if (!write517(read517().filter(function (q) { return !(q.id === r.id && q.at === r.at); }))) return;
           render517(); toast(T("Reminder cancelled."));
         });
         li.appendChild(x);
@@ -53992,7 +54000,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       var opt = sel517.querySelector('option[value="' + id.replace(/"/g, "") + '"]');
       if (opt) title = opt.textContent;
       rows.push({ id: id, title: title.slice(0, 160), at: at });
-      write517(rows); render517();
+      if (!write517(rows)) return;
+      render517();
       msg517.textContent = "";
       toast(T("Reminder set for") + " " + new Date(at).toLocaleString(loc517(), { weekday: "short", hour: "numeric", minute: "2-digit" }));
     }
@@ -54019,26 +54028,25 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
           '<button type="button" class="chip" id="remDueNo517"></button></div>';
         document.body.appendChild(due517);
         document.getElementById("remDuePlay517").addEventListener("click", function () {
-          var r0 = showing517; hideDue517();
-          if (r0) {
-            write517(read517().filter(function (q) { return !(q.id === r0.id && q.at === r0.at); }));
-            playId(r0.id, r0.title || undefined);
-          }
+          var r0 = showing517;
+          if (!r0) return;
+          if (!write517(read517().filter(function (q) { return !(q.id === r0.id && q.at === r0.at); }))) return;
+          hideDue517(); playId(r0.id, r0.title || undefined);
           render517(); setTimeout(check517, 400);
         });
         document.getElementById("remDueSnz517").addEventListener("click", function () {
-          var r0 = showing517; hideDue517();
-          if (r0) {
-            var rows = read517().filter(function (q) { return !(q.id === r0.id && q.at === r0.at); });
-            if (rows.length < MAX517) rows.push({ id: r0.id, title: r0.title, at: Date.now() + 36e5 });
-            write517(rows);
-          }
-          render517(); setTimeout(check517, 400);
+          var r0 = showing517;
+          if (!r0) return;
+          var rows = read517().filter(function (q) { return !(q.id === r0.id && q.at === r0.at); });
+          if (rows.length < MAX517) rows.push({ id: r0.id, title: r0.title, at: Date.now() + 36e5 });
+          if (!write517(rows)) return;
+          hideDue517(); render517(); setTimeout(check517, 400);
         });
         document.getElementById("remDueNo517").addEventListener("click", function () {
-          var r0 = showing517; hideDue517();
-          if (r0) { write517(read517().filter(function (q) { return !(q.id === r0.id && q.at === r0.at); })); }
-          render517(); setTimeout(check517, 400);
+          var r0 = showing517;
+          if (!r0) return;
+          if (!write517(read517().filter(function (q) { return !(q.id === r0.id && q.at === r0.at); }))) return;
+          hideDue517(); render517(); setTimeout(check517, 400);
         });
       }
       showing517 = r;
