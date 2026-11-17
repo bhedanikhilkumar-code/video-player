@@ -52712,18 +52712,19 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       if(v.duration>7200){state='This scan supports videos up to two hours.';paint();return;}
       reset(); source=src; var token=run, w=document.createElement('video'); worker=w;w.muted=true;w.preload='auto';w.playsInline=true;
       busy=true;scan.disabled=true;cancel.hidden=false;card.setAttribute('aria-busy','true');state='Scanning picture changes';progress='0%';paint();
-      var gathered=[], previous=null, canvas=document.createElement('canvas');canvas.width=64;canvas.height=36;var ctx=canvas.getContext('2d',{willReadFrequently:true});
+      var gathered=[], previous=null, canvas=document.createElement('canvas'),cw=64,ch=36;var ctx=canvas.getContext('2d',{willReadFrequently:true});
       try{
         if(!ctx)throw new Error('canvas');
         await wait(w,'loadeddata',function(){w.src=src;w.load();}); if(token!==run||!valid())return;
+        var scale=192/Math.max(w.videoWidth,w.videoHeight);cw=Math.max(1,Math.round(w.videoWidth*scale));ch=Math.max(1,Math.round(w.videoHeight*scale));canvas.width=cw;canvas.height=ch;
         var count=Math.max(1,Math.min(120,Math.ceil(w.duration/0.5)));step=w.duration/count;
         for(var i=0;i<count;i++){
           var t=Math.min(w.duration-.01,i*step);
           if(Math.abs(w.currentTime-t)>.001)await wait(w,'seeked',function(){w.currentTime=t;});
           if(token!==run||!valid())return;
-          ctx.drawImage(w,0,0,64,36);var pixels=ctx.getImageData(0,0,64,36).data,diff=0;
+          ctx.drawImage(w,0,0,cw,ch);var pixels=ctx.getImageData(0,0,cw,ch).data,diff=0;
           if(previous)for(var j=0;j<pixels.length;j+=4)diff+=Math.abs(pixels[j]-previous[j])+Math.abs(pixels[j+1]-previous[j+1])+Math.abs(pixels[j+2]-previous[j+2]);
-          gathered.push({time:t,score:previous?diff/(64*36*3*255):1,image:canvas.toDataURL('image/jpeg',.65)}); previous=pixels;
+          gathered.push({time:t,score:previous?diff/(cw*ch*3*255):1,image:canvas.toDataURL('image/jpeg',.72)}); previous=pixels;
           progress=Math.round((i+1)*100/count)+'%';status.textContent=T(state)+' '+progress;
           // Yield even when a same-time seek resolves immediately. The Cancel control remains usable.
           await new Promise(function(resolve){setTimeout(resolve,0);});

@@ -57,6 +57,15 @@
 
 > The app adds no ads, banners or pop-ups of its own. YouTube may still show its own ads inside videos.
 
+### Scene change navigator (device videos)
+
+Open a device video, then expand **Scene change navigator** in Local file controls.
+- **Scan scene changes** reads at most 120 small frames in a separate muted decoder. It never uploads the file or moves the main playback clock.
+- Choose **More changes**, **Balanced changes** or **Only strong changes** to filter the cached scan without decoding again. Tap a thumbnail to seek without starting playback.
+- Select scene checkboxes and open **Scenes to clip itinerary** to review up to 40 ranges in the existing itinerary importer. Existing clips are replaced only after explicit confirmation.
+
+These are sampled estimates, not frame-exact edits. Movement or lighting can look like a cut; short scenes between samples can be missed. Sample spacing is shown. Device video only, up to two hours; audio and direct links are not scanned. Results and selections stay in the tab and clear when its video changes or the page reloads. The itinerary is a playback plan, not an exported video.
+
 ## How it works
 
 ```mermaid
