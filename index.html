@@ -54215,8 +54215,19 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         document.getElementById("remDuePlay517").addEventListener("click", function () {
           var r0 = showing517;
           if (!r0) return;
+          // Round 521 fix 1: this called playId, which lives inside the Watch sessions
+          // card's own little closure - the button threw ReferenceError on every tap, the
+          // card closed, and the reminder's video never played (caught live: console
+          // error, nothing loaded). Do the same steps with this closure's own queue
+          // functions, the way round 311 fix 2 repaired the Surprise-me chip. The queue
+          // capacity check runs before the reminder is removed, so a full queue leaves
+          // the card and the reminder in place instead of losing both.
+          if (findIn(lib.queue, r0.id) < 0 && lib.queue.length >= 50) { msg517.textContent = T("The queue is full at 50 videos. Remove some first."); return; }
           if (!write517(read517().filter(function (q) { return !(q.id === r0.id && q.at === r0.at); }))) return;
-          hideDue517(); playId(r0.id, r0.title || undefined);
+          hideDue517();
+          if (findIn(lib.queue, r0.id) < 0) lib.queue.unshift({ id: r0.id, title: r0.title || titleFor(r0.id) || "" });
+          var qi521 = findIn(lib.queue, r0.id);
+          saveLib(); renderLib(); playQueueAt(qi521);
           render517(); setTimeout(check517, 400);
         });
         document.getElementById("remDueSnz517").addEventListener("click", function () {
