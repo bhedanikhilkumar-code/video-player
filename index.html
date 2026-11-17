@@ -53476,6 +53476,67 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     // Round 511 new 1b: the Jump to time cue's name, translated in the main closure.
     Object.assign(TR_MSG, {'Skip-ahead cue': ['आगे जंप क्यू', 'આગળ જંપ ક્યૂ']});
     window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Skip-ahead cue','#playbackCues509');},15520);});
+    // Round 513: review a whole sheet's timing before applying one atomic change.
+    Object.assign(TR_MSG, {
+      'Retime playback cues': ['प्लेबैक क्यू का समय बदलें', 'પ્લેબૅક ક્યૂનો સમય બદલો'],
+      'Move every cue earlier or later. Preview every change first. Applying disarms cues but does not seek or play. Save the sheet again to keep the new times.': ['सभी क्यू पहले या बाद में करें. पहले हर बदलाव जांचें. लागू करने पर क्यू बंद होंगे, वीडियो जंप या प्ले नहीं होगा. नया समय रखने के लिए सूची फिर सहेजें.', 'બધા ક્યૂ વહેલા કે મોડા કરો. પહેલાં દરેક ફેરફાર તપાસો. લાગુ કરતાં ક્યૂ બંધ થશે, વીડિયો જંપ કે પ્લે નહીં થાય. નવા સમય રાખવા યાદી ફરી સાચવો.'],
+      'Shift in seconds (negative = earlier)': ['सेकंड में बदलाव (ऋणात्मक = पहले)', 'સેકન્ડમાં ફેરફાર (ઋણ = વહેલા)'],
+      'Also retime jump destinations': ['जंप के लक्ष्य समय भी बदलें', 'જંપના લક્ષ્ય સમય પણ બદલો'],
+      'Preview timing changes': ['समय बदलाव जांचें', 'સમયના ફેરફાર તપાસો'],
+      'Review cue timing': ['क्यू का समय जांचें', 'ક્યૂનો સમય તપાસો'],
+      'Apply timing changes': ['समय बदलाव लागू करें', 'સમયના ફેરફાર લાગુ કરો'],
+      'Cancel timing review': ['समय जांच रद्द करें', 'સમય તપાસ રદ કરો'],
+      'Every cue and jump destination must stay inside this video. Nothing changed.': ['हर क्यू और जंप लक्ष्य इस वीडियो के अंदर होना चाहिए. कुछ नहीं बदला.', 'દરેક ક્યૂ અને જંપ લક્ષ્ય આ વીડિયોની અંદર હોવું જોઈએ. કંઈ બદલાયું નથી.'],
+      'The cue sheet changed. Preview the timing again.': ['क्यू सूची बदल गई. समय फिर जांचें.', 'ક્યૂ યાદી બદલાઈ ગઈ. સમય ફરી તપાસો.'],
+      'Timing applied. Cues are disarmed. Save the sheet to keep these changes.': ['समय लागू. क्यू बंद हैं. बदलाव रखने के लिए सूची सहेजें.', 'સમય લાગુ. ક્યૂ બંધ છે. ફેરફાર રાખવા યાદી સાચવો.'],
+      'Choose a different timing. Nothing changed.': ['अलग समय चुनें. कुछ नहीं बदला.', 'અલગ સમય પસંદ કરો. કંઈ બદલાયું નથી.'],
+      'Before': ['पहले', 'પહેલાં'], 'After': ['बाद में', 'પછી'],
+      'Jump destination': ['जंप लक्ष्य', 'જંપ લક્ષ્ય']
+    });
+    var timing513 = document.createElement('details'); timing513.id = 'pcTiming513';
+    timing513.innerHTML = '<summary data-ct="Retime playback cues"></summary><p class="hint" data-ct="Move every cue earlier or later. Preview every change first. Applying disarms cues but does not seek or play. Save the sheet again to keep the new times."></p><form id="ctForm513"><label for="ctShift513" data-ct="Shift in seconds (negative = earlier)"></label><input id="ctShift513" type="number" step="0.01" value="0" required><label class="row"><input id="ctTargets513" type="checkbox" style="width:auto;margin:0"><span data-ct="Also retime jump destinations"></span></label><button type="submit" class="chip" id="ctPreview513" data-ct="Preview timing changes"></button></form><div id="ctReview513" hidden><h4 data-ct="Review cue timing" id="ctReviewH513" tabindex="-1"></h4><ol id="ctRows513"></ol><div class="row"><button type="button" class="chip" id="ctApply513" data-ct="Apply timing changes"></button><button type="button" class="chip" id="ctCancel513" data-ct="Cancel timing review"></button></div></div><p class="hint" role="status" id="ctStatus513"></p>';
+    card.appendChild(timing513);
+    var timingDraft513 = null, timingState513 = '';
+    function timingKey513() { return JSON.stringify([v.getAttribute('src'), cues]); }
+    function timingPaint513() {
+      timing513.querySelectorAll('[data-ct]').forEach(function(e){e.textContent=T(e.dataset.ct);});
+      if (timingDraft513 && timingDraft513.key !== timingKey513()) { timingDraft513=null; timingState513='The cue sheet changed. Preview the timing again.'; }
+      $('ctPreview513').disabled=!ready() || !cues.length || editIndex>=0;
+      $('ctApply513').disabled=!ready() || editIndex>=0;
+      $('ctReview513').hidden=!timingDraft513;
+      $('ctRows513').textContent='';
+      if(timingDraft513) timingDraft513.rows.forEach(function(c,i){
+        var li=document.createElement('li'),before=timingDraft513.before[i];
+        li.textContent=label(before,i)+' · '+T('Before')+': '+cueTime(before)+' → '+T('After')+': '+cueTime(c)+' · '+action(c);
+        if(c.action==='seek' && before.value!==c.value) li.textContent+=' · '+T('Jump destination')+': '+fmt(before.value)+' → '+fmt(c.value);
+        $('ctRows513').appendChild(li);
+      });
+      $('ctStatus513').textContent=T(timingState513);
+    }
+    function timingCancel513() { timingDraft513=null; timingState513=''; timingPaint513(); }
+    $('ctForm513').addEventListener('submit',function(e){
+      e.preventDefault(); timingDraft513=null; timingState513='';
+      if(!ready() || !cues.length || editIndex>=0) { timingPaint513(); return; }
+      var shift=Number($('ctShift513').value),targets=$('ctTargets513').checked;
+      var rows=cues.map(function(c){var n=Object.assign({},c); n.time=Math.round((c.time+shift)*100)/100; if(targets&&c.action==='seek')n.value=Math.round((c.value+shift)*100)/100; return n;});
+      if(!Number.isFinite(shift) || rows.some(function(c){return !Number.isFinite(c.time)||c.time<0||c.time>=v.duration||(c.action==='seek'&&(!Number.isFinite(c.value)||c.value<0||c.value>=v.duration));})) { timingState513='Every cue and jump destination must stay inside this video. Nothing changed.'; }
+      else if(JSON.stringify(rows)===JSON.stringify(cues)) { timingState513='Choose a different timing. Nothing changed.'; }
+      else { timingDraft513={key:timingKey513(),before:cues.map(function(c){return Object.assign({},c);}),rows:rows}; }
+      timingPaint513(); if(timingDraft513)$('ctReviewH513').focus();
+    });
+    $('ctApply513').addEventListener('click',function(){
+      if(!timingDraft513)return;
+      if(timingDraft513.key!==timingKey513()||editIndex>=0||!ready()){timingDraft513=null;timingState513='The cue sheet changed. Preview the timing again.';timingPaint513();return;}
+      var next=timingDraft513.rows;stop();cues=next;lastCue='';timingDraft513=null;timingState513='Timing applied. Cues are disarmed. Save the sheet to keep these changes.';paint();exchangePaint();savedPaint();timingPaint513();$('ctPreview513').focus();
+    });
+    $('ctCancel513').addEventListener('click',function(){timingCancel513();$('ctPreview513').focus();});
+    $('ctForm513').addEventListener('input',timingCancel513);
+    card.addEventListener('click',function(){setTimeout(timingPaint513,0);});
+    $('pcForm509').addEventListener('submit',timingPaint513);
+    new MutationObserver(function(){timingCancel513();}).observe(v,{attributes:true,attributeFilter:['src']});
+    v.addEventListener('loadedmetadata',timingPaint513);
+    (window.__relang=window.__relang||[]).push(timingPaint513);timingPaint513();
+    window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Retime playback cues','#pcTiming513');},15620);});
     window.__vpCues509 = {snapshot:function(){return {cues:JSON.parse(JSON.stringify(cues)),armed:armed,editing:editIndex>=0};}};
     window.addEventListener('load', function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283('Playback cue sheet', '#playbackCues509'); }, 15220); });
   })();
@@ -59083,6 +59144,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Recent switcher", "recent switcher alt tab quick switch last videos watched continue replay thumbnails arrows enter keyboard history strip", "#rswBtn506"],
       ["Sleep fade length", "sleep fade length sound picture fade out last seconds minutes how long gentle volume dim choice", "#sleepFade"],
       ["Find your videos in Search", "find your videos in search palette ctrl k library favourites watch later queue history title play खोज वीडियो શોધ વીડિયો", "#palBtn"],
+      ["Retime playback cues", "retime playback cues shift earlier later timing offset device cue sheet review", "#pcTiming513"],
       ["Skip-ahead cue", "skip ahead cue jump to time seek intro ads forward backward device file automatic cue sheet playback", "#playbackCues509"],
       ["Theme spin", "theme spin icon rotate turn animation dark light midnight auto chip button change sun moon", "#themeBtn"],
       ["I to copy title and link", "copy title link key i keyboard shortcut share paste chat name video text clipboard send friend whatsapp", "#sc23"],
