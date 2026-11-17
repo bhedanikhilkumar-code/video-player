@@ -53979,6 +53979,219 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Sleep fade length", "#sleepFade"); }, 15020); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Find your videos in Search", "#palBtn"); }, 15120); });
 
+  // Round 517 new 1: Watch reminder. The sleep card's Play at (round 246) starts the loaded
+  // video once and forgets it, and snooze only parks a video for days - nothing pins a saved
+  // video to a moment: "remind me about the revision video at 7". A card under Watch later
+  // picks any video from Watch later or Favourites, takes a quick chip or a clock time (today,
+  // or tomorrow once it has passed), and keeps up to 5 reminders on this device in
+  // vp-remind517.v1. When one comes due while the app is open - including a time that passed
+  // while the app was closed - a glass card names the video with Play (the row's own queue-and
+  // -play path), Snooze one hour, or Not now. The page must stay open for the timer and the
+  // card says so. Cross-tab sets and cancels repaint through the storage event; a due card
+  // already showing for a reminder another tab took down closes itself.
+  (function () {
+    "use strict";
+    var KEY517 = "vp-remind517.v1", MAX517 = 5;
+    Object.assign(TR_MSG, {
+      "Watch reminder": ["देखने की याद", "જોવાની યાદ"],
+      "Pick a saved video and a time. When the time comes - while the app is open - a card names the video with Play, Snooze one hour and Not now. Up to 5 reminders stay saved on this device, ride your backup, and the page must stay open for them to fire.": ["सेव किया वीडियो और समय चुनें. समय आने पर - ऐप खुला हो तो - एक कार्ड वीडियो का नाम दिखाता है, चलाएं, 1 घंटा स्नूज़ और अभी नहीं के साथ. 5 तक रिमाइंडर इस डिवाइस पर सेव रहते हैं, आपके बैकअप में भी जाते हैं, और बजने के लिए पेज खुला रहना चाहिए.", "સાચવેલો વીડિયો અને સમય પસંદ કરો. સમય આવે ત્યારે - ઍપ ખુલ્લી હોય તો - એક કાર્ડ વીડિયોનું નામ બતાવે છે, ચલાવો, 1 કલાક સ્નૂઝ અને હમણાં નહીં સાથે. 5 સુધીના રિમાઇન્ડર આ ડિવાઇસ પર સાચવાય છે, તમારા બૅકઅપમાં પણ જાય છે, અને વાગવા માટે પેજ ખુલ્લું રહેવું જોઈએ."],
+      "Video": ["वीडियो", "વીડિયો"],
+      "Save a video to Watch later or Favourites first.": ["पहले कोई वीडियो बाद में देखें या पसंदीदा में सेव करें.", "પહેલા કોઈ વીડિયો પછી જુઓ કે મનપસંદમાં સાચવો."],
+      "In 1 hour": ["1 घंटे में", "1 કલાકમાં"],
+      "Tonight 8 pm": ["आज रात 8 बजे", "આજે રાત્રે 8 વાગ્યે"],
+      "Tomorrow 9 am": ["कल सुबह 9 बजे", "કાલે સવારે 9 વાગ્યે"],
+      "Or pick a clock time": ["या घड़ी का समय चुनें", "કે ઘડિયાળનો સમય પસંદ કરો"],
+      "Set reminder": ["रिमाइंडर लगाएं", "રિમાઇન્ડર ગોઠવો"],
+      "Pick a video first.": ["पहले एक वीडियो चुनें.", "પહેલા એક વીડિયો પસંદ કરો."],
+      "Pick a time first.": ["पहले एक समय चुनें.", "પહેલા સમય પસંદ કરો."],
+      "You can keep 5 reminders. Cancel one first.": ["5 रिमाइंडर रख सकते हैं. पहले एक रद्द करें.", "5 રિમાઇન્ડર રાખી શકો. પહેલા એક રદ કરો."],
+      "Reminder set for": ["रिमाइंडर लगा:", "રિમાઇન્ડર ગોઠવ્યું:"],
+      "Reminder cancelled.": ["रिमाइंडर रद्द हुआ.", "રિમાઇન્ડર રદ થયું."],
+      "No reminders set.": ["कोई रिमाइंडर नहीं लगा.", "કોઈ રિમાઇન્ડર ગોઠવ્યું નથી."],
+      "Cancel this reminder": ["यह रिमाइंडर रद्द करें", "આ રિમાઇન્ડર રદ કરો"],
+      "Time to watch:": ["देखने का समय:", "જોવાનો સમય:"],
+      "Play": ["चलाएं", "ચલાવો"],
+      "Snooze 1 hour": ["1 घंटा स्नूज़", "1 કલાક સ્નૂઝ"],
+      "Not now": ["अभी नहीं", "હમણાં નહીં"]
+    });
+    var anchor = document.getElementById("laterTime") || document.getElementById("laterList");
+    if (!anchor || document.getElementById("remindCard517")) return;
+    function loc517() { var l = document.documentElement.lang; return l === "hi" ? "hi-IN" : l === "gu" ? "gu-IN" : undefined; }
+    function clean517(v) {
+      if (!Array.isArray(v)) return [];
+      var now = Date.now(), seen = {};
+      return v.filter(function (r) {
+        if (!r || typeof r.id !== "string" || !/^[\w-]{6,15}$/.test(r.id)) return false;
+        if (!Number.isFinite(r.at) || r.at < now - 7 * 864e5 || r.at > now + 30 * 864e5) return false;
+        var k = r.id + "@" + r.at; if (seen[k]) return false; seen[k] = 1;
+        return true;
+      }).slice(0, MAX517).map(function (r) {
+        return { id: r.id, title: typeof r.title === "string" ? r.title.slice(0, 160) : "", at: Math.round(r.at) };
+      });
+    }
+    window.__vpCleanRemind517 = clean517;
+    function read517() { try { return clean517(JSON.parse(localStorage.getItem(KEY517) || "[]")); } catch (e) { return []; } }
+    function write517(rows) { try { localStorage.setItem(KEY517, JSON.stringify(rows.slice(0, MAX517))); } catch (e) { if (window.vpStorageWarning276) window.vpStorageWarning276(); } }
+
+    var det = document.createElement("details");
+    det.className = "faq"; det.id = "remindCard517";
+    det.innerHTML = '<summary id="remSum517"></summary>' +
+      '<p class="hint" id="remHint517"></p>' +
+      '<div class="row"><label class="label" for="remVid517" id="remVidLab517"></label><select id="remVid517"></select></div>' +
+      '<div class="row"><button type="button" class="chip" id="remQ1h517"></button><button type="button" class="chip" id="remQ8pm517"></button><button type="button" class="chip" id="remQ9am517"></button></div>' +
+      '<div class="row"><label class="label" for="remTime517" id="remTimeLab517"></label><input id="remTime517" type="time"><button type="button" class="chip" id="remSet517"></button></div>' +
+      '<ul id="remList517" style="list-style:none;padding-left:0"></ul>' +
+      '<p class="hint" id="remMsg517" role="status"></p>';
+    anchor.after(det);
+
+    var sel517 = document.getElementById("remVid517"), msg517 = document.getElementById("remMsg517"),
+        list517 = document.getElementById("remList517"), timeIn517 = document.getElementById("remTime517");
+
+    function fillVideos517() {
+      var seen = {}, opts = [];
+      [["later"], ["favs"]].forEach(function (w) {
+        var arr = lib[w[0]] || [];
+        arr.forEach(function (e) {
+          var id = e && (e.id || e);
+          if (typeof id !== "string" || seen[id]) return;
+          seen[id] = 1;
+          opts.push({ id: id, title: (e && e.title) || (typeof titleFor === "function" ? titleFor(id) : "") || id });
+        });
+      });
+      sel517.innerHTML = "";
+      if (!opts.length) {
+        var o = document.createElement("option"); o.value = ""; o.textContent = T("Save a video to Watch later or Favourites first.");
+        sel517.appendChild(o); sel517.disabled = true; return;
+      }
+      sel517.disabled = false;
+      opts.forEach(function (v) {
+        var o = document.createElement("option"); o.value = v.id; o.textContent = v.title;
+        sel517.appendChild(o);
+      });
+    }
+
+    function nextAt517(h, m) { var d = new Date(); d.setHours(h, m, 0, 0); if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1); return d.getTime(); }
+
+    function render517() {
+      var rows = read517();
+      list517.innerHTML = "";
+      if (!rows.length) {
+        var li = document.createElement("li"); li.className = "hint"; li.textContent = T("No reminders set.");
+        list517.appendChild(li); return;
+      }
+      rows.slice().sort(function (a, b) { return a.at - b.at; }).forEach(function (r) {
+        var li = document.createElement("li");
+        li.style.cssText = "display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0";
+        var tx = document.createElement("span");
+        tx.textContent = (r.title || r.id) + " · " + new Date(r.at).toLocaleString(loc517(), { weekday: "short", hour: "numeric", minute: "2-digit" });
+        li.appendChild(tx);
+        var x = document.createElement("button");
+        x.type = "button"; x.className = "chip"; x.textContent = T("Cancel this reminder");
+        x.addEventListener("click", function () {
+          write517(read517().filter(function (q) { return !(q.id === r.id && q.at === r.at); }));
+          render517(); toast(T("Reminder cancelled."));
+        });
+        li.appendChild(x);
+        list517.appendChild(li);
+      });
+    }
+
+    function setReminder517(at) {
+      var id = sel517.value;
+      if (!id) { msg517.textContent = T("Pick a video first."); return; }
+      if (!Number.isFinite(at)) { msg517.textContent = T("Pick a time first."); return; }
+      var rows = read517();
+      if (rows.length >= MAX517) { msg517.textContent = T("You can keep 5 reminders. Cancel one first."); return; }
+      var title = "";
+      var opt = sel517.querySelector('option[value="' + id.replace(/"/g, "") + '"]');
+      if (opt) title = opt.textContent;
+      rows.push({ id: id, title: title.slice(0, 160), at: at });
+      write517(rows); render517();
+      msg517.textContent = "";
+      toast(T("Reminder set for") + " " + new Date(at).toLocaleString(loc517(), { weekday: "short", hour: "numeric", minute: "2-digit" }));
+    }
+    document.getElementById("remQ1h517").addEventListener("click", function () { setReminder517(Date.now() + 36e5); });
+    document.getElementById("remQ8pm517").addEventListener("click", function () { setReminder517(nextAt517(20, 0)); });
+    document.getElementById("remQ9am517").addEventListener("click", function () { var d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); setReminder517(d.getTime()); });
+    document.getElementById("remSet517").addEventListener("click", function () {
+      var v = timeIn517.value, m = v && v.match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+      if (!m) { msg517.textContent = T("Pick a time first."); return; }
+      setReminder517(nextAt517(+m[1], +m[2]));
+    });
+    det.addEventListener("toggle", function () { if (det.open) { fillVideos517(); render517(); } });
+
+    // Due card: one at a time; further due reminders queue behind it.
+    var due517 = null, showing517 = null;
+    function hideDue517() { if (due517) due517.hidden = true; showing517 = null; }
+    function showDue517(r) {
+      if (!due517) {
+        due517 = document.createElement("div");
+        due517.id = "remDue517"; due517.hidden = true; due517.setAttribute("role", "alert");
+        due517.innerHTML = '<span id="remDueTx517"></span><div class="rem-row">' +
+          '<button type="button" class="chip" id="remDuePlay517"></button>' +
+          '<button type="button" class="chip" id="remDueSnz517"></button>' +
+          '<button type="button" class="chip" id="remDueNo517"></button></div>';
+        document.body.appendChild(due517);
+        document.getElementById("remDuePlay517").addEventListener("click", function () {
+          var r0 = showing517; hideDue517();
+          if (r0) playId(r0.id, r0.title || undefined);
+          setTimeout(check517, 400);
+        });
+        document.getElementById("remDueSnz517").addEventListener("click", function () {
+          var r0 = showing517; hideDue517();
+          if (r0) { var rows = read517(); if (rows.length < MAX517) { rows.push({ id: r0.id, title: r0.title, at: Date.now() + 36e5 }); write517(rows); } }
+          render517(); setTimeout(check517, 400);
+        });
+        document.getElementById("remDueNo517").addEventListener("click", function () { hideDue517(); setTimeout(check517, 400); });
+      }
+      showing517 = r;
+      document.getElementById("remDueTx517").textContent = "⏰ " + T("Time to watch:") + " " + (r.title || r.id);
+      document.getElementById("remDuePlay517").textContent = "▶ " + T("Play");
+      document.getElementById("remDueSnz517").textContent = "😴 " + T("Snooze 1 hour");
+      document.getElementById("remDueNo517").textContent = T("Not now");
+      due517.hidden = false;
+    }
+    function check517() {
+      var now = Date.now(), rows = read517();
+      var due = rows.filter(function (r) { return r.at <= now; }).sort(function (a, b) { return a.at - b.at; })[0];
+      if (!due) return;
+      write517(rows.filter(function (r) { return !(r.id === due.id && r.at === due.at); }));
+      render517();
+      if (!showing517) showDue517(due); else setTimeout(check517, 800);
+    }
+
+    function paint517() {
+      document.getElementById("remSum517").textContent = "⏰ " + T("Watch reminder");
+      document.getElementById("remHint517").textContent = T("Pick a saved video and a time. When the time comes - while the app is open - a card names the video with Play, Snooze one hour and Not now. Up to 5 reminders stay saved on this device, ride your backup, and the page must stay open for them to fire.");
+      document.getElementById("remVidLab517").textContent = T("Video");
+      document.getElementById("remQ1h517").textContent = T("In 1 hour");
+      document.getElementById("remQ8pm517").textContent = T("Tonight 8 pm");
+      document.getElementById("remQ9am517").textContent = T("Tomorrow 9 am");
+      document.getElementById("remTimeLab517").textContent = T("Or pick a clock time");
+      document.getElementById("remSet517").textContent = T("Set reminder");
+      timeIn517.setAttribute("aria-label", T("Or pick a clock time"));
+      if (det.open) fillVideos517();
+      render517();
+      if (showing517) showDue517(showing517);
+    }
+    (window.__relang = window.__relang || []).push(paint517);
+    paint517();
+
+    window.addEventListener("storage", function (e) {
+      if (e.key !== KEY517) return;
+      render517();
+      if (showing517) {
+        var still = read517().some(function (r) { return r.id === showing517.id && r.at === showing517.at; });
+        if (!still) hideDue517();
+      }
+    });
+    document.addEventListener("vp-remind517-change", function () { render517(); });
+
+    setInterval(check517, 30000);
+    setTimeout(check517, 3000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) check517(); });
+  })();
+
   window.__vpMainOk325 = true;
 
 
@@ -62814,5 +63027,13 @@ summary{min-height:28px;box-sizing:border-box}
    fresh load, even after a file was uploaded. Run after every renderer exists. */
 if (window.__vpApplyLang) window.__vpApplyLang();
 </script>
+<style id="r517-new1">
+/* Round 517 new 1: the watch reminder's due card floats above the page like the boot
+   warning; [hidden] must beat its flex display. */
+#remDue517{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:99998;max-width:min(430px,calc(100vw - 24px));padding:12px 14px;border-radius:18px;display:flex;flex-direction:column;gap:10px;font:500 14px/1.45 system-ui,sans-serif;color:#102a25;background:rgba(250,253,252,.9);border:1px solid rgba(255,255,255,.7);box-shadow:0 14px 44px rgba(10,30,40,.30);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%)}
+[data-theme="dark"] #remDue517{color:#e8fbf6;background:rgba(32,38,42,.94);border-color:rgba(255,255,255,.18)}
+#remDue517 .rem-row{display:flex;flex-wrap:wrap;gap:8px}
+#remDue517[hidden]{display:none !important}
+</style>
 </body>
           </html>
