@@ -1,0 +1,6 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p,errors})=>{
+ assert.equal(await p.locator('#lpGalView285').getAttribute('aria-modal'),'true');assert.equal(await p.locator('#lpGalView285').evaluate(e=>e.open),false);
+ await p.locator('#palBtn').click();await p.locator('#vpPalIn').waitFor({state:'visible',timeout:2000});await p.keyboard.press('Escape');await p.waitForFunction(()=>!document.querySelector('#vpPal'));
+ await p.evaluate(()=>{const d=document.createElement('dialog');d.id='modalGuardRegression501';d.setAttribute('aria-modal','true');d.textContent='Modal guard regression fixture';document.body.appendChild(d);d.showModal();});await p.keyboard.press('Control+k');assert.equal(await p.locator('#vpPal').count(),0,'an actually open modal must still guard the palette');await p.evaluate(()=>document.querySelector('#modalGuardRegression501').close());await p.keyboard.press('Control+k');await p.locator('#vpPalIn').waitFor({state:'visible'});await p.keyboard.press('Escape');assert.deepEqual(errors,[]);console.log('PASS search button and Ctrl+K ignore closed/hidden gallery dialogs while respecting an actual open modal');
+}).catch(e=>{console.error(e);process.exitCode=1;});
