@@ -53299,14 +53299,16 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     function tick() {
       if (!armed || v.paused || v.seeking) return;
-      var now = v.currentTime;
+      var now = v.currentTime, pauseAt509 = null, pauseCue509 = null;
       for (var i = 0; i < cues.length; i++) {
-        var c = cues[i]; if (fired.has(i) || c.time > now + .02) continue;
+        var c = cues[i]; if (pauseAt509 !== null && c.time > pauseAt509) break; if (fired.has(i) || c.time > now + .02) continue;
         fired.add(i); lastCue = {cue:c, index:i};
         if (c.action === 'rate') { applied.rate = c.value; v.playbackRate = c.value; }
         else if (c.action === 'volume') { applied.volume = c.value; v.volume = c.value; }
-        else { v.pause(); status(); return; }
+        else { pauseAt509 = c.time; pauseCue509 = {cue:c,index:i}; }
       }
+      // Finish all actions at the pause timestamp, never ones after it.
+      if (pauseAt509 !== null) { lastCue = pauseCue509; v.pause(); status(); return; }
       status(); if (armed && !v.paused) frame = requestAnimationFrame(tick);
     }
     function arm() {
