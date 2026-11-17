@@ -53214,6 +53214,130 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     if (frameBox && frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion && window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
   };
 
+  // Round 509: a timestamped cue sheet changes a device video's speed or volume,
+  // or pauses it, without cutting/reordering the recording like the clip itinerary.
+  // Explicitly armed per visit. Seeks skip crossed cues instead of firing a burst.
+  (function () {
+    var v = $('lpVideo'), host = $('lpCtl'); if (!v || !host) return;
+    Object.assign(TR_MSG, {
+      'Playback cue sheet': ['प्लेबैक क्यू सूची', 'પ્લેબૅક ક્યૂ યાદી'],
+      'Plan speed, volume and pause changes at chosen video times. Device files only. Arm for this visit, then press Play. Seeking skips crossed cues; seeking back rearms later cues.': ['वीडियो के तय समय पर स्पीड, आवाज़ और विराम बदलें. सिर्फ डिवाइस फ़ाइलों के लिए. इस बार चालू करें, फिर Play दबाएं. आगे जाने पर बीच के क्यू छूटते हैं; पीछे जाने पर आगे के क्यू फिर तैयार होते हैं.', 'વીડિયોના નક્કી સમયે સ્પીડ, અવાજ અને વિરામ બદલો. માત્ર ડિવાઇસ ફાઇલો માટે. આ મુલાકાત માટે ચાલુ કરો, પછી Play દબાવો. આગળ જતાં વચ્ચેના ક્યૂ છૂટે છે; પાછળ જતાં આગળના ક્યૂ ફરી તૈયાર થાય છે.'],
+      'Cue name': ['क्यू का नाम', 'ક્યૂનું નામ'],
+      'Cue time (seconds)': ['क्यू का समय (सेकंड)', 'ક્યૂનો સમય (સેકન્ડ)'],
+      'Cue action': ['क्यू की क्रिया', 'ક્યૂની ક્રિયા'],
+      'Cue value': ['क्यू का मान', 'ક્યૂનું મૂલ્ય'],
+      'Set speed': ['स्पीड तय करें', 'સ્પીડ નક્કી કરો'],
+      'Set volume': ['आवाज़ तय करें', 'અવાજ નક્કી કરો'],
+      'Pause playback': ['प्लेबैक रोकें', 'પ્લેબૅક રોકો'],
+      'Add playback cue': ['प्लेबैक क्यू जोड़ें', 'પ્લેબૅક ક્યૂ ઉમેરો'],
+      'Save cue changes': ['क्यू के बदलाव सहेजें', 'ક્યૂના ફેરફાર સાચવો'],
+      'Use current video time': ['वीडियो का मौजूदा समय लें', 'વીડિયોનો હાલનો સમય લો'],
+      'Arm cues': ['क्यू चालू करें', 'ક્યૂ ચાલુ કરો'],
+      'Disarm cues': ['क्यू बंद करें', 'ક્યૂ બંધ કરો'],
+      'No cues yet. Add a time and an action.': ['अभी कोई क्यू नहीं. समय और क्रिया जोड़ें.', 'હજી કોઈ ક્યૂ નથી. સમય અને ક્રિયા ઉમેરો.'],
+      'Cues are disarmed.': ['क्यू बंद हैं.', 'ક્યૂ બંધ છે.'],
+      'Cues armed. Changes apply only while this video plays.': ['क्यू चालू हैं. बदलाव सिर्फ यह वीडियो चलते समय होंगे.', 'ક્યૂ ચાલુ છે. ફેરફાર માત્ર આ વીડિયો ચાલે ત્યારે થશે.'],
+      'Cues stopped. Previous speed and volume restored where unchanged.': ['क्यू रुके. जहां आपने बदलाव नहीं किया वहां पिछली स्पीड और आवाज़ लौट गई.', 'ક્યૂ રોકાયા. જ્યાં તમે ફેરફાર કર્યો નથી ત્યાં અગાઉની સ્પીડ અને અવાજ પાછાં આવ્યાં.'],
+      'A manual or other player change disarmed the cues. Your change is kept.': ['आपके या किसी दूसरे कंट्रोल के बदलाव से क्यू बंद हुए. आपका बदलाव रखा गया है.', 'તમારા અથવા બીજા કંટ્રોલના ફેરફારથી ક્યૂ બંધ થયા. તમારો ફેરફાર રાખ્યો છે.'],
+      'Choose a time inside the open video. Use at most 40 cues.': ['खुले वीडियो के अंदर का समय चुनें. अधिकतम 40 क्यू रखें.', 'ખુલ્લા વીડિયોની અંદરનો સમય પસંદ કરો. વધુમાં વધુ 40 ક્યૂ રાખો.'],
+      'Preview cue position': ['क्यू का समय देखें', 'ક્યૂનો સમય જુઓ'],
+      'Edit playback cue': ['प्लेबैक क्यू बदलें', 'પ્લેબૅક ક્યૂ બદલો'],
+      'Remove playback cue': ['प्लेबैक क्यू हटाएं', 'પ્લેબૅક ક્યૂ દૂર કરો'],
+      'Cue applied': ['क्यू लागू हुआ', 'ક્યૂ લાગુ થયો'],
+      'Next cue': ['अगला क्यू', 'આગળનો ક્યૂ'],
+      'No remaining cues ahead.': ['आगे कोई क्यू नहीं बचा.', 'આગળ કોઈ ક્યૂ બાકી નથી.'],
+      'Stop the clip itinerary before arming cues.': ['क्यू चालू करने से पहले क्लिप यात्रा रोकें.', 'ક્યૂ ચાલુ કરતાં પહેલાં ક્લિપ ક્રમ રોકો.'],
+      'Cue changes do not alter your saved default speed or volume. Disarming restores them unless you changed them yourself. Volume control depends on your browser.': ['क्यू आपके सहेजे हुए डिफ़ॉल्ट स्पीड या आवाज़ नहीं बदलते. बंद करने पर पुराने मान लौटते हैं, जब तक आपने खुद न बदले हों. आवाज़ का कंट्रोल आपके ब्राउज़र पर निर्भर है.', 'ક્યૂ તમારી સાચવેલી મૂળ સ્પીડ અથવા અવાજ બદલતા નથી. બંધ કરતાં જૂનાં મૂલ્ય પાછાં આવે છે, જો તમે જાતે ન બદલ્યાં હોય. અવાજનું નિયંત્રણ તમારા બ્રાઉઝર પર આધારિત છે.']
+    });
+    var card = document.createElement('details'); card.id = 'playbackCues509'; card.className = 'lp-workbench';
+    card.innerHTML = '<summary data-pc="Playback cue sheet"></summary><p class="hint" data-pc="Plan speed, volume and pause changes at chosen video times. Device files only. Arm for this visit, then press Play. Seeking skips crossed cues; seeking back rearms later cues."></p><form id="pcForm509"><label for="pcName509" data-pc="Cue name"></label><input id="pcName509" maxlength="80" autocomplete="off"><div class="pc-grid509"><label><span data-pc="Cue time (seconds)"></span><input id="pcTime509" type="number" min="0" step="0.01" value="0" required></label><label><span data-pc="Cue action"></span><select id="pcAction509"><option value="rate" data-pc="Set speed"></option><option value="volume" data-pc="Set volume"></option><option value="pause" data-pc="Pause playback"></option></select></label><label id="pcValueWrap509"><span data-pc="Cue value"></span><select id="pcValue509"></select></label></div><div class="row"><button type="button" class="chip" id="pcNow509" data-pc="Use current video time"></button><button class="chip" id="pcAdd509"></button><button type="button" class="chip" id="pcCancel509" data-pc="Cancel" hidden></button></div></form><div class="row" style="margin-top:12px"><button type="button" class="chip" id="pcArm509" data-pc="Arm cues"></button><button type="button" class="chip" id="pcStop509" data-pc="Disarm cues"></button></div><p class="hint" id="pcStatus509" role="status" aria-live="polite"></p><p class="hint" id="pcNext509"></p><ol id="pcList509"></ol><p class="hint" data-pc="Cue changes do not alter your saved default speed or volume. Disarming restores them unless you changed them yourself. Volume control depends on your browser."></p>';
+    host.insertBefore(card, host.firstChild);
+    var cues = [], armed = false, editIndex = -1, fired = new Set(), baseline = null, applied = null, source = v.getAttribute('src') || '', state = '', lastCue = '', frame = 0;
+    function ready() { return /^blob:/.test(v.getAttribute('src') || '') && !v.hidden && Number.isFinite(v.duration) && v.duration > 0; }
+    function label(c, i) { return c.name || T('Cue name') + ' ' + (i + 1); }
+    function cueTime(c) { return fmt(c.time) + (c.time % 1 ? '.' + String(Math.round((c.time % 1) * 100)).padStart(2, '0') : ''); }
+    function action(c) { return T(c.action === 'rate' ? 'Set speed' : c.action === 'volume' ? 'Set volume' : 'Pause playback') + (c.action === 'pause' ? '' : ': ' + (c.action === 'rate' ? c.value + '×' : Math.round(c.value * 100) + '%')); }
+    function valueOptions() {
+      var a = $('pcAction509').value, sel = $('pcValue509'); sel.textContent = '';
+      (a === 'volume' ? [0, .1, .25, .5, .75, 1] : [.25, .5, .75, 1, 1.25, 1.5, 2, 2.5, 3]).forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = a === 'volume' ? Math.round(n * 100) + '%' : n + '×'; sel.appendChild(o); });
+      sel.value = '1'; $('pcValueWrap509').hidden = a === 'pause';
+    }
+    function status() {
+      $('pcStatus509').textContent = T(armed ? 'Cues armed. Changes apply only while this video plays.' : state || (cues.length ? 'Cues are disarmed.' : 'No cues yet. Add a time and an action.')) + (lastCue ? ' ' + T('Cue applied') + ': ' + label(lastCue.cue, lastCue.index) + ' · ' + action(lastCue.cue) : '');
+      var next = armed ? cues.find(function (c, i) { return !fired.has(i) && c.time >= v.currentTime - .05; }) : null;
+      $('pcNext509').textContent = armed ? (next ? T('Next cue') + ': ' + cueTime(next) + ' · ' + action(next) : T('No remaining cues ahead.')) : '';
+    }
+    function paint() {
+      card.querySelectorAll('[data-pc]').forEach(function (e) { e.textContent = T(e.dataset.pc); });
+      $('pcAdd509').textContent = T(editIndex < 0 ? 'Add playback cue' : 'Save cue changes'); $('pcCancel509').hidden = editIndex < 0;
+      $('pcArm509').disabled = !ready() || !cues.length || armed || editIndex >= 0; $('pcStop509').disabled = !armed;
+      ['pcNow509','pcAdd509'].forEach(function (id) { $(id).disabled = !ready(); });
+      var list = $('pcList509'); list.textContent = '';
+      cues.forEach(function (c, i) {
+        var li = document.createElement('li'), title = document.createElement('b'); title.id = 'pcCue509-' + i; title.textContent = cueTime(c) + ' · ' + label(c, i) + ' · ' + action(c); li.appendChild(title);
+        var row = document.createElement('div'); row.className = 'row'; li.appendChild(row);
+        function button(text, fn) { var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = T(text); b.setAttribute('aria-describedby', title.id); b.disabled = editIndex >= 0; b.addEventListener('click', fn); row.appendChild(b); }
+        button('Preview cue position', function () { stop('Cues are disarmed.'); v.pause(); v.currentTime = c.time; });
+        button('Edit playback cue', function () { stop('Cues are disarmed.'); editIndex = i; $('pcName509').value = c.name; $('pcTime509').value = c.time; $('pcAction509').value = c.action; valueOptions(); $('pcValue509').value = c.value; paint(); $('pcName509').focus(); });
+        button('Remove playback cue', function () { stop('Cues are disarmed.'); cues.splice(i, 1); lastCue = ''; paint(); var next = list.children[Math.min(i, cues.length - 1)]; if (next) next.querySelectorAll('button')[2].focus(); else $('pcName509').focus(); });
+        list.appendChild(li);
+      }); status();
+    }
+    function stop(message) {
+      var hadFocus = document.activeElement === $('pcStop509');
+      armed = false; cancelAnimationFrame(frame); frame = 0;
+      if (baseline && source === (v.getAttribute('src') || '')) {
+        if (applied && Math.abs(v.playbackRate - applied.rate) < .001) v.playbackRate = baseline.rate;
+        if (applied && Math.abs(v.volume - applied.volume) < .001) v.volume = baseline.volume;
+      }
+      baseline = applied = null; state = message || 'Cues are disarmed.'; paint();
+      if (hadFocus && !$('pcArm509').disabled) $('pcArm509').focus();
+    }
+    function tick() {
+      if (!armed || v.paused || v.seeking) return;
+      var now = v.currentTime;
+      for (var i = 0; i < cues.length; i++) {
+        var c = cues[i]; if (fired.has(i) || c.time > now + .02) continue;
+        fired.add(i); lastCue = {cue:c, index:i};
+        if (c.action === 'rate') { applied.rate = c.value; v.playbackRate = c.value; }
+        else if (c.action === 'volume') { applied.volume = c.value; v.volume = c.value; }
+        else { v.pause(); status(); return; }
+      }
+      status(); if (armed && !v.paused) frame = requestAnimationFrame(tick);
+    }
+    function arm() {
+      if (!ready() || !cues.length || editIndex >= 0) return;
+      var itinerary = $('ciStop500'); if (itinerary && !itinerary.disabled) { state = 'Stop the clip itinerary before arming cues.'; paint(); return; }
+      stop(); baseline = {rate: v.playbackRate, volume: v.volume}; applied = {rate: v.playbackRate, volume: v.volume}; fired = new Set();
+      cues.forEach(function (c, i) { if (c.time < v.currentTime - .05) fired.add(i); });
+      armed = true; state = ''; lastCue = ''; paint(); $('pcStop509').focus(); if (!v.paused) tick();
+    }
+    $('pcForm509').addEventListener('submit', function (e) {
+      e.preventDefault(); var t = Number($('pcTime509').value);
+      if (!ready() || !Number.isFinite(t) || t < 0 || t >= v.duration || (cues.length >= 40 && editIndex < 0)) { state = 'Choose a time inside the open video. Use at most 40 cues.'; status(); return; }
+      stop(); var c = {name: $('pcName509').value.trim().slice(0, 80), time: Math.round(t * 100) / 100, action: $('pcAction509').value, value: Number($('pcValue509').value)};
+      if (editIndex >= 0) cues[editIndex] = c; else cues.push(c); editIndex = -1; cues.sort(function (a,b) { return a.time - b.time; }); $('pcName509').value = ''; lastCue = ''; paint(); $('pcName509').focus();
+    });
+    $('pcAction509').addEventListener('change', valueOptions); $('pcNow509').addEventListener('click', function () { if (ready()) $('pcTime509').value = v.currentTime.toFixed(2); });
+    $('pcCancel509').addEventListener('click', function () { editIndex = -1; $('pcName509').value = ''; paint(); $('pcName509').focus(); });
+    $('pcArm509').addEventListener('click', arm); $('pcStop509').addEventListener('click', function () { stop('Cues stopped. Previous speed and volume restored where unchanged.'); });
+    v.addEventListener('play', function () { cancelAnimationFrame(frame); if (armed) tick(); });
+    v.addEventListener('pause', function () { cancelAnimationFrame(frame); frame = 0; status(); });
+    v.addEventListener('seeking', function () { cancelAnimationFrame(frame); frame = 0; if (!armed) return; fired = new Set(); cues.forEach(function (c,i) { if (c.time <= v.currentTime) fired.add(i); }); lastCue = ''; status(); });
+    v.addEventListener('seeked', function () { if (armed && !v.paused) { cancelAnimationFrame(frame); tick(); } });
+    ['ratechange','volumechange'].forEach(function (ev) { v.addEventListener(ev, function () { if (armed && applied && (Math.abs(v.playbackRate - applied.rate) > .001 || Math.abs(v.volume - applied.volume) > .001)) stop('A manual or other player change disarmed the cues. Your change is kept.'); }); });
+    v.addEventListener('ended', function () { stop('Cues stopped. Previous speed and volume restored where unchanged.'); });
+    v.addEventListener('error', function () { stop(); }); v.addEventListener('loadedmetadata', paint);
+    new MutationObserver(function () { var s = v.getAttribute('src') || ''; if (s !== source) { stop(); source = s; cues = []; editIndex = -1; lastCue = ''; $('pcName509').value = ''; paint(); } }).observe(v,{attributes:true,attributeFilter:['src']});
+    document.addEventListener('click', function (e) { if (armed && e.target.closest && e.target.closest('#ciPlay500,#ciList500,#lpSetA,#lpSetB')) stop('A manual or other player change disarmed the cues. Your change is kept.'); }, true);
+    ['vp-local-closed','vp-youtube-selected'].forEach(function (ev) { document.addEventListener(ev, function () { stop(); }); });
+    document.addEventListener('visibilitychange', function () { if (document.hidden && armed) stop('Cues stopped. Previous speed and volume restored where unchanged.'); }); window.addEventListener('pagehide', function () { stop(); });
+    var st = document.createElement('style'); st.textContent = '#playbackCues509{margin:14px 0;padding:14px;border:1px solid var(--hairline);border-radius:18px;background:var(--card);color:var(--ink);min-width:0;overflow-wrap:anywhere}#playbackCues509 summary{font-weight:700;cursor:pointer}#playbackCues509 .pc-grid509{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:12px}#playbackCues509 label{display:block}#playbackCues509 input,#playbackCues509 select{box-sizing:border-box;width:100%;min-width:0;font:inherit;font-size:16px;border:1px solid var(--hairline);border-radius:12px;padding:10px;background:var(--card);color:var(--ink);margin:5px 0 12px}#playbackCues509 button{min-height:44px;max-width:100%;white-space:normal}#playbackCues509 .row{flex-wrap:wrap}#pcList509{padding-left:24px}#pcList509 li{padding:12px 4px;border-bottom:1px solid var(--hairline)}#playbackCues509 [hidden]{display:none!important}'; document.head.appendChild(st);
+    valueOptions(); (window.__relang = window.__relang || []).push(paint); paint();
+    window.__vpCues509 = {snapshot:function(){return {cues:JSON.parse(JSON.stringify(cues)),armed:armed,editing:editIndex>=0};}};
+    window.addEventListener('load', function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283('Playback cue sheet', '#playbackCues509'); }, 15220); });
+  })();
+
 
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
@@ -57924,6 +58048,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       };
     }
     var FEATS = [
+      ["Playback cue sheet", "timestamp automation timed speed volume pause device local video cues cue sheet Hindi समय Gujarati સમય", "#playbackCues509"],
       ["Scenes to clip itinerary", "select scene cuts review sampled segments clip itinerary local video Hindi दृश्य Gujarati દૃશ્ય", "#sceneNav504"],
       ["Scene change navigator", "scene change shot detect scan picture cuts local device video visual navigation Hindi दृश्य Gujarati દૃશ્ય", "#sceneNav504"],
       ["Own subtitle look", "subtitle caption colour color yellow cyan green white background solid outline low vision readable style Hindi रंग Gujarati રંગ", "#subLook503"],
