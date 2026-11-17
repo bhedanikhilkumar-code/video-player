@@ -11,6 +11,9 @@ require('./round445-harness.cjs')(async({p,pick,origin})=>{
   assert.ok(await p.locator('#lpVideo').evaluate(v=>v.readyState>=2));
   await p.screenshot({path:'/downloads/r509-cues-'+lang+'.png'});
  }
+ await p.locator('#langBtn').click();await p.waitForFunction(()=>document.documentElement.lang==='en');await p.waitForTimeout(3200);await p.setViewportSize({width:1280,height:900});
+ await p.locator('#pcExchange509 > summary').click();await p.locator('#pcSave509').click();await p.locator('#pcRecall509').click();await p.locator('#pcExchange509').evaluate(e=>e.scrollIntoView({block:'start',behavior:'instant'}));await p.waitForTimeout(500);
+ assert.equal(await p.locator('#pcReview509').isVisible(),true);await p.screenshot({path:'/downloads/r509-saved-review.png'});
  await p.evaluate(()=>{document.documentElement.dataset.theme='dark';document.documentElement.classList.add('high-contrast','low-fx','calm-motion');});
  assert.ok(await p.locator('#pcAdd509').isVisible());await p.screenshot({path:'/downloads/r509-cues-contrast.png'});
  console.log('PASS cue visuals: device frame, mini/dock, English desktop, Hindi/Gujarati 390px and contrast');
