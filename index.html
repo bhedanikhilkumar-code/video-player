@@ -53884,6 +53884,12 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       "Choose a date within 30 days, or leave it blank for the next clock time. Times use this device's clock. The app must be open; reminders never start playback by themselves.": ["30 दिनों के अंदर तारीख चुनें, या अगली बार के घड़ी समय के लिए खाली छोड़ें. समय इस डिवाइस की घड़ी के हैं. ऐप खुला होना चाहिए; रिमाइंडर अपने आप वीडियो नहीं चलाते.", "30 દિવસની અંદરની તારીખ પસંદ કરો, અથવા ઘડિયાળના આગલા સમય માટે ખાલી રાખો. સમય આ ડિવાઇસની ઘડિયાળ મુજબ છે. ઍપ ખુલ્લી હોવી જોઈએ; રિમાઇન્ડર આપમેળે વીડિયો ચલાવતા નથી."],
       "Choose a valid future date and time within 30 days.": ["अगले 30 दिनों के अंदर सही तारीख और समय चुनें.", "આગામી 30 દિવસની અંદરની માન્ય તારીખ અને સમય પસંદ કરો."],
       "Tomorrow 8 pm": ["कल रात 8 बजे", "કાલે રાત્રે 8 વાગ્યે"],
+      "Reschedule a watch reminder": ["देखने के रिमाइंडर का समय बदलें", "જોવાના રિમાઇન્ડરનો સમય બદલો"],
+      "Change reminder time": ["रिमाइंडर का समय बदलें", "રિમાઇન્ડરનો સમય બદલો"],
+      "Editing reminder for": ["इस वीडियो का समय बदल रहे हैं:", "આ વીડિયોનો સમય બદલી રહ્યા છો:"],
+      "Save reminder changes": ["रिमाइंडर के बदलाव सेव करें", "રિમાઇન્ડરના ફેરફાર સાચવો"],
+      "Cancel reminder edit": ["समय बदलना रद्द करें", "સમય બદલવાનું રદ કરો"],
+      "Reminder changed elsewhere. Reopen it to edit the current version.": ["रिमाइंडर दूसरी जगह बदल गया. मौजूदा समय बदलने के लिए उसे फिर खोलें.", "રિમાઇન્ડર બીજી જગ્યાએ બદલાયું છે. હાલનો સમય બદલવા તેને ફરી ખોલો."],
       "Watch reminder": ["देखने की याद", "જોવાની યાદ"],
       "Pick a saved video and a time. When the time comes - while the app is open - a card names the video with Play, Snooze one hour and Not now. Up to 5 reminders stay saved on this device, ride your backup, and the page must stay open for them to fire.": ["सेव किया वीडियो और समय चुनें. समय आने पर - ऐप खुला हो तो - एक कार्ड वीडियो का नाम दिखाता है, चलाएं, 1 घंटा स्नूज़ और अभी नहीं के साथ. 5 तक रिमाइंडर इस डिवाइस पर सेव रहते हैं, आपके बैकअप में भी जाते हैं, और बजने के लिए पेज खुला रहना चाहिए.", "સાચવેલો વીડિયો અને સમય પસંદ કરો. સમય આવે ત્યારે - ઍપ ખુલ્લી હોય તો - એક કાર્ડ વીડિયોનું નામ બતાવે છે, ચલાવો, 1 કલાક સ્નૂઝ અને હમણાં નહીં સાથે. 5 સુધીના રિમાઇન્ડર આ ડિવાઇસ પર સાચવાય છે, તમારા બૅકઅપમાં પણ જાય છે, અને વાગવા માટે પેજ ખુલ્લું રહેવું જોઈએ."],
       "Video": ["वीडियो", "વીડિયો"],
@@ -53940,7 +53946,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       '<fieldset class="rem-schedule518"><legend id="remDateTitle518"></legend><p class="hint" id="remDateHint518"></p>' +
       '<label class="label" for="remDate518" id="remDateLab518"></label><input id="remDate518" type="date" aria-describedby="remDateHint518">' +
       '<div class="row"><label class="label" for="remTime517" id="remTimeLab517"></label><input id="remTime517" type="time"><button type="button" class="chip" id="remSet517"></button></div>' +
-      '</fieldset>' +
+      '<p class="hint" id="remEditNote518" role="status" hidden></p><button type="button" class="chip" id="remEditCancel518" hidden></button></fieldset>' +
       '<ul id="remList517" style="list-style:none;padding-left:0"></ul>' +
       '<p class="hint" id="remMsg517" role="status"></p>';
     anchor.after(det);
@@ -53960,6 +53966,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
           opts.push({ id: id, title: (e && e.title) || (typeof titleFor === "function" ? titleFor(id) : "") || id });
         });
       });
+      if (editing518 && !seen[editing518.id]) opts.push({ id:editing518.id, title:editing518.title || editing518.id });
       sel517.innerHTML = "";
       if (!opts.length) {
         var o = document.createElement("option"); o.value = ""; o.textContent = T("Save a video to Watch later or Favourites first.");
@@ -53971,9 +53978,10 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         sel517.appendChild(o);
       });
       if (opts.some(function (v) { return v.id === previous518; })) sel517.value = previous518;
+      if (editing518) { sel517.value = editing518.id; sel517.disabled = true; }
     }
 
-    var dateIn518 = document.getElementById("remDate518");
+    var dateIn518 = document.getElementById("remDate518"), editing518 = null;
     function dateValue518(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
     function dateBounds518() {
       var now = new Date(), end = new Date(Date.now() + 30 * 864e5);
@@ -53992,6 +54000,22 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       var d = new Date(); d.setHours(20, 0, 0, 0);
       document.getElementById("remQ8pm517").textContent = T(d.getTime() <= Date.now() ? "Tomorrow 8 pm" : "Tonight 8 pm");
     }
+    function paintEdit518() {
+      var active = !!editing518, note = document.getElementById("remEditNote518"), cancel = document.getElementById("remEditCancel518");
+      note.hidden = !active; cancel.hidden = !active;
+      note.textContent = active ? T("Editing reminder for") + " " + (editing518.title || editing518.id) : "";
+      cancel.textContent = T("Cancel reminder edit");
+      document.getElementById("remSet517").textContent = T(active ? "Save reminder changes" : "Set reminder");
+      ["remQ1h517", "remQ8pm517", "remQ9am517"].forEach(function (id) { document.getElementById(id).disabled = active; });
+    }
+    function stopEdit518() { editing518 = null; dateIn518.value = ""; fillVideos517(); paintEdit518(); }
+    function beginEdit518(r) {
+      editing518 = { id:r.id, title:r.title, at:r.at };
+      var d = new Date(r.at); dateIn518.value = dateValue518(d);
+      timeIn517.value = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+      fillVideos517(); paintEdit518(); msg517.textContent = ""; timeIn517.focus();
+    }
+    document.getElementById("remEditCancel518").addEventListener("click", function () { stopEdit518(); document.getElementById("remSet517").focus(); });
     function nextAt517(h, m) { var d = new Date(); d.setHours(h, m, 0, 0); if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1); return d.getTime(); }
 
     function render517() {
@@ -54008,10 +54032,14 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         var tx = document.createElement("span");
         tx.textContent = (r.title || r.id) + " · " + formatAt518(r.at);
         li.appendChild(tx);
+        var edit = document.createElement("button"); edit.type = "button"; edit.className = "chip";
+        edit.textContent = T("Change reminder time"); edit.setAttribute("aria-label", T("Change reminder time") + ": " + (r.title || r.id) + " · " + formatAt518(r.at));
+        edit.addEventListener("click", function () { beginEdit518(r); }); li.appendChild(edit);
         var x = document.createElement("button");
         x.type = "button"; x.className = "chip"; x.textContent = T("Cancel this reminder");
         x.addEventListener("click", function () {
           if (!write517(read517().filter(function (q) { return !(q.id === r.id && q.at === r.at); }))) return;
+          if (editing518 && editing518.id === r.id && editing518.at === r.at) stopEdit518();
           render517(); toast(T("Reminder cancelled."));
         });
         li.appendChild(x);
@@ -54023,14 +54051,20 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       var id = sel517.value;
       if (!id) { msg517.textContent = T("Pick a video first."); return; }
       if (!Number.isFinite(at) || at <= Date.now() || at > Date.now() + 30 * 864e5) { msg517.textContent = T("Choose a valid future date and time within 30 days."); return; }
-      var rows = read517();
-      if (rows.some(function (r) { return r.id === id && r.at === at; })) { msg517.textContent = T("This video already has a reminder at that time."); return; }
-      if (rows.length >= MAX517) { msg517.textContent = T("You can keep 5 reminders. Cancel one first."); return; }
+      var rows = read517(), editIndex518 = -1;
+      if (editing518) {
+        editIndex518 = rows.findIndex(function (r) { return r.id === editing518.id && r.at === editing518.at; });
+        if (editIndex518 < 0) { stopEdit518(); msg517.textContent = T("Reminder changed elsewhere. Reopen it to edit the current version."); return; }
+      }
+      if (rows.some(function (r, i) { return i !== editIndex518 && r.id === id && r.at === at; })) { msg517.textContent = T("This video already has a reminder at that time."); return; }
+      if (editIndex518 < 0 && rows.length >= MAX517) { msg517.textContent = T("You can keep 5 reminders. Cancel one first."); return; }
       var title = "";
       var opt = sel517.querySelector('option[value="' + id.replace(/"/g, "") + '"]');
       if (opt) title = opt.textContent;
-      rows.push({ id: id, title: title.slice(0, 160), at: at });
+      var next518 = { id: id, title: title.slice(0, 160), at: at };
+      if (editIndex518 < 0) rows.push(next518); else rows[editIndex518] = next518;
       if (!write517(rows)) return;
+      if (editing518) stopEdit518();
       render517();
       msg517.textContent = "";
       toast(T("Reminder set for") + " " + formatAt518(at));
@@ -54117,7 +54151,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       document.getElementById("remSet517").textContent = T("Set reminder");
       timeIn517.setAttribute("aria-label", T("Or pick a clock time"));
       if (det.open) fillVideos517();
-      render517();
+      paintEdit518(); render517();
       if (showing517) showDue517(showing517);
     }
     (window.__relang = window.__relang || []).push(paint517);
@@ -54257,6 +54291,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Sleep fade length", "#sleepFade"); }, 15020); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Find your videos in Search", "#palBtn"); }, 15120); });
 
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Reschedule a watch reminder", "#remindCard517"); }, 15920); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Schedule a watch date", "#remindCard517"); }, 15820); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Watch reminder", "#remindCard517"); }, 15220); });
 
@@ -59516,6 +59551,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Rename a saved moment", "rename moment bookmark saved timestamp name edit pencil", "#markAddBtn"],
       ["Responsive language switching", "language hindi gujarati switch responsive batching", "#langBtn"],
       ["What's new", "new latest recent additions updates features whats new", "#whatsNewCard"],
+      ["Reschedule a watch reminder", "reschedule edit reminder change time date saved alarm cancel edit", "#remindCard517"],
       ["Schedule a watch date", "schedule watch date future calendar reminder thirty days day month", "#remindCard517"],
       ["Watch reminder", "watch reminder alarm nudge remember to watch saved video time clock 7pm tonight tomorrow snooze bell", "#remindCard517"],
       ["Earlier additions", "earlier additions previous older whats new features archive history list show more", "#wnewArch475"],
@@ -63111,6 +63147,8 @@ if (window.__vpApplyLang) window.__vpApplyLang();
 .rem-schedule518 .row{flex-wrap:wrap;margin-top:10px}
 #remindCard517 .row select{min-width:0;max-width:100%}
 #remList517 li span{overflow-wrap:anywhere;min-width:0}
+
+#remEditNote518[hidden],#remEditCancel518[hidden]{display:none!important}
 </style>
 </body>
           </html>

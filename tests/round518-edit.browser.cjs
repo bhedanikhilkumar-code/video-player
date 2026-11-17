@@ -1,0 +1,12 @@
+const assert=require('node:assert/strict');
+require('./round518-harness.cjs')(async({p,open,rows,boot,origin})=>{
+ await p.evaluate(()=>localStorage.setItem('vp-remind517.v1',JSON.stringify(Array.from({length:5},(_,i)=>({id:'dQw4w9WgXcQ',title:'Reminder '+(i+1),at:Date.now()+(i+1)*864e5})))));await boot();await open();let before=await rows();
+ const edit=()=>p.locator('#remList517 li').first().locator('button').first().click();
+ await edit();assert.equal(await p.locator('#remVid517').isDisabled(),true);assert.equal(await p.locator('#remQ1h517').isDisabled(),true);assert.deepEqual(await rows(),before,'opening editor is read-only');
+ await p.locator('#remTime517').fill('15:22');await p.locator('#remEditCancel518').click();assert.deepEqual(await rows(),before,'cancel is read-only');
+ await edit();await p.locator('#remTime517').fill('15:22');await p.locator('#langBtn').click();await p.waitForTimeout(2100);await p.setViewportSize({width:390,height:844});await p.locator('#remDateTitle518').evaluate(e=>window.scrollTo({top:e.getBoundingClientRect().top+scrollY-100,behavior:'instant'}));await p.waitForTimeout(700);await p.screenshot({path:'/downloads/r518-edit-hi-local.png'});assert.equal(await p.locator('#remTime517').inputValue(),'15:22');assert.equal(await p.locator('#remVid517').inputValue(),'dQw4w9WgXcQ');await p.locator('#remSet517').click();let after=await rows();assert.equal(after.length,5,'editing is allowed when all 5 slots are full');assert.equal(new Date(after[0].at).getHours(),15);assert.equal(new Date(after[0].at).getMinutes(),22);assert.deepEqual(after.slice(1),before.slice(1));assert.equal(await p.locator('#remEditCancel518').isVisible(),false);
+ await boot();await open();assert.deepEqual(await rows(),after);await boot();await open();assert.deepEqual(await rows(),after);
+ // Remove the edited record elsewhere, without repainting the draft. Saving must not resurrect it.
+ await p.locator('#remList517 li').first().locator('button').first().click();await p.evaluate(()=>{let r=JSON.parse(localStorage.getItem('vp-remind517.v1'));r.shift();localStorage.setItem('vp-remind517.v1',JSON.stringify(r));});await p.locator('#remTime517').fill('16:20');await p.locator('#remSet517').click();assert.equal((await rows()).length,4);assert.ok((await p.locator('#remMsg517').textContent()).length>10);
+ console.log('PASS reschedule: full list, cancel, language, reload, stale-edit conflict '+origin);
+}).catch(e=>{console.error(e);process.exitCode=1;});
