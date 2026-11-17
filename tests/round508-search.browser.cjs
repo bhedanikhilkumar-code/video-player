@@ -4,6 +4,7 @@ require('./round445-harness.cjs')(async({p,boot})=>{
  await boot();
  assert.equal(await p.evaluate(()=>window.__vpPalVideos508('music').length),3);
  assert.equal(await p.evaluate(()=>window.__vpPalVideos508('').length),0);
+ assert.ok((await p.locator('#palBtn').getAttribute('aria-label')).includes('videos'));
  await p.locator('#palBtn').click();await p.locator('#vpPalIn').fill('Rick');
  await p.waitForFunction(()=>document.querySelector('#vpPalItem0').textContent.includes('Rick'));
  assert.equal(await p.locator('#vpPalItem0 .vp-pal-pin').count(),0);
