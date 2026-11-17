@@ -53155,6 +53155,42 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     btn2.textContent = "⇄ " + T("Recent switcher");
   })();
 
+  // Round 508 new 1: Find your videos in Search. The Search everything box (round 22)
+  // only knew sections, actions and features - finding one of YOUR videos by name still
+  // meant opening Your videos and scrolling four lists. With the box open, typing now
+  // also matches your own videos (favourites, watch later, queue, history, deduped in
+  // that order, six best) under a Your videos group on top of the results; Enter or a
+  // tap plays the pick through the same link-box load path the Recent switcher uses
+  // (round 506). Nothing new is saved, and the video rows stay out of Recently used
+  // and pinning. Checked first: the palette's only groups were Sections, Actions,
+  // Features, Pinned and Recently used - no group ever searched your lists' titles.
+  Object.assign(TR_MSG, {
+    "Your videos": ["आपके वीडियो", "તમારા વીડિયો"],
+    "Find your videos in Search": ["सर्च में अपने वीडियो खोजें", "શોધમાં તમારા વીડિયો શોધો"]
+  });
+  window.__vpPalVideos508 = function (q508) {
+    q508 = String(q508 || "").trim().toLowerCase();
+    if (!q508) return [];
+    var out508 = [], seen508 = {};
+    [["favs", "Favourites"], ["later", "Watch later"], ["queue", "Queue"], ["hist", "History"]].forEach(function (pair508) {
+      (lib[pair508[0]] || []).forEach(function (x508) {
+        if (!x508 || !x508.id || seen508[x508.id] || out508.length >= 6) return;
+        var t508 = x508.title || (typeof titleFor === "function" ? titleFor(x508.id) : "") || "";
+        if (t508.toLowerCase().indexOf(q508) < 0) return;
+        seen508[x508.id] = 1;
+        out508.push({ id: x508.id, title: t508 || ("Video " + x508.id), list: pair508[1] });
+      });
+    });
+    return out508;
+  };
+  window.__vpPalPlay508 = function (id508) {
+    if (!/^[A-Za-z0-9_-]{11}$/.test(String(id508 || ""))) return;
+    linkInput.value = "https://youtu.be/" + id508;
+    loadBtn.click();
+    if (frameBox && frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion && window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+  };
+
+
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
@@ -53269,6 +53305,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
 
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Recent switcher", "#rswBtn506"); }, 14920); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Sleep fade length", "#sleepFade"); }, 15020); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Find your videos in Search", "#palBtn"); }, 15120); });
 
   window.__vpMainOk325 = true;
 
@@ -58751,6 +58788,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Tech stats", "tech stats for nerds live quality buffer resolution frames dropped speed volume playback technical player information overlay panel", "#techStatsBtn506"],
       ["Recent switcher", "recent switcher alt tab quick switch last videos watched continue replay thumbnails arrows enter keyboard history strip", "#rswBtn506"],
       ["Sleep fade length", "sleep fade length sound picture fade out last seconds minutes how long gentle volume dim choice", "#sleepFade"],
+      ["Find your videos in Search", "find your videos in search palette ctrl k library favourites watch later queue history title play खोज वीडियो શોધ વીડિયો", "#palBtn"],
       ["Theme spin", "theme spin icon rotate turn animation dark light midnight auto chip button change sun moon", "#themeBtn"],
       ["I to copy title and link", "copy title link key i keyboard shortcut share paste chat name video text clipboard send friend whatsapp", "#sc23"],
       ["Z to skip and remove", "skip remove queue key z keyboard shortcut drop bad video next delete current playing not liking undo", "#sc24"],
@@ -59027,6 +59065,9 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   function render() {
     var q = (input.value || "").trim().toLowerCase();
     shown = items.filter(function (it) { return !q || it.label.toLowerCase().indexOf(q) >= 0 || (it.kw && it.kw.indexOf(q) >= 0); });
+    // Round 508 new 1: your own videos join the results (see the main closure block).
+    var vids508 = [];
+    if (q && window.__vpPalVideos508) { try { vids508 = window.__vpPalVideos508(q); } catch (e) { vids508 = []; } }
     if (!q) {
       var pitems = [];
       readPins().forEach(function (k) {
@@ -59047,6 +59088,11 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       shown = shown.filter(function (it) { return !it.key || !onTop[it.key]; });
       if (ritems.length) shown = ritems.concat(shown);
       if (pitems.length) shown = pitems.concat(shown);
+    }
+    if (vids508.length) {
+      shown = vids508.map(function (v508) {
+        return { label: v508.title + " · " + T(v508.list), group: "Your videos", noRec: true, run: function () { if (window.__vpPalPlay508) window.__vpPalPlay508(v508.id); } };
+      }).concat(shown);
     }
     if (act > shown.length - 1) act = shown.length - 1;
     if (act < 0) act = 0;
@@ -59095,7 +59141,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
 
   function pick(i) {
     var it = shown[i]; if (!it) return;
-    writeRec(it.label);
+    if (!it.noRec) writeRec(it.label);
     close();
     try { it.run(); } catch (e) {}
   }
