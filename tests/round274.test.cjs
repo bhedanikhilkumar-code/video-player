@@ -7,7 +7,7 @@ const man = JSON.parse(fs.readFileSync(path.join(__dirname, '../manifest.webmani
 assert.ok(html.includes('window.vpOpenFiles = function'), 'drop/open-with door');
 assert.ok(html.includes('ok.length>1&&window.vpOpenFiles'), 'multi-file drop makes a playlist');
 assert.ok(Array.isArray(man.file_handlers) && man.file_handlers[0].accept['video/mp4'] && man.file_handlers[0].accept['video/mp4'].includes('.mp4') && man.file_handlers[0].accept['audio/mpeg'].includes('.mp3'), 'file handlers');
-assert.ok(html.includes('launchQueue.setConsumer'), 'launch consumer');
+assert.ok(html.includes('lq.setConsumer'), 'launch consumer');
 assert.ok(html.includes('pad274') && html.includes('gamepadconnected'), 'game controller');
 assert.ok(html.includes('if (raw && !/^[a-z][a-z0-9+.-]*:\\/\\//i.test(raw)) raw = "https://" + raw;'), 'playlist link without scheme');
 assert.ok(html.includes('lpShotCopyBtn') && html.includes('new ClipboardItem'), 'copy frame');
