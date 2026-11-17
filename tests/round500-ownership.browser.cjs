@@ -1,0 +1,7 @@
+const assert=require('node:assert/strict');
+require('./round445-harness.cjs')(async({p,pick,files})=>{
+ await pick(files.slice(0,2));await p.addStyleTag({content:'html{scroll-behavior:auto!important}'});await p.locator('#clipItinerary500>summary').click();await p.locator('#ciStart500').fill('34.3');await p.locator('#ciEnd500').fill('35');await p.locator('#ciAdd500').click();const src=await p.locator('#lpVideo').getAttribute('src');await p.locator('#ciPlay500').click();await p.waitForFunction(()=>document.querySelector('#ciStatus500').textContent==='Itinerary finished.');await p.waitForTimeout(300);assert.equal(await p.locator('#lpVideo').getAttribute('src'),src,'finishing a clip at media end must not auto-next the existing file queue');
+ await p.locator('#lpVideo').evaluate(v=>v.loop=true);await p.locator('#ciStart500').fill('1');await p.locator('#ciEnd500').fill('10');await p.locator('#ciAdd500').click();await p.locator('#ciPlay500').click();assert.equal(await p.locator('#lpVideo').evaluate(v=>v.loop),false);
+ await p.locator('#lpVideo').evaluate(async v=>{v.src=URL.createObjectURL(new Blob(['new source'],{type:'video/mp4'}));v.loop=false;await new Promise(r=>setTimeout(r,0));});assert.equal(await p.locator('#lpVideo').evaluate(v=>v.loop),false,'never restore the old source loop property onto a newly selected file');
+ console.log('PASS exact end with a real multi-file queue does not auto-next; source-specific loop ownership');
+}).catch(e=>{console.error(e);process.exitCode=1;});
