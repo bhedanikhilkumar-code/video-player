@@ -52113,6 +52113,45 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   });
 
 
+  // Round 499: a second native caption track for the local player. This is not the
+  // Study transcript comparison: both languages stay on the video, including native
+  // full screen, without copying either file into the library or sending it anywhere.
+  Object.assign(TR_MSG, {
+    'Dual subtitles for local files':['लोकल फ़ाइल में दो सबटाइटल','લોકલ ફાઇલમાં બે સબટાઇટલ'],
+    'Open the normal subtitle file above, then add another language here. Companion captions appear at the top of the local video, including full screen. Files stay in this tab and clear when the video changes.':['ऊपर सामान्य सबटाइटल खोलें, फिर यहां दूसरी भाषा जोड़ें. दूसरे सबटाइटल लोकल वीडियो में ऊपर दिखते हैं, पूरी स्क्रीन में भी. फ़ाइलें इसी टैब में रहती हैं और वीडियो बदलने पर हट जाती हैं.','ઉપર સામાન્ય સબટાઇટલ ખોલો, પછી અહીં બીજી ભાષા ઉમેરો. બીજા સબટાઇટલ લોકલ વીડિયોની ઉપર દેખાય છે, પૂર્ણ સ્ક્રીનમાં પણ. ફાઇલો આ ટૅબમાં રહે છે અને વીડિયો બદલાતાં દૂર થાય છે.'],
+    'Choose companion subtitles':['दूसरे सबटाइटल चुनें','બીજા સબટાઇટલ પસંદ કરો'],
+    'Hide companion captions':['दूसरे सबटाइटल छिपाएं','બીજા સબટાઇટલ છુપાવો'],
+    'Show companion captions':['दूसरे सबटाइटल दिखाएं','બીજા સબટાઇટલ બતાવો'],
+    'Remove companion captions':['दूसरे सबटाइटल हटाएं','બીજા સબટાઇટલ દૂર કરો'],
+    'No companion captions loaded.':['दूसरे सबटाइटल नहीं खुले हैं.','બીજા સબટાઇટલ ખોલ્યા નથી.'],
+    'Reading companion captions…':['दूसरे सबटाइटल पढ़ रहे हैं…','બીજા સબટાઇટલ વાંચી રહ્યા છીએ…'],
+    'Companion captions: {n} lines.':['दूसरे सबटाइटल: {n} पंक्तियां.','બીજા સબટાઇટલ: {n} પંક્તિઓ.'],
+    'Companion file has no readable captions. The previous captions are unchanged.':['दूसरी फ़ाइल में पढ़ने योग्य सबटाइटल नहीं हैं. पहले वाले नहीं बदले हैं.','બીજી ફાઇલમાં વાંચી શકાય એવા સબટાઇટલ નથી. પહેલાંના બદલાયા નથી.'],
+    'Use at most 5000 companion captions. The previous captions are unchanged.':['अधिकतम 5000 दूसरे सबटाइटल लें. पहले वाले नहीं बदले हैं.','વધુમાં વધુ 5000 બીજા સબટાઇટલ લો. પહેલાંના બદલાયા નથી.'],
+    'Companion captions could not be read. The previous captions are unchanged.':['दूसरे सबटाइटल पढ़ नहीं सके. पहले वाले नहीं बदले हैं.','બીજા સબટાઇટલ વાંચી શક્યા નથી. પહેલાંના બદલાયા નથી.']
+  });
+  window.addEventListener('load',function(){
+    var video=$('lpVideo');if(!video||!transcript261||!window.VTTCue)return;
+    var card=mkCard('dualSub499','lpSubMsg','<div class="row"><button class="chip" type="button" id="dualChoose499"></button><button class="chip" type="button" id="dualToggle499"></button><button class="chip" type="button" id="dualClear499"></button></div><input type="file" id="dualFile499" accept=".srt,.vtt,text/vtt" hidden><p class="hint" id="dualName499"></p><p class="hint" role="status" id="dualStatus499"></p>');if(!card)return;
+    var input=$('dualFile499'),toggle=$('dualToggle499'),clear=$('dualClear499'),track=null,rows=[],name='',on=true,generation=0,notice='',busy=false,source=video.getAttribute('src')||'';
+    function escapeCue(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    function paint(){card.querySelector('summary').textContent=T('Dual subtitles for local files');card.querySelector('.r239-desc').textContent=T('Open the normal subtitle file above, then add another language here. Companion captions appear at the top of the local video, including full screen. Files stay in this tab and clear when the video changes.');$('dualChoose499').textContent=T('Choose companion subtitles');toggle.textContent=T(on?'Hide companion captions':'Show companion captions');toggle.setAttribute('aria-pressed',String(on&&!!rows.length));clear.textContent=T('Remove companion captions');input.setAttribute('aria-label',T('Choose companion subtitles'));toggle.disabled=clear.disabled=!rows.length;$('dualName499').textContent=name;$('dualStatus499').textContent=notice?T(notice):rows.length?T('Companion captions: {n} lines.').replace('{n}',rows.length):T('No companion captions loaded.');card.setAttribute('aria-busy',String(busy));}
+    function syncMode(){if(track){var mode=on&&rows.length?'showing':'disabled';if(track.mode!==mode)track.mode=mode;}}
+    function removeCues(){if(track){track.mode='hidden';while(track.cues&&track.cues.length)track.removeCue(track.cues[0]);track.mode='disabled';}}
+    function reset(){generation++;busy=false;rows=[];name='';notice='';on=true;removeCues();input.value='';paint();}
+    function install(next,fileName){removeCues();if(!track)track=video.addTextTrack('subtitles','Companion captions','und');rows=next;name=fileName;on=true;rows.forEach(function(r){var cue=new VTTCue(r.start,r.end,escapeCue(r.text));cue.snapToLines=true;cue.line=0;cue.align='center';track.addCue(cue);});syncMode();}
+    $('dualChoose499').addEventListener('click',function(){if(!video.getAttribute('src')){notice='Load the matching video first.';paint();return;}input.click();});
+    input.addEventListener('change',async function(){var file=this.files&&this.files[0];this.value='';if(!file)return;var token=++generation,at=video.getAttribute('src');if(!at){notice='Load the matching video first.';paint();return;}if(file.size>2*1024*1024){notice='Use a subtitle file under 2 MB.';paint();return;}busy=true;notice='Reading companion captions…';paint();try{var buffer=await file.arrayBuffer();if(token!==generation||at!==video.getAttribute('src'))return;var bytes=new Uint8Array(buffer),encoding=bytes[0]===255&&bytes[1]===254?'utf-16le':bytes[0]===254&&bytes[1]===255?'utf-16be':'utf-8';var next=transcript261.parse(new TextDecoder(encoding).decode(bytes));if(!next.length)notice='Companion file has no readable captions. The previous captions are unchanged.';else if(next.length>5000)notice='Use at most 5000 companion captions. The previous captions are unchanged.';else{install(next,file.name);notice='';}}catch(e){if(token===generation)notice='Companion captions could not be read. The previous captions are unchanged.';}finally{if(token===generation){busy=false;paint();}}});
+    toggle.addEventListener('click',function(){on=!on;syncMode();paint();});clear.addEventListener('click',reset);
+    // Primary upload disables all textTracks. Restore only our intentional mode,
+    // without touching the primary file, its sync controls or the browser CC menu.
+    video.textTracks.addEventListener('change',syncMode);
+    new MutationObserver(function(){var now=video.getAttribute('src')||'';if(now!==source){source=now;reset();}}).observe(video,{attributes:true,attributeFilter:['src']});
+    window.addEventListener('pagehide',reset);(window.__relang=window.__relang||[]).push(paint);paint();
+    var style=document.createElement('style');style.textContent='#dualSub499{margin:12px 0;min-width:0;overflow-wrap:anywhere}#dualSub499 .row{flex-wrap:wrap}#dualSub499 button{max-width:100%;white-space:normal}#dualName499{word-break:break-word}';document.head.appendChild(style);
+    setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Dual subtitles for local files','#dualSub499');},13420);
+  });
+
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
@@ -56867,6 +56906,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Download saved device copy", "export recover download original offline shelf saved local device file bytes keep copy backup", "#offlineShelf432"],
       ["Saved offline sessions", "named offline sessions save playlists local copies reuse backup draft files device", "#offlineSaved435"],
       ["Add files without stopping", "append playing device files preview duplicate review batch local queue keep position", "#appendDeviceFiles443"],
+      ["Dual subtitles for local files", "dual bilingual companion second language captions local video fullscreen", "#dualSub499"],
       ["Edit playing file queue", "edit playing device file queue reorder remove undo active local playlist without restart", "#localQueueEditor443"],
       ["Offline session builder", "offline session playlist arrange saved files choose order local queue music copies no internet", "#offlineSession435"],
       ["Offline file shelf", "offline local file save device copies audio music video storage shelf no internet", "#offlineShelf432"],
