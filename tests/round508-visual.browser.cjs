@@ -3,9 +3,12 @@ require('./round445-harness.cjs')(async({p,boot,pick})=>{
  await p.evaluate(()=>localStorage.setItem('vp-library.v1',JSON.stringify({favs:[{id:'dQw4w9WgXcQ',title:'Rick Astley - Never Gonna Give You Up'}],queue:[],later:[{id:'9bZkp7q19f0',title:'PSY - Gangnam Style'}],hist:[]})));
  await boot();await pick();
  await p.locator('#lpVideo').scrollIntoViewIfNeeded();await p.waitForTimeout(400);
- // Scroll to header so the actual device video docks before opening Search.
- await p.locator('#palBtn').scrollIntoViewIfNeeded();await p.waitForTimeout(600);
- await p.locator('#palBtn').click();await p.locator('#vpPalIn').fill('Rick');
+ // Device docking only happens below the player, not above it. Use Ctrl+K so
+ // opening Search does not scroll the header back into view and undock the video.
+ await p.locator('#help').evaluate(e=>window.scrollTo(0,e.getBoundingClientRect().top+scrollY));
+ await p.waitForFunction(()=>document.querySelector('#lpViewWrap').classList.contains('lpMini447'));
+ await p.screenshot({path:'/downloads/r508-live-docked.png'});
+ await p.keyboard.press('Control+k');await p.locator('#vpPalIn').fill('Rick');
  assert.ok(await p.evaluate(()=>document.querySelector('#lpVideo').readyState>=2));
  await p.screenshot({path:'/downloads/r508-live-desktop.png'});
  await p.locator('#vpPalIn').press('Escape');
