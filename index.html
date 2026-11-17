@@ -52863,6 +52863,125 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     window.addEventListener("storage", function (e) { if (e && (e.key === HK || e.key === PK2)) render(); });
   })();
 
+
+  // Round 506 new 1a: Tech stats - a live "stats for nerds" panel for the curious.
+  // The app has Watch stats (how much you watched) but nothing that shows what the
+  // player itself is doing right now: real quality, buffer, frames dropped, exact
+  // speed and volume. A small glass card, off by default and session-only (nothing
+  // saved), opened from a chip on the transport row. YouTube numbers come from the
+  // player messages the page already listens to (a passive second listener reads
+  // quality/buffer fields; nothing is sent), device-file numbers come from the
+  // video element itself, including dropped frames where the browser counts them.
+  (function () {
+    var add506 = {
+      "Tech stats": ["टेक आंकड़े", "ટેક આંકડા"],
+      "Tech stats: on": ["टेक आंकड़े: चालू", "ટેક આંકડા: ચાલુ"],
+      "Tech stats: off": ["टेक आंकड़े: बंद", "ટેક આંકડા: બંધ"],
+      "Live technical details about the video playing right now. Nothing is saved.": ["अभी चल रहे वीडियो की लाइव तकनीकी जानकारी. कुछ भी सेव नहीं होता.", "હમણાં ચાલી રહેલા વીડિયોની લાઇવ તકનિકી વિગતો. કંઈપણ સાચવાતું નથી."],
+      "Source": ["स्रोत", "સ્રોત"],
+      "State": ["स्थिति", "સ્થિતિ"],
+      "Position": ["पोज़ीशन", "પોઝિશન"],
+      "Buffered": ["बफ़र", "બફર"],
+      "Quality": ["क्वालिटी", "ક્વૉલિટી"],
+      "Speed": ["स्पीड", "સ્પીડ"],
+      "Volume": ["आवाज़", "અવાજ"],
+      "Frames": ["फ़्रेम", "ફ્રેમ"],
+      "Playing": ["चल रहा है", "ચાલી રહ્યું છે"],
+      "Paused": ["रुका हुआ", "અટક્યું છે"],
+      "Buffering": ["बफ़र हो रहा है", "બફર થઈ રહ્યું છે"],
+      "Ended": ["खत्म", "પૂરું"],
+      "Ready": ["तैयार", "તૈયાર"],
+      "Not loaded": ["लोड नहीं हुआ", "લોડ થયું નથી"],
+      "Device file": ["डिवाइस फ़ाइल", "ડિવાઇસ ફાઇલ"],
+      "Nothing playing": ["कुछ नहीं चल रहा", "કંઈ ચાલતું નથી"],
+      "muted": ["म्यूट", "મ્યૂટ"],
+      "dropped": ["गिरे", "પડ્યા"],
+      "ahead": ["आगे", "આગળ"],
+      "of the video": ["वीडियो का", "વીડિયોનો"]
+    };
+    Object.keys(add506).forEach(function (k) { if (!TR_MSG[k]) TR_MSG[k] = add506[k]; });
+    var fxRow = document.getElementById("fxRow"); if (!fxRow) return;
+    var lpSil = document.getElementById("lpSilBtn");
+    var yt = { state: -2, quality: "", loadedFrac: null, rate: 1, vol: null, muted: false };
+    window.addEventListener("message", function (e) {
+      var d = e && e.data; if (typeof d === "string") { try { d = JSON.parse(d); } catch (err) { return; } }
+      if (!d || typeof d !== "object") return;
+      if (d.event === "onStateChange" && typeof d.info === "number") yt.state = d.info;
+      if ((d.event === "infoDelivery" || d.event === "initialDelivery") && d.info && typeof d.info === "object") {
+        if (typeof d.info.playbackQuality === "string") yt.quality = d.info.playbackQuality;
+        if (typeof d.info.videoLoadedFraction === "number") yt.loadedFrac = d.info.videoLoadedFraction;
+        if (typeof d.info.playbackRate === "number") yt.rate = d.info.playbackRate;
+        if (typeof d.info.volume === "number") yt.vol = d.info.volume;
+        if (typeof d.info.muted === "boolean") yt.muted = d.info.muted;
+      }
+    });
+    var btn = document.createElement("button");
+    btn.type = "button"; btn.className = "chip"; btn.id = "techStatsBtn506"; btn.setAttribute("aria-pressed", "false");
+    var btnLp = document.createElement("button");
+    btnLp.type = "button"; btnLp.className = "chip"; btnLp.id = "techStatsLpBtn506"; btnLp.setAttribute("aria-pressed", "false");
+    var panel = document.createElement("div");
+    panel.id = "techStats506"; panel.setAttribute("role", "status"); panel.style.display = "none";
+    panel.innerHTML = '<strong id="techStatsH506"></strong><p class="hint" id="techStatsHint506"></p><dl id="techStatsRows506"></dl>';
+    var st = document.createElement("style"); st.id = "techStatsStyle506";
+    st.textContent = "#techStats506{position:fixed;left:12px;bottom:12px;z-index:9000;max-width:min(320px,calc(100vw - 24px));max-height:60vh;overflow:auto;padding:10px 14px;border-radius:16px;background:rgba(250,253,252,.82);border:1px solid rgba(255,255,255,.65);box-shadow:0 12px 40px rgba(10,30,40,.22);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);font:500 12px/1.5 system-ui,sans-serif;color:var(--ink,#17322c)}"
+      + "html[data-theme='dark'] #techStats506{background:rgba(28,34,38,.88);border-color:rgba(255,255,255,.16);color:#e8fbf6}"
+      + "#techStats506 strong{display:block;font-size:13px}#techStats506 .hint{margin:2px 0 6px;font-size:11px}"
+      + "#techStatsRows506{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:0}"
+      + "#techStatsRows506 dt{opacity:.66}#techStatsRows506 dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}";
+    document.head.appendChild(st);
+    document.body.appendChild(panel);
+    var on = false, timer = 0;
+    function fmt(t) { t = Math.max(0, Math.floor(t || 0)); var h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60; return (h ? h + ":" + (m < 10 ? "0" : "") : "") + m + ":" + (s < 10 ? "0" : "") + s; }
+    function localActive() { var v = document.getElementById("lpVideo"); return !!(v && !v.hidden && (v.currentSrc || v.src)); }
+    function rows() {
+      var out = [], v = document.getElementById("lpVideo"), loc = localActive();
+      if (loc) {
+        out.push([T("Source"), T("Device file")]);
+        out.push([T("State"), v.ended ? T("Ended") : v.paused ? T("Paused") : v.readyState < 3 ? T("Buffering") : T("Playing")]);
+        var dur = isFinite(v.duration) ? v.duration : 0;
+        out.push([T("Position"), fmt(v.currentTime) + (dur ? " / " + fmt(dur) + " (" + Math.round(v.currentTime * 100 / dur) + "%)" : "")]);
+        var ah = 0; try { for (var i = 0; i < v.buffered.length; i++) { if (v.buffered.start(i) <= v.currentTime && v.currentTime <= v.buffered.end(i)) { ah = v.buffered.end(i) - v.currentTime; break; } } } catch (e) {}
+        out.push([T("Buffered"), Math.round(ah) + "s " + T("ahead")]);
+        if (v.videoWidth) out.push([T("Quality"), v.videoWidth + " × " + v.videoHeight]);
+        out.push([T("Speed"), (Math.round(v.playbackRate * 100) / 100) + "x"]);
+        out.push([T("Volume"), Math.round(v.volume * 100) + "%" + (v.muted ? " (" + T("muted") + ")" : "")]);
+        if (v.getVideoPlaybackQuality) { try { var q = v.getVideoPlaybackQuality(); out.push([T("Frames"), q.droppedVideoFrames + " " + T("dropped") + " / " + q.totalVideoFrames]); } catch (e) {} }
+      } else if (curId) {
+        out.push([T("Source"), "YouTube"]);
+        var stt = yt.state === 1 ? T("Playing") : yt.state === 2 ? T("Paused") : yt.state === 3 ? T("Buffering") : yt.state === 0 ? T("Ended") : yt.state === 5 ? T("Ready") : yt.state === -1 ? T("Ready") : T("Not loaded");
+        out.push([T("State"), stt]);
+        out.push([T("Position"), fmt(curTime) + (duration ? " / " + fmt(duration) + " (" + Math.round(curTime * 100 / duration) + "%)" : "")]);
+        if (typeof yt.loadedFrac === "number") out.push([T("Buffered"), Math.round(yt.loadedFrac * 100) + "% " + T("of the video")]);
+        if (yt.quality) out.push([T("Quality"), yt.quality.replace("hd", "HD ").replace("highres", "4K+").replace("small", "240p").replace("medium", "360p").replace("large", "480p").replace("hd720", "720p").replace("hd1080", "1080p")]);
+        out.push([T("Speed"), (Math.round(yt.rate * 100) / 100) + "x"]);
+        if (typeof yt.vol === "number") out.push([T("Volume"), Math.round(yt.vol) + "%" + (yt.muted ? " (" + T("muted") + ")" : "")]);
+      } else {
+        out.push([T("Source"), T("Nothing playing")]);
+      }
+      return out;
+    }
+    function paint() {
+      panel.querySelector("#techStatsH506").textContent = T("Tech stats");
+      panel.querySelector("#techStatsHint506").textContent = T("Live technical details about the video playing right now. Nothing is saved.");
+      var dl = panel.querySelector("#techStatsRows506"); dl.textContent = "";
+      rows().forEach(function (r) { var dt = document.createElement("dt"); dt.textContent = r[0]; var dd = document.createElement("dd"); dd.textContent = r[1]; dl.appendChild(dt); dl.appendChild(dd); });
+      [btn, btnLp].forEach(function (b) { b.textContent = "🧮 " + T(on ? "Tech stats: on" : "Tech stats: off"); b.setAttribute("aria-pressed", on ? "true" : "false"); });
+    }
+    function setOn(v) {
+      on = !!v;
+      panel.style.display = on ? "" : "none";
+      if (on) { paint(); timer = setInterval(paint, 500); } else if (timer) { clearInterval(timer); timer = 0; }
+      paint();
+    }
+    btn.addEventListener("click", function () { setOn(!on); });
+    btnLp.addEventListener("click", function () { setOn(!on); });
+    fxRow.appendChild(btn);
+    if (lpSil && lpSil.parentNode) lpSil.parentNode.appendChild(btnLp);
+    (window.__relang = window.__relang || []).push(function () { paint(); });
+    window.__vpTechStats506 = { setOn: setOn, rows: rows };
+    paint();
+  })();
+
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
