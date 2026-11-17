@@ -53261,6 +53261,11 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     function label(c, i) { return c.name || T('Cue name') + ' ' + (i + 1); }
     function cueTime(c) { return fmt(c.time) + (c.time % 1 ? '.' + String(Math.round((c.time % 1) * 100)).padStart(2, '0') : ''); }
     function action(c) { return T(c.action === 'rate' ? 'Set speed' : c.action === 'volume' ? 'Set volume' : c.action === 'seek' ? 'Jump to time' : 'Pause playback') + (c.action === 'pause' ? '' : ': ' + (c.action === 'rate' ? c.value + '×' : c.action === 'seek' ? fmt(c.value) : Math.round(c.value * 100) + '%')); }
+    // A pause and jump cannot both own the playhead at the same instant.
+    function transportConflict513(rows) {
+      var seen=new Set();return rows.some(function(c){if(c.action!=='seek'&&c.action!=='pause')return false;var t=Math.round(c.time*100);if(seen.has(t))return true;seen.add(t);return false;});
+    }
+    Object.assign(TR_MSG,{'Use only one pause or jump at each cue time. Nothing changed.':['हर क्यू समय पर केवल एक विराम या जंप रखें. कुछ नहीं बदला.','દરેક ક્યૂ સમયે એક જ વિરામ કે જંપ રાખો. કંઈ બદલાયું નથી.']});
     function valueOptions() {
       var a = $('pcAction509').value, sel = $('pcValue509'), seekInp = $('pcSeekVal509'); sel.textContent = ''; seekInp.required = a === 'seek';
       (a === 'volume' ? [0, .1, .25, .5, .75, 1] : [.25, .5, .75, 1, 1.25, 1.5, 2, 2.5, 3]).forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = a === 'volume' ? Math.round(n * 100) + '%' : n + '×'; sel.appendChild(o); });
@@ -53328,6 +53333,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       stop(); var actSel509 = $('pcAction509').value, valSel509 = actSel509 === 'seek' ? Math.round(Number($('pcSeekVal509').value) * 100) / 100 : Number($('pcValue509').value);
       if (actSel509 === 'seek' && (!Number.isFinite(valSel509) || valSel509 < 0 || valSel509 >= v.duration)) { state = 'Choose a time inside the open video. Use at most 40 cues.'; status(); return; }
       var c = {name: $('pcName509').value.trim().slice(0, 80), time: Math.round(t * 100) / 100, action: actSel509, value: actSel509 === 'pause' ? 1 : valSel509};
+      var proposed513=cues.filter(function(_,i){return i!==editIndex;});proposed513.push(c);
+      if(transportConflict513(proposed513)){state='Use only one pause or jump at each cue time. Nothing changed.';status();return;}
       if (editIndex >= 0) cues[editIndex] = c; else cues.push(c); editIndex = -1; cues.sort(function (a,b) { return a.time - b.time; }); $('pcName509').value = ''; lastCue = ''; paint(); $('pcName509').focus();
     });
     $('pcAction509').addEventListener('change', valueOptions); $('pcNow509').addEventListener('click', function () { if (ready()) $('pcTime509').value = v.currentTime.toFixed(2); });
@@ -53382,6 +53389,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         if (c.action === 'seek' && (typeof c.value !== 'number' || !Number.isFinite(c.value) || c.value < 0 || Math.round(c.value*100)/100 >= f.duration)) return null;
         rows.push({name:c.name, time:Math.round(c.time*100)/100, action:c.action, value:c.action === 'pause' ? 1 : c.value});
       }
+      if(transportConflict513(rows))return null;
       rows.sort(function(a,b){return a.time-b.time;});
       return {app:'hd-video-player-cues',version:1,file:{name:f.name,size:f.size,lastModified:f.lastModified,duration:f.duration},cues:rows};
     }
@@ -53520,6 +53528,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       var shift=Number($('ctShift513').value),targets=$('ctTargets513').checked;
       var rows=cues.map(function(c){var n=Object.assign({},c); n.time=Math.round((c.time+shift)*100)/100; if(targets&&c.action==='seek')n.value=Math.round((c.value+shift)*100)/100; return n;});
       if(!Number.isFinite(shift) || rows.some(function(c){return !Number.isFinite(c.time)||c.time<0||c.time>=v.duration||(c.action==='seek'&&(!Number.isFinite(c.value)||c.value<0||c.value>=v.duration));})) { timingState513='Every cue and jump destination must stay inside this video. Nothing changed.'; }
+      else if(transportConflict513(rows)) { timingState513='Use only one pause or jump at each cue time. Nothing changed.'; }
       else if(JSON.stringify(rows)===JSON.stringify(cues)) { timingState513='Choose a different timing. Nothing changed.'; }
       else { timingDraft513={key:timingKey513(),before:cues.map(function(c){return Object.assign({},c);}),rows:rows}; }
       timingPaint513(); if(timingDraft513)$('ctReviewH513').focus();
