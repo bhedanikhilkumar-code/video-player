@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('fs');
 require('./round445-harness.cjs')(async({p,pick})=>{
  await p.setViewportSize({width:390,height:844});
- await pick([{name:'Project scenes.mp4',mimeType:'video/mp4',buffer:fs.readFileSync('/downloads/scene-demo504.mp4')}]);
+ await pick([require('./scene504-fixture.cjs')()]);
  await p.locator('#sceneNav504>summary').click();await p.locator('#snScan504').click();await p.waitForFunction(()=>!document.querySelector('#snScan504').disabled);
  await p.locator('#sceneNav504').scrollIntoViewIfNeeded();await p.waitForFunction(()=>document.querySelector('#lpViewWrap').classList.contains('lpMini447'));
  await p.screenshot({path:'/downloads/scene504-local-en.png'});
