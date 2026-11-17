@@ -53894,6 +53894,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       "Pick a saved video and a time. When the time comes - while the app is open - a card names the video with Play, Snooze one hour and Not now. Up to 5 reminders stay saved on this device, ride your backup, and the page must stay open for them to fire.": ["सेव किया वीडियो और समय चुनें. समय आने पर - ऐप खुला हो तो - एक कार्ड वीडियो का नाम दिखाता है, चलाएं, 1 घंटा स्नूज़ और अभी नहीं के साथ. 5 तक रिमाइंडर इस डिवाइस पर सेव रहते हैं, आपके बैकअप में भी जाते हैं, और बजने के लिए पेज खुला रहना चाहिए.", "સાચવેલો વીડિયો અને સમય પસંદ કરો. સમય આવે ત્યારે - ઍપ ખુલ્લી હોય તો - એક કાર્ડ વીડિયોનું નામ બતાવે છે, ચલાવો, 1 કલાક સ્નૂઝ અને હમણાં નહીં સાથે. 5 સુધીના રિમાઇન્ડર આ ડિવાઇસ પર સાચવાય છે, તમારા બૅકઅપમાં પણ જાય છે, અને વાગવા માટે પેજ ખુલ્લું રહેવું જોઈએ."],
       "Video": ["वीडियो", "વીડિયો"],
       "Reminder due": ["रिमाइंडर बजा", "રિમાઇન્ડર વાગ્યું"],
+      "Reminder sound: on": ["रिमाइंडर की आवाज़: चालू", "રિમાઇન્ડરનો અવાજ: ચાલુ"],
+      "Reminder sound: off": ["रिमाइंडर की आवाज़: बंद", "રિમાઇન્ડરનો અવાજ: બંધ"],
       "Save a video to Watch later or Favourites first.": ["पहले कोई वीडियो बाद में देखें या पसंदीदा में सेव करें.", "પહેલા કોઈ વીડિયો પછી જુઓ કે મનપસંદમાં સાચવો."],
       "In 1 hour": ["1 घंटे में", "1 કલાકમાં"],
       "Tonight 8 pm": ["आज रात 8 बजे", "આજે રાત્રે 8 વાગ્યે"],
@@ -53943,7 +53945,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     det.innerHTML = '<summary id="remSum517"></summary>' +
       '<p class="hint" id="remHint517"></p>' +
       '<div class="row"><label class="label" for="remVid517" id="remVidLab517"></label><select id="remVid517"></select></div>' +
-      '<div class="row"><button type="button" class="chip" id="remQ1h517"></button><button type="button" class="chip" id="remQ8pm517"></button><button type="button" class="chip" id="remQ9am517"></button></div>' +
+      '<div class="row"><button type="button" class="chip" id="remQ1h517"></button><button type="button" class="chip" id="remQ8pm517"></button><button type="button" class="chip" id="remQ9am517"></button><button type="button" class="chip" id="remSnd519" aria-pressed="true"></button></div>' +
       '<fieldset class="rem-schedule518"><legend id="remDateTitle518"></legend><p class="hint" id="remDateHint518"></p>' +
       '<label class="label" for="remDate518" id="remDateLab518"></label><input id="remDate518" type="date" aria-describedby="remDateHint518">' +
       '<div class="row"><label class="label" for="remTime517" id="remTimeLab517"></label><input id="remTime517" type="time"><button type="button" class="chip" id="remSet517"></button></div>' +
@@ -54101,6 +54103,60 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       titleBase519 = null;
     }
     function hideDue517() { if (due517) due517.hidden = true; showing517 = null; titleAlertClear519(); }
+    // Round 519 new 1: a quiet two-beep chime when a reminder fires - the due card alone
+    // was easy to miss with another video's sound up. WebAudio only plays after a tap on
+    // the page, so when a reminder fires before the first tap of a fresh visit the chime
+    // waits and plays on that first tap (only if the card is still up); the card and tab
+    // title always appear either way. A chip on the card switches the chime off,
+    // remembered on this device in vp-remindsnd519.v1 (a device choice, not in backups).
+    var SND519 = "vp-remindsnd519.v1", chimeCtx519 = null, chimePending519 = false;
+    function sndOn519() { try { return localStorage.getItem(SND519) !== "0"; } catch (e) { return true; } }
+    function paintSnd519() {
+      var b = document.getElementById("remSnd519"); if (!b) return;
+      var on = sndOn519();
+      b.textContent = "\ud83d\udd14 " + T(on ? "Reminder sound: on" : "Reminder sound: off");
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+    function chimePlay519() {
+      var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return false;
+      if (!chimeCtx519) chimeCtx519 = new AC();
+      var ctx = chimeCtx519;
+      if (ctx.state === "suspended") { try { ctx.resume(); } catch (e) {} }
+      if (ctx.state !== "running") return false;
+      var t0 = ctx.currentTime + 0.03;
+      [0, 0.3].forEach(function (off) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = "sine"; o.frequency.value = 880;
+        g.gain.setValueAtTime(0.0001, t0 + off);
+        g.gain.exponentialRampToValueAtTime(0.05, t0 + off + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + off + 0.24);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t0 + off); o.stop(t0 + off + 0.26);
+      });
+      return true;
+    }
+    function chime519() {
+      if (!sndOn519()) return;
+      try { if (chimePlay519()) return; } catch (e) { return; }
+      if (chimePending519) return;
+      chimePending519 = true;
+      var once519 = function () {
+        document.removeEventListener("pointerdown", once519, true);
+        document.removeEventListener("keydown", once519, true);
+        chimePending519 = false;
+        if (showing517 && sndOn519()) { try { chimePlay519(); } catch (e) {} }
+      };
+      document.addEventListener("pointerdown", once519, true);
+      document.addEventListener("keydown", once519, true);
+    }
+    document.getElementById("remSnd519").addEventListener("click", function () {
+      var nextOn = !sndOn519();
+      try { localStorage.setItem(SND519, nextOn ? "1" : "0"); }
+      catch (e) { if (window.vpStorageWarning276) window.vpStorageWarning276(); }
+      paintSnd519();
+      if (nextOn) chime519(); // the tap that turns the sound on also previews it
+    });
+    (window.__relang = window.__relang || []).push(paintSnd519); paintSnd519();
     function showDue517(r) {
       if (!due517) {
         due517 = document.createElement("div");
@@ -54132,6 +54188,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
           hideDue517(); render517(); setTimeout(check517, 400);
         });
       }
+      var fresh519 = !showing517;
       showing517 = r;
       document.getElementById("remDueTx517").textContent = "⏰ " + T("Time to watch:") + " " + (r.title || r.id);
       document.getElementById("remDuePlay517").textContent = "▶ " + T("Play");
@@ -54139,6 +54196,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       document.getElementById("remDueNo517").textContent = T("Not now");
       due517.hidden = false;
       titleAlert519(r);
+      if (fresh519) chime519();
     }
     // Round 517 fix 2: the first version removed a reminder from storage the moment it
     // fired, so with two tabs open the background tab's checker could eat it and the card
