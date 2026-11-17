@@ -53080,7 +53080,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     var btn2 = document.createElement("button");
     btn2.type = "button"; btn2.className = "chip"; btn2.id = "rswBtn506";
     fxRow2.appendChild(btn2);
-    var bg = null, sel = 0;
+    var bg = null, sel = 0, focusBefore508 = null;
     function fmt2(t) { t = Math.max(0, Math.floor(t || 0)); var m = Math.floor(t / 60), s = t % 60; return m + ":" + (s < 10 ? "0" : "") + s; }
     function items() {
       var out = [], seen = {};
@@ -53096,7 +53096,11 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       var lis = bg.querySelectorAll("#rswList506 li"), i = 0;
       lis.forEach(function (li) { li.classList.toggle("rsw-sel", i === sel); if (i === sel) li.scrollIntoView({ block: "nearest" }); i++; });
     }
-    function close() { if (bg) { bg.remove(); bg = null; } }
+    function close() {
+      if (bg) { bg.remove(); bg = null; }
+      if (focusBefore508 && focusBefore508.isConnected) { try { focusBefore508.focus({ preventScroll: true }); } catch (e) {} }
+      focusBefore508 = null;
+    }
     function playSel() {
       if (!bg) return;
       var it = items()[sel]; if (!it) return;
@@ -53107,9 +53111,10 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     function open() {
       if (bg) { close(); return; }
+      focusBefore508 = document.activeElement;
       var its = items();
       bg = document.createElement("div"); bg.id = "rswBg506";
-      bg.innerHTML = '<div id="rswCard506" role="dialog" aria-modal="true"><button class="chip" id="rswClose506" type="button"></button><h3 id="rswH506"></h3><p class="hint" id="rswHint506"></p><p class="hint" id="rswEmpty506" hidden></p><ul id="rswList506"></ul></div>';
+      bg.innerHTML = '<div id="rswCard506" role="dialog" aria-modal="true" aria-labelledby="rswH506" aria-describedby="rswHint506"><button class="chip" id="rswClose506" type="button"></button><h3 id="rswH506"></h3><p class="hint" id="rswHint506"></p><p class="hint" id="rswEmpty506" hidden></p><ul id="rswList506"></ul></div>';
       document.body.appendChild(bg);
       sel = curId ? Math.max(0, its.map(function (x) { return x.id; }).indexOf(curId)) : 0;
       bg.querySelector("#rswH506").textContent = T("Recent videos");
@@ -53140,6 +53145,13 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     document.addEventListener("keydown", function (e) {
       if (!bg) return;
+      // Round 508 fix: Tab used to leave this modal for the obscured page.
+      if (e.key === "Tab") {
+        e.preventDefault(); e.stopPropagation();
+        var card508 = bg.querySelector("#rswCard506"), close508 = bg.querySelector("#rswClose506");
+        (document.activeElement === close508 ? card508 : close508).focus();
+        return;
+      }
       var its = items();
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
       else if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); e.stopPropagation(); sel = Math.min(its.length - 1, sel + 1); paintSel(); }
