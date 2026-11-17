@@ -52982,6 +52982,117 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     paint();
   })();
 
+
+  // Round 506 new 2a: Recent switcher - an Alt-Tab for your videos. One tap on the
+  // transport chip (or the exposed opener) floats a glass strip of your ten most
+  // recent videos with thumbnails and where you stopped; arrows or a click choose,
+  // Enter plays. Built for the "what was I watching just before this one?" moment,
+  // which today means scrolling Recently watched. Nothing new is saved - it reads
+  // the same history list the library shows. Hindi/Gujarati rows below; finder and
+  // What's new in the next commit.
+  (function () {
+    var add506b = {
+      "Recent switcher": ["हालिया वीडियो बदलें", "તાજેતરના વીડિયો બદલો"],
+      "Recent videos": ["हालिया वीडियो", "તાજેતરના વીડિયો"],
+      "Pick up where you left off or replay a recent one. Arrows choose, Enter plays, Esc closes.": ["जहाँ छोड़ा था वहीं से चलाएं या हालिया वीडियो फिर देखें. तीर बटन से चुनें, Enter से चलाएं, Esc से बंद करें.", "જ્યાં છોડ્યું હતું ત્યાંથી ચલાવો કે તાજેતરનો વીડિયો ફરી જુઓ. એરો સાથે પસંદ કરો, Enter થી ચલાવો, Esc થી બંધ કરો."],
+      "No recent videos yet. Play something first.": ["अभी कोई हालिया वीडियो नहीं. पहले कुछ चलाएं.", "હજી કોઈ તાજેતરનો વીડિયો નથી. પહેલા કંઈક ચલાવો."],
+      "Continue": ["जारी रखें", "ચાલુ રાખો"],
+      "Watched": ["देखा हुआ", "જોયેલું"],
+      "Close": ["बंद करें", "બંધ કરો"]
+    };
+    Object.keys(add506b).forEach(function (k) { if (!TR_MSG[k]) TR_MSG[k] = add506b[k]; });
+    var fxRow2 = document.getElementById("fxRow"); if (!fxRow2) return;
+    var st2 = document.createElement("style"); st2.id = "rswStyle506";
+    st2.textContent = "#rswBg506{position:fixed;inset:0;z-index:9500;background:rgba(20,30,34,.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:16px}"
+      + "#rswCard506{width:min(430px,100%);max-height:80vh;overflow:auto;border-radius:20px;padding:14px 16px;background:rgba(250,253,252,.9);border:1px solid rgba(255,255,255,.7);box-shadow:0 18px 60px rgba(10,30,40,.35);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);color:var(--ink,#17322c)}"
+      + "html[data-theme='dark'] #rswCard506{background:rgba(28,34,38,.94);border-color:rgba(255,255,255,.16);color:#e8fbf6}"
+      + "#rswCard506 h3{margin:0 0 2px;font-size:15px}#rswCard506 .hint{font-size:12px;margin:0 0 10px}"
+      + "#rswList506{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}"
+      + "#rswList506 li{display:flex;gap:10px;align-items:center;padding:6px 8px;border-radius:12px;cursor:pointer;border:1px solid transparent}"
+      + "#rswList506 li.rsw-sel{border-color:var(--accent,#3a8a77);background:rgba(58,138,119,.12)}"
+      + "#rswList506 img{width:76px;height:43px;object-fit:cover;border-radius:8px;background:rgba(120,140,150,.25);flex:none}"
+      + "#rswList506 .rsw-t{flex:1;min-width:0;font:600 13px/1.35 system-ui,sans-serif;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}"
+      + "#rswList506 .rsw-s{display:block;font:500 11px/1.3 system-ui,sans-serif;opacity:.66;margin-top:2px}"
+      + "#rswClose506{float:right}";
+    document.head.appendChild(st2);
+    var btn2 = document.createElement("button");
+    btn2.type = "button"; btn2.className = "chip"; btn2.id = "rswBtn506";
+    fxRow2.appendChild(btn2);
+    var bg = null, sel = 0;
+    function fmt2(t) { t = Math.max(0, Math.floor(t || 0)); var m = Math.floor(t / 60), s = t % 60; return m + ":" + (s < 10 ? "0" : "") + s; }
+    function items() {
+      var out = [], seen = {};
+      (lib.hist || []).forEach(function (x) {
+        if (!x || seen[x.id] || out.length >= 10) return;
+        seen[x.id] = 1;
+        out.push({ id: x.id, title: x.title || titleFor(x.id) || ("Video " + x.id), t: x.t || 0, dur: x.dur || 0, done: x.done === true });
+      });
+      return out;
+    }
+    function paintSel() {
+      if (!bg) return;
+      var lis = bg.querySelectorAll("#rswList506 li"), i = 0;
+      lis.forEach(function (li) { li.classList.toggle("rsw-sel", i === sel); if (i === sel) li.scrollIntoView({ block: "nearest" }); i++; });
+    }
+    function close() { if (bg) { bg.remove(); bg = null; } }
+    function playSel() {
+      if (!bg) return;
+      var it = items()[sel]; if (!it) return;
+      close();
+      linkInput.value = "https://youtu.be/" + it.id;
+      loadBtn.click();
+      if (frameBox && frameBox.scrollIntoView) frameBox.scrollIntoView({ behavior: window.vpReducedMotion && window.vpReducedMotion() ? "auto" : "smooth", block: "center" });
+    }
+    function open() {
+      if (bg) { close(); return; }
+      var its = items();
+      bg = document.createElement("div"); bg.id = "rswBg506";
+      bg.innerHTML = '<div id="rswCard506" role="dialog" aria-modal="true"><button class="chip" id="rswClose506" type="button"></button><h3 id="rswH506"></h3><p class="hint" id="rswHint506"></p><p class="hint" id="rswEmpty506" hidden></p><ul id="rswList506"></ul></div>';
+      document.body.appendChild(bg);
+      sel = curId ? Math.max(0, its.map(function (x) { return x.id; }).indexOf(curId)) : 0;
+      bg.querySelector("#rswH506").textContent = T("Recent videos");
+      bg.querySelector("#rswHint506").textContent = T("Pick up where you left off or replay a recent one. Arrows choose, Enter plays, Esc closes.");
+      bg.querySelector("#rswClose506").textContent = T("Close");
+      var empty = bg.querySelector("#rswEmpty506"), ul = bg.querySelector("#rswList506");
+      empty.hidden = its.length > 0;
+      if (!its.length) empty.textContent = T("No recent videos yet. Play something first.");
+      its.forEach(function (it, i) {
+        var li = document.createElement("li"); li.setAttribute("role", "button"); li.tabIndex = -1;
+        var img = document.createElement("img"); img.src = "https://i.ytimg.com/vi/" + it.id + "/default.jpg"; img.alt = ""; img.loading = "lazy";
+        img.addEventListener("error", function () { img.style.visibility = "hidden"; });
+        var txt = document.createElement("span"); txt.className = "rsw-t"; txt.textContent = it.title;
+        var sub = document.createElement("span"); sub.className = "rsw-s";
+        var bits = [];
+        if (it.done) bits.push(T("Watched"));
+        if (it.t > 0) bits.push(T("Continue") + " " + fmt2(it.t) + (it.dur ? " (" + Math.min(99, Math.round(it.t * 100 / it.dur)) + "%)" : ""));
+        sub.textContent = bits.join(" · ");
+        txt.appendChild(sub);
+        li.appendChild(img); li.appendChild(txt);
+        li.addEventListener("click", function () { sel = i; playSel(); });
+        ul.appendChild(li);
+      });
+      bg.addEventListener("click", function (e) { if (e.target === bg) close(); });
+      bg.querySelector("#rswClose506").addEventListener("click", close);
+      paintSel();
+      var card = bg.querySelector("#rswCard506"); card.tabIndex = -1; card.focus();
+    }
+    document.addEventListener("keydown", function (e) {
+      if (!bg) return;
+      var its = items();
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
+      else if (e.key === "ArrowDown" || e.key === "ArrowRight") { e.preventDefault(); e.stopPropagation(); sel = Math.min(its.length - 1, sel + 1); paintSel(); }
+      else if (e.key === "ArrowUp" || e.key === "ArrowLeft") { e.preventDefault(); e.stopPropagation(); sel = Math.max(0, sel - 1); paintSel(); }
+      else if (e.key === "Enter") { e.preventDefault(); e.stopPropagation(); playSel(); }
+    }, true);
+    btn2.addEventListener("click", open);
+    (window.__relang = window.__relang || []).push(function () {
+      btn2.textContent = "⇄ " + T("Recent switcher");
+      if (bg) { bg.querySelector("#rswH506").textContent = T("Recent videos"); bg.querySelector("#rswHint506").textContent = T("Pick up where you left off or replay a recent one. Arrows choose, Enter plays, Esc closes."); bg.querySelector("#rswClose506").textContent = T("Close"); }
+    });
+    window.__vpSwitch506 = { open: open, close: close, items: items };
+    btn2.textContent = "⇄ " + T("Recent switcher");
+  })();
+
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
