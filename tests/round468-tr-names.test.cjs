@@ -7,6 +7,9 @@ const src = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 
 const trKeys = new Set();
 for (const m of src.matchAll(/"((?:[^"\\]|\\.){2,120})":\s*\[\s*"/g)) trKeys.add(m[1]);
+// Round 505 fix 4: also count single-quoted rows ('Name': ['...', '...']). Round 504 wrote its
+// scene-navigator rows that way; they are real runtime rows the audit could not see.
+for (const m of src.matchAll(/'((?:[^'\\]|\\.){2,120})':\s*\[\s*'/g)) trKeys.add(m[1]);
 
 const names = new Set();
 for (const m of src.matchAll(/__vpWnew283\(\s*"((?:[^"\\]|\\.)+)"/g)) names.add(m[1]);
