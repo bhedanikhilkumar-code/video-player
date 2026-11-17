@@ -2161,6 +2161,7 @@ setTimeout(done,3000);})();
           <div class="row" style="margin-top:10px"><label for="sleepMinutes" id="sleepMinLab">Custom minutes</label><input id="sleepMinutes" type="number" min="1" max="720" value="20" style="width:90px"><button class="chip" id="sleepStart" type="button">Start timer</button></div>
           <div class="row" style="margin-top:10px"><button class="chip" id="sleepMore" type="button" hidden>Keep watching 10 more min</button> <button class="chip" id="sleepRepeat" type="button" hidden>Repeat</button> <button class="chip" id="sleepShrink" type="button" hidden>-10 min</button> <button class="chip" id="sleepExtend" type="button" hidden>+10 min</button></div>
           <label class="dl-chk"><input type="checkbox" id="sleepFade"> <span id="sleepFadeT">Fade the sound out in the last minute</span></label>
+          <div class="row" style="margin-top:6px;flex-wrap:wrap;gap:8px;align-items:center" id="sleepFadeLenRow507" hidden><span class="label" id="sleepFadeLenLab507">Fade over:</span><span class="chips" id="sleepFadeLenChips507"></span></div>
           <label class="dl-chk"><input type="checkbox" id="sleepPlayOnly"> <span id="sleepPlayOnlyT">Count down only while playing</span></label>
           <div class="row" style="margin-top:6px;flex-wrap:wrap;gap:8px;align-items:center" id="sleepAfterRow300"><span class="label" id="sleepAfterLab300">After the timer:</span><span class="chips" id="sleepAfterChips300"></span></div>
           <p class="hint" id="sleepAfterHint300" hidden></p>
@@ -9430,6 +9431,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   var sleepExtend = $("sleepExtend"), sleepFadeBox = $("sleepFade");
   var fadeBase = null, fadeOn = false, fadeBaseLp306 = null, fadeBaseRef445 = null;
   try { fadeOn = localStorage.getItem("vp-sleep-fade.v1") === "1"; } catch (e) {}
+  // Round 507 new 1: how long the sleep fade lasts. The sound fade and the picture fade
+  // both ran over a fixed last minute; a 30-second dip suits a short timer and two minutes
+  // suits falling asleep to a long video. Kept on this device (vp-sleep-fadelen.v1), rides
+  // the backup like the fade switch itself, synced across tabs below.
+  var fadeLen507 = 60;
+  try { var flv507 = parseInt(localStorage.getItem("vp-sleep-fadelen.v1") || "60", 10); if ([30, 60, 120].indexOf(flv507) >= 0) fadeLen507 = flv507; } catch (e) {}
+  function fadeMs507() { return fadeLen507 * 1000; }
   // Sleep picture fade (round 92): a soft black veil over the video that darkens through the
   // last minute, so a sleep timer also dims the screen. The choice is kept in prefs (it rides
   // in the backup export) and the veil never blocks taps.
@@ -9494,9 +9502,10 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     var leftMs = sleepEnd - Date.now();
     if (leftMs > 0) {
       sleepRender();
-      if (fadeOn && iframe && ready && playing && leftMs <= 60000) {
+      var fadeWin507 = fadeMs507();
+      if (fadeOn && iframe && ready && playing && leftMs <= fadeWin507) {
         if (fadeBase == null) fadeBase = effVol();
-        var fvol = Math.max(5, Math.round(fadeBase * leftMs / 60000));
+        var fvol = Math.max(5, Math.round(fadeBase * leftMs / fadeWin507));
         send("setVolume", [fvol]); vol.value = fvol; volLabel.textContent = fvol + "%";
       }
       // Round 306 fix 2: "Fade the sound out in the last minute" only ever reached the
@@ -9505,13 +9514,13 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // minute, floored at 5% like the YouTube fade, and its volume comes back with the
       // usual restore when the timer ends or is switched off.
       var lpF306 = $("lpVideo");
-      if (fadeOn && lpF306 && !lpF306.hidden && !lpF306.paused && leftMs <= 60000) {
+      if (fadeOn && lpF306 && !lpF306.hidden && !lpF306.paused && leftMs <= fadeWin507) {
         if (fadeBaseLp306 == null) fadeBaseLp306 = lpF306.volume;
-        lpF306.volume = Math.max(0.05, Math.round(fadeBaseLp306 * leftMs / 60000 * 100) / 100);
+        lpF306.volume = Math.max(0.05, Math.round(fadeBaseLp306 * leftMs / fadeWin507 * 100) / 100);
       }
       var refFade445=$("lcVideo445");
-      if(fadeOn&&referencePlaying445()&&leftMs<=60000){if(fadeBaseRef445==null)fadeBaseRef445=refFade445.volume;refFade445.volume=Math.max(.05,Math.round(fadeBaseRef445*leftMs/60000*100)/100);}
-      if (sleepDimLayer) sleepDimLayer.style.opacity = (prefs.sleepPicFade && playing && leftMs <= 60000) ? String(Math.min(0.9, Math.max(0, (1 - leftMs / 60000) * 0.9)).toFixed(3)) : "0";
+      if(fadeOn&&referencePlaying445()&&leftMs<=fadeWin507){if(fadeBaseRef445==null)fadeBaseRef445=refFade445.volume;refFade445.volume=Math.max(.05,Math.round(fadeBaseRef445*leftMs/fadeWin507*100)/100);}
+      if (sleepDimLayer) sleepDimLayer.style.opacity = (prefs.sleepPicFade && playing && leftMs <= fadeWin507) ? String(Math.min(0.9, Math.max(0, (1 - leftMs / fadeWin507) * 0.9)).toFixed(3)) : "0";
       // Round 306 fix 1: "Fade the picture to dark in the last minute" never faded a
       // local file - its black veil lives inside the YouTube frame box and the gate
       // reads the YouTube playing flag, so a downloaded video kept full brightness
@@ -9519,7 +9528,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       // the local player through a CSS variable, with the same 0.9 ceiling and the
       // same restore when the timer fires or is cleared.
       var lpV306 = $("lpVideo"), lpLive306 = !!(lpV306 && !lpV306.hidden && !lpV306.paused && !lpV306.ended);
-      var lpFade306 = (prefs.sleepPicFade && (lpLive306 || referencePlaying445()) && leftMs <= 60000) ? Math.min(0.9, Math.max(0, (1 - leftMs / 60000) * 0.9)) : 0;
+      var lpFade306 = (prefs.sleepPicFade && (lpLive306 || referencePlaying445()) && leftMs <= fadeWin507) ? Math.min(0.9, Math.max(0, (1 - leftMs / fadeWin507) * 0.9)) : 0;
       document.documentElement.style.setProperty("--vp-sleepfade", "brightness(" + (1 - lpFade306).toFixed(3) + ")");
       return;
     }
@@ -9724,16 +9733,59 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     fadeOn = sleepFadeBox.checked;
     try { localStorage.setItem("vp-sleep-fade.v1", fadeOn ? "1" : "0"); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
     if (!fadeOn) sleepFadeRestore();
+    if (typeof fadeLenPaint507 === "function") fadeLenPaint507();
   }); }
+  // Round 507 new 1 (UI): the fade length chips on the Sleep card. They only matter while
+  // the fade switch is on, so the row hides with it; the choice is written to
+  // vp-sleep-fadelen.v1 and adopted by other tabs through the storage listener below.
+  Object.assign(TR_MSG, {
+    "Fade over:": ["इतने समय में धीमा:", "આટલામાં ધીમું:"],
+    "30 sec": ["30 सेकंड", "30 સેકંડ"],
+    "1 min": ["1 मिनट", "1 મિનિટ"],
+    "2 min": ["2 मिनट", "2 મિનિટ"],
+    "Fade length set to {n}.": ["धीमा होने का समय {n} हुआ.", "ધીમું થવાનો સમય {n} થયો."],
+    "Sleep fade length": ["स्लीप धीमा समय", "સ્લીપ ધીમો સમય"]
+  });
+  var fadeLenRow507 = $("sleepFadeLenRow507"), fadeLenChips507 = $("sleepFadeLenChips507"), fadeLenLab507 = $("sleepFadeLenLab507");
+  function fadeLenPaint507() {
+    if (!fadeLenRow507 || !fadeLenChips507) return;
+    fadeLenRow507.hidden = !fadeOn;
+    fadeLenLab507.textContent = T("Fade over:");
+    var names507 = { 30: "30 sec", 60: "1 min", 120: "2 min" };
+    [].slice.call(fadeLenChips507.children).forEach(function (c) {
+      var v = Number(c.dataset.value);
+      c.textContent = T(names507[v]);
+      c.setAttribute("aria-pressed", String(v === fadeLen507));
+      c.classList.toggle("active", v === fadeLen507);
+    });
+  }
+  if (fadeLenChips507) {
+    [30, 60, 120].forEach(function (v) {
+      var c = document.createElement("button"); c.className = "chip"; c.type = "button"; c.dataset.value = String(v);
+      c.addEventListener("click", function () {
+        fadeLen507 = v;
+        try { localStorage.setItem("vp-sleep-fadelen.v1", String(v)); } catch (e) { if (typeof storageWarn === "function") storageWarn(); }
+        fadeLenPaint507();
+        toast(T("Fade length set to {n}.").replace("{n}", c.textContent));
+      });
+      fadeLenChips507.appendChild(c);
+    });
+  }
+  (window.__relang = window.__relang || []).push(fadeLenPaint507);
+  fadeLenPaint507();
   // Round 479 fix 3: the Sleep card's two checkboxes (fade the sound, play only the
   // current video) were read once on load, so ticking one here left other open tabs
   // showing the old state until a reload. A storage listener adopts both everywhere.
   window.addEventListener("storage", function (e) {
-    if (e.key !== "vp-sleep-fade.v1" && e.key !== "vp-sleep-playonly.v1" && e.key !== null) return;
+    if (e.key !== "vp-sleep-fade.v1" && e.key !== "vp-sleep-playonly.v1" && e.key !== "vp-sleep-fadelen.v1" && e.key !== null) return;
     try {
       var f479 = localStorage.getItem("vp-sleep-fade.v1") === "1", p479 = localStorage.getItem("vp-sleep-playonly.v1") === "1";
       if (fadeOn !== f479) { fadeOn = f479; if (sleepFadeBox) sleepFadeBox.checked = fadeOn; if (!fadeOn) sleepFadeRestore(); }
       if (sleepPlayOnly !== p479) { sleepPlayOnly = p479; if (sleepPlayOnlyBox) sleepPlayOnlyBox.checked = sleepPlayOnly; sleepLastTick = 0; }
+      var flt507 = parseInt(localStorage.getItem("vp-sleep-fadelen.v1") || "60", 10);
+      if ([30, 60, 120].indexOf(flt507) < 0) flt507 = 60;
+      if (fadeLen507 !== flt507) fadeLen507 = flt507;
+      if (typeof fadeLenPaint507 === "function") fadeLenPaint507();
     } catch (err) {}
   });
   // Round 226 follow-up: What's new and finder names of this round's additions
@@ -15940,7 +15992,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
   // like the rest) was in the Reset-all settings list but rode no backup either, so a
   // restore on a new phone silently turned the on-video clock back off. It now exports
   // and restores with the same 0/1 validation.
-  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short|long)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new|recent)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-mini-corner.v1": /^(br|bl|tr|tl)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-last.v1": /^\d{1,3}$/, "vp-sleep-playonly.v1": /^[01]$/, "vp-dl-mp3": /^[01]$/, "vp-clock-ov.v1": /^[01]$/, "vp-latergroup.v1": /^[01]$/, "vp-plwat306.v1": /^[01]$/ };
+  var VP_RAW_KEYS = { "vp-favsort.v1": /^(new|az|rate|short|long)$/, "vp-latersort.v1": /^[a-z0-9-]{1,12}$/, "vp-histsort.v1": /^[a-z0-9-]{1,12}$/, "vp-plsort.v1": /^(az|new|recent)$/, "vp-pausemarks.v1": /^[01]$/, "vp-laterlen.v1": /^[a-z0-9]{1,6}$/, "vp-later-auto.v1": /^[01]$/, "vp-fadein.v1": /^\d{1,2}$/, "vp-fadeout.v1": /^\d{1,2}$/, "vp-mini-side.v1": /^(left|right)$/, "vp-mini-corner.v1": /^(br|bl|tr|tl)$/, "vp-music-mode.v1": /^[01]$/, "vp-sleep-fade.v1": /^[01]$/, "vp-sleep-fadelen.v1": /^(30|60|120)$/, "vp-sleep-last.v1": /^\d{1,3}$/, "vp-sleep-playonly.v1": /^[01]$/, "vp-dl-mp3": /^[01]$/, "vp-clock-ov.v1": /^[01]$/, "vp-latergroup.v1": /^[01]$/, "vp-plwat306.v1": /^[01]$/ };
   // Round 232 fix 1: the Still watching? choice (vp-stillwatch.v1: off, or ask after 2, 3
   // or 5 auto-plays) rode no backup - Reset all settings counts it, but it was missing
   // here (the same class round 230 fix 1 closed for the on-video clock), so a restore on
@@ -55992,7 +56044,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   // Break reminder, Keep screen awake, Fullscreen rotate and Stats on video as they were, although
   // the dialog promises settings go back to defaults. They are cleared with the rest now.
   var KEYS = ["vp-prefs.v1", "vp-keymap.v1", "vp-queue-modes.v1", "vp-sleep-end.v1", "vp-dl-mp3", "vp-dl-url", "vp-resume.v1", "vp-vmem.v1", "vp-lp.v1", "vp-stillwatch.v1", "vp-ctl-use.v1",
-    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-mini-corner.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-cvd.v1", "vp-sublook.v1", "vp-wallpaper.v1", "vp-latergroup.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1",
+    "vp-favsort.v1", "vp-latersort.v1", "vp-histsort.v1", "vp-plsort.v1", "vp-laterlen.v1", "vp-later-auto.v1", "vp-fadein.v1", "vp-fadeout.v1", "vp-sleep-fade.v1", "vp-sleep-fadelen.v1", "vp-sleep-last.v1", "vp-sleep-playonly.v1", "vp-pausemarks.v1", "vp-mini-side.v1", "vp-mini-corner.v1", "vp-music-mode.v1", "vp-clock-ov.v1", "vp-lpview.v1", "vp-look.v1", "vp-cvd.v1", "vp-sublook.v1", "vp-wallpaper.v1", "vp-latergroup.v1", "vp-dim.v1", "vp-grid.v1", "vp-zoom.v1", "vp-flip.v1", "vp-break.v1", "vp-awake.v1", "vp-fs-rotate.v1", "vp-stats-ov.v1", "vp-focus.v1",
     // Round 282 fix 4: Reset all settings promised defaults but left the folded sections,
     // hidden quick-row chips, channel intro-skip picks, the four per-video memories
     // (speed, rotation, picture look, A-B loop), the rewind-on-resume choice and the
