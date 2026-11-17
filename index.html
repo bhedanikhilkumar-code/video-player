@@ -53259,8 +53259,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     var cues = [], armed = false, editIndex = -1, fired = new Set(), seekDone509 = new Set(), selfSeek509 = false, baseline = null, applied = null, source = v.getAttribute('src') || '', state = '', lastCue = '', frame = 0;
     function ready() { return /^blob:/.test(v.getAttribute('src') || '') && !v.hidden && Number.isFinite(v.duration) && v.duration > 0; }
     function label(c, i) { return c.name || T('Cue name') + ' ' + (i + 1); }
-    function cueTime(c) { return fmt(c.time) + (c.time % 1 ? '.' + String(Math.round((c.time % 1) * 100)).padStart(2, '0') : ''); }
-    function action(c) { return T(c.action === 'rate' ? 'Set speed' : c.action === 'volume' ? 'Set volume' : c.action === 'seek' ? 'Jump to time' : 'Pause playback') + (c.action === 'pause' ? '' : ': ' + (c.action === 'rate' ? c.value + '×' : c.action === 'seek' ? fmt(c.value) : Math.round(c.value * 100) + '%')); }
+    function cueTime(c) { var n=Math.round(c.time*100),seconds=Math.floor(n/100),fraction=n%100;return fmt(seconds)+(fraction?'.'+String(fraction).padStart(2,'0'):''); }
+    function action(c) { return T(c.action === 'rate' ? 'Set speed' : c.action === 'volume' ? 'Set volume' : c.action === 'seek' ? 'Jump to time' : 'Pause playback') + (c.action === 'pause' ? '' : ': ' + (c.action === 'rate' ? c.value + '×' : c.action === 'seek' ? cueTime({time:c.value}) : Math.round(c.value * 100) + '%')); }
     // A pause and jump cannot both own the playhead at the same instant.
     function transportConflict513(rows) {
       var seen=new Set();return rows.some(function(c){if(c.action!=='seek'&&c.action!=='pause')return false;var t=Math.round(c.time*100);if(seen.has(t))return true;seen.add(t);return false;});
@@ -53387,7 +53387,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         if (c.action === 'rate' && [.25,.5,.75,1,1.25,1.5,2,2.5,3].indexOf(c.value) < 0) return null;
         if (c.action === 'volume' && [0,.1,.25,.5,.75,1].indexOf(c.value) < 0) return null;
         if (c.action === 'seek' && (typeof c.value !== 'number' || !Number.isFinite(c.value) || c.value < 0 || Math.round(c.value*100)/100 >= f.duration)) return null;
-        rows.push({name:c.name, time:Math.round(c.time*100)/100, action:c.action, value:c.action === 'pause' ? 1 : c.value});
+        rows.push({name:c.name, time:Math.round(c.time*100)/100, action:c.action, value:c.action === 'pause' ? 1 : c.action === 'seek' ? Math.round(c.value*100)/100 : c.value});
       }
       if(transportConflict513(rows))return null;
       rows.sort(function(a,b){return a.time-b.time;});
@@ -53535,7 +53535,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       if(timingDraft513) timingDraft513.rows.forEach(function(c,i){
         var li=document.createElement('li'),before=timingDraft513.before[i];
         li.textContent=label(before,i)+' · '+T('Before')+': '+cueTime(before)+' → '+T('After')+': '+cueTime(c)+' · '+action(c);
-        if(c.action==='seek' && before.value!==c.value) li.textContent+=' · '+T('Jump destination')+': '+fmt(before.value)+' → '+fmt(c.value);
+        if(c.action==='seek' && before.value!==c.value) li.textContent+=' · '+T('Jump destination')+': '+cueTime({time:before.value})+' → '+cueTime({time:c.value});
         $('ctRows513').appendChild(li);
       });
       $('ctStatus513').textContent=T(timingState513);
