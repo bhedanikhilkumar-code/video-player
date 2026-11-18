@@ -28,7 +28,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#ceFile422').setInputFiles(file([{...good,steps:[{name:'broken',a:10,b:5,passes:1}]}]));await page.waitForFunction(()=>document.querySelector('#ceStatus422').textContent.includes('not a valid'));assert.equal(await page.locator('#ceAdd422').isDisabled(),true);
     await page.locator('#ceFile422').setInputFiles(file([good]));await page.waitForFunction(()=>!document.querySelector('#ceAdd422').disabled);await page.locator('#ceAdd422').click();
     assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('vp-circuit-presets421.v1')).length),1);assert.equal(await page.evaluate(()=>window.__vpCircuitActive421()),false);
-    await page.locator('#vpToast button').click();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('vp-circuit-presets421.v1')).length),0);
+    await page.locator('#vpToast').getByRole('button',{name:/^Undo: Circuits added: 1\./}).click();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('vp-circuit-presets421.v1')).length),0);
     await page.locator('#ceFile422').setInputFiles(file([good]));await page.waitForFunction(()=>!document.querySelector('#ceAdd422').disabled);await page.locator('#ceAdd422').click();
     await page.reload();await page.waitForFunction(()=>window.__vpMainOk325);await open();assert.equal(await page.locator('#ceExport422').isDisabled(),false);
     await page.locator('#ceFile422').setInputFiles(file([good]));await page.waitForFunction(()=>document.querySelector('#cePreview422 strong'));assert.equal(await page.locator('#ceAdd422').isDisabled(),true);assert.match(await page.locator('#cePreview422').textContent(),/Already saved/);
