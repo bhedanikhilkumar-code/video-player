@@ -1,0 +1,25 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const html = fs.readFileSync('index.html', 'utf8');
+const start = html.indexOf('    var yt = { state: -2,');
+const end = html.indexOf('    var btn = document.createElement("button");', start);
+assert.ok(start > 0 && end > start);
+const frame = {};
+let listener;
+const ctx = {iframe:{contentWindow:frame}, YT_ORIGIN:'https://www.youtube-nocookie.com', window:{addEventListener:(name,fn) => listener=fn}};
+vm.createContext(ctx);
+vm.runInContext(html.slice(start,end),ctx);
+function state() { return vm.runInContext('yt.state',ctx); }
+listener({origin:'https://other.invalid',source:frame,data:{event:'onStateChange',info:1}});
+assert.equal(state(),-2,'foreign origins cannot spoof stats');
+listener({origin:ctx.YT_ORIGIN,source:{},data:{event:'onStateChange',info:1}});
+assert.equal(state(),-2,'other windows cannot spoof stats');
+listener({origin:ctx.YT_ORIGIN,source:frame,data:'{"event":"onStateChange","info":1}'});
+assert.equal(state(),1,'current player messages still work');
+listener({origin:'https://www.youtube.com',source:frame,data:{event:'onStateChange',info:2}});
+assert.equal(state(),2,'supported YouTube origin still works');
+ctx.iframe=null;
+listener({origin:ctx.YT_ORIGIN,source:frame,data:{event:'onStateChange',info:1}});
+assert.equal(state(),2,'no current iframe means no message is accepted');
+console.log('tech stats messages: exact source window and supported origin required');
