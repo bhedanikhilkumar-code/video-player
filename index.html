@@ -54842,6 +54842,65 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   root.VPChannelRouter543 = { valid: valid, create: create };
 })(typeof window !== "undefined" ? window : globalThis);
   // ROUTER543 END
+  // WAV-SAMPLES555 START
+  window.VPWavSamples555={scan:async function(file,cancelled){
+    function stop(){if(cancelled&&cancelled())throw Error('cancelled');}
+    if(!file||file.size>20*1048576)throw Error('size');
+    async function read(a,n){stop();var b=await file.slice(a,a+n).arrayBuffer();stop();if(b.byteLength!==n)throw Error('truncated');return new DataView(b);}
+    function text(v,a,n){var s='';for(var i=0;i<n;i++)s+=String.fromCharCode(v.getUint8(a+i));return s;}
+    var head=await read(0,12);if(text(head,0,4)!=='RIFF'||text(head,8,4)!=='WAVE')throw Error('format');
+    var end=head.getUint32(4,true)+8;if(end>file.size||end<12)throw Error('truncated');
+    var fmt=null,data=null,pos=12,chunks=0;
+    while(pos<end){if(++chunks>4096||pos+8>end)throw Error('chunks');var h=await read(pos,8),id=text(h,0,4),size=h.getUint32(4,true),next=pos+8+size+(size%2);if(next>end)throw Error('truncated');
+      if(id==='fmt '){if(fmt||size<16)throw Error('format');var f=await read(pos+8,16);fmt={format:f.getUint16(0,true),channels:f.getUint16(2,true),rate:f.getUint32(4,true),bytesPerSecond:f.getUint32(8,true),align:f.getUint16(12,true),bits:f.getUint16(14,true)};}
+      if(id==='data'){if(data)throw Error('format');data={start:pos+8,size:size};}pos=next;
+    }
+    if(!fmt||!data||![1,2].includes(fmt.channels)||!((fmt.format===1&&[8,16,24,32].includes(fmt.bits))||(fmt.format===3&&fmt.bits===32))||fmt.rate<8000||fmt.rate>192000||fmt.align!==fmt.channels*fmt.bits/8||fmt.bytesPerSecond!==fmt.rate*fmt.align||!data.size||data.size%fmt.align)throw Error('format');
+    var frames=data.size/fmt.align,stats=Array.from({length:fmt.channels},function(){return {count:0,invalid:0,sum:0,squares:0,peak:0,limits:0};}),width=fmt.bits/8,step=Math.floor(131072/fmt.align)*fmt.align;
+    for(var base=0;base<data.size;base+=step){var block=await read(data.start+base,Math.min(step,data.size-base));for(var offset=0;offset<block.byteLength;offset+=fmt.align){for(var c=0;c<fmt.channels;c++){var at=offset+c*width,s=stats[c],raw,value,limit=false;if(fmt.format===3){value=block.getFloat32(at,true);limit=Math.abs(value)>=1;}else{if(fmt.bits===8){raw=block.getUint8(at)-128;value=raw/128;limit=raw===-128||raw===127;}else{if(fmt.bits===16)raw=block.getInt16(at,true);else if(fmt.bits===24){raw=block.getUint8(at)|(block.getUint8(at+1)<<8)|(block.getUint8(at+2)<<16);if(raw&0x800000)raw-=0x1000000;}else raw=block.getInt32(at,true);var scale=Math.pow(2,fmt.bits-1);value=raw/scale;limit=raw===-scale||raw===scale-1;}}if(!Number.isFinite(value)){s.invalid++;continue;}s.count++;s.sum+=value;s.squares+=value*value;s.peak=Math.max(s.peak,Math.abs(value));if(limit)s.limits++;}}await new Promise(function(resolve){setTimeout(resolve,0);});stop();}
+    return {channels:fmt.channels,rate:fmt.rate,bits:fmt.bits,float:fmt.format===3,frames:frames,seconds:frames/fmt.rate,stats:stats.map(function(s){var rms=s.count?Math.sqrt(s.squares/s.count):null;return {count:s.count,invalid:s.invalid,peak:s.count?s.peak:null,rms:rms,dc:s.count?s.sum/s.count:null,crest:rms>0?20*Math.log10(s.peak/rms):null,limits:s.limits};})};
+  }};
+  // WAV-SAMPLES555 END
+  Object.assign(TR_MSG,{
+    'WAV sample inspector':['WAV सैंपल जांच','WAV સૅમ્પલ તપાસ'],
+    'Inspect original WAV samples, not the player output. No decoding, resampling, microphone, upload or file edits. Playback is unchanged.':['मूल WAV सैंपल जांचें, प्लेयर की आवाज़ नहीं. डिकोडिंग, रीसैंपलिंग, माइक्रोफ़ोन, अपलोड या फ़ाइल एडिट नहीं. प्लेबैक नहीं बदलता.','મૂળ WAV સૅમ્પલ તપાસો, પ્લેયરનો અવાજ નહીં. ડિકોડિંગ, રીસૅમ્પલિંગ, માઇક્રોફોન, અપલોડ કે ફાઇલ ફેરફાર નહીં. પ્લેબૅક બદલાતો નથી.'],
+    'Up to 20 MiB. Basic RIFF WAV only: mono/stereo PCM 8/16/24/32-bit or 32-bit float, 8-192 kHz. Compressed, extensible and multiple-data-chunk WAV files are not supported.':['20 MiB तक. केवल बेसिक RIFF WAV: मोनो/स्टीरियो PCM 8/16/24/32-बिट या 32-बिट फ़्लोट, 8-192 kHz. संपीड़ित, एक्स्टेंसिबल और कई डेटा चंक वाली WAV समर्थित नहीं.','20 MiB સુધી. ફક્ત બેઝિક RIFF WAV: મોનો/સ્ટીરિયો PCM 8/16/24/32-બિટ અથવા 32-બિટ ફ્લોટ, 8-192 kHz. સંકુચિત, એક્સ્ટેન્સિબલ અને અનેક ડેટા ચંકવાળી WAV સમર્થિત નથી.'],
+    'Scan WAV samples':['WAV सैंपल जांचें','WAV સૅમ્પલ તપાસો'],
+    'Cancel WAV scan':['WAV जांच रद्द करें','WAV તપાસ રદ કરો'],
+    'Clear sample results':['सैंपल नतीजे हटाएं','સૅમ્પલ પરિણામો દૂર કરો'],
+    'Choose a supported WAV device file first.':['पहले समर्थित WAV डिवाइस फ़ाइल चुनें.','પહેલાં સમર્થિત WAV ડિવાઇસ ફાઇલ પસંદ કરો.'],
+    'Reading WAV samples locally. Playback is unchanged.':['WAV सैंपल डिवाइस पर पढ़ रहे हैं. प्लेबैक नहीं बदलता.','WAV સૅમ્પલ ડિવાઇસ પર વાંચીએ છીએ. પ્લેબૅક બદલાતો નથી.'],
+    'WAV sample results ready. Nothing was saved.':['WAV सैंपल नतीजे तैयार. कुछ सेव नहीं हुआ.','WAV સૅમ્પલ પરિણામો તૈયાર. કંઈ સાચવ્યું નથી.'],
+    'WAV sample scan cancelled or cleared.':['WAV सैंपल जांच रद्द या साफ हुई.','WAV સૅમ્પલ તપાસ રદ કે સાફ થઈ.'],
+    'This inspector accepts files up to 20 MiB.':['यह जांच 20 MiB तक की फ़ाइल लेती है.','આ તપાસ 20 MiB સુધીની ફાઇલ લે છે.'],
+    'Unsupported or damaged WAV structure. No partial results are shown.':['असमर्थित या खराब WAV संरचना. अधूरे नतीजे नहीं दिखते.','અસમર્થિત કે ખરાબ WAV રચના. અધૂરા પરિણામો બતાવતા નથી.'],
+    'Sample peak (dBFS)':['सैंपल पीक (dBFS)','સૅમ્પલ પીક (dBFS)'],
+    'Sample RMS (dBFS)':['सैंपल RMS (dBFS)','સૅમ્પલ RMS (dBFS)'],
+    'DC offset (% full scale)':['DC ऑफ़सेट (% फुल स्केल)','DC ઑફસેટ (% ફુલ સ્કેલ)'],
+    'Crest factor (dB)':['क्रेस्ट फ़ैक्टर (dB)','ક્રેસ્ટ ફૅક્ટર (dB)'],
+    'Digital-limit samples':['डिजिटल सीमा वाले सैंपल','ડિજિટલ મર્યાદાવાળા સૅમ્પલ'],
+    'Non-finite samples excluded':['असीमित/अमान्य सैंपल बाहर','અનંત/અમાન્ય સૅમ્પલ બાકાત'],
+    'Silent / not defined':['मौन / परिभाषित नहीं','મૌન / વ્યાખ્યાયિત નથી'],
+    'Channel {n}':['चैनल {n}','ચૅનલ {n}'],
+    '{c} channels · {r} Hz · {b}-bit {f} · {n} frames · {s} seconds':['{c} चैनल · {r} Hz · {b}-बिट {f} · {n} फ़्रेम · {s} सेकंड','{c} ચૅનલ · {r} Hz · {b}-બિટ {f} · {n} ફ્રેમ · {s} સેકન્ડ'],
+    'Sample peak is not true peak or a hearing-safety measure. RMS includes DC and is not LUFS. Crest factor is peak divided by RMS in dB. DC is the signed sample mean. Digital-limit counts include integer endpoints or float magnitude at least 1; they do not prove audible clipping. Non-finite float samples are excluded.':['सैंपल पीक ट्रू पीक या सुनने की सुरक्षा माप नहीं. RMS में DC शामिल है, यह LUFS नहीं. क्रेस्ट फ़ैक्टर पीक और RMS का dB अनुपात है. DC सैंपल का चिह्न सहित औसत है. सीमा गिनती में पूर्णांक के अंतिम मान या कम से कम 1 फ़्लोट परिमाण हैं; इससे सुनाई देने वाली क्लिपिंग साबित नहीं होती. अमान्य फ़्लोट सैंपल बाहर हैं.','સૅમ્પલ પીક ટ્રૂ પીક કે સાંભળવાની સલામતીનું માપ નથી. RMSમાં DC છે, તે LUFS નથી. ક્રેસ્ટ ફૅક્ટર પીક અને RMSનો dB ગુણોત્તર છે. DC સૅમ્પલની ચિહ્નવાળી સરેરાશ છે. મર્યાદાની ગણતરીમાં પૂર્ણાંકના છેડાના મૂલ્ય કે ઓછામાં ઓછું 1 ફ્લોટ પરિમાણ છે; તે સાંભળી શકાય તેવી ક્લિપિંગનો પુરાવો નથી. અમાન્ય ફ્લોટ સૅમ્પલ બાકાત છે.']
+  });
+  (function(){
+    var video=$('lpVideo'),host=$('lpCtl');if(!video||!host)return;var card=document.createElement('details');card.id='wavSamples555';card.className='lp-workbench';
+    card.innerHTML='<summary data-ws="WAV sample inspector"></summary><p class="hint" data-ws="Inspect original WAV samples, not the player output. No decoding, resampling, microphone, upload or file edits. Playback is unchanged."></p><p class="hint" data-ws="Up to 20 MiB. Basic RIFF WAV only: mono/stereo PCM 8/16/24/32-bit or 32-bit float, 8-192 kHz. Compressed, extensible and multiple-data-chunk WAV files are not supported."></p><div class="row"><button type="button" class="chip" id="wsScan555" data-ws="Scan WAV samples"></button><button type="button" class="chip" id="wsCancel555" data-ws="Cancel WAV scan" hidden></button><button type="button" class="chip" id="wsClear555" data-ws="Clear sample results"></button></div><p id="wsStatus555" class="hint" role="status" aria-live="polite"></p><p id="wsFacts555" class="hint"></p><div id="wsResults555"></div><p class="hint" data-ws="Sample peak is not true peak or a hearing-safety measure. RMS includes DC and is not LUFS. Crest factor is peak divided by RMS in dB. DC is the signed sample mean. Digital-limit counts include integer endpoints or float magnitude at least 1; they do not prove audible clipping. Non-finite float samples are excluded."></p>';host.prepend(card);
+    var style=document.createElement('style');style.textContent='#wavSamples555{margin:14px 0;overflow-wrap:anywhere}#wavSamples555 .row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}#wavSamples555 [hidden]{display:none!important}#wsResults555 article{border:1px solid var(--hairline);border-radius:14px;padding:12px;margin:10px 0}#wsResults555 h4{margin:0 0 10px}#wsResults555 dl{margin:0}#wsResults555 dl>div{display:flex;justify-content:space-between;gap:14px;margin:8px 0}#wsResults555 dd{margin:0;text-align:end;font-variant-numeric:tabular-nums}#wavSamples555 :focus-visible{outline:3px solid var(--teal);outline-offset:3px}';document.head.appendChild(style);
+    var epoch=0,busy=false,result=null,message='Choose a supported WAV device file first.';
+    function file(){return window.__vpLocalQueue443&&__vpLocalQueue443.currentFile548?__vpLocalQueue443.currentFile548():null;}
+    function paint(){card.querySelectorAll('[data-ws]').forEach(function(e){e.textContent=T(e.dataset.ws);});$('wsScan555').disabled=busy||!file();$('wsCancel555').hidden=!busy;$('wsStatus555').textContent=T(message);$('wsResults555').textContent='';$('wsFacts555').textContent='';if(!result)return;
+      $('wsFacts555').textContent=T('{c} channels · {r} Hz · {b}-bit {f} · {n} frames · {s} seconds').replace('{c}',result.channels).replace('{r}',result.rate).replace('{b}',result.bits).replace('{f}',result.float?'float':'PCM').replace('{n}',result.frames).replace('{s}',result.seconds.toFixed(3));
+      function db(v){return v>0?(20*Math.log10(v)).toFixed(2):T('Silent / not defined');}
+      result.stats.forEach(function(s,i){var a=document.createElement('article'),h=document.createElement('h4'),dl=document.createElement('dl');h.textContent=T('Channel {n}').replace('{n}',i+1);[['Sample peak (dBFS)',db(s.peak)],['Sample RMS (dBFS)',db(s.rms)],['DC offset (% full scale)',s.dc===null?T('Silent / not defined'):(s.dc*100).toFixed(4)+'%'],['Crest factor (dB)',s.crest===null?T('Silent / not defined'):s.crest.toFixed(2)],['Digital-limit samples',String(s.limits)],['Non-finite samples excluded',String(s.invalid)]].forEach(function(pair){var row=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=T(pair[0]);dd.textContent=pair[1];row.append(dt,dd);dl.append(row);});a.append(h,dl);$('wsResults555').append(a);});
+    }
+    function clear(){epoch++;busy=false;result=null;card.removeAttribute('aria-busy');message='WAV sample scan cancelled or cleared.';paint();}
+    $('wsScan555').addEventListener('click',async function(){if(busy)return;clear();var chosen=file(),mine=epoch,source=video.getAttribute('src');if(!chosen){message='Choose a supported WAV device file first.';paint();return;}busy=true;message='Reading WAV samples locally. Playback is unchanged.';card.setAttribute('aria-busy','true');paint();function stale(){return mine!==epoch||chosen!==file()||source!==video.getAttribute('src');}try{var scanned=await VPWavSamples555.scan(chosen,stale);if(stale())return;result=scanned;message='WAV sample results ready. Nothing was saved.';}catch(e){if(stale())return;message=e.message==='size'?'This inspector accepts files up to 20 MiB.':'Unsupported or damaged WAV structure. No partial results are shown.';}finally{if(mine===epoch){busy=false;card.removeAttribute('aria-busy');paint();}}});
+    $('wsCancel555').addEventListener('click',clear);$('wsClear555').addEventListener('click',clear);['loadstart','emptied'].forEach(function(e){video.addEventListener(e,clear);});['vp-local-closed','vp-youtube-selected'].forEach(function(e){document.addEventListener(e,clear);});card.addEventListener('toggle',function(){if(!card.open&&busy)clear();});document.addEventListener('visibilitychange',function(){if(document.hidden&&busy)clear();});window.addEventListener('pagehide',clear);(window.__relang=window.__relang||[]).push(paint);window.__vpWavSamples555=function(){return {busy:busy,result:result};};paint();window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('WAV sample inspector','#wavSamples555');},17920);});
+  })();
+
   // CROSSFEED554 START
   window.VPCrossfeed554={valid:function(mode){return ['off','light','medium'].indexOf(mode)>=0;},create:function(ctx,input,initial){
     var dry=ctx.createGain(),split=ctx.createChannelSplitter(2),merge=ctx.createChannelMerger(2),output=ctx.createGain(),paths=[],mode='off';
@@ -61002,6 +61061,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Local playlist exchange", "local playlist recipe export import restore relink json files order", "#localExchange276"],
       ["Browse media folder", "directory folder subfolders local media browser playlist recursive", "#folderBrowser276"],
       ["Listening cut list", "listening cut list remove quiet gaps silence nonquiet speech review clips itinerary", "#qmClips548"],
+      ["WAV sample inspector", "wav sample inspector statistics dc offset crest factor sample peak rms digital limit PCM float WAV सैंपल સૅમ્પલ", "#wavSamples555"],
       ["Headphone crossfeed", "headphone crossfeed cross feed blend hard panned stereo ears filter local audio हेडफ़ोन હેડફોન", "#crossfeed554"],
       ["Stereo scope", "stereo scope stereo phase correlation phase vectorscope goniometer left right channels rms peak mono cancellation स्टीरियो સ્ટીરિયો", "#stereoScope553"],
       ["Container map", "container map original media structure header WAV RIFF fmt chunks mp4 header wav header m4a mov ftyp boxes offsets truncated malformed bytes inspect कंटेनर કન્ટેનર", "#containerMap552"],
