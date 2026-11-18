@@ -1,44 +1,136 @@
 <div align="center">
 
-<img src="assets/1-banner.svg" alt="HD Video Player banner" width="100%"/>
+<img src="assets/1-banner.svg" alt="HD Video Player" width="100%"/>
 
-<br/>
+# HD Video Player
 
-![Hosted on Cloudflare Pages](https://img.shields.io/badge/Hosted%20on-Cloudflare%20Pages-F38020?style=for-the-badge&logo=cloudflarepages&logoColor=white)
-![Vanilla JS](https://img.shields.io/badge/Frontend-Vanilla%20JS-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
-![Flask](https://img.shields.io/badge/Backend-Flask-3BABC3?style=for-the-badge&logo=flask&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
-![Render](https://img.shields.io/badge/Render-Free%20tier-46E3B7?style=for-the-badge&logo=render&logoColor=black)
-![PWA](https://img.shields.io/badge/PWA-Installable-5A0FC8?style=for-the-badge&logo=pwa&logoColor=white)
-![No ads](https://img.shields.io/badge/Own%20ads-None-22c55e?style=for-the-badge)
-![Cost](https://img.shields.io/badge/Cost-%240-f59e0b?style=for-the-badge)
+YouTube links, device videos, a personal library and playback tools in one browser app.
 
-### [Open the live app](https://vp-player.pages.dev/)
+### [Open the app](https://vp-player.pages.dev/)
+
+English by default · Hindi · Gujarati · Phone and desktop · Installable PWA
 
 </div>
 
----
+## Start here
 
-## Demo
+1. Open **https://vp-player.pages.dev/**. Paste a YouTube link in the link box and choose **Play video**, or add it to the queue.
+2. For a file on your device, open **Local file** and choose the file. Playback depends on the codecs your browser supports, not just the filename extension.
+3. Use the section menu or **Search** to find controls. **Simple mode** reduces the interface. Press **?** for keyboard shortcuts.
+4. Save favourites, Watch later items or named playlists in **Your videos**. Use **Export backup** before clearing browser data or moving to another device.
+5. To download from a supported non-YouTube site, open **Downloader**, paste its link, fetch its available formats and select the output. Only download content you have permission to save.
 
-<div align="center">
-<img src="assets/3-demo.gif" alt="App demo: paste a link, play, favourites, controls, downloader, local file" width="85%"/>
-<br/><sub>Screen recording of the live app: paste a link, play, save, tune the controls, use the downloader and the local file player.</sub>
-</div>
+No app account is needed. There is no account-based cloud library sync: lists and settings belong to this browser and site origin. Moving from an old app URL requires exporting a backup there and importing it at the new URL.
 
-## Screenshots
+## What is included
 
-<div align="center">
+This is a grouped guide, not a promise that every control works for every source or browser.
 
-| Desktop | Phone |
-|:---:|:---:|
-| <img src="assets/4-screenshot-desktop.png" width="560"/> | <img src="assets/7-screenshot-mobile.png" width="220"/> |
+| Area | Tools |
+|---|---|
+| YouTube player | Official embedded player, playback speed, captions, queue, shuffle/repeat, quality requests and timestamp links. YouTube controls actual stream availability. |
+| Library | Favourites, Watch later, history, Continue watching, named playlists, queue ordering, filters, saved searches, fuzzy search and backup/import tools. |
+| Playback planning | A-B loops and named loops, saved moments, notes, sleep timers, break reminders, watch goals and viewing statistics. |
+| Sharing | Timestamp links, QR sharing, playlist links and saved-moment/share cards. Local file access is not transferred by sharing a link. |
+| Device media | Volume boost up to 300%, equalizer, speed, picture adjustments, fit/zoom/rotate, frame capture and markup, scene-change navigation, chapters and playback cue sheets. |
+| Subtitles | Local SRT/VTT upload and timing sync, dual subtitles and subtitle display controls. YouTube captions remain controlled by its embedded player. |
+| Device library | A VLC-style Recommended shelf for files previously opened in the app. It does not scan your device storage. Reopening a saved file without choosing it again depends on browser support and file permission. |
+| Study tools | Study workspace, notes, saved moments, clip itineraries and cue-sheet planning. An itinerary controls playback; it does not export an edited video. |
+| Downloader | Supported non-YouTube sites, format selection, video/audio merge, MP3 quality choices, original audio, trim, available subtitles and a multi-link queue with retry. Site restrictions can prevent downloads. |
+| Interface | Glass-style layout, phone and desktop layouts, section search, Simple mode, music mode, themes, designer backgrounds, appearance previews and portable theme files. |
+| Accessibility and efficiency | Larger text, high contrast, reduced motion, Low-end mode, data/battery saver controls, keyboard controls and optional alternative input tools. |
+| App shell | Installable PWA, supported share/file handlers, offline status and cached app resources. Offline app access does not make online videos available offline. |
 
-| Controls | Downloader |
-|:---:|:---:|
-| <img src="assets/5-screenshot-controls.png" width="400"/> | <img src="assets/6-screenshot-downloader.png" width="400"/> |
+### Languages and appearance
 
-</div>
+- The default interface language is English. The header cycles between English, Hindi and Gujarati and remembers the choice. Translations may be incomplete or imperfect.
+- Theme modes: **Auto**, **Day/Night**, **Light**, **Dark** and **Midnight** (OLED-style).
+- Background choices: Classic, Sunset, Ocean, Forest, Rose, Lavender, Amber, Mint and Graphite, with accent-colour controls.
+- The **Theme fitting room** previews a look for 20 seconds. **Keep this look** saves it; **Revert** cancels it. `.vplook` theme export/import contains appearance choices, not the library or media.
+
+### Limits worth knowing
+
+- The app adds no advertising of its own. YouTube may show its own ads. This is not an ad blocker.
+- No YouTube downloading. The downloader rejects YouTube URLs.
+- No promise of screen-off, background or audio-only YouTube playback. Use YouTube's own supported options. Local-media lock-screen controls depend on the browser and operating system.
+- Volume boost and equalizer tools apply to local/device media, not the YouTube iframe. Picture-in-picture and fullscreen also depend on source and browser support.
+- A quality selection is a request, not a guarantee. Some embeds refuse playback, captions or requested rates.
+- Device files are not uploaded for ordinary local playback, subtitle display or scene scanning. Download jobs for remote sites are handled by the separate backend.
+- Clearing browser data can remove your library and settings. Keep exported backups somewhere safe. A backup is not a copy of your media files.
+- PWA installation, file handlers, saved-file reopening, notifications and other browser APIs are not supported equally everywhere. Mobile viewport checks are not real iPhone or Android device tests.
+- Free hosting can sleep, throttle or hit service limits. A backend health response does not prove a particular site's download will work.
+
+## Architecture
+
+```text
+Browser app: index.html + manifest + service worker
+  |-- YouTube links --> official YouTube embedded player
+  |-- Device files --> browser media APIs and device-local storage
+  `-- Other-site download jobs --> Render / Flask / yt-dlp / ffmpeg
+
+GitHub main --> Cloudflare Pages frontend
+server/ --> Render backend deployment
+```
+
+| Part | Current setup |
+|---|---|
+| Frontend | Static HTML, CSS and vanilla JavaScript in `index.html`; no frontend framework or build step required. |
+| Primary app | https://vp-player.pages.dev/ on Cloudflare Pages. |
+| Previous frontend | The old Vercel URL is not the primary app. Use the Cloudflare link above. |
+| App metadata and offline shell | `manifest.webmanifest`, `sw.js` and app icons. |
+| Backend | `server/app.py`, Flask, yt-dlp and ffmpeg, packaged with `server/Dockerfile`. |
+| Backend URL | `https://vp-downloader.onrender.com`. Free-host availability and quotas apply. |
+| Persistence | Browser storage for app settings and personal lists; browser-supported storage/permissions for saved device files. Download jobs use temporary backend files. |
+
+### Backend API and guardrails
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/health` | Backend status, yt-dlp version and ffmpeg availability. |
+| POST | `/tasks` | Start an `info` or `download` job. |
+| GET | `/tasks/<id>` | Read job progress, result or error. |
+| GET | `/files/<id>` | Fetch a completed download. |
+| GET | `/playlist` | Playlist metadata/import support. |
+| GET | `/chapters` | Chapter lookup support, subject to upstream restrictions. |
+
+The backend code allows CORS from the Cloudflare app, the previous Vercel app, and local development on port 8000. It rejects YouTube download URLs and private/local destination addresses at initial URL validation. CORS is not authentication and is not a complete network-security boundary.
+
+Configured limits include three queued/running jobs at once, a three-hour duration check for format-info requests, a 400 MiB downloader size option and temporary job/file cleanup after a 15-minute lifetime. These are code settings, not a guarantee that every upstream service enforces a precise size or duration limit. Do not treat this small free-host service as a hardened multi-user download platform.
+
+## Development and deployment
+
+### Run the frontend locally
+
+```sh
+python3 -m http.server 8000
+```
+
+Open `http://localhost:8000`. YouTube and backend features still need a network connection. Some APIs require HTTPS or a browser that supports them.
+
+### Run the backend locally
+
+Use the Dockerfile in `server/`:
+
+```sh
+docker build -t vp-downloader ./server
+docker run --rm -p 10000:10000 vp-downloader
+```
+
+The frontend's downloader API URL is configured in `index.html`; it points to the hosted backend by default. Local frontend hosting alone does not switch that URL.
+
+### Deploy
+
+- Frontend: the configured Cloudflare Pages Git integration deploys `main`. Confirm a changed build actually reaches the live app; a successful push alone is not deployment proof.
+- Backend: the Render service builds from `server/Dockerfile`. Backend changes need a Render deployment; a frontend-only check cannot verify them.
+- Service worker caches can leave an existing tab on an older app. Reload and use the app's offline-repair tools when appropriate. Export a backup before clearing site data.
+- An external keep-alive schedule is not stored in this repository. Check its dashboard before relying on a particular ping cadence or overnight sleep window.
+- Keep hosting and tools within free tiers. Provider quotas and plans can change.
+
+### Tests
+
+`tests/` contains focused Node regression checks and browser tests. There is no single package-managed test command. Run a selected source regression check with `node tests/<test-name>.test.cjs`; browser tests additionally need their declared dependencies, a compatible Chrome executable and any test media tools. Some older tests describe historical implementations, so inspect a failure before treating it as a current runtime bug.
+
+## Detailed device-video guides
 
 ## Retiming a playback cue sheet
 
@@ -68,23 +160,6 @@ changes or arms cues automatically. Existing limits still apply: 40 cues per
 sheet, device files only, and no automatic identification of an edited video.
 All controls and review labels support English, Hindi and Gujarati.
 
-## Features
-
-<div align="center">
-<img src="assets/2-features-chart.svg" alt="Features per area" width="80%"/>
-</div>
-
-| Area | What you get |
-|---|---|
-| **Player controls** | Speed presets, quality request, loop, A-B repeat, sleep timer, keyboard shortcuts, picture-in-picture |
-| **Library and resume** | Queue with auto-next, favourites, recent videos, "Continue where you left off", remembered settings |
-| **Sharing** | Copy a link that starts at the current time, link tricks (`?url=`, `?v=`, `?text=`, `?from=`, `?to=`) |
-| **Downloader** | For non-YouTube sites: format info, quality picker, merge, MP3, trim, subtitles, multi-link queue with retry |
-| **Local file** | Play a file from your device with volume boost up to 300% and speed presets |
-| **App and UI** | Auto, Light and Dark theme, responsive layout for phone and laptop, installable PWA with share-target, "Waking up the free server" indicator |
-
-> The app adds no ads, banners or pop-ups of its own. YouTube may still show its own ads inside videos.
-
 ### Scene change navigator (device videos)
 
 Open a device video, then expand **Scene change navigator** in Local file controls.
@@ -94,122 +169,16 @@ Open a device video, then expand **Scene change navigator** in Local file contro
 
 These are sampled estimates, not frame-exact edits. Movement or lighting can look like a cut; short scenes between samples can be missed. Sample spacing is shown. Device video only, up to two hours; audio and direct links are not scanned. Results and selections stay in the tab and clear when its video changes or the page reloads. The itinerary is a playback plan, not an exported video.
 
-### Theme fitting room and portable themes
+## Screenshots and demo
 
-Open **Help and FAQ > Accessibility > Theme fitting room**, or find it in Search.
-Compare the current colour sample with a candidate background, theme and accent.
-**Try for 20 seconds** auditions the candidate on the actual page without saving
-it. **Keep this look** is the only trial action that saves. Revert, Escape, leaving
-the tab or the deadline restores the saved look. Another adopted appearance change
-also ends a trial. The floating Keep/Revert panel stays above a docked video.
+The bundled images and demo show earlier app versions. They illustrate the layout but are not a current feature inventory.
 
-**Export current theme** downloads a `.vplook` JSON file containing only the theme,
-background palette and resolved accent colour. It exports the saved look, not an
-uncommitted trial. Library information, wallpaper, accessibility preferences and
-other settings are excluded. A video-matched accent becomes its current fixed
-colour in the file.
-
-**Import theme to review** accepts supported files up to 16 KB, validates every
-field, and stages a candidate without applying it. Review it, then Try and Keep.
-Invalid files leave the current candidate and settings unchanged. Both features
-work offline once the app is loaded. They do not change playback. Sample tiles
-illustrate the colours; Try shows the actual page. Device/browser accessibility
-settings still take priority. English, Hindi and Gujarati are supported.
-
-Saved **My looks** now includes the selected designer background. Older saved
-looks restore the classic background. A same-name save can update a look even
-when all four slots are occupied; a fifth unique name is still refused. Adopted
-palette-only changes and saved-look additions/removals repaint untouched peer
-tabs. The existing policy that a tab's own setting changes win is unchanged.
-**Reset look and feel** also resets the designer palette.
-
-## How it works
-
-```mermaid
-flowchart TD
-    U([You]) -->|paste link| A[index.html<br/>Vanilla JS app]
-    A -->|YouTube link| Y[Official YouTube<br/>embed player]
-    A -->|other sites| B[Downloader backend<br/>Flask + yt-dlp + ffmpeg]
-    A -->|local file| L[Browser engine<br/>boost + speed]
-    B -->|file, deleted<br/>after 15 min| A
-    classDef app fill:#0f3d33,stroke:#5eead4,color:#fff
-    classDef ext fill:#7c2d12,stroke:#fb923c,color:#fff
-    classDef be fill:#1e3a8a,stroke:#60a5fa,color:#fff
-    class A app
-    class Y ext
-    class B be
-```
-
-## Architecture and hosting
-
-```mermaid
-flowchart TB
-    G[(GitHub repo<br/>main branch)] -->|push to main| V[Vercel<br/>serves index.html]
-    G -->|commit in server/| R[Render free tier<br/>Docker: Flask + yt-dlp + ffmpeg]
-    C[cron-job.org<br/>every 10 min] -->|GET /health| R
-    V -.->|API calls, CORS allow-list| R
-    style G fill:#24292f,stroke:#8b949e,color:#fff
-    style V fill:#000,stroke:#fff,color:#fff
-    style R fill:#065f46,stroke:#46e3b7,color:#fff
-    style C fill:#92400e,stroke:#fbbf24,color:#fff
-```
-
-### Downloader flow
-
-```mermaid
-sequenceDiagram
-    participant App as Web app
-    participant API as Backend (Render)
-    App->>API: POST /tasks (type: info)
-    API-->>App: task id
-    App->>API: GET /tasks/{id}
-    API-->>App: formats, title, thumbnail
-    App->>API: POST /tasks (type: download)
-    App->>API: GET /tasks/{id} (progress)
-    App->>API: GET /files/{id}
-    API-->>App: file (removed after 15 minutes)
-```
-
-### Backend endpoints
-
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/health` | Keep-alive and status check |
-| POST | `/tasks` | Start a job (`info` or `download`) |
-| GET | `/tasks/<id>` | Job status and progress |
-| GET | `/files/<id>` | Fetch the finished file |
-
-## Tech stack
-
-| Layer | Tools |
+| Desktop | Phone |
 |---|---|
-| Frontend | Single page, `index.html`, vanilla JavaScript, no framework |
-| Hosting | Vercel (commits to `main` deploy automatically) |
-| Backend | Flask, yt-dlp, ffmpeg, Docker |
-| Backend host | Render free tier (512 MB, sleeps after 15 min idle, about 1 minute cold start) |
-| Keep-alive | cron-job.org |
+| <img src="assets/4-screenshot-desktop.png" alt="Earlier desktop layout" width="560"/> | <img src="assets/7-screenshot-mobile.png" alt="Earlier phone layout" width="220"/> |
 
-## Rules and limits
+[Earlier demo recording](assets/3-demo.gif)
 
-- No YouTube downloading, in the app or the backend (blocked in both).
-- Volume boost works for local files only. The YouTube player is capped at 100% by YouTube.
-- CORS allows only the Vercel site and localhost. Private addresses are refused. Downloaded files are deleted after 15 minutes.
-- Some sites (Vimeo, Facebook, archive.org) block datacenter IPs, so they can fail on the free host.
-- Free hosting only: the first request after idle takes about a minute while the server wakes up.
+---
 
-## Keep-alive
-
-A free cron-job.org job calls `https://vp-downloader.onrender.com/health` every 10 minutes, from 00:00 to 18:59 UTC (about 05:30 to 00:29 IST), so the free Render server stays awake while the app is in use. It sleeps overnight on purpose: Render gives 750 free instance hours per workspace per month, shared by all free services.
-
-Cron expression: `*/10 0-18 * * *` (UTC). To change it, edit the job "vp-downloader keep-alive" on cron-job.org.
-
-## Redeploy
-
-- Frontend: commit to `main`, Vercel deploys.
-- Backend: commit to `server/`, Render rebuilds (yt-dlp installs the latest version on each build).
-
-<div align="center">
-
-<sub>Built by Nikhilkumar. Free tools only.</sub>
-
-</div>
+Built by Nikhilkumar. Free tools only.
