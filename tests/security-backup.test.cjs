@@ -1,0 +1,27 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const html = fs.readFileSync('index.html', 'utf8');
+const match = html.match(/function parseBackupSecurity\(text\) \{[\s\S]*?\n  \}/);
+assert.ok(match, 'backup parser exists');
+const ctx = vm.createContext({});
+vm.runInContext(match[0], ctx);
+const dirty = '{"settings":{"prefs":{"__proto__":{"injected":true},"volume":65},"vmem":{"__proto__":{"poison":true},"normal":1}},"nested":{"constructor":{"prototype":{"polluted":true}}},"queue":[{"id":"abcdefghijk","title":"<img src=x onerror=alert(1)>"}]}';
+const clean = ctx.parseBackupSecurity(dirty);
+assert.equal(Object.hasOwn(clean.settings.prefs, '__proto__'), false);
+assert.equal(Object.hasOwn(clean.settings.vmem, '__proto__'), false);
+assert.equal(Object.hasOwn(clean.nested, 'constructor'), false);
+assert.equal(clean.settings.prefs.volume, 65);
+assert.equal(clean.queue[0].title, '<img src=x onerror=alert(1)>', 'text content is retained as data');
+for (const input of ['null', '[]', 'true', '"x"', '{', ' '.repeat(10 * 1024 * 1024 + 1)]) assert.throws(() => ctx.parseBackupSecurity(input));
+// Exercise the actual import merge, including unsanitized input as defense in depth.
+const merge = html.match(/Object\.keys\(s\.prefs\)\.forEach\(function \(k\) \{[^\n]+?\}\);/)[0];
+ctx.s = {prefs: JSON.parse('{"__proto__":{"injected":true},"volume":65}')};
+vm.runInContext('var prefs = {volume:80}; var before = Object.getPrototypeOf(prefs);', ctx);
+vm.runInContext(merge, ctx);
+assert.equal(vm.runInContext('Object.getPrototypeOf(prefs) === before', ctx), true);
+assert.equal(ctx.prefs.volume, 65);
+assert.equal(ctx.prefs.injected, undefined);
+assert.equal(html.includes('k in prefs'), false, 'cross-tab preference merges use own keys too');
+assert.ok((html.match(/f\.size > 10 \* 1024 \* 1024/g) || []).length >= 2, 'both file readers check size before reading');
+console.log('backup security: nested prototype keys, actual preference merge, size limits and valid data pass');

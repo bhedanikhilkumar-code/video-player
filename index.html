@@ -16282,15 +16282,25 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "Downloads": ["डाउनलोड", "ડાઉનલોડ"]
   });
   Object.assign(TR_MSG, { "Not added because the list holds 50 at most: ": ["जोड़े नहीं गए क्योंकि सूची में अधिकतम 50 आते हैं: ", "ઉમેર્યા નથી કારણ કે યાદીમાં વધુમાં વધુ 50 આવે છે: "] });
+  // Security: backups are data, never object prototypes or unbounded input.
+  function parseBackupSecurity(text) {
+    if (typeof text !== "string" || text.length > 10 * 1024 * 1024) throw Error("Backup too large");
+    var data = JSON.parse(text, function (key, value) {
+      return key === "__proto__" || key === "constructor" || key === "prototype" ? undefined : value;
+    });
+    if (!data || typeof data !== "object" || Array.isArray(data)) throw Error("Invalid backup");
+    return data;
+  }
   $("libImport").addEventListener("click", function () { $("libImportFile").click(); });
   $("libImportFile").addEventListener("change", function () {
     var f = this.files[0]; this.value = "";
     if (!f) return;
+    if (f.size > 10 * 1024 * 1024) { libBackupMsg.textContent = T("That file could not be read. Use a backup file made by this app."); return; }
     var rd = new FileReader();
     rd.onload = function () {
       var impSnap = null; try { impSnap = {}; for (var si = 0; si < localStorage.length; si++) { var sk = localStorage.key(si); impSnap[sk] = localStorage.getItem(sk); } } catch (e) { impSnap = null; }
       try {
-        var d = JSON.parse(rd.result);
+        var d = parseBackupSecurity(rd.result);
         var q = Array.isArray(d.queue) ? d.queue : [];
         var fv = Array.isArray(d.favourites) ? d.favourites : (Array.isArray(d.favs) ? d.favs : []);
         if (mergePracticeLoops(d.practiceLoops)) { savePracticeLoops(); renderPracticeLoops(); }
@@ -16477,7 +16487,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         var s = d.settings && typeof d.settings === "object" ? d.settings : null, gotSettings = false;
         if (Array.isArray(d.bin) && typeof window.__vpBinMerge === "function" && window.__vpBinMerge(d.bin)) gotSettings = true;
         if (s) {
-          if (s.prefs && typeof s.prefs === "object") { Object.keys(s.prefs).forEach(function (k) { if (k in prefs && typeof s.prefs[k] === typeof prefs[k]) prefs[k] = s.prefs[k]; });
+          if (s.prefs && typeof s.prefs === "object") { Object.keys(s.prefs).forEach(function (k) { if (Object.prototype.hasOwnProperty.call(prefs, k) && typeof s.prefs[k] === typeof prefs[k]) prefs[k] = s.prefs[k]; });
             // Round 214 fix: imported settings were saved after only a type check, so a hand-edited or
             // corrupt backup stuck the app with values its own controls cannot represent - verified
             // locally: a backup carrying volume 500 showed "500%" beside the slider, speed 99 left no
@@ -27420,7 +27430,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         var stored = JSON.parse(localStorage.getItem("vp-prefs.v1") || "null");
         if (stored && typeof stored === "object" && !Array.isArray(stored)) {
           Object.keys(stored).forEach(function (k) {
-            if (!(k in prefs) || typeof stored[k] !== typeof prefs[k]) return;
+            if (!(Object.prototype.hasOwnProperty.call(prefs, k)) || typeof stored[k] !== typeof prefs[k]) return;
             var mine; try { mine = JSON.stringify(prefs[k]); } catch (e) { return; }
             if (mine === base[k] && JSON.stringify(stored[k]) !== mine) prefs[k] = stored[k];
           });
@@ -27440,7 +27450,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
         if (!stored || typeof stored !== "object" || Array.isArray(stored)) return;
         var langWas = prefs.lang, themeWas = prefs.theme, accentWas = prefs.accent + "|" + prefs.accentCustom, adopted = false;
         Object.keys(stored).forEach(function (k) {
-          if (touched426[k] || !(k in prefs) || typeof stored[k] !== typeof prefs[k]) return;
+          if (touched426[k] || !(Object.prototype.hasOwnProperty.call(prefs, k)) || typeof stored[k] !== typeof prefs[k]) return;
           var mine; try { mine = JSON.stringify(prefs[k]); } catch (err) { return; }
           if (JSON.stringify(stored[k]) !== mine) { prefs[k] = stored[k]; adopted = true; }
         });
@@ -28416,9 +28426,10 @@ cp.addEventListener('click',function(){box.value=build();vpCopySafe(box.value,fu
     if(bypass){bypass=false;return;}
     var f=input.files&&input.files[0];if(!f)return;
     e.stopImmediatePropagation(); input.value='';
+    if(f.size > 10 * 1024 * 1024){libBackupMsg.textContent=T('That file could not be read. Use a backup file made by this app.');return;}
     var go=function(){bypass=true;try{var dt=new DataTransfer();dt.items.add(f);input.files=dt.files;}catch(er){}input.dispatchEvent(new Event('change'));};
     var rd=new FileReader();
-    rd.onload=function(){var d=null;try{d=JSON.parse(rd.result);}catch(er){}
+    rd.onload=function(){var d=null;try{d=parseBackupSecurity(rd.result);}catch(er){libBackupMsg.textContent=T('That file could not be read. Use a backup file made by this app.');return;}
       if(!d||typeof d!=='object'||typeof window.vpConfirm!=='function'){go();return;}
       var fv=Array.isArray(d.favourites)?d.favourites:d.favs;
       var pn=0;(Array.isArray(d.playlists)?d.playlists:[]).forEach(function(p){if(!p||typeof p.name!=='string'||!Array.isArray(p.items))return;var items=p.items.filter(validItem);var same=playlists.some(function(q){return q.name===p.name&&q.items.length===items.length&&q.items.every(function(it,ix){return it.id===items[ix].id;});});if(!same&&playlists.length+pn<PL_MAX)pn++;});
