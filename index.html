@@ -54820,6 +54820,67 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Schedule a watch date", "#remindCard517"); }, 15820); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Watch reminder", "#remindCard517"); }, 15220); });
 
+
+  // Round 539 new 1: Auto PiP for local files. Chrome and Edge on computers offer
+  // automatic Picture-in-Picture: a page that registers the mediaSession
+  // "enterpictureinpicture" action has it called when the user switches to another
+  // tab while a video plays, and the page may open the floating window without a
+  // fresh click. The YouTube iframe cannot be detached (browser security), so this
+  // covers files opened in the Play-a-file card only. Off by default; the choice is
+  // remembered on this device in prefs.autoPip539 (loader-whitelisted, rides the
+  // backup), re-paints on every language switch, and a chip flipped in one tab
+  // repaints in the others (the posted value is read directly, round 538's lesson).
+  (function () {
+    var vid = $("lpVideo"), btn = $("lpAutoPipBtn539"), hint = $("lpAutoPipHint539");
+    if (!vid || !btn) return;
+    var supported = false;
+    try { supported = document.pictureInPictureEnabled === true && !vid.disablePictureInPicture && !!(navigator.mediaSession && navigator.mediaSession.setActionHandler); } catch (e0) {}
+    var autoEntered = false, handlerOn = false;
+    function onNow() { return supported && prefs.autoPip539 === true; }
+    function arm() {
+      if (!supported) return;
+      var want = onNow() && !!(vid.currentSrc || vid.src);
+      if (want === handlerOn) return;
+      handlerOn = want;
+      try { navigator.mediaSession.setActionHandler("enterpictureinpicture", want ? onAuto : null); } catch (e1) { supported = false; handlerOn = false; }
+    }
+    function onAuto() {
+      if (!onNow()) return;
+      if (vid.paused || vid.ended || !vid.currentSrc) return;
+      if (document.pictureInPictureElement) return;
+      var r = vid.requestPictureInPicture();
+      if (r && r.then) r.then(function () { autoEntered = true; }, function () {});
+    }
+    vid.addEventListener("leavepictureinpicture", function () { autoEntered = false; });
+    // Coming back to the tab closes only the window WE opened; one the user opened
+    // by hand (the PiP button) stays put.
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden && autoEntered && document.pictureInPictureElement) {
+        autoEntered = false;
+        document.exitPictureInPicture().catch(function () {});
+      }
+    });
+    ["play", "playing", "pause", "ended", "emptied", "loadedmetadata"].forEach(function (ev) { vid.addEventListener(ev, arm); });
+    function paint() {
+      var on = onNow();
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+      btn.classList.toggle("active", on);
+      btn.textContent = on ? T("\uD83E\uDE9F Auto PiP: on") : T("\uD83E\uDE9F Auto PiP: off");
+      btn.title = T("While your file is playing, switching to another tab or app opens it in a small floating window on its own; coming back here closes the window. Works on files you open here, in browsers with automatic Picture-in-Picture (Chrome and Edge on computers).");
+      if (hint) { hint.hidden = false; hint.textContent = T("While your file is playing, switching to another tab or app opens it in a small floating window on its own; coming back here closes the window. Works on files you open here, in browsers with automatic Picture-in-Picture (Chrome and Edge on computers)."); }
+    }
+    btn.addEventListener("click", function () {
+      prefs.autoPip539 = !prefs.autoPip539;
+      savePrefs(); paint(); arm();
+    });
+    window.addEventListener("storage", function (e) {
+      if (e.key !== "vp-prefs.v1" || !e.newValue) return;
+      try { var p9 = JSON.parse(e.newValue); if (p9 && typeof p9.autoPip539 === "boolean") prefs.autoPip539 = p9.autoPip539; } catch (e2) {}
+      paint(); arm();
+    });
+    (window.__relang = window.__relang || []).push(paint);
+    paint(); arm();
+  })();
   window.__vpMainOk325 = true;
 
   // Round 536 new 1 + new 2: What's new entries for the downloader additions
