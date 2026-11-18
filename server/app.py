@@ -5,7 +5,7 @@ from flask import Flask, request, jsonify, send_file, abort, g
 from collections import deque
 import yt_dlp
 
-ALLOWED_ORIGINS = {"https://vp-player.pages.dev", "https://video-player-eta-one.vercel.app", "http://localhost:8000", "http://127.0.0.1:8000"}
+ALLOWED_ORIGINS = {"https://vp-player.pages.dev", "http://localhost:8000", "http://127.0.0.1:8000"}
 YT_HOSTS = ("youtube.com", "youtu.be", "youtube-nocookie.com", "youtubekids.com", "yt.be")
 WORK = os.path.join(tempfile.gettempdir(), "vp-tasks")
 os.makedirs(WORK, exist_ok=True)
