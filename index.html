@@ -43978,6 +43978,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     anchor309b.parentNode.appendChild(btn);
     var IDS309 = ["lpNightBtn", "lpHallBtn285", "lpWideBtn287", "lpVcutBtn300", "lpDbBtn302", "lpMonoBtn"];
     function anyOn() {
+      if (window.__vpResetPeak547 && window.__vpResetPeak547(true)) return true;
       if (window.__vpResetRoute543 && window.__vpResetRoute543(true)) return true;
       for (var i = 0; i < IDS309.length; i++) { var b = $(IDS309[i]); if (b && b.getAttribute("aria-pressed") === "true") return true; }
       var e1 = $("lpEqB"), e2 = $("lpEqM"), e3 = $("lpEqT"), bal = $("lpBal");
@@ -43991,6 +43992,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     btn.addEventListener("click", function () {
       if (!anyOn()) { toast(T("Sound is already at its normal settings.")); return; }
+      if (window.__vpResetPeak547) window.__vpResetPeak547(false);
       if (window.__vpResetRoute543) window.__vpResetRoute543(false);
       IDS309.forEach(function (id) {
         var b = $(id), guard = 0;
@@ -55130,6 +55132,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Auto PiP", "#lpAutoPipBtn539"); }, 16620); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Stereo channel routing", "#channelRoute543"); }, 16820); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Compare original channels", "#crCompare543"); }, 16920); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Peak softener", "#peakSoftener547"); }, 17020); });
   // Round 541 new 1: What's new entry (translations sit inside the main closure).
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Skip a stuck queue video", "#playerSkipBtn541"); }, 16720); });
 
@@ -55630,7 +55633,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     function decodeAudioSafe345(dc, data, success, failure) { try { var pending = dc.decodeAudioData(data, success, failure); if (pending && typeof pending.catch === "function") pending.catch(function () {}); } catch (e) { failure(e); } }
   var file = $("lpFile"), vid = $("lpVideo"), ctl = $("lpCtl"), gain = $("lpGain"), gv = $("lpGainVal"), warn = $("lpWarn"), sp = $("lpSpeeds");
   var ctx = null, node = null, curUrl = null, eqNodes = null, nightNode = null, panNode = null, monoNode = null, hallConv285 = null, hallWet285 = null, wideSplit287 = null, wideMerger287 = null, wideWet287 = null, vcutSplit300 = null, vcutMatrix300 = null, dbSplit302 = null, dbMatrix302 = null;
-  var channelRouter543 = null, routeCompare543 = false;
+  var channelRouter543 = null, routeCompare543 = false, peakSoftener547 = null;
   function ensureAudio() {
     if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -55651,7 +55654,9 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     var monoN = ctx.createGain(); monoN.channelCountMode = "explicit"; monoN.channelCount = 2;
     node.connect(monoN);
     var delay276 = null, output276 = ctx.createGain();
-    output276.gain.value = vid.paused ? 0 : 1; output276.connect(ctx.destination); window.__lpOutput276 = output276;
+    output276.gain.value = vid.paused ? 0 : 1;
+    peakSoftener547 = window.VPPeakSoftener547.create(ctx, output276, lp.peak547);
+    peakSoftener547.output.connect(ctx.destination); window.__lpOutput276 = output276;
     function flushDelay276() {
       if(delay276){try{monoN.disconnect(delay276);}catch(e){} try{if(vcutMatrix300)vcutMatrix300.disconnect(delay276);}catch(e){} try{if(dbMatrix302)dbMatrix302.disconnect(delay276);}catch(e){} try{delay276.disconnect();}catch(e){}}
       delay276=ctx.createDelay(2);delay276.delayTime.value=window.__vpDelayValue276?window.__vpDelayValue276()/1000:0;
@@ -55734,6 +55739,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   };
   var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, night: false, bal: 0, fade: 0, hall: "off", wide: "off", vcut: false, eq: { b: 0, m: 0, t: 0 } };
   try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.ccBg === "none" || sv.ccBg === "solid") lp.ccBg = sv.ccBg; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; if (typeof sv.bal === "number" && sv.bal >= -100 && sv.bal <= 100) lp.bal = Math.round(sv.bal); if (sv.mono === true) lp.mono = true; if (sv.soft === true) lp.soft = true; if ([0, 2, 4, 8].indexOf(sv.fade) >= 0) lp.fade = sv.fade; if (["off", "room", "hall"].indexOf(sv.hall) >= 0) lp.hall = sv.hall; if (["off", "wide", "extra"].indexOf(sv.wide) >= 0) lp.wide = sv.wide; if (sv.vcut === true) lp.vcut = true; if (sv.dboost === true) lp.dboost = true; } } catch (e) {}
+  lp.peak547 = "off";
+  try { var peakSaved547 = JSON.parse(localStorage.getItem(LK) || "{}"); if (peakSaved547 && window.VPPeakSoftener547.valid(peakSaved547.peak547)) lp.peak547 = peakSaved547.peak547; } catch (e547) {}
   lp.channelRoute543 = "stereo";
   try { var routeSaved543 = JSON.parse(localStorage.getItem(LK) || "{}"); if (routeSaved543 && window.VPChannelRouter543.valid(routeSaved543.channelRoute543)) lp.channelRoute543 = routeSaved543.channelRoute543; } catch (e543) {}
   gain.value = lp.gain;
@@ -56824,6 +56831,41 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       routeCompare543 = false;
       try { var p = JSON.parse(e.newValue || "{}"); lp.channelRoute543 = p && window.VPChannelRouter543.valid(p.channelRoute543) ? p.channelRoute543 : "stereo"; if (channelRouter543) channelRouter543.set(current()); paint(); } catch (err) {}
     });
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+
+  // Round 547: a final-mix compressor, after boost and the wet effects returns.
+  // Unlike Night sound (upstream), it also sees Hall, Wide and Dialogue boost.
+  (function () {
+    var translate = function (s) { return window.T ? window.T(s) : s; };
+    var choices = [["off", "Unchanged"], ["gentle", "Gentle softening"], ["strong", "Strong softening"]];
+    var descriptions = {
+      off: "Original dynamics. Boost and effects can still overload the output.",
+      gentle: "Soften loud peaks above -6 dB after all sound effects.",
+      strong: "More control for uneven recordings: soften peaks above -12 dB."
+    };
+    var card = document.createElement("details"); card.id = "peakSoftener547"; card.className = "lp-workbench";
+    card.innerHTML = '<summary id="peakTitle547"></summary><p id="peakHint547" class="hint"></p><div id="peakChoices547" role="group" aria-labelledby="peakTitle547"></div><p id="peakStatus547" class="hint" role="status"></p><p id="peakLimit547" class="hint"></p>';
+    var anchor = $("lpWarn"); anchor.parentNode.insertBefore(card, anchor.nextSibling);
+    var style = document.createElement("style");
+    style.textContent = '#peakSoftener547{margin:14px 0;min-width:0;overflow-wrap:anywhere}#peakSoftener547 summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650}#peakChoices547{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}#peakChoices547 button{min-width:0;white-space:normal;min-height:58px;line-height:1.4;text-align:start}#peakChoices547 button[aria-pressed=true]{border:2px solid var(--teal);font-weight:700;text-decoration:underline;text-underline-offset:4px}@media(max-width:420px){#peakChoices547{grid-template-columns:1fr}}';
+    document.head.appendChild(style);
+    function current() { return window.VPPeakSoftener547.valid(lp.peak547) ? lp.peak547 : "off"; }
+    function paint() {
+      $("peakTitle547").textContent = translate("Peak softener");
+      $("peakHint547").textContent = translate("Tame sudden loud peaks in device files after boost, EQ and every sound effect. YouTube audio is unchanged.");
+      $("peakLimit547").textContent = translate("Not a hearing-safety limit or a guaranteed clipping preventer. Keep your device volume comfortable. Off preserves the original signal.");
+      $("peakStatus547").textContent = translate(descriptions[current()]);
+      choices.forEach(function (choice, i) { var b = $("peakChoices547").children[i]; b.textContent = translate(choice[1]); b.setAttribute("aria-pressed", String(current() === choice[0])); });
+    }
+    function choose(mode) {
+      lp.peak547 = mode; if (peakSoftener547) peakSoftener547.set(mode); saveLp(); paint();
+    }
+    choices.forEach(function (choice) {
+      var button = document.createElement("button"); button.type = "button"; button.className = "chip"; button.dataset.peak547 = choice[0];
+      button.addEventListener("click", function () { choose(choice[0]); }); $("peakChoices547").appendChild(button);
+    });
+    window.__vpResetPeak547 = function (check) { var changed = current() !== "off"; if (!check && changed) choose("off"); return changed; };
     (window.__relang = window.__relang || []).push(paint); paint();
   })();
 
@@ -60084,6 +60126,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Skip silence", "skip silence quiet pauses auto jump ahead lectures voice notes silent parts fast forward local file", "#lpSilBtn"],
       ["Loudness match", "loudness match auto volume leveling steady same loudness quiet loud files normalize playlist tracks local", "#lpLoudBtn"],
       ["Compare original channels", "compare original channels audio routing audition bypass original before after left right stereo sound", "#crCompare543"],
+      ["Peak softener", "peak softener loud sudden peaks compressor final output clipping dynamics sound device file", "#peakSoftener547"],
       ["Stereo channel routing", "stereo channel routing swap left right both ears split language source broken ear headphones audio accessibility स्टीरियो સ્ટીરિયો", "#channelRoute543"],
       ["Auto PiP", "auto pip picture in picture floating window switch tab keep watching another app automatic local file mini window", "#lpAutoPipBtn539"],
       ["Skip a stuck queue video", "stuck slow loading not starting taking too long ready never starts skip next queue video dead frozen black screen watchdog bot sign in confirm", "#playerSkipBtn541"],
