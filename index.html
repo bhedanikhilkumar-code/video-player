@@ -3325,6 +3325,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
    "The file could not be made on the server. Try another format.": ["सर्वर पर फ़ाइल नहीं बन सकी. दूसरा फ़ॉर्मेट आज़माएं.", "સર્વર પર ફાઇલ બની ન શકી. બીજું ફોર્મેટ અજમાવો."],
    "That format is not available. Pick another one.": ["वह फ़ॉर्मेट उपलब्ध नहीं है. दूसरा चुनें.", "તે ફોર્મેટ ઉપલબ્ધ નથી. બીજું પસંદ કરો."],
    "That request is not supported.": ["वह अनुरोध समर्थित नहीं है.", "તે વિનંતી સપોર્ટેડ નથી."],
+   "Still waking the free server - trying again automatically...": ["फ्री सर्वर अभी भी जाग रहा है - अपने आप फिर कोशिश हो रही है...", "ફ્રી સર્વર હજી જાગી રહ્યો છે - આપોઆપ ફરી પ્રયાસ થાય છે..."],
    "This site blocked the free server (common with Vimeo and Facebook). Try another site.": ["इस साइट ने फ्री सर्वर को रोक दिया (Vimeo और Facebook में आम). दूसरी साइट आज़माएं.", "આ સાઇટે ફ્રી સર્વરને રોક્યો (Vimeo અને Facebookમાં સામાન્ય). બીજી સાઇટ અજમાવો."],
    "This site or link is not supported.": ["यह साइट या लिंक समर्थित नहीं है.", "આ સાઇટ કે લિંક સપોર્ટેડ નથી."],
    "The video is too long.": ["वीडियो बहुत लंबा है.", "વીડિયો બહુ લાંબો છે."],
@@ -54711,23 +54712,41 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     opts = opts || {}; opts.signal = c.signal;
     return fetch(API + path, opts).then(function (r) { clearTimeout(t); return r.json(); });
   }
-  function runTask(body, onProg) {
-    return api("/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
-      .then(function (r) {
-        if (r.error) throw r.error;
-        return new Promise(function (res, rej) {
-          var misses = 0, polls = 0;
-          (function poll() {
-            if (++polls > 900) return rej({ code: "net" });
-            api("/tasks/" + r.id).then(function (s) {
-              if (s.status === "done") return res(s);
-              if (s.status === "error") return rej(s.error || { code: "extract_failed" });
-              if (onProg) onProg(s.progress || 0);
-              setTimeout(poll, 1500);
-            }).catch(function () { if (++misses > 5) rej({ code: "net" }); else setTimeout(poll, 2500); });
-          })();
+  // Round 534 new 1: automatic wake-retry. The free server sleeps and a cold start can
+  // drop or time out the first request; that used to fail the task at once and make the
+  // user tap Retry. Now the start request retries by itself a few times with growing
+  // pauses, and the poll loop tolerates a longer blip, while the status line says what
+  // is happening. Giving up still shows the same error and Retry chip as before.
+  function runTask(body, onProg, onWake) {
+    var tries = 0;
+    function post() {
+      return api("/tasks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
+        .catch(function (e) {
+          if (++tries > 3) throw e;
+          if (onWake) onWake(tries);
+          return new Promise(function (r) { setTimeout(r, tries * 6000); }).then(post);
         });
+    }
+    return post().then(function (r) {
+      if (r.error) throw r.error;
+      return new Promise(function (res, rej) {
+        var misses = 0, polls = 0;
+        (function poll() {
+          if (++polls > 900) return rej({ code: "net" });
+          api("/tasks/" + r.id).then(function (s) {
+            misses = 0;
+            if (s.status === "done") return res(s);
+            if (s.status === "error") return rej(s.error || { code: "extract_failed" });
+            if (onProg) onProg(s.progress || 0);
+            setTimeout(poll, 1500);
+          }).catch(function () { if (++misses > 10) rej({ code: "net" }); else { if (onWake && misses > 3) onWake(0); setTimeout(poll, 2500); } });
+        })();
       });
+    });
+  }
+  function dlWakeMsg(el, isText) {
+    var m = T("Still waking the free server - trying again automatically...");
+    if (isText) el.textContent = m; else el.innerHTML = '<span class="dl-spin"></span>' + m;
   }
   function fail(e) {
     var code = e && e.code;
@@ -54759,7 +54778,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     setBusy(true, "Looking up formats...");
     var wake = setTimeout(function () { if (busy) statusEl.innerHTML = '<span class="dl-spin"></span>' + T("Waking up the free server. This can take up to a minute, please wait."); }, 6000);
     var clearWake = function () { clearTimeout(wake); };
-    runTask({ type: "info", url: u }).then(function (s) {
+    runTask({ type: "info", url: u }, null, function () { dlWakeMsg(statusEl); }).then(function (s) {
       clearWake(); info = s.result; info.url = u; render(); setBusy(false, "Ready. Pick a format and download.");
     }).catch(function (e) { clearWake(); fail(e); });
   });
@@ -54797,7 +54816,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     if (from !== null) body.from = from; if (to !== null) body.to = to;
     bar.hidden = false; fill.style.width = "3%";
     setBusy(true, kind === "mp3" ? "Making the MP3..." : "Downloading...");
-    runTask(body, function (p) { fill.style.width = Math.max(5, p) + "%"; statusEl.textContent = (kind === "mp3" ? T("Making the MP3... ") : T("Downloading... ")) + p + "%"; })
+    runTask(body, function (p) { fill.style.width = Math.max(5, p) + "%"; statusEl.textContent = (kind === "mp3" ? T("Making the MP3... ") : T("Downloading... ")) + p + "%"; }, function () { dlWakeMsg(statusEl); })
       .then(function (s) {
         fill.style.width = "100%"; setBusy(false, T("Done! Your download will start: ") + (s.name || "file"));
         histAdd({ url: info.url, title: info.title, kind: kind, t: Date.now() });
@@ -54848,7 +54867,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     // Round 204 fix: progress ticks rebuilt the whole queue list many times a second - churning
     // the DOM, dropping keyboard focus and re-reading every row to screen-reader users. Now only
     // the running row's status text updates between full renders (state changes still render fully).
-    runTask(it.body, function (p) { it.progress = p; if (it._st && it._st.isConnected && it.status === "running") it._st.textContent = T("Downloading ") + p + "%"; else qRender(); }).then(function (s) {
+    runTask(it.body, function (p) { it.progress = p; if (it._st && it._st.isConnected && it.status === "running") it._st.textContent = T("Downloading ") + p + "%"; else qRender(); }, function () { if (it._st && it._st.isConnected) dlWakeMsg(it._st, true); }).then(function (s) {
       it.status = "done"; it.file = API + s.file; it.name = s.name; doneSinceIdle355++;
       histAdd({ url: it.body.url, title: it.title || hostOf(it.body.url), kind: it.body.kind, t: Date.now() });
       var a = document.createElement("a"); a.href = it.file; a.download = it.name || ""; document.body.appendChild(a); a.click(); a.remove();
