@@ -54935,6 +54935,27 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     });
   })();
 
+  // Round 544 fix 1 + fix 2 (both seen live this round): a queued video played
+  // from Recents, History, Search or the link box never showed the queue's ▶
+  // now-playing marker, and when the queue's saved place pointed at another row
+  // (restored from an earlier session), the marker stayed on THAT row and Next
+  // after the video would have run off the queue's end. The link box also drops
+  // the place to -1 on every load (loadVideo), so the round-292 adoption that
+  // only ran from the Next/Previous buttons caught up one tap late. The queue
+  // now adopts the playing video's row as soon as the video is on: an empty
+  // place is filled (fix 1), and a place pointing at another row moves to the
+  // row actually playing, clearing any pending removal spot (fix 2). A video
+  // outside the queue changes nothing. This listener sits inside the main
+  // closure - the same round-539 placement lesson: after the closure's end,
+  // $, lib, curId, qPos, savePrefs, T and TR_MSG are all out of scope.
+  document.addEventListener("vp-video-loaded", function () {
+    try {
+      if (typeof qAdoptPlaying292 === "function") qAdoptPlaying292();
+      if (!curId) return;
+      var ix544 = findIn(lib.queue, curId);
+      if (ix544 >= 0 && ix544 !== qPos) { qPos = ix544; qAfter = -1; saveLib(); renderLib(); }
+    } catch (e) {}
+  });
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
@@ -55041,28 +55062,6 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       var n = vid505.dataset && vid505.dataset.fileName276;
       if (n) window.__vpLpHistNote505(n, vid505.duration);
     });
-
-  // Round 544 fix 1 (seen live): a queued video played from Recents, History,
-  // Search or the link box never showed the queue's ▶ now-playing marker - the
-  // row adoption from round 292 only ran from the Next/Previous buttons, so the
-  // marker and the queue's saved place caught up one tap late. The queue now
-  // adopts the playing video's row as soon as the video is on; qAdoptPlaying292
-  // already leaves an existing place, a removal spot and non-queued videos alone.
-  document.addEventListener("vp-video-loaded", function () {
-    try {
-      if (typeof qAdoptPlaying292 === "function") qAdoptPlaying292();
-      // Round 544 fix 2 (seen live): the place was restored to Costa Rica's row,
-      // then Rick Astley was replayed from Recents - the marker stayed on Costa
-      // Rica and Next after the video would have run off the queue's end instead
-      // of continuing with the row after him. When the video that comes on sits
-      // in the queue at another row, the place (and any pending removal spot)
-      // moves to the row that is actually playing. A video outside the queue
-      // still changes nothing, and an empty place is filled by the adopt above.
-      if (!curId) return;
-      var ix = findIn(lib.queue, curId);
-      if (ix >= 0 && ix !== qPos) { qPos = ix; qAfter = -1; saveLib(); renderLib(); }
-    } catch (e) {}
-  });
 })();
 
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Recommended", "#lpRecs505"); }, 14720); });
