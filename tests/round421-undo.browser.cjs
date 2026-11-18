@@ -25,7 +25,7 @@ const server = http.createServer((q, r) => {
     await other.goto('http://localhost:8499');await other.waitForFunction(()=>window.__vpMainOk325);
     await other.evaluate(()=>{let x=JSON.parse(localStorage.getItem('vp-practice-loops.v1'));x.dQw4w9WgXcQ[0].name='Renamed elsewhere';x.dQw4w9WgXcQ.push({name:'New elsewhere',a:40,b:50});localStorage.setItem('vp-practice-loops.v1',JSON.stringify(x));});
     await page.waitForFunction(()=>document.getElementById('practiceList').textContent.includes('New elsewhere'));
-    await page.locator('#vpToast button').click();
+    await page.locator('#vpToast .vp-undo:not(.vp-offer)').click();
     const rows=await page.evaluate(()=>JSON.parse(localStorage.getItem('vp-practice-loops.v1')).dQw4w9WgXcQ);
     console.log('Rows after Undo:',rows);assert.equal(rows.length,3);assert.ok(rows.some(x=>x.name==='Renamed elsewhere'));assert.ok(rows.some(x=>x.name==='New elsewhere'));assert.ok(rows.some(x=>x.name==='Warmup'));
     assert.deepEqual(errors,[]);console.log('Per-video Undo preserves concurrent edits.');
