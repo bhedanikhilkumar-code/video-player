@@ -33,6 +33,12 @@ assert(html.includes('e.key !== "vp-prefs.v1" || !e.newValue'), 'other tabs foll
 // Translations: chip states, hint and What's new name carry Hindi and Gujarati rows.
 const trIdx = html.indexOf('"Auto PiP": ["ऑटो PiP", "ઓટો PiP"]');
 assert(trIdx > 0 && trIdx < flagIdx, 'TR_MSG rows inside main closure');
+// Placement regression (caught live: the blocks first landed after the main
+// closure's })(); where $/prefs/TR_MSG are out of scope and the boot banner
+// fired). The flag is set at top level AFTER the closure, so the rows and the
+// behaviour must sit before the closure's final })();.
+const closureEnd = html.lastIndexOf('})();', flagIdx);
+assert(closureEnd > 0 && trIdx < closureEnd && behaviourIdx < closureEnd, 'rows and behaviour sit inside the main closure, before its end');
 assert(html.includes('"\\uD83E\\uDE9F Auto PiP: off"'), 'off-state translation row');
 assert(html.includes('"\\uD83E\\uDE9F Auto PiP: on"'), 'on-state translation row');
 
