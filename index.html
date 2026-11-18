@@ -38084,7 +38084,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   (function () {
     var btn = $("spkTestBtn286"), msg = $("spkTestMsg286");
     if (!btn) return;
-    var AC = window.AudioContext || window.webkitAudioContext, ctx = null, playing286 = false, timers = [];
+    var AC = window.AudioContext || window.webkitAudioContext, ctx = null, playing286 = false, timers = [], voices553 = [];
     function beep(pan, at) {
       var o = ctx.createOscillator(), g = ctx.createGain();
       o.type = "sine"; o.frequency.value = 660;
@@ -38096,9 +38096,12 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       var p = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
       o.connect(g);
       if (p) { p.pan.value = pan; g.connect(p); p.connect(ctx.destination); } else g.connect(ctx.destination);
+      voices553.push({ oscillator:o, gain:g, pan:p });
       o.start(t); o.stop(t + 2.05);
     }
-    function stop() { timers.forEach(clearTimeout); timers = []; playing286 = false; btn.classList.remove("active"); }
+    function stop() { timers.forEach(clearTimeout); timers = []; voices553.forEach(function (v) { try { v.oscillator.stop(); } catch (e) {} [v.oscillator,v.gain,v.pan].forEach(function (node) { if (node) { try { node.disconnect(); } catch (e) {} } }); }); voices553 = []; playing286 = false; btn.classList.remove("active"); }
+    document.addEventListener("visibilitychange", function () { if (document.hidden && playing286) { stop(); if (msg) msg.textContent = ""; } });
+    window.addEventListener("pagehide", function () { stop(); if (msg) msg.textContent = ""; });
     btn.addEventListener("click", function () {
       if (!AC) { if (msg) msg.textContent = ""; return; }
       if (playing286) { stop(); if (msg) msg.textContent = ""; return; }
