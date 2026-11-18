@@ -1,0 +1,145 @@
+name: CI - real regressions and security
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  node:
+    name: Node regressions (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python3 scripts/ci-regressions.py node --shard ${{ matrix.shard }} --shards 4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: node-${{ matrix.shard }}
+          path: test-results/
+          retention-days: 7
+  static:
+    name: Inline syntax, assets, PWA and package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test scripts/ci-static.test.cjs
+  python:
+    name: Python security, Bandit and dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+      - run: python -m pip install -r server/requirements.txt bandit==1.8.6 pip-audit==2.9.0
+      - name: API, SSRF, local trim and hostile XML regressions
+        run: python -m unittest discover -s tests -p 'security_*_test.py' -v
+      - name: Bandit medium/high severity, medium/high confidence
+        if: ${{ !cancelled() }}
+        run: bandit -r server -ll -ii
+      - name: Audit installed backend dependency requirements
+        if: ${{ !cancelled() }}
+        run: pip-audit -r server/requirements.txt
+  secrets:
+    name: Gitleaks tracked-source secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan tracked source without printing secrets
+        run: |
+          mkdir /tmp/vp-secret-scan
+          git archive HEAD | tar -x -C /tmp/vp-secret-scan
+          docker run --rm -v /tmp/vp-secret-scan:/scan:ro ghcr.io/gitleaks/gitleaks:v8.24.3 dir /scan --redact --no-banner
+  browser:
+    name: Chrome browser regressions (${{ matrix.shard }}/20)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+    env:
+      NODE_PATH: /tmp/vp-test-tools/node_modules
+      VP_VISUAL_MEDIA: /tmp/vp-ci-video.mp4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated Playwright and system media tools
+        run: |
+          npm install --prefix /tmp/vp-test-tools playwright@1.56.1
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          google-chrome --version
+          sudo mkdir -p /downloads
+          sudo chmod 777 /downloads
+          mkdir -p /tmp/r453
+          ffmpeg -hide_banner -loglevel error -f lavfi -i 'testsrc2=size=320x180:rate=15' -f lavfi -i 'sine=frequency=440' -t 20 -c:v libx264 -preset ultrafast -c:a aac -y "$VP_VISUAL_MEDIA"
+      - name: Run each browser script sequentially within its isolated shard
+        run: python3 scripts/ci-regressions.py browser --shard ${{ matrix.shard }} --shards 20
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-${{ matrix.shard }}
+          path: |
+            test-results/
+            /downloads/*.png
+          retention-days: 7
+  summary:
+    name: CI result and exact script counts
+    if: always()
+    needs: [node, static, python, secrets, browser]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-[0-9]*'
+          path: collected-results
+          merge-multiple: true
+      - name: Report every executed script and enforce complete coverage
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          expected = {str(p) for pattern in ('*.test.cjs', '*.browser.cjs') for p in Path('tests').glob(pattern)}
+          results = [r for p in Path('collected-results').rglob('results.json') for r in json.loads(p.read_text())]
+          actual = {r['file'] for r in results}
+          passed = sum(r['exit_code'] == 0 for r in results)
+          failed = len(results) - passed
+          missing = sorted(expected - actual)
+          text = f'## Regression script totals\n\n{len(expected)} expected, {len(results)} executed: **{passed} passed, {failed} failed**, {len(missing)} missing.\n\n'
+          text += 'These are script counts, not assertion counts. Static TAP subtests and Python unittest cases are reported separately in their jobs. Translation coverage and security-header regressions are included in the Node inventory.\n'
+          for r in results:
+              if r['exit_code']: text += f"\n- FAIL: `{r['file']}`"
+          for name in missing: text += f'\n- MISSING: `{name}`'
+          print(text)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f: f.write(text)
+          jobs = json.loads(os.environ['JOB_RESULTS'])
+          if failed or missing or len(results) != len(expected) or any(v['result'] != 'success' for v in jobs.values()):
+              raise SystemExit(1)
+          PY

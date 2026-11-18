@@ -77,7 +77,30 @@ The API listens on port 10000 by default. `GET http://localhost:10000/health` ch
 
 ## Testing: use the checks that actually exist
 
-Run commands from the repository root. There is no single all-tests command promised by this guide. The test filenames describe focused historical regressions, not a complete release certification.
+Run commands from the repository root. The `CI - real regressions and security` Actions workflow runs on every push and pull request, plus manual dispatch. It has read-only repository permissions and does not publish packages or releases. The test filenames describe focused historical regressions, not a complete release certification.
+
+### Full CI checks
+
+```sh
+python3 scripts/ci-regressions.py node
+node --test scripts/ci-static.test.cjs
+python3 -m unittest discover -s tests -p 'security_*_test.py' -v
+bandit -r server -ll -ii
+pip-audit -r server/requirements.txt
+```
+
+Install backend requirements plus Bandit 1.8.6 and pip-audit 2.9.0 in a virtual environment. Python media regressions require ffmpeg/ffprobe. The static checks parse every executable inline script with `node --check`, verify referenced app/PWA assets and offline-shell targets, and verify the package build and npm pack allowlist. Node regressions include translation-key coverage, feature names and security headers. Gitleaks 8.24.3 scans the tracked source tree for known secret patterns with redacted output; this is not a full-history or entropy-proof guarantee. Bandit fails on medium/high severity findings at medium/high confidence; reviewed fixed-YouTube-URL calls carry narrow B310 annotations.
+
+CI automatically discovers all `tests/*.test.cjs` and `tests/*.browser.cjs` scripts, splitting them over 4 and 20 shards respectively. Each script gets a named log group, an exit status and an artifact. Shards continue after failures, but the workflow fails for any failed or missing script. Counts are executable scripts, not the number of assertions inside each script. The final summary gives exact counts for that commit; static TAP and Python unittest counts are separate.
+
+Browser runners install isolated Playwright 1.56.1, use the runner's `/usr/bin/google-chrome`, provide ffmpeg, writable screenshot directories and a synthetic local audiovisual fixture through `VP_VISUAL_MEDIA`. Scripts run sequentially within each shard to avoid shared-port collisions. To reproduce one whole browser shard after setting up those prerequisites:
+
+```sh
+NODE_PATH=/tmp/vp-test-tools/node_modules VP_VISUAL_MEDIA=/tmp/vp-ci-video.mp4 \
+  python3 scripts/ci-regressions.py browser --shard 0 --shards 20
+```
+
+These are desktop Chrome checks, including emulated mobile widths, not real-device tests or live YouTube/Render download certification. Historical assertions can expose intentional UI changes and must be investigated, not silently skipped.
 
 ### Node source regressions
 
