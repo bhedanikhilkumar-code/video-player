@@ -26,7 +26,7 @@ const server = http.createServer((q, r) => {
     await other.goto('http://localhost:8499');await other.waitForFunction(()=>window.__vpMainOk325);
     await other.evaluate(()=>{let x=JSON.parse(localStorage.getItem('vp-practice-loops.v1'));x.dQw4w9WgXcQ.push({name:'Warmup recreated elsewhere',a:5,b:10});localStorage.setItem('vp-practice-loops.v1',JSON.stringify(x));});
     await page.waitForFunction(()=>document.getElementById('loopLibList296').textContent.includes('Warmup recreated elsewhere'));
-    await page.locator('#vpToast button').click();
+    await page.getByRole('button',{name:'Undo: Practice loop removed',exact:true}).click();
     const rows=await page.evaluate(()=>JSON.parse(localStorage.getItem('vp-practice-loops.v1')).dQw4w9WgXcQ);
     console.log('Library Undo rows:',rows);assert.equal(rows.length,2);assert.equal(rows.filter(x=>x.a===5&&x.b===10).length,1);assert.ok(rows.some(x=>x.name==='Warmup recreated elsewhere'));
     assert.deepEqual(errors,[]);console.log('Library Undo does not duplicate a loop recreated by another tab.');
