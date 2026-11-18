@@ -1,0 +1,31 @@
+name: Verify published package
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: v1.0.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@bhedanikhilkumar-code'
+      - name: Download registry package and compare every staged file
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          npm run build:package
+          mkdir -p /tmp/registry-check
+          cd /tmp/registry-check
+          npm pack @bhedanikhilkumar-code/video-player@1.0.0 --registry=https://npm.pkg.github.com
+          tar -xzf ./*.tgz
+          diff -rq "$GITHUB_WORKSPACE/dist/video-player" package
+          echo 'Verified registry download: every file matches the source tag build.'
