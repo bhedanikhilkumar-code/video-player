@@ -1320,7 +1320,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 }
 </style><style id="section-folding-all">
 .sec-all-btn { margin-left: auto; font-size: 11px; font-weight: 600; letter-spacing: 0; min-height: 30px; padding: 4px 12px; }
-</style><style id="rel-r9">#playerRetryBtn,#playerYtBtn,#dlHandoffBtn{margin-top:8px}</style><style id="loading-skeletons">
+</style><style id="rel-r9">#playerRetryBtn,#playerYtBtn,#playerSkipBtn541,#dlHandoffBtn{margin-top:8px}</style><style id="loading-skeletons">
 /* Loading skeletons: a shimmer stage over the video frame while the YouTube player warms up,
    and a shimmer on the info-card thumbnail until the real image arrives.
    Reduced-motion and Low-end mode switch the motion off through the global rules. */
@@ -1987,6 +1987,7 @@ setTimeout(done,3000);})();
       <p class="error" id="playerError" role="alert" hidden></p>
       <button class="chip" id="playerRetryBtn" type="button" hidden>&#8635; Try again</button>
       <button class="chip" id="playerYtBtn" type="button" hidden>&#9654; Open on YouTube</button>
+      <button class="chip" id="playerSkipBtn541" type="button" hidden>&#9197; Play next in queue</button>
 
       <div class="info-card" id="infoCard" hidden>
         <img id="infoThumb" alt="" width="112" height="63" loading="lazy" decoding="async">
@@ -54764,6 +54765,52 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     "🖼 Auto PiP: on": ["🖼 ऑटो PiP: चालू", "🖼 ઓટો PiP: ચાલુ"],
     "While your file is playing, switching to another tab or app opens it in a small floating window on its own; coming back here closes the window. Works on files you open here, in browsers with automatic Picture-in-Picture (Chrome and Edge on computers).": ["आपकी फ़ाइल चलते समय दूसरे टैब या ऐप में जाते ही वह अपने आप एक छोटी तैरती विंडो में खुल जाती है; यहाँ वापस आते ही विंडो बंद हो जाती है. यहाँ खोली गई फ़ाइलों पर काम करता है, ऑटोमैटिक Picture-in-Picture वाले ब्राउज़र में (कंप्यूटर पर Chrome और Edge).", "તમારી ફાઇલ ચાલતી હોય ત્યારે બીજી ટૅબ કે ઍપમાં જતાં જ તે આપમેળે નાની તરતી વિન્ડોમાં ખુલી જાય છે; અહીં પાછા આવતાં જ વિન્ડો બંધ થઈ જાય છે. અહીં ખોલેલી ફાઇલો પર ચાલે છે, ઓટોમૅટિક Picture-in-Picture ધરાવતા બ્રાઉઝરમાં (કમ્પ્યુટર પર Chrome અને Edge)."]
   });
+  // Round 541 new 1 (found live this round): a queue left playing died silently at 0:00
+  // when one video's frame never came up - auto-next advanced 2/6 to a video YouTube's
+  // bot check would not start, and the stuck-load watchdog card offered only
+  // "Try again", which the same block beats every time. Embed errors already auto-skip
+  // (round 293) or swap Retry for YouTube (round 525); a SLOW load must never skip on
+  // its own - on a weak network every video looks slow at first - so the watchdog card
+  // gains a manual "Play next in queue" chip, shown only while the queue really has a
+  // next video. It also shows for an embed error that is NOT auto-skipping (auto-next
+  // off), where the old card left "Try another link" as the only way on. Wiring wraps
+  // showPlayerRetry: every place that shows or hides Retry (watchdog fire, hiccup
+  // retry, retry tap, load reset) now settles the skip chip in the same breath, so the
+  // chip cannot linger into the next video. Checked first: grep "Play next in queue",
+  // "playerSkipBtn" = 0; FEATS and git log have no stuck-video skip.
+  Object.assign(TR_MSG, {
+    "Play next in queue": ["कतार में अगला चलाएं", "કતારમાં આગળ ચલાવો"],
+    "No next video in the queue.": ["कतार में कोई अगला वीडियो नहीं है.", "કતારમાં આગળનો કોઈ વીડિયો નથી."]
+  });
+  (function () {
+    var skipBtn541 = $("playerSkipBtn541");
+    if (!skipBtn541 || typeof showPlayerRetry !== "function") return;
+    function hasNext541() {
+      try {
+        if (qPos < 0 || !lib || !lib.queue || lib.queue.length < 2) return false;
+        if (typeof queueModes !== "undefined" && queueModes && (queueModes.repeat || queueModes.shuffle)) return true;
+        return qPos + 1 < lib.queue.length;
+      } catch (e) { return false; }
+    }
+    function paintSkip541() { skipBtn541.textContent = "\u23ED " + T("Play next in queue"); }
+    function showSkip541(show) { skipBtn541.hidden = !show; if (show) paintSkip541(); }
+    var origShowRetry541 = showPlayerRetry;
+    showPlayerRetry = function (show) {
+      origShowRetry541(show);
+      var skippable541 = !!lastPlayerErr && (lastPlayerErr.kind === "slow" || (lastPlayerErr.kind === "embed" && !lastPlayerErr.willSkip));
+      showSkip541(!!show && skippable541 && hasNext541());
+    };
+    skipBtn541.addEventListener("click", function () {
+      showSkip541(false);
+      if (typeof playerError !== "undefined" && playerError) playerError.hidden = true;
+      showPlayerRetry(false);
+      if (typeof showPlayerYt === "function") showPlayerYt(false);
+      clearTimeout(loadWatchdog);
+      if (!(typeof playNext === "function" && playNext())) toast(T("No next video in the queue."));
+    });
+    (window.__relang = window.__relang || []).push(function () { if (!skipBtn541.hidden) paintSkip541(); });
+  })();
+
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
@@ -54896,6 +54943,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Original-audio download", "#dl"); }, 16520); });
   // Round 539 new 1: What's new entry (translations sit inside the main closure).
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Auto PiP", "#lpAutoPipBtn539"); }, 16620); });
+  // Round 541 new 1: What's new entry (translations sit inside the main closure).
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Skip a stuck queue video", "#playerSkipBtn541"); }, 16720); });
 
 
 
@@ -59774,6 +59823,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Skip silence", "skip silence quiet pauses auto jump ahead lectures voice notes silent parts fast forward local file", "#lpSilBtn"],
       ["Loudness match", "loudness match auto volume leveling steady same loudness quiet loud files normalize playlist tracks local", "#lpLoudBtn"],
       ["Auto PiP", "auto pip picture in picture floating window switch tab keep watching another app automatic local file mini window", "#lpAutoPipBtn539"],
+      ["Skip a stuck queue video", "stuck slow loading not starting taking too long skip next queue video dead frozen black screen watchdog bot", "#playerSkipBtn541"],
       ["Subtitle folder match", "subtitle batch folder match filenames local srt vtt languages", "#subtitleBatch276"],
       ["Audio sync delay", "audio sound sync delay milliseconds local lips early", "#audioSync276"],
       ["Local playlist exchange", "local playlist recipe export import restore relink json files order", "#localExchange276"],
@@ -60701,6 +60751,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       "Remember the A-B loop": "\u0926\u094b\u0939\u0930\u093e\u0913 \u0aa6\u0acb\u0ab9\u0ab0\u0abe\u0ab5\u0acb dohrao",
       "Skip silence": "\u0916\u093e\u092e\u094b\u0936\u0940 \u0a96\u0abe\u0aae\u0acb\u0ab7\u0ac0 khamoshi",
       "Auto PiP": "\u0924\u0948\u0930\u0924\u0940 \u0935\u093f\u0902\u0921\u094b \u0aaa\u0abe\u0ab8\u0ac0 \u0a9f\u0ac7\u0aac tairti window pachhi tab",
+      "Skip a stuck queue video": "अटका अगला છોડો આગળ atka agla chhodo skip",
       "Lyrics": "\u0917\u0940\u0924 \u092c\u094b\u0932 \u0a97\u0ac0\u0aa4 \u0aac\u0acb\u0ab2 geet bol",
       "Moments to note": "\u0928\u094b\u091f \u0aa8\u0acb\u0a82\u0aa7 note",
       "Pop notes at their time": "\u0928\u094b\u091f \u0aa8\u0acb\u0a82\u0aa7 note",
