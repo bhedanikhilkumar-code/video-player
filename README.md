@@ -76,7 +76,6 @@ server/ --> Render backend deployment
 |---|---|
 | Frontend | Static HTML, CSS and vanilla JavaScript in `index.html`; no frontend framework or build step required. |
 | Primary app | https://vp-player.pages.dev/ on Cloudflare Pages. |
-| Previous frontend | The old Vercel URL is not the primary app. Use the Cloudflare link above. |
 | App metadata and offline shell | `manifest.webmanifest`, `sw.js` and app icons. |
 | Backend | `server/app.py`, Flask, yt-dlp and ffmpeg, packaged with `server/Dockerfile`. |
 | Backend URL | `https://vp-downloader.onrender.com`. Free-host availability and quotas apply. |
@@ -93,7 +92,7 @@ server/ --> Render backend deployment
 | GET | `/playlist` | Playlist metadata/import support. |
 | GET | `/chapters` | Chapter lookup support, subject to upstream restrictions. |
 
-The backend code allows CORS from the Cloudflare app, the previous Vercel app, and local development on port 8000. It rejects YouTube download URLs and private/local destination addresses at initial URL validation. CORS is not authentication and is not a complete network-security boundary.
+The backend code allows CORS from the Cloudflare app and local development on port 8000. It rejects YouTube download URLs and private/local destination addresses at initial URL validation. CORS is not authentication and is not a complete network-security boundary.
 
 Configured limits include three queued/running jobs at once, a three-hour duration check for format-info requests, a 400 MiB downloader size option and temporary job/file cleanup after a 15-minute lifetime. These are code settings, not a guarantee that every upstream service enforces a precise size or duration limit. Do not treat this small free-host service as a hardened multi-user download platform.
 
