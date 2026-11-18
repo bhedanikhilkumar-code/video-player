@@ -18577,14 +18577,14 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     ACCENTS.forEach(function (o) {
       var b = document.createElement("button"); b.type = "button"; b.className = "accent-dot";
       b.dataset.value = o[0]; b.style.background = o[1];
-      b.setAttribute("aria-label", "App color: " + o[0]);
+      b.setAttribute("aria-label", T("App color: ") + T(o[0]));
       b.addEventListener("click", function () { prefs.accent = o[0]; savePrefs(); applyAccent(); applyTheme(); toast(T("Colour updated")); });
       accentRow.appendChild(b);
     });
     var customDot = document.createElement("button");
     customDot.type = "button"; customDot.className = "accent-dot accent-custom";
     customDot.dataset.value = "custom";
-    customDot.setAttribute("aria-label", "App color: pick your own");
+    customDot.setAttribute("aria-label", T("App color: pick your own"));
     customDot.addEventListener("click", function () { var ci = $("accentCustom"); if (ci) ci.click(); });
     accentRow.appendChild(customDot);
     // Match video (round 91): one more app-colour choice. The accent tint follows the
@@ -18608,6 +18608,12 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     (window.__relang = window.__relang || []).push(function () {
       videoDot.title = T("Match video");
       videoDot.setAttribute("aria-label", T("App color: match the video's colours"));
+      // Round 523 fix 2: the plain and custom dots kept their English labels on a language
+      // switch (only the video dot repainted); repaint every dot by its stored value.
+      Array.prototype.forEach.call(accentRow.querySelectorAll(".accent-dot"), function (d) {
+        if (d.dataset.value === "custom") d.setAttribute("aria-label", T("App color: pick your own"));
+        else if (d.dataset.value !== "video") d.setAttribute("aria-label", T("App color: ") + T(d.dataset.value));
+      });
     });
   }
   Object.assign(TR_MSG, {
@@ -21183,6 +21189,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     "default": ["डिफ़ॉल्ट", "મૂળ"], "blue": ["नीला", "વાદળી"],
     "purple": ["बैंगनी", "જાંબલી"], "orange": ["नारंगी", "નારંગી"], "pink": ["गुलाबी", "ગુલાબી"],
     "App color: pick your own": ["ऐप का रंग: अपना रंग चुनें", "એપનો રંગ: પોતાનો રંગ પસંદ કરો"],
+    "App color: ": ["ऐप का रंग: ", "એપનો રંગ: "],
     "Subtitles 0.5 seconds earlier": ["उपशीर्षक 0.5 सेकंड पहले", "સબટાઇટલ 0.5 સેકંડ વહેલા"],
     "Subtitles 0.5 seconds later": ["उपशीर्षक 0.5 सेकंड बाद", "સબટાઇટલ 0.5 સેકંડ મોડા"],
     "Rotate 90 degrees. Current angle: {n} degrees.": ["90 डिग्री घुमाएं. अभी का कोण: {n} डिग्री.", "90 ડિગ્રી ફેરવો. હાલનો ખૂણો: {n} ડિગ્રી."]
@@ -27419,7 +27426,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     var btn = document.createElement("button"); btn.className = "chip"; btn.type = "button"; btn.id = "recapBtn"; btn.setAttribute("aria-expanded", "false");
     host.parentNode.insertBefore(btn, host);
     var panel = document.createElement("div"); panel.className = "pl-paste"; panel.id = "recapPanel"; panel.hidden = true;
-    var box = document.createElement("textarea"); box.className = "note-box"; box.id = "recapBox"; box.readOnly = true; box.rows = 8; box.setAttribute("aria-label", "Today's recap");
+    var box = document.createElement("textarea"); box.className = "note-box"; box.id = "recapBox"; box.readOnly = true; box.rows = 8; box.setAttribute("aria-label", T("Today's recap")); (window.__relang = window.__relang || []).push(function () { box.setAttribute("aria-label", T("Today's recap")); });
     var cr = document.createElement("div"); cr.className = "row";
     var cp = document.createElement("button"); cp.type = "button"; cp.className = "chip"; cp.id = "recapCopy";
     var cl = document.createElement("button"); cl.type = "button"; cl.className = "chip";
@@ -27469,7 +27476,7 @@ plMoreSt.textContent += ".pl-note{font-size:13px;color:var(--ink2);margin:2px 0 
     var btn = document.createElement("button"); btn.className = "chip"; btn.type = "button"; btn.id = "wrecapBtn"; btn.setAttribute("aria-expanded", "false");
     host.parentNode.insertBefore(btn, host.nextSibling);
     var panel = document.createElement("div"); panel.className = "pl-paste"; panel.id = "wrecapPanel"; panel.hidden = true;
-    var box = document.createElement("textarea"); box.className = "note-box"; box.id = "wrecapBox"; box.readOnly = true; box.rows = 10; box.setAttribute("aria-label", "This week's recap");
+    var box = document.createElement("textarea"); box.className = "note-box"; box.id = "wrecapBox"; box.readOnly = true; box.rows = 10; box.setAttribute("aria-label", T("This week's recap")); (window.__relang = window.__relang || []).push(function () { box.setAttribute("aria-label", T("This week's recap")); });
     var cr = document.createElement("div"); cr.className = "row";
     var cp = document.createElement("button"); cp.type = "button"; cp.className = "chip"; cp.id = "wrecapCopy";
     var cl = document.createElement("button"); cl.type = "button"; cl.className = "chip";
@@ -57320,11 +57327,16 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
 
   var lab = document.createElement("span"); lab.className = "label"; lab.id = "lpSubSyncLab";
   var row = document.createElement("div"); row.id = "lpSubSync";
-  var minus = document.createElement("button"); minus.className = "chip"; minus.type = "button"; minus.textContent = "-0.5 s"; minus.setAttribute("aria-label", "Subtitles 0.5 seconds earlier");
+  var minus = document.createElement("button"); minus.className = "chip"; minus.type = "button"; minus.textContent = "-0.5 s"; minus.setAttribute("aria-label", T("Subtitles 0.5 seconds earlier"));
   var val = document.createElement("b"); val.id = "lpSubSyncVal"; val.textContent = "+0.0 s";
-  var plus = document.createElement("button"); plus.className = "chip"; plus.type = "button"; plus.textContent = "+0.5 s"; plus.setAttribute("aria-label", "Subtitles 0.5 seconds later");
+  var plus = document.createElement("button"); plus.className = "chip"; plus.type = "button"; plus.textContent = "+0.5 s"; plus.setAttribute("aria-label", T("Subtitles 0.5 seconds later"));
   var reset = document.createElement("button"); reset.className = "chip"; reset.type = "button"; reset.id = "lpSubSyncReset";
   row.appendChild(minus); row.appendChild(val); row.appendChild(plus); row.appendChild(reset);
+  // Round 523 fix 2: repaint the sync button labels on a language switch too.
+  (window.__relang = window.__relang || []).push(function () {
+    minus.setAttribute("aria-label", T("Subtitles 0.5 seconds earlier"));
+    plus.setAttribute("aria-label", T("Subtitles 0.5 seconds later"));
+  });
   var saveSub = document.createElement("button"); saveSub.className = "chip"; saveSub.type = "button"; saveSub.id = "lpSubSaveBtn";
   row.appendChild(saveSub);
   var msg = document.createElement("p"); msg.className = "hint"; msg.id = "lpSubSyncMsg"; msg.setAttribute("role", "status");
