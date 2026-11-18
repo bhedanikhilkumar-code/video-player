@@ -54819,6 +54819,34 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   root.VPChannelRouter543 = { valid: valid, create: create };
 })(typeof window !== "undefined" ? window : globalThis);
   // ROUTER543 END
+  // PEAK547 START
+// Peak softener for the final device-audio mix. Off is a direct gain path.
+(function (root) {
+  "use strict";
+  var presets = { off: null, gentle: { threshold: -6, ratio: 12, knee: 6 }, strong: { threshold: -12, ratio: 20, knee: 3 } };
+  function valid(mode) { return Object.prototype.hasOwnProperty.call(presets, mode); }
+  function create(context, source, initial) {
+    var dry = context.createGain(), wet = context.createGain(), output = context.createGain(), compressor = context.createDynamicsCompressor();
+    compressor.attack.value = 0.003; compressor.release.value = 0.12;
+    source.connect(dry); dry.connect(output); source.connect(compressor); compressor.connect(wet); wet.connect(output);
+    var mode;
+    function set(next, immediate) {
+      mode = valid(next) ? next : "off";
+      var config = presets[mode] || presets.gentle, now = context.currentTime;
+      ["threshold", "ratio", "knee"].forEach(function (name) { compressor[name].setValueAtTime(config[name], now); });
+      [[dry.gain, mode === "off" ? 1 : 0], [wet.gain, mode === "off" ? 0 : 1]].forEach(function (pair) {
+        pair[0].cancelScheduledValues(now);
+        if (immediate) pair[0].setValueAtTime(pair[1], now);
+        else pair[0].setTargetAtTime(pair[1], now, 0.008);
+      });
+      return mode;
+    }
+    set(initial, true);
+    return { output: output, set: set, mode: function () { return mode; }, reduction: function () { return mode === "off" ? 0 : Math.max(0, -compressor.reduction); } };
+  }
+  root.VPPeakSoftener547 = { valid: valid, create: create };
+})(typeof window !== "undefined" ? window : globalThis);
+  // PEAK547 END
   Object.assign(TR_MSG, {
     "Hear original channels": ["मूल चैनल सुनें", "મૂળ ચેનલ સાંભળો"],
     "Return to chosen channels": ["चुने हुए चैनल पर लौटें", "પસંદ કરેલી ચેનલ પર પાછા જાઓ"],
