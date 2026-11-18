@@ -1,4 +1,5 @@
-import os, re, uuid, time, threading, shutil, socket, ipaddress, tempfile
+import os, re, uuid, time, threading, shutil, socket, ipaddress, tempfile, math, subprocess
+from safe_http import SafeYoutubeDL, UnsafeDestination, validate_web_url
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify, send_file, abort
 import yt_dlp
@@ -40,24 +41,23 @@ def check_url(u):
     if p.scheme not in ("http", "https") or not p.hostname: raise Bad("bad_url", "Only http/https links are supported.")
     if is_yt(p.hostname): raise Bad("youtube_blocked", "YouTube links can't be downloaded. Play them in the player.")
     try:
-        for ai in socket.getaddrinfo(p.hostname, None):
-            ip = ipaddress.ip_address(ai[4][0])
-            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-                raise Bad("bad_url", "This address is not allowed.")
-    except socket.gaierror:
-        raise Bad("bad_url", "Could not find that site's address.")
-    return u.strip()
+        return validate_web_url(u.strip())
+    except UnsafeDestination:
+        raise Bad("bad_url", "Invalid or disallowed web destination.")
 
 def base_opts():
     return {"quiet": True, "no_warnings": True, "noplaylist": True, "socket_timeout": 20,
-            "allowed_extractors": ["default", "-generic", "-youtube.*"], "retries": 2}
+            "allowed_extractors": ["default", "-generic", "-youtube.*"], "retries": 2,
+            "proxy": "", "hls_prefer_native": True, "external_downloader": "native",
+            "external_downloader_args": {"ffmpeg_i": ["-protocol_whitelist", "file,crypto,data"]},
+            "postprocessor_args": {"ffmpeg_i": ["-protocol_whitelist", "file,crypto,data"]}}
 
 def classify(f):
     v, a = f.get("vcodec") not in (None, "none"), f.get("acodec") not in (None, "none")
     return "video+audio" if v and a else "video" if v else "audio" if a else "other"
 
 def do_info(url):
-    with yt_dlp.YoutubeDL(base_opts()) as y:
+    with SafeYoutubeDL(base_opts()) as y:
         i = y.extract_info(url, download=False)
     if (i.get("extractor_key") or "").lower().startswith("youtube"): raise Bad("youtube_blocked", "YouTube blocked.")
     if i.get("_type") == "playlist" and i.get("entries"):
@@ -79,7 +79,7 @@ def do_info(url):
 def sec(x):
     if x in (None, ""): return None
     x = float(x)
-    if x < 0: raise Bad("bad_range", "Invalid time.")
+    if not math.isfinite(x) or x < 0 or x > MAX_SECONDS: raise Bad("bad_range", "Invalid time.")
     return x
 
 def do_download(t, p):
@@ -118,17 +118,24 @@ def do_download(t, p):
         if fid and (p.get("mux") or "+" in str(fid)): o["format"] = str(fid)
         elif fid: o["format"] = f"{fid}+bestaudio/{fid}/best"
         else: o["format"] = "bv*+ba/b"
-    if start is not None or end is not None:
-        from yt_dlp.utils import download_range_func
-        o["download_ranges"] = download_range_func([], [(start or 0, end or 10**6)])
-        o["force_keyframes_at_cuts"] = True
+    # Trim locally only after the guarded native download, never via a remote
+    # ffmpeg URL which would bypass the validated HTTP transport.
     if pp: o["postprocessors"] = pp
-    with yt_dlp.YoutubeDL(o) as y:
+    with SafeYoutubeDL(o) as y:
         i = y.extract_info(url, download=True)
     if (i.get("extractor_key") or "").lower().startswith("youtube"): raise Bad("youtube_blocked", "YouTube blocked.")
     files = [f for f in os.listdir(d) if f.startswith("out.")]
     if not files: raise Bad("no_file", "The file could not be created.")
     f = files[0]
+    if start is not None or end is not None:
+        source = os.path.join(d, f)
+        trimmed = os.path.join(d, "trimmed." + f.rsplit(".", 1)[-1])
+        cmd = ["ffmpeg", "-nostdin", "-y", "-protocol_whitelist", "file,crypto,data", "-i", source]
+        if start is not None: cmd += ["-ss", str(start)]
+        if end is not None: cmd += ["-t", str(end - (start or 0))]
+        cmd += ["-c", "copy", trimmed]
+        subprocess.run(cmd, check=True, timeout=120, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+        os.replace(trimmed, source)
     title = re.sub(r"[^\w\-. ]+", "", i.get("title") or "video").strip()[:80] or "video"
     t["file"] = f; t["name"] = f"{title}.{f.rsplit('.',1)[-1]}"
 
@@ -166,7 +173,7 @@ PLAYLIST_ID = re.compile(r"^[A-Za-z0-9_-]{5,80}$")
 def playlist_flat(pid):
     """Full playlist listing via yt-dlp flat extraction. Reads metadata only, downloads nothing."""
     o = {"quiet": True, "no_warnings": True, "extract_flat": True, "socket_timeout": 20, "retries": 1}
-    with yt_dlp.YoutubeDL(o) as y:
+    with SafeYoutubeDL(o) as y:
         i = y.extract_info("https://www.youtube.com/playlist?list=" + pid, download=False)
     vids = []
     for e in (i.get("entries") or []):
@@ -335,7 +342,7 @@ def chapters():
 
 
 @app.get("/health")
-def health(): return {"ok": True, "yt_dlp": yt_dlp.version.__version__, "ffmpeg": bool(shutil.which("ffmpeg"))}
+def health(): return {"ok": True, "security_revision": "egress-1", "yt_dlp": yt_dlp.version.__version__, "ffmpeg": bool(shutil.which("ffmpeg"))}
 
 @app.post("/tasks")
 def create():
