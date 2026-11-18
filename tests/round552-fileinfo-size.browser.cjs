@@ -1,0 +1,6 @@
+const assert=require('node:assert/strict');
+require('./round538-harness.cjs')(async({p,errors})=>{
+ const b=Buffer.alloc(1644);b.write('RIFF');b.writeUInt32LE(b.length-8,4);b.write('WAVEfmt ',8);b.writeUInt32LE(16,16);b.writeUInt16LE(1,20);b.writeUInt16LE(1,22);b.writeUInt32LE(8000,24);b.writeUInt32LE(16000,28);b.writeUInt16LE(2,32);b.writeUInt16LE(16,34);b.write('data',36);b.writeUInt32LE(1600,40);
+ await p.locator('#lpFile').setInputFiles({name:'Tiny.wav',mimeType:'audio/wav',buffer:b});await p.waitForFunction(()=>Number.isFinite(document.querySelector('#lpVideo').duration));await p.locator('#lpInfoBtn278').click();assert.match(await p.locator('#lpInfo278').textContent(),/Size: 1\.6 KiB \(1644 B\)/,'small nonempty file must not be reported as 0.0 MB');
+ await p.locator('#langBtn').click();await p.waitForFunction(()=>document.documentElement.lang==='hi'&&document.querySelector('#langBtn').getAttribute('aria-busy')==='false');assert.match(await p.locator('#lpInfo278').textContent(),/आकार: 1\.6 KiB \(1644 B\)/);assert.deepEqual(errors,[]);console.log('PASS file info shows exact byte count and correctly labelled KiB for a small real WAV, translated in open panel');
+}).catch(e=>{console.error(e);process.exitCode=1;});
