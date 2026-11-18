@@ -14,7 +14,7 @@ const server = http.createServer((q, r) => {
     const page = await browser.newPage(); const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.route('**/*', route => route.request().url().startsWith('http://localhost:8499') ? route.continue() : route.abort());
-    await page.addInitScript(() => { if (location.hostname !== 'localhost') return; localStorage.setItem('vp-tour.v1', '1'); localStorage.setItem('vp-prefs.v1', JSON.stringify({ lang: 'en' })); });
+    await page.addInitScript(() => { if (location.hostname !== 'localhost') return; localStorage.setItem('vp-tour.v1', '1'); localStorage.setItem('vp-prefs.v1', JSON.stringify({ lang: 'en', langPick360:true, lowFxHinted:true })); });
     await page.goto('http://localhost:8499'); await page.waitForFunction(() => window.__vpMainOk325 === true);
     // Load through the real form. Network media is intentionally blocked in this component test.
     await page.locator('#linkInput').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
