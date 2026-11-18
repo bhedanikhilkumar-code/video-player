@@ -55585,6 +55585,86 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('File integrity','#fileIntegrity551');},17520);});
   })();
   // End file integrity 551
+  // Round 552: a bounded header walk, not a decoder or a file validator.
+  window.VPContainer552={scan:async function(file,cancelled){
+    var rows=[],limit=256,readBytes=0;
+    function check(){if(cancelled&&cancelled())throw Error('cancelled');}
+    async function read(at,n){check();if(!Number.isSafeInteger(at)||at<0||at+n>file.size)throw Error('truncated');var bytes=new Uint8Array(await file.slice(at,at+n).arrayBuffer());readBytes+=bytes.length;check();if(bytes.length!==n)throw Error('truncated');return new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength);}
+    function four(v,at){var s='';for(var i=0;i<4;i++){var b=v.getUint8(at+i);s+=b>=32&&b<=126?String.fromCharCode(b):'?';}return s;}
+    function row(type,offset,size){rows.push({type:type,offset:offset,size:size});}
+    if(!file||!Number.isSafeInteger(file.size)||file.size<12)throw Error('truncated');
+    var head=await read(0,12),type=four(head,0),out={kind:'',rows:rows,readBytes:0,complete:true,trailing:0,audio:null,brand:''};
+    if(type==='RIFF'&&four(head,8)==='WAVE'){
+      out.kind='WAVE';var end=head.getUint32(4,true)+8;if(end<12)throw Error('malformed');if(end>file.size)throw Error('truncated');out.trailing=file.size-end;
+      var at=12,hasData=false;
+      while(at<end){
+        if(rows.length>=limit){out.complete=false;break;}
+        if(end-at<8)throw Error('truncated');var h=await read(at,8),size=h.getUint32(4,true),name=four(h,0),next=at+8+size+(size%2);if(next>end)throw Error('truncated');row(name,at,size+8+(size%2));
+        if(name==='fmt '&&!out.audio){if(size<16)throw Error('malformed');var fmt=await read(at+8,Math.min(size,40)),code=fmt.getUint16(0,true),a={code:code,channels:fmt.getUint16(2,true),rate:fmt.getUint32(4,true),byteRate:fmt.getUint32(8,true),align:fmt.getUint16(12,true),bits:fmt.getUint16(14,true),pcm:false};if(code===65534&&size>=40&&fmt.getUint16(16,true)>=22){var tail=[0,0,16,0,128,0,0,170,0,56,155,113],ok=true;for(var j=0;j<12;j++)if(fmt.getUint8(28+j)!==tail[j])ok=false;if(ok&&(fmt.getUint32(24,true)===1||fmt.getUint32(24,true)===3))a.code=fmt.getUint32(24,true);}a.pcm=a.code===1||a.code===3;out.audio=a;}
+        if(name==='data')hasData=true;at=next;
+      }
+      out.hasData=hasData;
+    }else if(four(head,4)==='ftyp'){
+      out.kind='ISO media';var at=0;
+      while(at<file.size){
+        if(rows.length>=limit){out.complete=false;break;}
+        if(file.size-at<8)throw Error('truncated');var h=await read(at,8),size=h.getUint32(0,false),name=four(h,4),header=8;
+        if(size===1){var ext=await read(at+8,8),hi=ext.getUint32(0,false),lo=ext.getUint32(4,false);size=hi*4294967296+lo;header=16;if(!Number.isSafeInteger(size))throw Error('malformed');}
+        else if(size===0)size=file.size-at;
+        if(size<header)throw Error('malformed');if(size>file.size-at)throw Error('truncated');
+        if(name==='ftyp'){if(size<header+8)throw Error('malformed');var brand=await read(at+header,8);out.brand=four(brand,0);}
+        row(name,at,size);at+=size;
+      }
+    }else throw Error('unsupported');
+    check();out.readBytes=readBytes;return out;
+  }};
+  Object.assign(TR_MSG,{
+    'Container map':['कंटेनर का नक्शा','કન્ટેનરનો નકશો'],
+    'Inspect original file headers without decoding, uploading or changing playback. Supports RIFF WAVE and ISO media files that start with ftyp (MP4/M4A/MOV family). Other formats are not guessed.':['डिकोड, अपलोड या प्लेबैक बदले बिना मूल फ़ाइल के हेडर देखें. RIFF WAVE और ftyp से शुरू ISO मीडिया (MP4/M4A/MOV परिवार) के लिए. दूसरे फ़ॉर्मैट का अनुमान नहीं लगाया जाता.','ડિકોડ, અપલોડ કે પ્લેબૅક બદલ્યા વગર મૂળ ફાઇલના હેડર જુઓ. RIFF WAVE અને ftypથી શરૂ થતા ISO મીડિયા (MP4/M4A/MOV પરિવાર) માટે. બીજા ફૉર્મેટનો અંદાજ લગાવાતો નથી.'],
+    'Reads small headers and skips media payloads. Up to 256 top-level chunks or boxes, showing the first 40. Sizes include headers and WAV padding. A completed scan is not proof that media is safe, authentic or playable. Session only.':['छोटे हेडर पढ़ता है, मीडिया डेटा छोड़ता है. अधिकतम 256 ऊपरी चंक या बॉक्स, पहले 40 दिखते हैं. आकार में हेडर और WAV पैडिंग शामिल हैं. पूरी स्कैन फ़ाइल की सुरक्षा, असलियत या चलने का प्रमाण नहीं. केवल इस सत्र में.','નાના હેડર વાંચે છે, મીડિયા ડેટા છોડે છે. વધુમાં વધુ 256 ઉપરના ચંક કે બૉક્સ, પહેલા 40 દેખાય છે. કદમાં હેડર અને WAV પૅડિંગ સામેલ છે. પૂરું સ્કૅન ફાઇલની સલામતી, અસલિયત કે ચાલવાનો પુરાવો નથી. ફક્ત આ સત્રમાં.'],
+    'Scan container headers':['कंटेनर हेडर स्कैन करें','કન્ટેનર હેડર સ્કૅન કરો'],
+    'Cancel header scan':['हेडर स्कैन रद्द करें','હેડર સ્કૅન રદ કરો'],
+    'Clear container map':['कंटेनर नक्शा हटाएं','કન્ટેનર નકશો સાફ કરો'],
+    'Choose a device file above to inspect its container.':['कंटेनर देखने के लिए ऊपर डिवाइस फ़ाइल चुनें.','કન્ટેનર જોવા ઉપર ડિવાઇસ ફાઇલ પસંદ કરો.'],
+    'Ready to scan original file headers.':['मूल फ़ाइल के हेडर स्कैन करने के लिए तैयार.','મૂળ ફાઇલના હેડર સ્કૅન કરવા તૈયાર.'],
+    'Scanning headers. Playback is unchanged.':['हेडर स्कैन हो रहे हैं. प्लेबैक नहीं बदलता.','હેડર સ્કૅન થાય છે. પ્લેબૅક બદલાતો નથી.'],
+    'Header scan cancelled.':['हेडर स्कैन रद्द हुआ.','હેડર સ્કૅન રદ થયો.'],
+    'Unsupported container. This tool only reads RIFF WAVE or ftyp-first ISO media headers.':['यह कंटेनर समर्थित नहीं. यह टूल केवल RIFF WAVE या ftyp से शुरू ISO मीडिया के हेडर पढ़ता है.','આ કન્ટેનર સમર્થિત નથી. આ ટૂલ ફક્ત RIFF WAVE કે ftypથી શરૂ થતા ISO મીડિયાના હેડર વાંચે છે.'],
+    'Truncated header or chunk: a declared size extends beyond the available bytes. No complete map was produced.':['अधूरा हेडर या चंक: बताया आकार उपलब्ध बाइट से बड़ा है. पूरा नक्शा नहीं बना.','અધૂરો હેડર કે ચંક: જણાવેલું કદ ઉપલબ્ધ બાઇટથી મોટું છે. પૂરો નકશો બન્યો નથી.'],
+    'Malformed header size or format field. No complete map was produced.':['हेडर का आकार या फ़ॉर्मैट फ़ील्ड गलत है. पूरा नक्शा नहीं बना.','હેડરનું કદ કે ફૉર્મેટ ફીલ્ડ ખોટું છે. પૂરો નકશો બન્યો નથી.'],
+    'Could not read file headers. Choose the file again and retry.':['फ़ाइल के हेडर पढ़े नहीं गए. फ़ाइल फिर चुनकर कोशिश करें.','ફાઇલના હેડર વાંચી ન શકાયા. ફાઇલ ફરી પસંદ કરીને પ્રયત્ન કરો.'],
+    'Header walk complete.':['हेडर स्कैन पूरा.','હેડર સ્કૅન પૂરું.'],
+    'Stopped at the 256-header limit. This map is partial, not a complete scan.':['256 हेडर की सीमा पर रुका. यह आंशिक नक्शा है, पूरी स्कैन नहीं.','256 હેડરની મર્યાદા પર અટક્યું. આ આંશિક નકશો છે, પૂરું સ્કૅન નહીં.'],
+    'Container: {kind}; {n} headers; {b} bytes read.':['कंटेनर: {kind}; {n} हेडर; {b} बाइट पढ़े.','કન્ટેનર: {kind}; {n} હેડર; {b} બાઇટ વાંચ્યા.'],
+    'Major brand: {brand}.':['मुख्य ब्रांड: {brand}.','મુખ્ય બ્રાન્ડ: {brand}.'],
+    'WAVE format code {c}; {n} channels; {r} Hz; {b} bits; block align {a}; {v} bytes/s.':['WAVE फ़ॉर्मैट कोड {c}; {n} चैनल; {r} Hz; {b} बिट; ब्लॉक अलाइन {a}; {v} बाइट/s.','WAVE ફૉર્મેટ કોડ {c}; {n} ચૅનલ; {r} Hz; {b} બિટ; બ્લૉક અલાઇન {a}; {v} બાઇટ/s.'],
+    'PCM or IEEE float header fields are inconsistent.':['PCM या IEEE फ़्लोट हेडर के फ़ील्ड मेल नहीं खाते.','PCM કે IEEE ફ્લોટ હેડરના ફીલ્ડ મેળ ખાતા નથી.'],
+    'WAVE fmt or data chunk is missing from the scanned headers.':['स्कैन किए हेडर में WAVE fmt या data चंक नहीं है.','સ્કૅન થયેલા હેડરમાં WAVE fmt કે data ચંક નથી.'],
+    '{n} trailing bytes lie outside the declared RIFF container.':['बताए RIFF कंटेनर के बाहर {n} बाइट हैं.','જણાવેલા RIFF કન્ટેનરની બહાર {n} બાઇટ છે.'],
+    'Header type':['हेडर का प्रकार','હેડરનો પ્રકાર'],
+    'Offset (bytes)':['शुरुआत (बाइट)','શરૂઆત (બાઇટ)'],
+    'Size (bytes)':['आकार (बाइट)','કદ (બાઇટ)'],
+    'Showing {n} of {total} scanned headers.':['स्कैन किए {total} में से {n} हेडर दिखते हैं.','સ્કૅન થયેલા {total}માંથી {n} હેડર દેખાય છે.']
+  });
+  (function(){
+    var video=$('lpVideo'),host=$('lpCtl');if(!video||!host)return;
+    var card=document.createElement('details');card.id='containerMap552';card.className='lp-workbench';card.innerHTML='<summary data-cm="Container map"></summary><p class="hint" data-cm="Inspect original file headers without decoding, uploading or changing playback. Supports RIFF WAVE and ISO media files that start with ftyp (MP4/M4A/MOV family). Other formats are not guessed."></p><p class="hint" data-cm="Reads small headers and skips media payloads. Up to 256 top-level chunks or boxes, showing the first 40. Sizes include headers and WAV padding. A completed scan is not proof that media is safe, authentic or playable. Session only."></p><div class="row"><button type="button" class="chip" id="cmBuild552" data-cm="Scan container headers"></button><button type="button" class="chip" id="cmCancel552" data-cm="Cancel header scan" hidden></button><button type="button" class="chip" id="cmClear552" data-cm="Clear container map"></button></div><p class="hint" id="cmStatus552" role="status" aria-live="polite"></p><p class="hint" id="cmSummary552"></p><p class="hint" id="cmAudio552"></p><p class="hint" id="cmWarnings552"></p><table id="cmTable552" hidden><caption id="cmCaption552"></caption><thead><tr><th scope="col" data-cm="Header type"></th><th scope="col" data-cm="Offset (bytes)"></th><th scope="col" data-cm="Size (bytes)"></th></tr></thead><tbody></tbody></table>';host.prepend(card);
+    var css=document.createElement('style');css.textContent='#containerMap552{margin:14px 0;overflow-wrap:anywhere}#containerMap552 .row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}#containerMap552 table{table-layout:fixed;width:100%;border-collapse:collapse;font-size:13px}#containerMap552 caption{text-align:left;margin:8px 0}#containerMap552 td,#containerMap552 th{padding:8px 4px;border-bottom:1px solid var(--hairline);text-align:left;overflow-wrap:anywhere}#containerMap552 td{font-family:monospace}#containerMap552 [hidden]{display:none!important}#containerMap552 :focus-visible{outline:3px solid var(--teal);outline-offset:3px}';document.head.appendChild(css);
+    var build=$('cmBuild552'),cancel=$('cmCancel552'),table=$('cmTable552'),epoch=0,busy=false,result=null,message='';
+    function file(){var api=window.__vpLocalQueue443;return api&&api.currentFile548?api.currentFile548():null;}
+    function ready(){return !!file()&&!video.hidden&&/^blob:/.test(video.currentSrc||video.src);}
+    function format(key,values){return T(key).replace(/\{(\w+)\}/g,function(_,k){return Object.prototype.hasOwnProperty.call(values,k)?String(values[k]):_;});}
+    function paint(){card.querySelectorAll('[data-cm]').forEach(function(e){e.textContent=T(e.dataset.cm);});build.disabled=busy||!ready();cancel.hidden=!busy;card.setAttribute('aria-busy',String(busy));$('cmStatus552').textContent=T(message||(ready()?'Ready to scan original file headers.':'Choose a device file above to inspect its container.'));table.hidden=!result;$('cmSummary552').textContent='';$('cmAudio552').textContent='';$('cmWarnings552').textContent='';var body=table.querySelector('tbody');body.textContent='';if(!result)return;
+      $('cmSummary552').textContent=format('Container: {kind}; {n} headers; {b} bytes read.',{kind:result.kind,n:result.rows.length,b:result.readBytes})+(result.brand?' '+format('Major brand: {brand}.',{brand:result.brand}):'');
+      var a=result.audio,w=[];if(a){$('cmAudio552').textContent=format('WAVE format code {c}; {n} channels; {r} Hz; {b} bits; block align {a}; {v} bytes/s.',{c:a.code,n:a.channels,r:a.rate,b:a.bits,a:a.align,v:a.byteRate});if(a.pcm&&(!a.channels||!a.rate||!a.bits||a.align!==a.channels*Math.ceil(a.bits/8)||a.byteRate!==a.rate*a.align))w.push(T('PCM or IEEE float header fields are inconsistent.'));}
+      if(result.kind==='WAVE'&&(!a||!result.hasData))w.push(T('WAVE fmt or data chunk is missing from the scanned headers.'));if(result.trailing)w.push(format('{n} trailing bytes lie outside the declared RIFF container.',{n:result.trailing}));$('cmWarnings552').textContent=w.join(' ');
+      result.rows.slice(0,40).forEach(function(r){var tr=document.createElement('tr');[r.type,r.offset,r.size].forEach(function(value){var td=document.createElement('td');td.textContent=String(value);tr.appendChild(td);});body.appendChild(tr);});$('cmCaption552').textContent=format('Showing {n} of {total} scanned headers.',{n:Math.min(40,result.rows.length),total:result.rows.length});
+    }
+    function reset(){epoch++;busy=false;result=null;message='';paint();}
+    build.addEventListener('click',async function(){if(busy||!ready())return;var original=file(),source=video.getAttribute('src'),mine=++epoch;busy=true;result=null;message='Scanning headers. Playback is unchanged.';paint();function stale(){return mine!==epoch||original!==file()||source!==video.getAttribute('src')||!ready();}try{var value=await window.VPContainer552.scan(original,stale);if(stale())return;result=value;message=result.complete?'Header walk complete.':'Stopped at the 256-header limit. This map is partial, not a complete scan.';}catch(error){if(stale())return;message=error.message==='unsupported'?'Unsupported container. This tool only reads RIFF WAVE or ftyp-first ISO media headers.':error.message==='truncated'?'Truncated header or chunk: a declared size extends beyond the available bytes. No complete map was produced.':error.message==='malformed'?'Malformed header size or format field. No complete map was produced.':'Could not read file headers. Choose the file again and retry.';}finally{if(mine===epoch){busy=false;paint();}}});
+    cancel.addEventListener('click',function(){reset();message='Header scan cancelled.';paint();build.focus();});$('cmClear552').addEventListener('click',reset);video.addEventListener('emptied',reset);video.addEventListener('loadedmetadata',paint);['vp-local-closed','vp-youtube-selected'].forEach(function(e){document.addEventListener(e,reset);});window.addEventListener('pagehide',reset);card.addEventListener('toggle',function(){if(!card.open&&busy){reset();message='Header scan cancelled.';paint();}});(window.__relang=window.__relang||[]).push(paint);paint();window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Container map','#containerMap552');},17620);});
+  })();
+  // End container map 552
 
 
 
@@ -60827,6 +60907,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Local playlist exchange", "local playlist recipe export import restore relink json files order", "#localExchange276"],
       ["Browse media folder", "directory folder subfolders local media browser playlist recursive", "#folderBrowser276"],
       ["Listening cut list", "listening cut list remove quiet gaps silence nonquiet speech review clips itinerary", "#qmClips548"],
+      ["Container map", "container map original media structure header WAV RIFF fmt chunks MP4 M4A MOV ftyp boxes offsets truncated malformed bytes inspect कंटेनर કન્ટેનર", "#containerMap552"],
       ["File integrity", "file integrity fingerprint checksum SHA256 sha-256 expected digest compare files identical local original device hash फ़ाइल जांच ફાઇલ તપાસ", "#fileIntegrity551"],
       ["Sound spectrogram", "sound spectrogram spectrum frequencies frequency FFT waterfall inspect freeze PNG audio local device आवाज़ स्पेक्ट्रोग्राम અવાજ સ્પેક્ટ્રોગ્રામ", "#spectrogram550"],
       ["Audio excerpt exporter", "audio excerpt exporter WAV range trim ringtone local device file fade sound export ऑडियो अंश ઑડિયો અંશ", "#audioExcerpt549"],
