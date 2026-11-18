@@ -2340,6 +2340,7 @@ setTimeout(done,3000);})();
       </div>
       <div class="actions"><button class="btn" id="dlInfoBtn">Get formats</button><button class="chip" id="dlPasteBtn" type="button">Paste</button><button class="chip" id="dlQAllBtn" type="button">Queue links</button><button class="chip" id="dlRetryBtn" type="button" hidden>Retry</button><button class="chip" id="dlCopyErr" type="button" hidden>Copy error</button></div>
       <label class="dl-chk"><input type="checkbox" id="dlBulkMp3"> <span id="dlBulkMp3T">Queue links as MP3 only</span></label>
+      <div class="row" id="dlMp3QRow536" role="group" aria-label="MP3 quality" style="margin-top:6px"><span class="label" id="dlMp3QLab536">MP3 quality:</span><span class="chips" id="dlMp3QChips536"></span> <span class="hint" id="dlMp3QHint536">128k smaller file - 320k best sound</span></div>
       <p class="hint" id="dlStatus" role="status">YouTube links can't be downloaded - play them in the player above. For other sites (for example TikTok, TED, SoundCloud, Streamable) paste the link here.</p>
       <p class="error" id="dlError" role="alert" hidden></p>
       <div id="dlBox" hidden>
@@ -54650,6 +54651,19 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
 
   window.__vpMainOk325 = true;
 
+  // Round 536 new 1: translations, What's new and feature finder entries for the
+  // downloader's MP3 quality chips. The chips and their logic live in the downloader
+  // script block below; the strings they translate through T() live here in TR_MSG.
+  Object.assign(TR_MSG, {
+    "MP3 quality:": ["MP3 क्वालिटी:", "MP3 ક્વાલિટી:"],
+    "MP3 quality": ["MP3 क्वालिटी", "MP3 ક્વાલિટી"],
+    "MP3 quality set to {q} kbps.": ["MP3 क्वालिटी {q} kbps हो गई.", "MP3 ક્વાલિટી {q} kbps થઈ ગઈ."],
+    "128k smaller file - 320k best sound": ["128k छोटी फ़ाइल - 320k सबसे अच्छी आवाज़", "128k નાની ફાઇલ - 320k શ્રેષ્ઠ અવાજ"],
+    "That MP3 quality is not available. Pick 128k, 192k or 320k.": ["वह MP3 क्वालिटी उपलब्ध नहीं. 128k, 192k या 320k चुनें.", "તે MP3 ક્વાલિટી ઉપલબ્ધ નથી. 128k, 192k કે 320k પસંદ કરો."],
+    "MP3 quality choice": ["MP3 क्वालिटी चुनाव", "MP3 ક્વાલિટી પસંદગી"]
+  });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("MP3 quality choice", "#dlMp3QRow536"); }, 16420); });
+
 
 
 
@@ -54720,7 +54734,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     net_slow: "The site was too slow for the free server. Try again in a moment.",
     no_file: "The file could not be made on the server. Try another format.",
     bad_format: "That format is not available. Pick another one.",
-    bad_type: "That request is not supported."
+    bad_type: "That request is not supported.",
+    bad_quality: "That MP3 quality is not available. Pick 128k, 192k or 320k."
   };
   function isYT(u) {
     try { var h = new URL(u).hostname.toLowerCase(); return /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com|youtubekids\.com|yt\.be)$/.test(h); } catch (e) { return false; }
@@ -54915,6 +54930,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     retryFn = function () { download(kind); };
     var opt = fmtSel.options[fmtSel.selectedIndex], body = { type: "download", url: info.url, kind: kind };
     if (kind === "video" && opt.value !== "best") { body.format = opt.value; if (opt.dataset.mux === "1") body.mux = true; }
+    if (kind === "mp3") body.quality = mp3Q536;
     if (from !== null) body.from = from; if (to !== null) body.to = to;
     bar.hidden = false; fill.style.width = "3%";
     setBusy(true, kind === "mp3" ? "Making the MP3..." : "Downloading...");
@@ -54928,6 +54944,32 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   $("dlPlayBtn").addEventListener("click", function () { if (lastFile && window.vpPlayUrl) window.vpPlayUrl(lastFile, "dl|" + lastFile); });
   try { $("dlBulkMp3").checked = localStorage.getItem("vp-dl-mp3") === "1"; } catch (e) {}
   $("dlBulkMp3").addEventListener("change", function () { try { localStorage.setItem("vp-dl-mp3", this.checked ? "1" : "0"); } catch (e) {} });
+  // Round 536 new 1: MP3 quality choice. Every MP3 used to come out at a fixed 192 kbps -
+  // needlessly big for a speech podcast, not full quality for a song. Three chips
+  // (128k / 192k / 320k, 192 keeping the old behaviour) apply to Download MP3, + Queue MP3
+  // and the bulk MP3 queue, and the queue row names the picked bitrate. The choice is
+  // saved on this device (same localStorage pattern as the MP3-only checkbox above) and
+  // the server validates it, rejecting anything else with bad_quality.
+  var mp3Q536 = "192";
+  try { var q0_536 = localStorage.getItem("vp-dl-mp3q"); if (q0_536 === "128" || q0_536 === "192" || q0_536 === "320") mp3Q536 = q0_536; } catch (e) {}
+  function mp3QPaint536() {
+    var lab = $("dlMp3QLab536"), hint = $("dlMp3QHint536"), c = $("dlMp3QChips536"); if (!c) return;
+    if (lab) lab.textContent = T("MP3 quality:");
+    if (hint) hint.textContent = T("128k smaller file - 320k best sound");
+    c.textContent = "";
+    ["128", "192", "320"].forEach(function (q) {
+      var b = document.createElement("button"); b.className = "chip"; b.type = "button";
+      b.textContent = q + "k"; b.setAttribute("aria-pressed", q === mp3Q536 ? "true" : "false");
+      b.setAttribute("aria-label", T("MP3 quality") + " " + q + " kbps");
+      b.addEventListener("click", function () {
+        mp3Q536 = q; try { localStorage.setItem("vp-dl-mp3q", q); } catch (e) {}
+        mp3QPaint536(); toast(T("MP3 quality set to {q} kbps.").replace("{q}", q));
+      });
+      c.appendChild(b);
+    });
+  }
+  mp3QPaint536();
+  (window.__relang = window.__relang || []).push(mp3QPaint536);
   // ---- Download queue ----
   var Q = [], qRun = false, qSeq = 0, qEl = $("dlQ"), qWrap = $("dlQWrap"), doneSinceIdle355 = 0;
   function links(txt) { return ((txt || "").match(/https?:\/\/[^\s,]+/gi) || []).filter(function (v, i, a) { return a.indexOf(v) === i; }); }
@@ -54941,7 +54983,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     qWrap.hidden = !Q.length; qEl.innerHTML = "";
     Q.forEach(function (it) {
       var li = document.createElement("li"); li.className = "dl-q-item";
-      var l = document.createElement("span"); l.className = "l"; l.textContent = (it.body.kind === "mp3" ? "MP3 - " : T("Video - ")) + (it.title || hostOf(it.body.url));
+      var l = document.createElement("span"); l.className = "l"; l.textContent = (it.body.kind === "mp3" ? "MP3 " + (it.body.quality || "192") + "k - " : T("Video - ")) + (it.title || hostOf(it.body.url));
       var st = document.createElement("span"); st.className = "st";
       if (it.status === "waiting") st.textContent = T("Waiting");
       else if (it.status === "running") st.textContent = T("Downloading ") + (it.progress || 0) + "%";
@@ -55074,7 +55116,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   $("dlQAllBtn").addEventListener("click", function () {
     showErr(""); var ls = links(urlIn.value), kind = $("dlBulkMp3").checked ? "mp3" : "video", added = 0, skipped = 0;
     if (!ls.length) return showErr("Paste one or more links first (separated by spaces).");
-    ls.forEach(function (u) { if (isYT(u)) { skipped++; return; } if (qAdd({ type: "download", url: u, kind: kind }, null)) added++; });
+    ls.forEach(function (u) { if (isYT(u)) { skipped++; return; } var b536 = { type: "download", url: u, kind: kind }; if (kind === "mp3") b536.quality = mp3Q536; if (qAdd(b536, null)) added++; });
     statusEl.textContent = T("Added ") + added + T(" to the queue.") + (skipped ? T(" Skipped ") + skipped + T(" YouTube link(s) (not downloadable).") : "");
     if (added) warm();
   });
@@ -55084,6 +55126,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     if (isNaN(from) || isNaN(to) || (from !== null && to !== null && to <= from)) return showErr(ERR.bad_range);
     var opt = fmtSel.options[fmtSel.selectedIndex], body = { type: "download", url: info.url, kind: kind };
     if (kind === "video" && opt.value !== "best") { body.format = opt.value; if (opt.dataset.mux === "1") body.mux = true; }
+    if (kind === "mp3") body.quality = mp3Q536;
     if (from !== null) body.from = from; if (to !== null) body.to = to;
     if (qAdd(body, info.title)) { statusEl.textContent = T("Added to the queue."); toast(T("Added to the queue.")); }
   }
@@ -60344,6 +60387,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Jump to the previous saved moment", "jump previous saved moment keyboard key bookmark back before earlier marked spot moment hop your own keys", "#xkRow280"],
       ["Copy link at this time from the keyboard", "copy link at this time keyboard key share timestamp current second url clipboard own keys", "#xkRow280"],
       ["Save a moment from your own key", "save this moment own key keyboard bookmark mark this second remember spot custom key", "#xkRow280"],
+      ["MP3 quality choice", "mp3 quality bitrate 128 192 320 kbps sound smaller file best sound download music song size data saver", "#dlMp3QRow536"],
     ];
     // Search in your own words (round 361 new 1): the finder's labels are translated, so a
     // Hindi phone finds the Sleep timer by typing the transliterated name - but nobody types
@@ -60368,6 +60412,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       "Sleep timer": "\u0928\u0940\u0902\u0926 \u0938\u094b\u0928\u093e \u0930\u093e\u0924 \u0a8a\u0a82\u0a98 \u0ab8\u0ac1\u0ab5\u0ac1\u0a82 \u0ab0\u0abe\u0aa4 neend sona raat",
       "Sleep timer session recap": "\u0928\u0940\u0902\u0926 \u0930\u093e\u0924 \u0a8a\u0a82\u0a98 \u0ab0\u0abe\u0aa4 neend raat",
       "Sleep timer in the mini player": "\u0928\u0940\u0902\u0926 \u0a8a\u0a82\u0a98 neend",
+      "MP3 quality choice": "MP3 \u0915\u094d\u0935\u093e\u0932\u093f\u091f\u0940 \u0a95\u0acd\u0ab5\u0abe\u0ab2\u0abf\u0a9f\u0ac0 mp3 quality",
       "Sleep timer stops ambient sound": "\u0928\u0940\u0902\u0926 \u092c\u093e\u0930\u093f\u0936 \u0a8a\u0a82\u0a98 \u0ab5\u0ab0\u0ab8\u0abe\u0aa6 neend barish",
       "Queue total time": "\u0915\u0924\u093e\u0930 \u0915\u0941\u0932 \u0938\u092e\u092f \u0a95\u0aa4\u0abe\u0ab0 \u0a95\u0ac1\u0ab2 \u0ab8\u0aae\u0aaf katar kul samay",
       "Clear queue": "\u0915\u0924\u093e\u0930 \u0938\u093e\u092b \u0a95\u0aa4\u0abe\u0ab0 \u0ab8\u0abe\u0aab katar saaf",
