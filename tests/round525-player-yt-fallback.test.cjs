@@ -16,7 +16,7 @@ assert(html.indexOf('window.__vpMainOk325 = true') > 0, 'main flag');
 // Retry chip for an "Open on YouTube" chip; Retry stays for errors a reload can beat.
 assert(/<button class="chip" id="playerYtBtn" type="button" hidden>/.test(html), 'playerYtBtn chip exists in the player card');
 assert(html.indexOf('id="playerYtBtn"') < html.indexOf('id="infoCard"'), 'chip sits with the player error UI, before the info card');
-assert(/#playerRetryBtn,#playerYtBtn,#dlHandoffBtn\{margin-top:8px\}/.test(html), 'chip picks up the retry spacing rule');
+assert(/#playerRetryBtn,[^{]*#playerYtBtn,[^{]*#dlHandoffBtn\{margin-top:8px\}/.test(html), 'chip picks up the retry spacing rule');
 
 const helper = html.match(/function showPlayerYt\(show\) \{[^}]*\}/);
 assert(helper, 'showPlayerYt helper exists');
