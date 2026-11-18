@@ -1,0 +1,5 @@
+const assert=require('node:assert/strict');
+require('./round538-harness.cjs')(async({p,errors})=>{
+ await p.locator('#lpFile').setInputFiles(require('./round548-video-fixture.cjs')());await p.waitForFunction(()=>Number.isFinite(document.querySelector('#lpVideo').duration));await p.locator('#lpInfoBtn278').click();assert.match(await p.locator('#lpInfo278').textContent(),/Quiet-map demo/);assert.match(await p.locator('#lpInfo278').textContent(),/640 × 360/);
+ await p.locator('#lpFile').setInputFiles({name:'Unreadable.wav',mimeType:'audio/wav',buffer:Buffer.from('not media')});await p.waitForFunction(()=>document.querySelector('#lpVideo').error);const info=await p.locator('#lpInfo278').textContent();assert.match(info,/Unreadable.wav/,'a failed replacement must not leave the prior file name in open File info');assert.doesNotMatch(info,/Quiet-map demo|640 × 360|Length:/);assert.equal(await p.locator('#lpInfo278').evaluate(e=>e.hidden),false);assert.deepEqual(errors,[]);console.log('PASS File info refreshes after failed source replacement, no stale filename/duration/picture from prior video');
+}).catch(e=>{console.error(e);process.exitCode=1;});
