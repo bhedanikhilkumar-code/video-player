@@ -83,7 +83,7 @@ def sec(x):
     return x
 
 def do_download(t, p):
-    url = p["url"]; kind = p.get("kind", "video")  # video | mp3
+    url = p["url"]; kind = p.get("kind", "video")  # video | mp3 | audio
     fid = p.get("format")
     if fid is not None and not re.fullmatch(r"[A-Za-z0-9_\-\.\+]{1,60}", str(fid)): raise Bad("bad_format", "Invalid format.")
     start, end = sec(p.get("from")), sec(p.get("to"))
@@ -107,6 +107,13 @@ def do_download(t, p):
         if q not in ("128", "192", "320"): raise Bad("bad_quality", "Invalid MP3 quality.")
         o["format"] = fid or "bestaudio/best"
         pp.append({"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": q})
+    elif kind == "audio":
+        # Round 536 new 2: original-audio download - keep the site's own best audio track
+        # with no re-encode. Far faster than MP3 conversion on the free host (a long mix
+        # skips minutes of ffmpeg work) and the sound is untouched; the saved file keeps
+        # its real extension (m4a / webm / opus), which phone players and the app's own
+        # local player open directly.
+        o["format"] = fid or "bestaudio/best"
     else:
         if fid and (p.get("mux") or "+" in str(fid)): o["format"] = str(fid)
         elif fid: o["format"] = f"{fid}+bestaudio/{fid}/best"
