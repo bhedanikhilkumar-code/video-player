@@ -34,6 +34,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#circuitPresets421').evaluate(e=>e.open=true);
     await page.locator('#circuitPresetName421').fill('Guitar warmup');await page.locator('#circuitPresetSave421').click();
     assert.match(await page.locator('#circuitPresetStatus421').textContent(),/saved/);
+    if(await page.locator('#miniClose').isVisible())await page.locator('#miniClose').click();
     const download=page.waitForEvent('download');await page.locator('#libExport').click();const backup=await download;const saved=JSON.parse(fs.readFileSync(await backup.path(),'utf8'));
     assert.equal(saved.settings['vp-circuit-presets421.v1'][0].name,'Guitar warmup');assert.equal(saved.settings['vp-circuit-presets421.v1'][0].steps[0].passes,2);
     await page.reload();await page.waitForFunction(()=>window.__vpMainOk325);
@@ -45,7 +46,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#linkInput').fill('dQw4w9WgXcQ');await page.locator('#loadBtn').click();
     await page.locator('#circuit421').evaluate(e=>e.open=true);await page.locator('#circuitPresets421').evaluate(e=>e.open=true);
     await page.locator('#circuitPresetList421').getByRole('button',{name:'Remove: Guitar warmup',exact:true}).click();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('vp-circuit-presets421.v1')).length),0);
-    await page.locator('#vpToast button').click();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('vp-circuit-presets421.v1')).length),1);
+    await page.locator('#vpToast button.vp-undo:not(.vp-offer)').click();assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('vp-circuit-presets421.v1')).length),1);
     await page.locator('#circuitPresetList421').getByRole('button',{name:'Load circuit preset: Guitar warmup',exact:true}).click();
     await page.locator('#circuitPresetName421').fill('guitar warmup');await page.locator('#circuitPresetSave421').click();assert.match(await page.locator('#circuitPresetStatus421').textContent(),/different/);
     await page.locator('#circuitPresets421').scrollIntoViewIfNeeded();if(await page.locator('#miniClose').isVisible())await page.locator('#miniClose').click();
