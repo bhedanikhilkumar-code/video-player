@@ -54797,7 +54797,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     var origShowRetry541 = showPlayerRetry;
     showPlayerRetry = function (show) {
       origShowRetry541(show);
-      var skippable541 = !!lastPlayerErr && (lastPlayerErr.kind === "slow" || (lastPlayerErr.kind === "embed" && !lastPlayerErr.willSkip));
+      var skippable541 = !!lastPlayerErr && (lastPlayerErr.kind === "slow" || lastPlayerErr.kind === "stuck541" || (lastPlayerErr.kind === "embed" && !lastPlayerErr.willSkip));
       showSkip541(!!show && skippable541 && hasNext541());
     };
     skipBtn541.addEventListener("click", function () {
@@ -54809,6 +54809,62 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       if (!(typeof playNext === "function" && playNext())) toast(T("No next video in the queue."));
     });
     (window.__relang = window.__relang || []).push(function () { if (!skipBtn541.hidden) paintSkip541(); });
+  })();
+
+  // Round 541 new 2 (root cause of this round's live find): the stuck-load watchdog
+  // only watches until the frame is READY - and YouTube's "sign in to confirm you are
+  // not a bot" wall still fires onReady (verified live this round: PSY row, bot wall in
+  // the frame, onReady cleared the error card in under a second). The video then sits
+  // at 0:00 forever with no card at all: an auto-next queue dies silently, and new 1's
+  // chip never shows. A second guard arms together with the load watchdog and fires
+  // 15s later: if the frame IS ready but the video never reached playing (playedOnce
+  // is reset on every load) and the load asked for autoplay (embed URL), the error
+  // card returns with a "ready but will not start" message, Try again, Open on
+  // YouTube, and new 1's Play-next chip when the queue has a next. A cued-only load
+  // (no autoplay in the embed URL) never trips it; playback, an embed error, an
+  // intentional pause (sleep/rest cover) and every new load cancel it first. Checked
+  // first: grep "unstarted"/"never starts" - no guard existed; FEATS had no entry.
+  Object.assign(TR_MSG, {
+    "The video is ready, but it will not start playing. YouTube may be busy or blocked on this network - try again, or open it on YouTube.": ["वीडियो तैयार है, पर चलना शुरू नहीं हो रहा. इस नेटवर्क पर YouTube व्यस्त या ब्लॉक हो सकता है - फिर कोशिश करें, या YouTube पर खोलें.", "વીડિયો તૈયાર છે, પણ ચાલુ થતો નથી. આ નેટવર્ક પર YouTube વ્યસ્ત કે બ્લોક હોઈ શકે - ફરી પ્રયાસ કરો, કે YouTube પર ખોલો."]
+  });
+  (function () {
+    if (typeof armLoadWatch !== "function" || typeof paintPlayerErr !== "function") return;
+    var startGuard541 = 0, guardId541 = null;
+    var origPaint541 = paintPlayerErr;
+    paintPlayerErr = function () {
+      if (lastPlayerErr && lastPlayerErr.kind === "stuck541") {
+        playerError.textContent = T("The video is ready, but it will not start playing. YouTube may be busy or blocked on this network - try again, or open it on YouTube.");
+        return;
+      }
+      origPaint541();
+    };
+    function clearStartGuard541() { clearTimeout(startGuard541); guardId541 = null; }
+    var origArm541 = armLoadWatch;
+    armLoadWatch = function (id) {
+      origArm541(id);
+      clearStartGuard541();
+      guardId541 = id;
+      startGuard541 = setTimeout(function () {
+        if (guardId541 !== id || !curId || curId !== id || !iframe) return;
+        if (!ready || playedOnce) return;                          // the load watchdog owns "never ready"
+        if (lastPlayerErr && lastPlayerErr.kind === "embed") return; // the embed-error card is already up
+        if (typeof sleepPaused !== "undefined" && sleepPaused) return; // the sleep timer paused it on purpose
+        if (typeof playbackCovered345 === "function" && playbackCovered345()) return; // a rest card covers it
+        if (!/[?&]autoplay=1/.test(iframe.src || "")) return;      // a cued-only load may sit by design
+        lastPlayerErr = { kind: "stuck541" };
+        paintPlayerErr();
+        playerError.hidden = false;
+        showPlayerRetry(true);
+        if (typeof showPlayerYt === "function") showPlayerYt(true);
+        skelShow(false);
+      }, window.__vpStartMs541 || 15000);
+    };
+    // Playback starting in any form cancels the guard.
+    window.addEventListener("message", function (e541) {
+      if (!guardId541 || !iframe || e541.source !== iframe.contentWindow) return;
+      var d541; try { d541 = typeof e541.data === "string" ? JSON.parse(e541.data) : e541.data; } catch (x541) { return; }
+      if (d541 && d541.event === "onStateChange" && (d541.info === 1 || d541.info === 3)) clearStartGuard541();
+    });
   })();
 
 })();
@@ -59823,7 +59879,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Skip silence", "skip silence quiet pauses auto jump ahead lectures voice notes silent parts fast forward local file", "#lpSilBtn"],
       ["Loudness match", "loudness match auto volume leveling steady same loudness quiet loud files normalize playlist tracks local", "#lpLoudBtn"],
       ["Auto PiP", "auto pip picture in picture floating window switch tab keep watching another app automatic local file mini window", "#lpAutoPipBtn539"],
-      ["Skip a stuck queue video", "stuck slow loading not starting taking too long skip next queue video dead frozen black screen watchdog bot", "#playerSkipBtn541"],
+      ["Skip a stuck queue video", "stuck slow loading not starting taking too long ready never starts skip next queue video dead frozen black screen watchdog bot sign in confirm", "#playerSkipBtn541"],
       ["Subtitle folder match", "subtitle batch folder match filenames local srt vtt languages", "#subtitleBatch276"],
       ["Audio sync delay", "audio sound sync delay milliseconds local lips early", "#audioSync276"],
       ["Local playlist exchange", "local playlist recipe export import restore relink json files order", "#localExchange276"],
