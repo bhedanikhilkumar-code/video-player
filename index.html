@@ -43992,6 +43992,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     anchor309b.parentNode.appendChild(btn);
     var IDS309 = ["lpNightBtn", "lpHallBtn285", "lpWideBtn287", "lpVcutBtn300", "lpDbBtn302", "lpMonoBtn"];
     function anyOn() {
+      if (window.__vpResetCross554 && window.__vpResetCross554(true)) return true;
       if (window.__vpResetPeak547 && window.__vpResetPeak547(true)) return true;
       if (window.__vpResetRoute543 && window.__vpResetRoute543(true)) return true;
       for (var i = 0; i < IDS309.length; i++) { var b = $(IDS309[i]); if (b && b.getAttribute("aria-pressed") === "true") return true; }
@@ -44006,6 +44007,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     btn.addEventListener("click", function () {
       if (!anyOn()) { toast(T("Sound is already at its normal settings.")); return; }
+      if (window.__vpResetCross554) window.__vpResetCross554(false);
       if (window.__vpResetPeak547) window.__vpResetPeak547(false);
       if (window.__vpResetRoute543) window.__vpResetRoute543(false);
       IDS309.forEach(function (id) {
@@ -54840,6 +54842,29 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   root.VPChannelRouter543 = { valid: valid, create: create };
 })(typeof window !== "undefined" ? window : globalThis);
   // ROUTER543 END
+  // CROSSFEED554 START
+  window.VPCrossfeed554={valid:function(mode){return ['off','light','medium'].indexOf(mode)>=0;},create:function(ctx,input,initial){
+    var dry=ctx.createGain(),split=ctx.createChannelSplitter(2),merge=ctx.createChannelMerger(2),output=ctx.createGain(),paths=[],mode='off';
+    var stereo=ctx.createGain();stereo.channelCount=2;stereo.channelCountMode='explicit';stereo.channelInterpretation='speakers';input.connect(stereo);stereo.connect(dry);dry.connect(output);stereo.connect(split);
+    for(var i=0;i<2;i++){var filter=ctx.createBiquadFilter(),delay=ctx.createDelay(.01),gain=ctx.createGain();filter.type='lowpass';filter.frequency.value=700;filter.Q.value=-3.01029995664;delay.delayTime.value=.0003;split.connect(filter,i);filter.connect(delay);delay.connect(gain);gain.connect(merge,0,1-i);paths.push({filter:filter,delay:delay,gain:gain});}
+    merge.connect(output);
+    function set(value,instant){mode=window.VPCrossfeed554.valid(value)?value:'off';var wet=mode==='light'?.12:mode==='medium'?.24:0,t=ctx.currentTime;[[dry.gain,1-wet],[paths[0].gain.gain,wet],[paths[1].gain.gain,wet]].forEach(function(pair){var p=pair[0];p.cancelScheduledValues(t);p.setValueAtTime(p.value,t);if(instant)p.setValueAtTime(pair[1],t);else p.linearRampToValueAtTime(pair[1],t+.02);});}
+    set(initial,true);return {output:output,set:set,mode:function(){return mode;},dispose:function(){try{input.disconnect(stereo);}catch(e){}[stereo,dry,split,merge,output].concat(paths.flatMap(function(p){return [p.filter,p.delay,p.gain];})).forEach(function(n){try{n.disconnect();}catch(e){}});}};
+  }};
+  // CROSSFEED554 END
+  Object.assign(TR_MSG,{
+    'Headphone crossfeed':['हेडफ़ोन क्रॉसफ़ीड','હેડફોન ક્રૉસફીડ'],
+    'For hard-panned device recordings, blend a quiet, filtered copy of each channel into the opposite ear. This is different from Mono or Wide. Try at a comfortable volume; preference varies. No hearing or comfort guarantee.':['बहुत अलग बाएं-दाएं वाली डिवाइस रिकॉर्डिंग में हर चैनल की धीमी, फ़िल्टर की हुई कॉपी दूसरे कान में मिलाएं. यह Mono या Wide से अलग है. आरामदायक आवाज़ पर आज़माएं; पसंद अलग होती है. सुनने या आराम की गारंटी नहीं.','ખૂબ અલગ ડાબા-જમણા ધરાવતી ડિવાઇસ રેકોર્ડિંગમાં દરેક ચૅનલની ધીમી, ફિલ્ટર કરેલી નકલ બીજા કાનમાં ભેળવો. આ Mono કે Wideથી અલગ છે. આરામદાયક અવાજે અજમાવો; પસંદગી અલગ હોય છે. સાંભળવા કે આરામની ગેરંટી નથી.'],
+    'Session only. Resets to Off when the source changes or closes. Before Peak softener; the original-sound comparison bypasses it. No file edits, microphone, upload or YouTube effect.':['केवल इस सत्र में. स्रोत बदलने या बंद होने पर बंद. Peak softener से पहले; मूल आवाज़ की तुलना इसे बायपास करती है. फ़ाइल एडिट, माइक्रोफ़ोन, अपलोड या YouTube इफ़ेक्ट नहीं.','ફક્ત આ સત્રમાં. સ્રોત બદલાય કે બંધ થાય ત્યારે બંધ. Peak softener પહેલાં; મૂળ અવાજની સરખામણી તેને બાયપાસ કરે છે. ફાઇલ ફેરફાર, માઇક્રોફોન, અપલોડ કે YouTube ઇફેક્ટ નહીં.'],
+    'Crossfeed off':['क्रॉसफ़ीड बंद','ક્રૉસફીડ બંધ'],
+    'Light crossfeed':['हल्का क्रॉसफ़ीड','હળવો ક્રૉસફીડ'],
+    'Medium crossfeed':['मध्यम क्रॉसफ़ीड','મધ્યમ ક્રૉસફીડ'],
+    'Crossfeed off: original channel separation.':['क्रॉसफ़ीड बंद: चैनलों का मूल अलगाव.','ક્રૉસફીડ બંધ: ચૅનલનું મૂળ અલગાવ.'],
+    'Light: 12% filtered opposite channel, 88% direct.':['हल्का: 12% फ़िल्टर किया दूसरा चैनल, 88% सीधा.','હળવો: 12% ફિલ્ટર કરેલો બીજો ચૅનલ, 88% સીધો.'],
+    'Medium: 24% filtered opposite channel, 76% direct.':['मध्यम: 24% फ़िल्टर किया दूसरा चैनल, 76% सीधा.','મધ્યમ: 24% ફિલ્ટર કરેલો બીજો ચૅનલ, 76% સીધો.'],
+    'Opposite-channel copy: 700 Hz low-pass, 0.3 ms delay. Direct signal is reduced, not boosted.':['दूसरे चैनल की कॉपी: 700 Hz लो-पास, 0.3 ms देरी. सीधा संकेत कम होता है, बूस्ट नहीं.','બીજા ચૅનલની નકલ: 700 Hz લૉ-પાસ, 0.3 ms વિલંબ. સીધો સંકેત ઘટે છે, બૂસ્ટ નહીં.'],
+    'Crossfeed unavailable in this browser. Your selection was not applied.':['इस ब्राउज़र में क्रॉसफ़ीड उपलब्ध नहीं. आपका चुनाव लागू नहीं हुआ.','આ બ્રાઉઝરમાં ક્રૉસફીડ ઉપલબ્ધ નથી. તમારી પસંદગી લાગુ થઈ નથી.']
+  });
   // PEAK547 TRANSLATIONS
   Object.assign(TR_MSG, {
     "Peak softener": [
@@ -56360,7 +56385,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     function decodeAudioSafe345(dc, data, success, failure) { try { var pending = dc.decodeAudioData(data, success, failure); if (pending && typeof pending.catch === "function") pending.catch(function () {}); } catch (e) { failure(e); } }
   var file = $("lpFile"), vid = $("lpVideo"), ctl = $("lpCtl"), gain = $("lpGain"), gv = $("lpGainVal"), warn = $("lpWarn"), sp = $("lpSpeeds");
   var ctx = null, node = null, curUrl = null, eqNodes = null, nightNode = null, panNode = null, monoNode = null, hallConv285 = null, hallWet285 = null, wideSplit287 = null, wideMerger287 = null, wideWet287 = null, vcutSplit300 = null, vcutMatrix300 = null, dbSplit302 = null, dbMatrix302 = null;
-  var channelRouter543 = null, routeCompare543 = false, peakSoftener547 = null, soundCompare547 = null;
+  var channelRouter543 = null, routeCompare543 = false, peakSoftener547 = null, soundCompare547 = null, crossfeed554 = null, crossfeedMode554 = "off";
   function ensureAudio() {
     if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -56382,7 +56407,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     node.connect(monoN);
     var delay276 = null, output276 = ctx.createGain(), soundMix547 = ctx.createGain();
     output276.gain.value = vid.paused ? 0 : 1;
-    peakSoftener547 = window.VPPeakSoftener547.create(ctx, soundMix547, lp.peak547);
+    crossfeed554 = window.VPCrossfeed554.create(ctx, soundMix547, crossfeedMode554);
+    peakSoftener547 = window.VPPeakSoftener547.create(ctx, crossfeed554.output, lp.peak547);
     soundCompare547 = window.VPSoundCompare547.create(ctx, src, peakSoftener547.output);
     soundCompare547.output.connect(output276); output276.connect(ctx.destination); window.__lpOutput276 = output276;
     function flushDelay276() {
@@ -57682,6 +57708,20 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     window.addEventListener("pagehide", end);
     window.addEventListener("storage", function (event) { if (event.key === LK || event.key === null) end(); });
     (window.__relang = window.__relang || []).push(paint);paint();
+  })();
+
+  // Round 554: deliberately session-only, separate from persisted sound preferences.
+  (function(){
+    var card=document.createElement('details');card.id='crossfeed554';card.className='lp-workbench';card.innerHTML='<summary data-cf="Headphone crossfeed"></summary><p class="hint" data-cf="For hard-panned device recordings, blend a quiet, filtered copy of each channel into the opposite ear. This is different from Mono or Wide. Try at a comfortable volume; preference varies. No hearing or comfort guarantee."></p><div class="row" id="cfChoices554"></div><p class="hint" id="cfStatus554" role="status" aria-live="polite"></p><p class="hint" data-cf="Opposite-channel copy: 700 Hz low-pass, 0.3 ms delay. Direct signal is reduced, not boosted."></p><p class="hint" data-cf="Session only. Resets to Off when the source changes or closes. Before Peak softener; the original-sound comparison bypasses it. No file edits, microphone, upload or YouTube effect."></p>';$('lpCtl').prepend(card);
+    var css=document.createElement('style');css.textContent='#crossfeed554{margin:14px 0;overflow-wrap:anywhere}#crossfeed554 .row{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}#crossfeed554 button[aria-pressed=true]{border:2px solid var(--teal);font-weight:700;text-decoration:underline;text-underline-offset:4px}#crossfeed554 :focus-visible{outline:3px solid var(--teal);outline-offset:3px}';document.head.appendChild(css);
+    var modes=[['off','Crossfeed off'],['light','Light crossfeed'],['medium','Medium crossfeed']],error=false;
+    function paint(){card.querySelectorAll('[data-cf]').forEach(function(e){e.textContent=T(e.dataset.cf);});modes.forEach(function(m,i){var b=$('cfChoices554').children[i];b.textContent=T(m[1]);b.setAttribute('aria-pressed',String(crossfeedMode554===m[0]));});$('cfStatus554').textContent=T(error?'Crossfeed unavailable in this browser. Your selection was not applied.':crossfeedMode554==='light'?'Light: 12% filtered opposite channel, 88% direct.':crossfeedMode554==='medium'?'Medium: 24% filtered opposite channel, 76% direct.':'Crossfeed off: original channel separation.');}
+    function choose(mode){error=false;try{if(mode!=='off')ensureAudio();if(!crossfeed554&&mode!=='off')throw Error('unavailable');crossfeedMode554=mode;if(crossfeed554)crossfeed554.set(mode);}catch(e){error=true;}paint();}
+    modes.forEach(function(m){var b=document.createElement('button');b.type='button';b.className='chip';b.dataset.crossfeed=m[0];b.addEventListener('click',function(){choose(m[0]);});$('cfChoices554').appendChild(b);});
+    function reset(){crossfeedMode554='off';error=false;if(crossfeed554)crossfeed554.set('off');paint();}
+    ['loadstart','emptied'].forEach(function(e){vid.addEventListener(e,reset);});['vp-local-closed','vp-youtube-selected'].forEach(function(e){document.addEventListener(e,reset);});window.addEventListener('pagehide',reset);
+    window.__vpResetCross554=function(check){var changed=crossfeedMode554!=='off';if(!check)reset();return changed;};window.__vpCrossfeed554=function(){return {mode:crossfeedMode554,active:!!crossfeed554};};(window.__relang=window.__relang||[]).push(paint);paint();
+    window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Headphone crossfeed','#crossfeed554');},17820);});
   })();
 
   // Subtitle upload: .srt/.vtt files are converted to WebVTT on this device, never uploaded.
@@ -60962,6 +61002,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Local playlist exchange", "local playlist recipe export import restore relink json files order", "#localExchange276"],
       ["Browse media folder", "directory folder subfolders local media browser playlist recursive", "#folderBrowser276"],
       ["Listening cut list", "listening cut list remove quiet gaps silence nonquiet speech review clips itinerary", "#qmClips548"],
+      ["Headphone crossfeed", "headphone crossfeed cross feed blend hard panned stereo ears filter local audio हेडफ़ोन હેડફોન", "#crossfeed554"],
       ["Stereo scope", "stereo scope stereo phase correlation phase vectorscope goniometer left right channels rms peak mono cancellation स्टीरियो સ્ટીરિયો", "#stereoScope553"],
       ["Container map", "container map original media structure header WAV RIFF fmt chunks mp4 header wav header m4a mov ftyp boxes offsets truncated malformed bytes inspect कंटेनर કન્ટેનર", "#containerMap552"],
       ["File integrity", "file integrity fingerprint checksum SHA256 sha-256 expected digest compare files identical local original device hash फ़ाइल जांच ફાઇલ તપાસ", "#fileIntegrity551"],
