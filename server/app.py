@@ -133,6 +133,10 @@ def run(t, fn, p):
         code = "extract_failed"
         if re.search(r"429|403|sign in|login|blocked|Forbidden|bot", m, re.I): code = "site_blocked"
         if "Unsupported URL" in m or "allowed" in m: code = "unsupported"
+        # Transient network failures (site slow, free host busy) used to surface as the
+        # generic extract_failed, which reads like a dead link. Give them their own code
+        # so the app can say "try again" instead of "unsupported link".
+        if re.search(r"timed out|timeout|Temporary failure|Connection reset|Connection refused|Remote end closed|Name or service|EOF occurred", m, re.I): code = "net_slow"
         t["status"], t["error"] = "error", {"code": code, "message": re.sub(r"\x1b\[[0-9;]*m", "", m)[:300]}
 
 def cleanup():
