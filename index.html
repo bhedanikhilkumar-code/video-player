@@ -55284,6 +55284,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         "રાખેલો ભાગ"
     ]
 });
+  Object.assign(TR_MSG, {"Analysis cancelled. Waiting for the audio decoder to finish.": ["विश्लेषण रद्द हुआ. ऑडियो डिकोडर पूरा होने की प्रतीक्षा है.", "વિશ્લેષણ રદ થયું. ઑડિયો ડિકોડર પૂરું થાય તેની રાહ છે."]});
   // Round 548: inspect quiet sections without blind auto-seeks or touching playback.
   (function () {
     var video=$('lpVideo'),host=$('lpCtl'); if(!video||!host)return;
@@ -55292,7 +55293,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     host.prepend(card);
     var style=document.createElement('style');style.textContent='#quietMap548 .row{flex-wrap:wrap;gap:8px}#quietMap548 select{max-width:100%}#quietMap548 [hidden]{display:none!important}.qm-map548{display:flex;gap:3px;flex-wrap:wrap;margin:12px 0}.qm-map548:empty{display:none}.qm-map548 button{min-width:44px;min-height:44px;border:1px solid var(--hairline);background:var(--soft);color:inherit;border-radius:10px}.qm-list548{padding-left:24px;max-height:380px;overflow:auto;overscroll-behavior:contain}.qm-list548 li{padding:10px 0;border-bottom:1px solid var(--hairline)}.qm-list548 .row{margin-top:6px}#quietMap548 button:focus-visible{outline:3px solid var(--teal);outline-offset:3px}';document.head.appendChild(style);
     var scan=$('qmScan548'),cancel=$('qmCancel548'),clear=$('qmClear548'),status=$('qmStatus548'),list=$('qmList548'),timeline=$('qmMap548'),db=$('qmDb548'),minimum=$('qmMin548');
-    var map=null,source='',chosen=null,run=0,busy=false,context=null,message='Choose a device file to analyse.';
+    var map=null,source='',chosen=null,run=0,busy=false,decodePending=false,context=null,message='Choose a device file to analyse.';
     function current(){var api=window.__vpLocalQueue443;return api&&api.currentFile548?api.currentFile548():null;}
     function valid(){return !!map&&chosen===current()&&source===(video.currentSrc||video.src)&&!video.hidden;}
     function clock(n){return Math.floor(n/60)+':'+(n%60).toFixed(2).padStart(5,'0');}
@@ -55302,8 +55303,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     function paint(){
       card.querySelectorAll('[data-qm]').forEach(function(el){el.textContent=T(el.dataset.qm);});
       timeline.setAttribute('aria-label',T('Quiet sections in file order'));
-      scan.disabled=busy;cancel.hidden=!busy;clear.disabled=!map&&!busy;db.disabled=minimum.disabled=busy;$('qmClips548').disabled=!valid()||busy;
-      status.textContent=T(message);
+      scan.disabled=busy||decodePending;cancel.hidden=!busy;clear.disabled=!map&&!busy;db.disabled=minimum.disabled=busy;$('qmClips548').disabled=!valid()||busy;
+      status.textContent=T(decodePending&&!busy?"Analysis cancelled. Waiting for the audio decoder to finish.":message);
       if(!valid()){list.replaceChildren();timeline.replaceChildren();return;}
       var focused=document.activeElement,focusId=card.contains(focused)?focused.id:'';
       var rows=window.VPQuietMap548.gaps(map,Number(db.value),Number(minimum.value));
@@ -55318,7 +55319,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       if(focusId){var restored=document.getElementById(focusId);if(restored)restored.focus({preventScroll:true});}
     }
     scan.addEventListener('click',async function(){
-      if(busy)return;clearMap();var file=current(),src=video.currentSrc||video.src;
+      if(busy||decodePending)return;clearMap();var file=current(),src=video.currentSrc||video.src;
       if(!file||!/^blob:/.test(src)||video.hidden||!(video.duration>0)){message='Choose a device file to analyse.';paint();return;}
       if(file.size>20*1048576||!Number.isFinite(video.duration)||video.duration>300){message='This analysis supports files up to 20 MB and 5 minutes.';paint();return;}
       var AC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
@@ -55329,7 +55330,10 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         var bytes=await file.arrayBuffer();if(cancelled())return;
         // decodeAudioData resamples to 12 kHz, keeping bounded analysis memory.
         var dc=new AC(1,1,12000);context=dc;
-        var audio=await new Promise(function(resolve,reject){var p=dc.decodeAudioData(bytes,resolve,reject);if(p&&p.catch)p.catch(function(){});});bytes=null;
+        var audio;decodePending=true;
+        try{audio=await new Promise(function(resolve,reject){var p=dc.decodeAudioData(bytes,resolve,reject);if(p&&p.catch)p.catch(function(){});});}
+        finally{decodePending=false;if(mine!==run)paint();}
+        bytes=null;
         if(cancelled())return;
         var result=await window.VPQuietMap548.envelope(audio,cancelled);audio=null;
         if(cancelled())return;map=result;source=src;chosen=file;message='';
