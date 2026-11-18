@@ -39,8 +39,8 @@ assert(trIdx > 0 && trIdx < flagIdx, 'TR_MSG rows inside main closure');
 // behaviour must sit before the closure's final })();.
 const closureEnd = html.lastIndexOf('})();', flagIdx);
 assert(closureEnd > 0 && trIdx < closureEnd && behaviourIdx < closureEnd, 'rows and behaviour sit inside the main closure, before its end');
-assert(html.includes('"\\uD83E\\uDE9F Auto PiP: off"'), 'off-state translation row');
-assert(html.includes('"\\uD83E\\uDE9F Auto PiP: on"'), 'on-state translation row');
+assert(html.includes('"🖼 Auto PiP: off"'), 'off-state translation row');
+assert(html.includes('"🖼 Auto PiP: on"'), 'on-state translation row');
 
 // Discovery: feature finder entry with a Hindi/Gujarati keyword row, and the
 // guarded What's new listener after the flag (round 536's shape).
