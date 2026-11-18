@@ -58072,19 +58072,29 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       }
       return new Blob([ab], { type: "audio/wav" });
     }
-    var busy = false;
+    var busy = false, exportEpoch549 = 0;
+    // A read/decode cannot be aborted reliably, so keep the single-flight lock until
+    // it settles, but discard its result as soon as the selected source changes.
+    function invalidateSound549() { exportEpoch549++; msg.textContent = ""; }
+    ["emptied"].forEach(function (event) { vid.addEventListener(event, invalidateSound549); });
+    ["vp-local-closed", "vp-youtube-selected"].forEach(function (event) { document.addEventListener(event, invalidateSound549); });
+    window.addEventListener("pagehide", invalidateSound549);
     btn.addEventListener("click", function () {
       if (busy) return;
       var f = (localIndex >= 0 && localIndex < localFiles.length) ? localFiles[localIndex] : null;
-      if (!f) { toast(T("Choose a local file first.")); return; }
+      if (!f || vid.hidden) { toast(T("Choose a local file first.")); return; }
       if (!ACw) { msg.textContent = T("This browser cannot save the sound."); return; }
       if (f.size > 25 * 1048576) { msg.textContent = T("This file is over 25 MB - too big to save its sound on the device."); return; }
       busy = true; btn.disabled = true; msg.textContent = T("Reading the sound...");
+      var mine549 = exportEpoch549, source549 = vid.currentSrc || vid.src;
+      function current549() { return mine549 === exportEpoch549 && !vid.hidden && source549 === (vid.currentSrc || vid.src) && localFiles[localIndex] === f; }
       var rd = new FileReader();
-      rd.onerror = function () { busy = false; btn.disabled = false; msg.textContent = T("Could not read this file."); };
+      rd.onerror = function () { busy = false; btn.disabled = false; if (current549()) msg.textContent = T("Could not read this file."); };
       rd.onload = function () {
+        if (!current549()) { busy = false; btn.disabled = false; return; }
         var dc; try { dc = new ACw(); } catch (e) { busy = false; btn.disabled = false; msg.textContent = T("This browser cannot save the sound."); return; }
         decodeAudioSafe345(dc, rd.result, function (buf) {
+          if (!current549()) { try { dc.close(); } catch (e) {} busy = false; btn.disabled = false; return; }
           try {
             var blob = wavBlob(buf);
             var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
@@ -58095,7 +58105,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
           } catch (e) { msg.textContent = T("Could not save the sound of this file."); }
           try { dc.close(); } catch (e2) {}
           busy = false; btn.disabled = false;
-        }, function () { try { dc.close(); } catch (e) {} busy = false; btn.disabled = false; msg.textContent = T("Could not read the sound of this file."); });
+        }, function () { try { dc.close(); } catch (e) {} busy = false; btn.disabled = false; if (current549()) msg.textContent = T("Could not read the sound of this file."); });
       };
       rd.readAsArrayBuffer(f);
     });
