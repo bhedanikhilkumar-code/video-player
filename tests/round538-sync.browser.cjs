@@ -1,0 +1,9 @@
+const assert=require('node:assert/strict');
+require('./round538-harness.cjs')(async({p,c,open,origin})=>{
+ const q=await c.newPage();q.setDefaultTimeout(8000);await q.goto(origin+'/?cb=538-peer',{waitUntil:'domcontentloaded'});await q.waitForFunction(()=>window.__vpMainOk325);await open();await p.locator('[data-pal="ocean"]').click();await q.waitForFunction(()=>document.documentElement.dataset.palette==='ocean');await p.locator('[data-pal="ocean"]').click();await q.waitForTimeout(600);
+ if(process.env.VP_REPRO_SYNC){assert.equal(await q.locator('html').getAttribute('data-palette'),'ocean');console.log('REPRODUCED LIVE: turn an ocean palette off in one tab; untouched peer stores empty palette but still paints ocean');await q.close();return;}
+ assert.equal(await q.locator('html').getAttribute('data-palette'),null);assert.equal(await q.locator('[data-pal="ocean"]').getAttribute('aria-pressed'),'false');
+ // The peer is still untouched. Start its trial, then change just the saved palette
+ // in the first tab. A remote change must end the trial and paint saved appearance.
+ if(await q.locator('#help').evaluate(e=>e.classList.contains('sec-collapsed')))await q.locator('#help .sec-toggle').click();if(!await q.locator('#themeLab538').evaluate(e=>e.open))await q.locator('#themeLab538 > summary').click();await q.locator('#tlPal538').selectOption('sunset');await q.locator('#tlTry538').click();await p.locator('[data-pal="ocean"]').click();await q.waitForFunction(()=>document.querySelector('#tlTrial538').hidden);assert.equal(await q.locator('html').getAttribute('data-palette'),'ocean');await q.close();console.log('PASS multi-tab palettes: '+origin+'; palette-only off repaints peer chips/background; remote appearance change ends trial');
+}).catch(e=>{console.error(e);process.exitCode=1;});

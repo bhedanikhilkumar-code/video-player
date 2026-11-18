@@ -1,0 +1,8 @@
+const assert=require('node:assert/strict');
+require('./round538-harness.cjs')(async({p,boot,open,pref,origin})=>{
+ await p.evaluate(()=>{const a=JSON.parse(localStorage.getItem('vp-prefs.v1'));a.looks301=['Day','Night','Cinema','Reading'].map(name=>({name,theme:'light',accent:'default',accentCustom:'#3a8a77',palette534:''}));localStorage.setItem('vp-prefs.v1',JSON.stringify(a));});await boot();await open();await p.locator('[data-pal="sunset"]').click();await p.locator('#myLooksRow301 > button').click();
+ if(process.env.VP_REPRO_CAP){assert.equal(await p.locator('#vpAskBg input').count(),0);console.log('REPRODUCED LIVE: four saved looks block the name dialog, so an existing look cannot be updated although same-name replacement works below the cap');return;}
+ await p.locator('#vpAskBg input').fill('Night');await p.locator('#vpAskBg .vp-ask-row button:last-child').click();let a=await pref();assert.equal(a.looks301.length,4);assert.equal(a.looks301.find(x=>x.name==='Night').palette534,'sunset');
+ await p.locator('#myLooksRow301 > button').click();await p.locator('#vpAskBg input').fill('Fifth new look');await p.locator('#vpAskBg .vp-ask-row button:last-child').click();assert.equal((await pref()).looks301.length,4,'new fifth look still refused');assert.ok(!(await pref()).looks301.some(x=>x.name==='Fifth new look'));
+ await boot();await open();assert.equal((await pref()).looks301.find(x=>x.name==='Night').palette534,'sunset');console.log('PASS four-look capacity: '+origin+'; same-name update works, fifth unique refused, persists fresh load');
+}).catch(e=>{console.error(e);process.exitCode=1;});

@@ -94,6 +94,35 @@ Open a device video, then expand **Scene change navigator** in Local file contro
 
 These are sampled estimates, not frame-exact edits. Movement or lighting can look like a cut; short scenes between samples can be missed. Sample spacing is shown. Device video only, up to two hours; audio and direct links are not scanned. Results and selections stay in the tab and clear when its video changes or the page reloads. The itinerary is a playback plan, not an exported video.
 
+### Theme fitting room and portable themes
+
+Open **Help and FAQ > Accessibility > Theme fitting room**, or find it in Search.
+Compare the current colour sample with a candidate background, theme and accent.
+**Try for 20 seconds** auditions the candidate on the actual page without saving
+it. **Keep this look** is the only trial action that saves. Revert, Escape, leaving
+the tab or the deadline restores the saved look. Another adopted appearance change
+also ends a trial. The floating Keep/Revert panel stays above a docked video.
+
+**Export current theme** downloads a `.vplook` JSON file containing only the theme,
+background palette and resolved accent colour. It exports the saved look, not an
+uncommitted trial. Library information, wallpaper, accessibility preferences and
+other settings are excluded. A video-matched accent becomes its current fixed
+colour in the file.
+
+**Import theme to review** accepts supported files up to 16 KB, validates every
+field, and stages a candidate without applying it. Review it, then Try and Keep.
+Invalid files leave the current candidate and settings unchanged. Both features
+work offline once the app is loaded. They do not change playback. Sample tiles
+illustrate the colours; Try shows the actual page. Device/browser accessibility
+settings still take priority. English, Hindi and Gujarati are supported.
+
+Saved **My looks** now includes the selected designer background. Older saved
+looks restore the classic background. A same-name save can update a look even
+when all four slots are occupied; a fifth unique name is still refused. Adopted
+palette-only changes and saved-look additions/removals repaint untouched peer
+tabs. The existing policy that a tab's own setting changes win is unchanged.
+**Reset look and feel** also resets the designer palette.
+
 ## How it works
 
 ```mermaid
