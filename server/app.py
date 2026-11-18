@@ -86,12 +86,20 @@ def check_url(u):
     except UnsafeDestination:
         raise Bad("bad_url", "Invalid or disallowed web destination.")
 
+def local_ffmpeg_args():
+    # yt-dlp's Python API requires processor+ffmpeg_i, not the CLI-style
+    # ffmpeg_i shortcut. Cover merger and automatic fixups as well as MP3.
+    from yt_dlp.postprocessor import ffmpeg as module
+    return {cls.pp_key().lower() + '+ffmpeg_i': ['-protocol_whitelist', 'file,crypto,data']
+            for cls in vars(module).values()
+            if isinstance(cls, type) and issubclass(cls, module.FFmpegPostProcessor)}
+
 def base_opts():
     return {"quiet": True, "no_warnings": True, "noplaylist": True, "socket_timeout": 20,
             "allowed_extractors": ["default", "-generic", "-youtube.*"], "retries": 2,
             "proxy": "", "hls_prefer_native": True, "external_downloader": "native",
             "external_downloader_args": {"ffmpeg_i": ["-protocol_whitelist", "file,crypto,data"]},
-            "postprocessor_args": {"ffmpeg_i": ["-protocol_whitelist", "file,crypto,data"]}}
+            "postprocessor_args": local_ffmpeg_args()}
 
 def classify(f):
     v, a = f.get("vcodec") not in (None, "none"), f.get("acodec") not in (None, "none")
@@ -178,7 +186,9 @@ def do_download(t, p):
         cmd = ["ffmpeg", "-nostdin", "-y", "-protocol_whitelist", "file,crypto,data", "-i", source]
         if start is not None: cmd += ["-ss", str(start)]
         if end is not None: cmd += ["-t", str(end - (start or 0))]
-        cmd += ["-c", "copy", trimmed]
+        # Re-encode local cuts so a clip starting between keyframes retains video.
+        # Stream copy here can silently produce an audio-only clip.
+        cmd += [trimmed]
         subprocess.run(cmd, check=True, timeout=120, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         os.replace(trimmed, source)
     title = re.sub(r"[^\w\-. ]+", "", i.get("title") or "video").strip()[:80] or "video"
@@ -389,7 +399,7 @@ def chapters():
 
 
 @app.get("/health")
-def health(): return {"ok": True, "security_revision": "admission-1", "yt_dlp": yt_dlp.version.__version__, "ffmpeg": bool(shutil.which("ffmpeg"))}
+def health(): return {"ok": True, "security_revision": "media-guard-2", "yt_dlp": yt_dlp.version.__version__, "ffmpeg": bool(shutil.which("ffmpeg"))}
 
 @app.post("/tasks")
 def create():
