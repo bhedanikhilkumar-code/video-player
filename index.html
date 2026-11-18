@@ -52613,6 +52613,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       'Caption clip preview finished. Your itinerary is unchanged.':['सबटाइटल क्लिप पूर्वावलोकन पूरा हुआ. यात्रा नहीं बदली.','સબટાઇટલ ક્લિપ પૂર્વાવલોકન પૂરું થયું. ક્રમ બદલાયો નથી.'],
       'Caption clip preview stopped. Your itinerary is unchanged.':['सबटाइटल क्लिप पूर्वावलोकन रुक गया. यात्रा नहीं बदली.','સબટાઇટલ ક્લિપ પૂર્વાવલોકન રોકાયો. ક્રમ બદલાયો નથી.']
     });
+    var ccAuditionEndedSource554=null;
     var ccAudition501=null,ccAuditionFrame501=0,ccAuditionGeneration501=0,ccReturnFocus501=null;
     var ccAuditionHint501=document.createElement('p');ccAuditionHint501.className='hint';ccAuditionHint501.dataset.cc501='Preview plays one reviewed range at normal speed and pauses at its end, without adding it. Starting a preview clears the local A-B loop and stops the itinerary. Your previous speed returns unless you changed it yourself.';$('ccPlan501').before(ccAuditionHint501);
     var ccAuditionStop501=document.createElement('button');ccAuditionStop501.type='button';ccAuditionStop501.className='chip';ccAuditionStop501.id='ccAuditionStop501';ccAuditionStop501.dataset.cc501='Stop caption clip preview';ccAuditionStop501.hidden=true;$('ccBuild501').after(ccAuditionStop501);
@@ -52624,7 +52625,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     function ccAuditionTick501(){
       if(!ccAudition501)return;var playing=ccAudition501;
       if(!ccLive501()){ccStopAudition501(true);ccStatus501();return;}
-      if(!video.seeking&&video.currentTime>=playing.end-.025){video.pause();try{video.currentTime=playing.end;}catch(e){}ccStopAudition501(false,'Caption clip preview finished. Your itinerary is unchanged.');ccPaint501();return;}
+      if(!video.seeking&&video.currentTime>=playing.end-.025){ccAuditionEndedSource554=playing.source;video.pause();try{video.currentTime=playing.end;}catch(e){}ccStopAudition501(false,'Caption clip preview finished. Your itinerary is unchanged.');ccPaint501();return;}
       if(!video.paused)ccAuditionFrame501=requestAnimationFrame(ccAuditionTick501);
     }
     function ccStartAudition501(c,i){
@@ -52634,8 +52635,11 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     ccAuditionStop501.addEventListener('click',function(){ccStopAudition501(true,'Caption clip preview stopped. Your itinerary is unchanged.');ccPaint501();$('ccBuild501').focus();});
     video.addEventListener('timeupdate',function(){if(ccAudition501){cancelAnimationFrame(ccAuditionFrame501);ccAuditionTick501();}},true);
-    video.addEventListener('ended',function(e){if(!ccAudition501)return;e.stopImmediatePropagation();ccStopAudition501(true,'Caption clip preview finished. Your itinerary is unchanged.');ccPaint501();},true);
-    video.addEventListener('play',function(){if(ccAudition501){cancelAnimationFrame(ccAuditionFrame501);ccAuditionFrame501=requestAnimationFrame(ccAuditionTick501);ccStatus501();}});
+    // Keep completed preview ownership until explicit playback or a new source.
+    // Native ended may already be queued when timeupdate completes the preview.
+    video.addEventListener('ended',function(e){if(!ccAudition501&&ccAuditionEndedSource554!==(video.getAttribute('src')||''))return;e.stopImmediatePropagation();ccAuditionEndedSource554=video.getAttribute('src')||'';ccStopAudition501(true,'Caption clip preview finished. Your itinerary is unchanged.');ccPaint501();},true);
+    ['loadstart','emptied'].forEach(function(type){video.addEventListener(type,function(){ccAuditionEndedSource554=null;});});
+    video.addEventListener('play',function(){ccAuditionEndedSource554=null;if(ccAudition501){cancelAnimationFrame(ccAuditionFrame501);ccAuditionFrame501=requestAnimationFrame(ccAuditionTick501);ccStatus501();}});
     video.addEventListener('pause',ccStatus501);
     video.addEventListener('seeking',function(){if(ccAudition501&&(video.currentTime<ccAudition501.start-.1||video.currentTime>ccAudition501.end+.1)){ccStopAudition501(true,'Caption clip preview stopped. Your itinerary is unchanged.');ccPaint501();}});
     video.addEventListener('ratechange',function(){if(ccAudition501&&Math.abs(video.playbackRate-1)>.001){ccStopAudition501(true,'Caption clip preview stopped. Your itinerary is unchanged.');ccPaint501();}});
