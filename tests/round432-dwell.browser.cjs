@@ -17,6 +17,8 @@ const server = http.createServer((q, r) => {
     await page.route('**/*', route => route.request().url().startsWith('http://localhost:8499') ? route.continue() : route.abort());
     await page.addInitScript(() => { if (location.hostname !== 'localhost') return; localStorage.setItem('vp-marks.v1',JSON.stringify({dQw4w9WgXcQ:[{name:'Final phrase',t:205},{name:'Beyond video',t:500}]}));localStorage.setItem('vp-practice-loops.v1', JSON.stringify({ dQw4w9WgXcQ: [{name:'Warmup',a:5,b:10},{name:'Chorus',a:20,b:30}] })); localStorage.setItem('vp-tour.v1', '1'); localStorage.setItem('vp-prefs.v1', JSON.stringify({ lang: 'en' })); });
     await page.goto('http://localhost:8499'); await page.waitForFunction(() => window.__vpMainOk325 === true);
+    // Scroll deliberately cancels dwell. Keep test navigation instant so hover is not cancelled by a pending smooth-scroll frame.
+    await page.addStyleTag({content:'html{scroll-behavior:auto!important}'});
     const samples=8000*60, wav=Buffer.alloc(44+samples*2);wav.write('RIFF');wav.writeUInt32LE(wav.length-8,4);wav.write('WAVEfmt ',8);wav.writeUInt32LE(16,16);wav.writeUInt16LE(1,20);wav.writeUInt16LE(1,22);wav.writeUInt32LE(8000,24);wav.writeUInt32LE(16000,28);wav.writeUInt16LE(2,32);wav.writeUInt16LE(16,34);wav.write('data',36);wav.writeUInt32LE(samples*2,40);
     await page.locator('#lpFile').setInputFiles([{name:'first.wav',mimeType:'audio/wav',buffer:wav},{name:'second.wav',mimeType:'audio/wav',buffer:wav}]);await page.waitForFunction(()=>document.getElementById('lpVideo').readyState>=2);
     await page.locator('#lpVideo').evaluate(v=>{v.pause();v.currentTime=20;v.volume=.5;});

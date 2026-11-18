@@ -10,8 +10,8 @@ require('./round445-harness.cjs')(async({p,pick,files,errors})=>{
  assert.equal(await p.locator('#snScenes504 li').count(),3);
  assert.match(await p.locator('#snInfo504').textContent(),/0.50/);
  const after=await p.locator('#lpVideo').evaluate(v=>({t:v.currentTime,paused:v.paused,rate:v.playbackRate}));assert.deepEqual(after,before,'scan never moves or starts primary');
- await p.locator('#snScenes504 button').nth(1).click();assert.ok(Math.abs(await p.locator('#lpVideo').evaluate(v=>v.currentTime)-3)<.15);
- await p.locator('#snScenes504 button').nth(2).click();assert.ok(Math.abs(await p.locator('#lpVideo').evaluate(v=>v.currentTime)-6)<.15);
+ await p.locator('#snScenes504 button').nth(1).click();await p.waitForFunction(()=>Math.abs(document.querySelector('#lpVideo').currentTime-3)<.15);
+ await p.locator('#snScenes504 button').nth(2).click();await p.waitForFunction(()=>Math.abs(document.querySelector('#lpVideo').currentTime-6)<.15);
  // A scan is session-only. Replacing a file cannot leave stale seek targets.
  await pick(files.slice(0,1));assert.equal(await p.locator('#snScenes504 li').count(),0);
  await p.locator('#snScan504').click();await p.locator('#snCancel504').click();assert.equal(await p.locator('#snScenes504 li').count(),0);assert.match(await p.locator('#snStatus504').textContent(),/cancelled/);

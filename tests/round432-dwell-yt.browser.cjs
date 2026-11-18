@@ -17,6 +17,8 @@ const server = http.createServer((q, r) => {
     await page.route('**/*', route => route.request().url().includes('youtube-nocookie.com/embed/') ? route.fulfill({contentType:'text/html',body:'<!doctype html><title>Test player</title>'}) : route.request().url().startsWith('http://localhost:8499') ? route.continue() : route.abort());
     await page.addInitScript(() => { if (location.hostname !== 'localhost') return; localStorage.setItem('vp-marks.v1',JSON.stringify({dQw4w9WgXcQ:[{name:'Final phrase',t:205},{name:'Beyond video',t:500}]}));localStorage.setItem('vp-practice-loops.v1', JSON.stringify({ dQw4w9WgXcQ: [{name:'Warmup',a:5,b:10},{name:'Chorus',a:20,b:30}] })); localStorage.setItem('vp-tour.v1', '1'); localStorage.setItem('vp-prefs.v1', JSON.stringify({ lang: 'en' })); });
     await page.goto('http://localhost:8499'); await page.waitForFunction(() => window.__vpMainOk325 === true);
+    // Scroll deliberately cancels dwell. Keep test navigation instant so hover is not cancelled by a pending smooth-scroll frame.
+    await page.addStyleTag({content:'html{scroll-behavior:auto!important}'});
     await page.setViewportSize({width:390,height:844});
     await page.locator('#linkInput').fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');await page.locator('#loadBtn').click();
     const playerEvent=async(event,info)=>page.evaluate(({event,info})=>window.dispatchEvent(new MessageEvent('message',{source:document.querySelector('#frameBox iframe').contentWindow,origin:'https://www.youtube-nocookie.com',data:{event,info}})),{event,info});

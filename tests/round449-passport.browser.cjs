@@ -19,7 +19,7 @@ require('./round445-harness.cjs')(async({p,boot})=>{
  assert.deepEqual(again,{m:2,n:'remember this',v:1.5,l:'la la\nla'},'existing data wins, no duplicates');
  // Merge: a passport with one fresh moment and one duplicate adds only the fresh one.
  await imp(passport({marks:[{t:12,name:'Start'},{t:55,name:'New'}]}));
- assert.match(await p.locator('#passMsg449').textContent(),/1 new moments added/);
+ assert.match(await p.locator('#passMsg449').textContent(),/1 new moment added/);
  assert.equal(await p.evaluate(([id])=>JSON.parse(localStorage.getItem('vp-marks.v1'))[id].length,[vid]),3);
  // Not a passport: wrong kind, malformed id and junk JSON are all refused politely.
  await p.locator('#passImpFile449').setInputFiles({name:'x.json',mimeType:'application/json',buffer:Buffer.from('{"kind":"other","id":"abcdefghijk"}')});await p.waitForTimeout(300);
