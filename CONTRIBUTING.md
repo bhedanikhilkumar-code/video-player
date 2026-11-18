@@ -1,6 +1,8 @@
 # Contributing to HD Video Player
 
 Thanks for helping improve the player. Small bug fixes, accessibility improvements, translations, tests and clear documentation are welcome. Read the [README](README.md) for the app's capabilities and limits, and [SECURITY.md](SECURITY.md) before reporting a possible vulnerability.
+Contributions to this project are accepted under the same dual license: MIT or Apache-2.0.
+
 
 ## Start with the right kind of contribution
 
