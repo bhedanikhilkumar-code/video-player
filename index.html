@@ -55161,6 +55161,70 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   window.VPQuietMap548 = {envelope:envelope, gaps:gaps};
 })();
 // End quiet engine 548
+  // Round 548: inspect quiet sections without blind auto-seeks or touching playback.
+  (function () {
+    var video=$('lpVideo'),host=$('lpCtl'); if(!video||!host)return;
+    var card=document.createElement('details');card.id='quietMap548';card.className='lp-workbench';
+    card.innerHTML='<summary data-qm="Quiet-section navigator"></summary><p class="hint" data-qm="Find quiet stretches in a device file, then jump before or after a gap. Estimates can include soft speech. Nothing is uploaded or changed automatically."></p><p class="hint" data-qm="Up to 20 MB and 5 minutes. Analysis stays in this tab, is not saved in backups, and clears when the file changes."></p><div class="row"><label for="qmDb548" data-qm="Quiet threshold"></label><select class="chip" id="qmDb548"><option value="-50">-50 dBFS</option><option value="-40" selected>-40 dBFS</option><option value="-30">-30 dBFS</option></select><label for="qmMin548" data-qm="Minimum gap (seconds)"></label><select class="chip" id="qmMin548"><option>0.5</option><option selected>1</option><option>2</option></select></div><div class="row"><button type="button" class="chip" id="qmScan548" data-qm="Find quiet sections"></button><button type="button" class="chip" id="qmCancel548" data-qm="Cancel analysis" hidden></button><button type="button" class="chip" id="qmClear548" data-qm="Clear quiet map" disabled></button></div><p id="qmStatus548" class="hint" role="status" aria-live="polite"></p><div id="qmMap548" class="qm-map548" role="group"></div><ol id="qmList548" class="qm-list548"></ol>';
+    host.prepend(card);
+    var style=document.createElement('style');style.textContent='#quietMap548 .row{flex-wrap:wrap;gap:8px}#quietMap548 select{max-width:100%}#quietMap548 [hidden]{display:none!important}.qm-map548{display:flex;gap:3px;flex-wrap:wrap;margin:12px 0}.qm-map548:empty{display:none}.qm-map548 button{min-width:44px;min-height:44px;border:1px solid var(--hairline);background:var(--soft);color:inherit;border-radius:10px}.qm-list548{padding-left:24px;max-height:380px;overflow:auto;overscroll-behavior:contain}.qm-list548 li{padding:10px 0;border-bottom:1px solid var(--hairline)}.qm-list548 .row{margin-top:6px}#quietMap548 button:focus-visible{outline:3px solid var(--teal);outline-offset:3px}';document.head.appendChild(style);
+    var scan=$('qmScan548'),cancel=$('qmCancel548'),clear=$('qmClear548'),status=$('qmStatus548'),list=$('qmList548'),timeline=$('qmMap548'),db=$('qmDb548'),minimum=$('qmMin548');
+    var map=null,source='',chosen=null,run=0,busy=false,context=null,message='Choose a device file to analyse.';
+    function current(){var api=window.__vpLocalQueue443;return api&&api.currentFile548?api.currentFile548():null;}
+    function valid(){return !!map&&chosen===current()&&source===(video.currentSrc||video.src)&&!video.hidden;}
+    function clock(n){return Math.floor(n/60)+':'+(n%60).toFixed(2).padStart(5,'0');}
+    function jump(n){if(!valid())return;video.pause();try{video.currentTime=Math.max(0,Math.min(video.duration-.05,n));}catch(e){}}
+    function stop(){run++;busy=false;if(context){try{context.close().catch(function(){});}catch(e){}context=null;}card.removeAttribute('aria-busy');}
+    function clearMap(){stop();map=null;chosen=null;source='';list.replaceChildren();timeline.replaceChildren();}
+    function paint(){
+      card.querySelectorAll('[data-qm]').forEach(function(el){el.textContent=T(el.dataset.qm);});
+      timeline.setAttribute('aria-label',T('Quiet sections in file order'));
+      scan.disabled=busy;cancel.hidden=!busy;clear.disabled=!map&&!busy;db.disabled=minimum.disabled=busy;
+      status.textContent=T(message);
+      if(!valid()){list.replaceChildren();timeline.replaceChildren();return;}
+      var focused=document.activeElement,focusId=card.contains(focused)?focused.id:'';
+      var rows=window.VPQuietMap548.gaps(map,Number(db.value),Number(minimum.value));
+      status.textContent=rows.length?T('Quiet sections found: {n}. Showing up to 100.').replace('{n}',rows.length):T('No quiet sections match these settings. Try a higher threshold or shorter gap.');
+      list.replaceChildren();timeline.replaceChildren();
+      rows.slice(0,100).forEach(function(row,i){
+        var li=document.createElement('li'),title=document.createElement('span'),actions=document.createElement('div'),marker=document.createElement('button');
+        title.textContent=clock(row.start)+' - '+clock(row.end)+' ('+(row.end-row.start).toFixed(2)+' s)';actions.className='row';
+        [['Before gap',Math.max(0,row.start-1)],['After gap',Math.min(map.duration-.05,row.end+.15)]].forEach(function(a,j){var b=document.createElement('button');b.type='button';b.id='qmJump548-'+i+'-'+j;b.className='chip';b.textContent=T(a[0]);b.setAttribute('aria-label',T(a[0])+' '+clock(a[1]));b.onclick=function(){jump(a[1]);};actions.appendChild(b);});
+        marker.type='button';marker.id='qmMarker548-'+i;marker.textContent=String(i+1);marker.setAttribute('aria-label',T('Before gap')+' '+clock(Math.max(0,row.start-1)));marker.onclick=function(){jump(Math.max(0,row.start-1));};timeline.appendChild(marker);li.append(title,actions);list.appendChild(li);
+      });
+      if(focusId){var restored=document.getElementById(focusId);if(restored)restored.focus({preventScroll:true});}
+    }
+    scan.addEventListener('click',async function(){
+      if(busy)return;clearMap();var file=current(),src=video.currentSrc||video.src;
+      if(!file||!/^blob:/.test(src)||video.hidden||!(video.duration>0)){message='Choose a device file to analyse.';paint();return;}
+      if(file.size>20*1048576||!Number.isFinite(video.duration)||video.duration>300){message='This analysis supports files up to 20 MB and 5 minutes.';paint();return;}
+      var AC=window.OfflineAudioContext||window.webkitOfflineAudioContext;
+      if(!AC){message='Audio analysis is not supported in this browser.';paint();return;}
+      busy=true;var mine=run;message='Analysing quiet sections. Playback is unchanged.';card.setAttribute('aria-busy','true');paint();
+      function cancelled(){return mine!==run||file!==current()||src!==(video.currentSrc||video.src);}
+      try{
+        var bytes=await file.arrayBuffer();if(cancelled())return;
+        // decodeAudioData resamples to 12 kHz, keeping bounded analysis memory.
+        var dc=new AC(1,1,12000);context=dc;
+        var audio=await new Promise(function(resolve,reject){var p=dc.decodeAudioData(bytes,resolve,reject);if(p&&p.catch)p.catch(function(){});});bytes=null;
+        if(cancelled())return;
+        var result=await window.VPQuietMap548.envelope(audio,cancelled);audio=null;
+        if(cancelled())return;map=result;source=src;chosen=file;message='';
+      }catch(e){if(!cancelled())message='Could not analyse this file. Try a smaller browser-supported audio or video file.';}
+      finally{if(mine===run){stop();paint();}}
+    });
+    cancel.addEventListener('click',function(){clearMap();message='Quiet analysis cancelled. Playback is unchanged.';paint();scan.focus();});
+    clear.addEventListener('click',function(){clearMap();message='Quiet map cleared. Playback is unchanged.';paint();scan.focus();});
+    [db,minimum].forEach(function(el){el.addEventListener('change',paint);});
+    function reset(){clearMap();message='Choose a device file to analyse.';paint();}
+    video.addEventListener('emptied',reset);video.addEventListener('loadedmetadata',function(){paint();});
+    document.addEventListener('vp-local-closed',reset);document.addEventListener('vp-youtube-selected',reset);window.addEventListener('pagehide',reset);
+    card.addEventListener('toggle',function(){if(!card.open&&busy){clearMap();message='Quiet analysis cancelled. Playback is unchanged.';paint();}});
+    (window.__relang=window.__relang||[]).push(paint);paint();
+    window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Quiet-section navigator','#quietMap548');},17220);});
+  })();
+// End quiet navigator 548
+
 
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
@@ -57702,6 +57766,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       lpPickCount = list.length; lpPickPaint(); updateLocalButtons();
     }
     window.__vpLocalQueue443 = {
+      currentFile548: function () { return current(); },
       fileIdentity509: function () { var f = current(); return f ? {name:f.name,size:f.size,lastModified:f.lastModified} : null; },
       snapshot: function () { sync(); return {files:localFiles.map(function(f){return f.name;}),index:localIndex,revision:revision,undo:!!history.length && (!current() || history[history.length-1].indexOf(current()) >= 0)}; },
       edit: function (action, i, version) {
@@ -60368,6 +60433,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Audio sync delay", "audio sound sync delay milliseconds local lips early", "#audioSync276"],
       ["Local playlist exchange", "local playlist recipe export import restore relink json files order", "#localExchange276"],
       ["Browse media folder", "directory folder subfolders local media browser playlist recursive", "#folderBrowser276"],
+      ["Quiet-section navigator", "quiet section silence map gap pauses scan audio local device file find navigate before after", "#quietMap548"],
       ["Video contact sheet", "contact sheet storyboard thumbnail grid scenes local export png", "#contactSheet276"],
       ["Seek history", "seek history jump back recent positions spots rewind where was i before skip lecture lost place chips", "#seekHistRow"],
       ["Choose the speaker", "choose speaker audio output bluetooth headset sound device another speaker tab set sink local file", "#lpSinkBtn"],
