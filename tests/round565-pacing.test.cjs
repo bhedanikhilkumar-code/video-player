@@ -1,0 +1,5 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');const source=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8').split('// FRAME-PACING565 START')[1].split('// FRAME-PACING565 END')[0],ctx={window:{},Number,Math,Error};vm.runInNewContext(source,ctx);const summary=ctx.window.VPFramePacing565.summary;
+test('empty has no invented stats',()=>assert.equal(summary([]),null));
+test('min/mean/nearest-rank p95/max exact and input immutable',()=>{const a=[40,10,30,20],r=summary(a);assert.deepEqual(JSON.parse(JSON.stringify(r)),{count:4,min:10,mean:25,p95:40,max:40});assert.deepEqual(a,[40,10,30,20]);});
+test('120-sample cap and percentile boundary',()=>{const a=Array.from({length:120},(_,i)=>i+1),r=summary(a);assert.equal(r.count,120);assert.equal(r.mean,60.5);assert.equal(r.p95,114);assert.equal(r.min,1);assert.equal(r.max,120);});
+test('reject invalid/zero/negative/non-finite samples and oversized capture',()=>{for(const a of [null,{},[0],[-1],[NaN],[Infinity],['20'],new Array(121).fill(1)])assert.throws(()=>summary(a),/intervals/);});
