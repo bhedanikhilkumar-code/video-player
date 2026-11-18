@@ -56865,17 +56865,18 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     function build(f) {
       cur = f || null; cvs.width = 0;
-      if (!f) return;
+      if (!f || document.documentElement.classList.contains("low-fx")) return;
       if (cache.has(f)) { draw(cache.get(f)); return; }
       if (f.size > 25 * 1048576) return;
       var source443 = curUrl;
-      function isCurrent443() { return cur === f && curUrl === source443 && localIndex >= 0 && localFiles[localIndex] === f; }
+      function isCurrent443() { return !document.documentElement.classList.contains("low-fx") && cur === f && curUrl === source443 && localIndex >= 0 && localFiles[localIndex] === f; }
       var rd = new FileReader();
       rd.onload = function () {
         if (!isCurrent443()) return;
         var dc; try { dc = new ACw(); } catch (e) { return; }
         decodeAudioSafe345(dc, rd.result, function (buf) {
           try { dc.close(); } catch (e) {}
+          if (document.documentElement.classList.contains("low-fx")) return;
           try {
             var d0 = buf.getChannelData(0), d1 = buf.numberOfChannels > 1 ? buf.getChannelData(1) : null;
             var n = 240, step = Math.max(1, Math.floor(d0.length / n)), peaks = [];
@@ -56892,6 +56893,14 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       rd.onerror = function () {};
       rd.readAsArrayBuffer(f);
     }
+    // Hidden waveforms must not decode a second full audio buffer in Low-end mode.
+    var lowWave548 = document.documentElement.classList.contains("low-fx");
+    new MutationObserver(function(){
+      var next = document.documentElement.classList.contains("low-fx");
+      if(next === lowWave548)return;lowWave548=next;
+      if(next)clearWave443();
+      else if(localIndex>=0 && localFiles[localIndex])build(localFiles[localIndex]);
+    }).observe(document.documentElement,{attributes:true,attributeFilter:["class"]});
     function clearWave443() { cur = null; cvs.width = 0; }
     vid.addEventListener("emptied", clearWave443);
     document.addEventListener("vp-local-closed", clearWave443);
