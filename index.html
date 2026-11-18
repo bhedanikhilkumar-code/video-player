@@ -54722,14 +54722,16 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       var want = onNow() && !!(vid.currentSrc || vid.src);
       if (want === handlerOn) return;
       handlerOn = want;
-      try { navigator.mediaSession.setActionHandler("enterpictureinpicture", want ? onAuto : null); } catch (e1) { supported = false; handlerOn = false; }
+      try { navigator.mediaSession.setActionHandler("enterpictureinpicture", want ? onAuto : null); } catch (e1) { supported = false; handlerOn = false; paint(); }
     }
     function onAuto() {
       if (!onNow()) return;
       if (vid.paused || vid.ended || !vid.currentSrc) return;
       if (document.pictureInPictureElement) return;
-      var r = vid.requestPictureInPicture();
-      if (r && r.then) r.then(function () { autoEntered = true; }, function () {});
+      try {
+        var r = vid.requestPictureInPicture();
+        if (r && r.then) r.then(function () { autoEntered = true; }, function () {});
+      } catch (e3) {}
     }
     vid.addEventListener("leavepictureinpicture", function () { autoEntered = false; });
     // Coming back to the tab closes only the window WE opened; one the user opened
@@ -54743,13 +54745,16 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     ["play", "playing", "pause", "ended", "emptied", "loadedmetadata"].forEach(function (ev) { vid.addEventListener(ev, arm); });
     function paint() {
       var on = onNow();
+      btn.disabled = !supported;
       btn.setAttribute("aria-pressed", on ? "true" : "false");
       btn.classList.toggle("active", on);
       btn.textContent = on ? T("🖼 Auto PiP: on") : T("🖼 Auto PiP: off");
       btn.title = T("While your file is playing, switching to another tab or app opens it in a small floating window on its own; coming back here closes the window. Works on files you open here, in browsers with automatic Picture-in-Picture (Chrome and Edge on computers).");
       if (hint) { hint.hidden = false; hint.textContent = T("While your file is playing, switching to another tab or app opens it in a small floating window on its own; coming back here closes the window. Works on files you open here, in browsers with automatic Picture-in-Picture (Chrome and Edge on computers)."); }
+      if (!supported) { btn.title = T("Automatic PiP is not available in this browser. Use the regular PiP button if your browser offers it."); if (hint) hint.textContent = btn.title; }
     }
     btn.addEventListener("click", function () {
+      if (!supported) return;
       prefs.autoPip539 = !prefs.autoPip539;
       savePrefs(); paint(); arm();
     });
@@ -54763,6 +54768,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   })();
 
   Object.assign(TR_MSG, {
+    "Automatic PiP is not available in this browser. Use the regular PiP button if your browser offers it.": ["इस ब्राउज़र में ऑटोमैटिक PiP उपलब्ध नहीं है. ब्राउज़र में सामान्य PiP बटन हो तो उसका उपयोग करें.", "આ બ્રાઉઝરમાં ઑટોમૅટિક PiP ઉપલબ્ધ નથી. બ્રાઉઝરમાં સામાન્ય PiP બટન હોય તો તેનો ઉપયોગ કરો."],
     "Auto PiP": ["ऑटो PiP", "ઓટો PiP"],
     "🖼 Auto PiP: off": ["🖼 ऑटो PiP: बंद", "🖼 ઓટો PiP: બંધ"],
     "🖼 Auto PiP: on": ["🖼 ऑटो PiP: चालू", "🖼 ઓટો PiP: ચાલુ"],
