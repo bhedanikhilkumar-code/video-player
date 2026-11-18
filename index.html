@@ -57236,6 +57236,15 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     toast(lp.viz ? T("Visualizer on") : T("Visualizer off"));
   });
   vid.addEventListener("play", vizKick);
+  // Round 550: a background frame exits without rearming itself. Restart only
+  // when visible and enabled; cancel pending work immediately on pause/hide.
+  function vizStop550() { if (vizRaf) cancelAnimationFrame(vizRaf); vizRaf = 0; }
+  vid.addEventListener("pause", vizStop550);
+  vid.addEventListener("ended", vizStop550);
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) vizStop550(); else vizKick();
+  });
+  window.addEventListener("pagehide", vizStop550);
   window.addEventListener("resize", function () { if (vizWrap && !vizWrap.hidden) vizSize(); }, { passive: true });
   if (window.MutationObserver) new MutationObserver(vizApplyVis).observe(vid, { attributes: true, attributeFilter: ["hidden"] });
   (window.__relang = window.__relang || []).push(vizRender);
