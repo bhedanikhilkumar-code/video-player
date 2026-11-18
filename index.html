@@ -55158,7 +55158,20 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     return rows;
   }
-  window.VPQuietMap548 = {envelope:envelope, gaps:gaps};
+  function listeningClips(map, db, minimum) {
+    if(!map || !(map.duration>=.5))return [];
+    var quiet=gaps(map,db,minimum),ranges=[],cursor=0;
+    function add(a,b){
+      if(b-a<.001)return;
+      var from=Math.max(0,a-.2),to=Math.min(map.duration,b+.2);
+      if(to-from<.5){var middle=(from+to)/2;from=Math.max(0,Math.min(map.duration-.5,middle-.25));to=from+.5;}
+      var previous=ranges[ranges.length-1];
+      if(previous&&from<=previous.end+.02)previous.end=Math.max(previous.end,to);else ranges.push({start:from,end:to});
+    }
+    quiet.forEach(function(g){add(cursor,g.start);cursor=g.end;});add(cursor,map.duration);
+    return ranges;
+  }
+  window.VPQuietMap548 = {envelope:envelope, gaps:gaps, listeningClips:listeningClips};
 })();
 // End quiet engine 548
   // Quiet navigator Hindi and Gujarati 548
@@ -55244,11 +55257,38 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         "શાંત ભાગનો નકશો સાફ કર્યો. પ્લેબૅક બદલાયું નથી."
     ]
 });
+  // Quiet map to listening itinerary 548
+  Object.assign(TR_MSG, {
+    "Listening cut list": [
+        "सुनने की क्लिप सूची",
+        "સાંભળવાની ક્લિપ યાદી"
+    ],
+    "Review non-quiet clips": [
+        "आवाज़ वाली क्लिप जांचें",
+        "અવાજવાળી ક્લિપ તપાસો"
+    ],
+    "Build a listening cut list from this map. Each retained section gets 0.2 seconds of context; short sections are kept. Review before replacing the itinerary. Quiet speech may be missed. Nothing plays automatically.": [
+        "इस नक्शे से सुनने की क्लिप सूची बनाएं. हर बचे भाग के आसपास 0.2 सेकंड जुड़ते हैं; छोटे भाग भी रखे जाते हैं. यात्रा बदलने से पहले जांचें. धीमी बोली छूट सकती है. कुछ अपने आप नहीं चलता.",
+        "આ નકશામાંથી સાંભળવાની ક્લિપ યાદી બનાવો. દરેક રાખેલા ભાગની આસપાસ 0.2 સેકન્ડ ઉમેરાય છે; નાના ભાગ પણ રહે છે. ક્લિપ ક્રમ બદલતાં પહેલાં તપાસો. ધીમી વાણી ચૂકી શકે છે. કંઈ આપમેળે ચાલતું નથી."
+    ],
+    "This map needs between 1 and 40 retained clips. Change the threshold or minimum gap and try again.": [
+        "इस नक्शे में 1 से 40 बची क्लिप चाहिए. ध्वनि सीमा या कम से कम अंतर बदलकर फिर कोशिश करें.",
+        "આ નકશામાં 1 થી 40 રાખેલી ક્લિપ જોઈએ. અવાજની મર્યાદા કે ઓછામાં ઓછો ગાળો બદલી ફરી પ્રયત્ન કરો."
+    ],
+    "Finish the current itinerary edit and stop its playback before reviewing quiet-map clips.": [
+        "शांत नक्शे की क्लिप जांचने से पहले यात्रा का बदलाव पूरा करें और उसका प्लेबैक रोकें.",
+        "શાંત નકશાની ક્લિપ તપાસતાં પહેલાં હાલના ક્લિપ ક્રમનો ફેરફાર પૂરો કરો અને તેનું પ્લેબૅક રોકો."
+    ],
+    "Retained section": [
+        "बचा भाग",
+        "રાખેલો ભાગ"
+    ]
+});
   // Round 548: inspect quiet sections without blind auto-seeks or touching playback.
   (function () {
     var video=$('lpVideo'),host=$('lpCtl'); if(!video||!host)return;
     var card=document.createElement('details');card.id='quietMap548';card.className='lp-workbench';
-    card.innerHTML='<summary data-qm="Quiet-section navigator"></summary><p class="hint" data-qm="Find quiet stretches in a device file, then jump before or after a gap. Estimates can include soft speech. Nothing is uploaded or changed automatically."></p><p class="hint" data-qm="Up to 20 MB and 5 minutes. Analysis stays in this tab, is not saved in backups, and clears when the file changes."></p><div class="row"><label for="qmDb548" data-qm="Quiet threshold"></label><select class="chip" id="qmDb548"><option value="-50">-50 dBFS</option><option value="-40" selected>-40 dBFS</option><option value="-30">-30 dBFS</option></select><label for="qmMin548" data-qm="Minimum gap (seconds)"></label><select class="chip" id="qmMin548"><option>0.5</option><option selected>1</option><option>2</option></select></div><div class="row"><button type="button" class="chip" id="qmScan548" data-qm="Find quiet sections"></button><button type="button" class="chip" id="qmCancel548" data-qm="Cancel analysis" hidden></button><button type="button" class="chip" id="qmClear548" data-qm="Clear quiet map" disabled></button></div><p id="qmStatus548" class="hint" role="status" aria-live="polite"></p><div id="qmMap548" class="qm-map548" role="group"></div><ol id="qmList548" class="qm-list548"></ol>';
+    card.innerHTML='<summary data-qm="Quiet-section navigator"></summary><p class="hint" data-qm="Find quiet stretches in a device file, then jump before or after a gap. Estimates can include soft speech. Nothing is uploaded or changed automatically."></p><p class="hint" data-qm="Up to 20 MB and 5 minutes. Analysis stays in this tab, is not saved in backups, and clears when the file changes."></p><div class="row"><label for="qmDb548" data-qm="Quiet threshold"></label><select class="chip" id="qmDb548"><option value="-50">-50 dBFS</option><option value="-40" selected>-40 dBFS</option><option value="-30">-30 dBFS</option></select><label for="qmMin548" data-qm="Minimum gap (seconds)"></label><select class="chip" id="qmMin548"><option>0.5</option><option selected>1</option><option>2</option></select></div><div class="row"><button type="button" class="chip" id="qmScan548" data-qm="Find quiet sections"></button><button type="button" class="chip" id="qmCancel548" data-qm="Cancel analysis" hidden></button><button type="button" class="chip" id="qmClear548" data-qm="Clear quiet map" disabled></button></div><p class="hint" data-qm="Build a listening cut list from this map. Each retained section gets 0.2 seconds of context; short sections are kept. Review before replacing the itinerary. Quiet speech may be missed. Nothing plays automatically."></p><button type="button" class="chip" id="qmClips548" data-qm="Review non-quiet clips" disabled></button><p id="qmStatus548" class="hint" role="status" aria-live="polite"></p><div id="qmMap548" class="qm-map548" role="group"></div><ol id="qmList548" class="qm-list548"></ol>';
     host.prepend(card);
     var style=document.createElement('style');style.textContent='#quietMap548 .row{flex-wrap:wrap;gap:8px}#quietMap548 select{max-width:100%}#quietMap548 [hidden]{display:none!important}.qm-map548{display:flex;gap:3px;flex-wrap:wrap;margin:12px 0}.qm-map548:empty{display:none}.qm-map548 button{min-width:44px;min-height:44px;border:1px solid var(--hairline);background:var(--soft);color:inherit;border-radius:10px}.qm-list548{padding-left:24px;max-height:380px;overflow:auto;overscroll-behavior:contain}.qm-list548 li{padding:10px 0;border-bottom:1px solid var(--hairline)}.qm-list548 .row{margin-top:6px}#quietMap548 button:focus-visible{outline:3px solid var(--teal);outline-offset:3px}';document.head.appendChild(style);
     var scan=$('qmScan548'),cancel=$('qmCancel548'),clear=$('qmClear548'),status=$('qmStatus548'),list=$('qmList548'),timeline=$('qmMap548'),db=$('qmDb548'),minimum=$('qmMin548');
@@ -55262,7 +55302,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     function paint(){
       card.querySelectorAll('[data-qm]').forEach(function(el){el.textContent=T(el.dataset.qm);});
       timeline.setAttribute('aria-label',T('Quiet sections in file order'));
-      scan.disabled=busy;cancel.hidden=!busy;clear.disabled=!map&&!busy;db.disabled=minimum.disabled=busy;
+      scan.disabled=busy;cancel.hidden=!busy;clear.disabled=!map&&!busy;db.disabled=minimum.disabled=busy;$('qmClips548').disabled=!valid()||busy;
       status.textContent=T(message);
       if(!valid()){list.replaceChildren();timeline.replaceChildren();return;}
       var focused=document.activeElement,focusId=card.contains(focused)?focused.id:'';
@@ -55296,6 +55336,13 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       }catch(e){if(!cancelled())message='Could not analyse this file. Try a smaller browser-supported audio or video file.';}
       finally{if(mine===run){stop();paint();}}
     });
+    $('qmClips548').addEventListener('click',function(){
+      if(!valid()||busy)return;
+      var rows=window.VPQuietMap548.listeningClips(map,Number(db.value),Number(minimum.value));
+      if(rows.length<1||rows.length>40){status.textContent=T('This map needs between 1 and 40 retained clips. Change the threshold or minimum gap and try again.');return;}
+      var clips=rows.map(function(r,i){return {name:T('Retained section')+' '+(i+1),start:r.start,end:r.end,rate:1,repeats:1};});
+      if(!window.__vpSceneReview504||!window.__vpSceneReview504(source,{format:'vp-clips',version:1,duration:map.duration,clips:clips}))status.textContent=T('Finish the current itinerary edit and stop its playback before reviewing quiet-map clips.');
+    });
     cancel.addEventListener('click',function(){clearMap();message='Quiet analysis cancelled. Playback is unchanged.';paint();scan.focus();});
     clear.addEventListener('click',function(){clearMap();message='Quiet map cleared. Playback is unchanged.';paint();scan.focus();});
     [db,minimum].forEach(function(el){el.addEventListener('change',paint);});
@@ -55304,7 +55351,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     document.addEventListener('vp-local-closed',reset);document.addEventListener('vp-youtube-selected',reset);window.addEventListener('pagehide',reset);
     card.addEventListener('toggle',function(){if(!card.open&&busy){clearMap();message='Quiet analysis cancelled. Playback is unchanged.';paint();}});
     (window.__relang=window.__relang||[]).push(paint);paint();
-    window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283)window.__vpWnew283('Quiet-section navigator','#quietMap548');},17220);});
+    window.addEventListener('load',function(){setTimeout(function(){if(window.__vpWnew283){window.__vpWnew283('Quiet-section navigator','#quietMap548');window.__vpWnew283('Listening cut list','#qmClips548');}},17220);});
   })();
 // End quiet navigator 548
 
@@ -60516,6 +60563,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Audio sync delay", "audio sound sync delay milliseconds local lips early", "#audioSync276"],
       ["Local playlist exchange", "local playlist recipe export import restore relink json files order", "#localExchange276"],
       ["Browse media folder", "directory folder subfolders local media browser playlist recursive", "#folderBrowser276"],
+      ["Listening cut list", "listening cut list remove quiet gaps silence nonquiet speech review clips itinerary", "#qmClips548"],
       ["Quiet-section navigator", "quiet section silence map gap pauses scan audio local device file find navigate before after", "#quietMap548"],
       ["Video contact sheet", "contact sheet storyboard thumbnail grid scenes local export png", "#contactSheet276"],
       ["Seek history", "seek history jump back recent positions spots rewind where was i before skip lecture lost place chips", "#seekHistRow"],
