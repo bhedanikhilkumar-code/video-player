@@ -55212,6 +55212,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Stereo channel routing", "#channelRoute543"); }, 16820); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Compare original channels", "#crCompare543"); }, 16920); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Peak softener", "#peakSoftener547"); }, 17020); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Compare sound effects", "#soundCompare547"); }, 17120); });
   // Round 541 new 1: What's new entry (translations sit inside the main closure).
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Skip a stuck queue video", "#playerSkipBtn541"); }, 16720); });
 
@@ -55712,7 +55713,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     function decodeAudioSafe345(dc, data, success, failure) { try { var pending = dc.decodeAudioData(data, success, failure); if (pending && typeof pending.catch === "function") pending.catch(function () {}); } catch (e) { failure(e); } }
   var file = $("lpFile"), vid = $("lpVideo"), ctl = $("lpCtl"), gain = $("lpGain"), gv = $("lpGainVal"), warn = $("lpWarn"), sp = $("lpSpeeds");
   var ctx = null, node = null, curUrl = null, eqNodes = null, nightNode = null, panNode = null, monoNode = null, hallConv285 = null, hallWet285 = null, wideSplit287 = null, wideMerger287 = null, wideWet287 = null, vcutSplit300 = null, vcutMatrix300 = null, dbSplit302 = null, dbMatrix302 = null;
-  var channelRouter543 = null, routeCompare543 = false, peakSoftener547 = null;
+  var channelRouter543 = null, routeCompare543 = false, peakSoftener547 = null, soundCompare547 = null;
   function ensureAudio() {
     if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -55732,14 +55733,15 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     // so toggling mono never needs the graph rebuilt.
     var monoN = ctx.createGain(); monoN.channelCountMode = "explicit"; monoN.channelCount = 2;
     node.connect(monoN);
-    var delay276 = null, output276 = ctx.createGain();
+    var delay276 = null, output276 = ctx.createGain(), soundMix547 = ctx.createGain();
     output276.gain.value = vid.paused ? 0 : 1;
-    peakSoftener547 = window.VPPeakSoftener547.create(ctx, output276, lp.peak547);
-    peakSoftener547.output.connect(ctx.destination); window.__lpOutput276 = output276;
+    peakSoftener547 = window.VPPeakSoftener547.create(ctx, soundMix547, lp.peak547);
+    soundCompare547 = window.VPSoundCompare547.create(ctx, src, peakSoftener547.output);
+    soundCompare547.output.connect(output276); output276.connect(ctx.destination); window.__lpOutput276 = output276;
     function flushDelay276() {
       if(delay276){try{monoN.disconnect(delay276);}catch(e){} try{if(vcutMatrix300)vcutMatrix300.disconnect(delay276);}catch(e){} try{if(dbMatrix302)dbMatrix302.disconnect(delay276);}catch(e){} try{delay276.disconnect();}catch(e){}}
       delay276=ctx.createDelay(2);delay276.delayTime.value=window.__vpDelayValue276?window.__vpDelayValue276()/1000:0;
-      (lp.vcut&&vcutMatrix300?vcutMatrix300:(lp.dboost&&dbMatrix302?dbMatrix302:monoN)).connect(delay276);delay276.connect(output276);window.__lpDelay276=delay276;
+      (lp.vcut&&vcutMatrix300?vcutMatrix300:(lp.dboost&&dbMatrix302?dbMatrix302:monoN)).connect(delay276);delay276.connect(soundMix547);window.__lpDelay276=delay276;
     }
     window.__lpFlushDelay276 = flushDelay276;
     function muteAndFlush276(){output276.gain.setValueAtTime(0,ctx.currentTime);flushDelay276();}
@@ -55759,7 +55761,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     // fold, wet-only into the shared output, so the delay line and every upstream
     // control (boost, EQ, balance, song fade) keep their meaning with the echo on.
     hallConv285 = ctx.createConvolver(); hallWet285 = ctx.createGain(); hallWet285.gain.value = 0;
-    monoN.connect(hallConv285); hallConv285.connect(hallWet285); hallWet285.connect(output276);
+    monoN.connect(hallConv285); hallConv285.connect(hallWet285); hallWet285.connect(soundMix547);
     if (typeof hallApply285 === "function") hallApply285();
     // Round 287 new 2 (Wide sound): a pure side-difference send tapped after the mono fold.
     // Only the L-R difference is added back (wider left on the left, mirrored on the right),
@@ -55776,7 +55778,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     wideSplit287.connect(wg2, 1); wg2.connect(wideMerger287, 0, 0);
     wideSplit287.connect(wg3, 0); wg3.connect(wideMerger287, 0, 1);
     wideSplit287.connect(wg4, 1); wg4.connect(wideMerger287, 0, 1);
-    wideMerger287.connect(wideWet287); wideWet287.connect(output276);
+    wideMerger287.connect(wideWet287); wideWet287.connect(soundMix547);
     // Round 300 new: Voice cut - a mid/side matrix drops the centre (L+R)/2, where the
     // voice usually sits. Taps monoN like Wide sound; the dry path switches to it in
     // flushDelay276 while the toggle is on.
@@ -56961,19 +56963,21 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     $("peakStatus547").after(meterRow);
     var meterTimer547 = 0;
     function measure547() {
-      var running = !!peakSoftener547 && !vid.paused && !vid.ended && !document.hidden && current() !== "off";
+      var comparing = !!soundCompare547 && soundCompare547.active();
+      var running = !comparing && !!peakSoftener547 && !vid.paused && !vid.ended && !document.hidden && current() !== "off";
       var reduction = running ? peakSoftener547.reduction() : 0;
       if (!Number.isFinite(reduction)) reduction = 0;
       $("peakMeter547").value = Math.min(24, Math.max(0, reduction));
       $("peakMeterLabel547").textContent = translate("Live peak reduction");
       $("peakMeter547").setAttribute("aria-label", translate("Live peak reduction"));
-      $("peakMeterText547").textContent = translate(running ? "Reduction: {n} dB" : current() === "off" ? "Choose a softening mode to measure its effect." : "Play a file to measure gain reduction.").replace("{n}", reduction.toFixed(1));
+      $("peakMeterText547").textContent = translate(comparing ? "Original sound comparison is active." : running ? "Reduction: {n} dB" : current() === "off" ? "Choose a softening mode to measure its effect." : "Play a file to measure gain reduction.").replace("{n}", reduction.toFixed(1));
     }
     function meterState547() {
       clearInterval(meterTimer547); meterTimer547 = 0; measure547();
-      if (card.open && peakSoftener547 && !vid.paused && !vid.ended && !document.hidden && current() !== "off") meterTimer547 = setInterval(measure547, 250);
+      if (card.open && !(soundCompare547 && soundCompare547.active()) && peakSoftener547 && !vid.paused && !vid.ended && !document.hidden && current() !== "off") meterTimer547 = setInterval(measure547, 250);
     }
     style.textContent += '#peakMeterRow547{display:grid;gap:6px;margin:12px 0;padding:12px;border:1px solid var(--hairline);border-radius:12px;background:var(--chipbg)}#peakMeter547{width:100%;height:18px;accent-color:var(--teal)}#peakMeterLabel547{font-weight:600}';
+    document.addEventListener("vp-sound-compare547", meterState547);
     card.addEventListener("toggle", meterState547);
     ["playing", "pause", "ended", "emptied"].forEach(function (event) { vid.addEventListener(event, meterState547); });
     document.addEventListener("visibilitychange", meterState547);
@@ -56982,6 +56986,34 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     measure547();
     window.__vpResetPeak547 = function (check) { var changed = current() !== "off"; if (!check && changed) choose("off"); return changed; };
     (window.__relang = window.__relang || []).push(paint); paint();
+  })();
+
+  // Compare the entire sound chain, without destroying any chosen effect settings.
+  (function () {
+    var translate = function (s) { return window.T ? window.T(s) : s; };
+    var card = document.createElement("details"); card.id = "soundCompare547"; card.className = "lp-workbench";
+    card.innerHTML = '<summary id="soundCompareTitle547"></summary><p class="hint" id="soundCompareHint547"></p><button type="button" class="btn" id="soundCompareButton547" aria-pressed="false"></button><p class="hint" role="status" id="soundCompareStatus547"></p><p class="hint" id="soundCompareVolume547"></p>';
+    $("peakSoftener547").after(card);
+    var style = document.createElement("style"); style.textContent = '#soundCompare547{margin:14px 0;min-width:0;overflow-wrap:anywhere}#soundCompare547 summary{min-height:44px;display:flex;align-items:center;cursor:pointer;font-weight:650}#soundCompareButton547{width:100%;white-space:normal;line-height:1.4}#soundCompareButton547[aria-pressed=true]{text-decoration:underline;text-underline-offset:4px}';document.head.appendChild(style);
+    function active() { return !!soundCompare547 && soundCompare547.active(); }
+    function paint() {
+      $("soundCompareTitle547").textContent = translate("Compare sound effects");
+      $("soundCompareHint547").textContent = translate("Hear this device file before routing, boost, EQ and sound effects, then return to your exact setup. Your settings stay saved and unchanged. Playback speed, volume, fades and pause still work.");
+      $("soundCompareButton547").textContent = translate(active() ? "Return to sound effects" : "Hear without sound effects");
+      $("soundCompareButton547").setAttribute("aria-pressed", String(active()));
+      $("soundCompareStatus547").textContent = translate(active() ? "Original sound comparison is active." : "Your chosen sound effects are active.");
+      $("soundCompareVolume547").textContent = translate("This comparison is not loudness matched. Lower device volume first. Changing a control, pausing or switching files ends the comparison. YouTube is unchanged.");
+    }
+    function end() { if (active()) { soundCompare547.set(false); paint(); document.dispatchEvent(new Event("vp-sound-compare547")); } }
+    $("soundCompareButton547").addEventListener("click", function () { if (!soundCompare547) { try { ensureAudio(); } catch (error) {} } if (!soundCompare547) { $("soundCompareStatus547").textContent = translate("Sound comparison is not available in this browser."); return; } soundCompare547.set(!active());paint();document.dispatchEvent(new Event("vp-sound-compare547")); });
+    // A capture listener returns to the edited mix BEFORE the selected setting runs.
+    $("lpCtl").addEventListener("click", function (event) { if (!card.contains(event.target)) end(); }, true);
+    $("lpCtl").addEventListener("input", end, true);
+    ["pause", "loadstart", "emptied", "ended"].forEach(function (event) { vid.addEventListener(event, end); });
+    document.addEventListener("visibilitychange", function () { if (document.hidden) end(); });
+    window.addEventListener("pagehide", end);
+    window.addEventListener("storage", function (event) { if (event.key === LK || event.key === null) end(); });
+    (window.__relang = window.__relang || []).push(paint);paint();
   })();
 
   // Subtitle upload: .srt/.vtt files are converted to WebVTT on this device, never uploaded.
@@ -60241,6 +60273,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Skip silence", "skip silence quiet pauses auto jump ahead lectures voice notes silent parts fast forward local file", "#lpSilBtn"],
       ["Loudness match", "loudness match auto volume leveling steady same loudness quiet loud files normalize playlist tracks local", "#lpLoudBtn"],
       ["Compare original channels", "compare original channels audio routing audition bypass original before after left right stereo sound", "#crCompare543"],
+      ["Compare sound effects", "compare sound effects original dry wet bypass all eq boost listen audition AB audio device file", "#soundCompare547"],
       ["Peak softener", "peak softener loud sudden peaks compressor final output clipping dynamics sound device file", "#peakSoftener547"],
       ["Stereo channel routing", "stereo channel routing swap left right both ears split language source broken ear headphones audio accessibility स्टीरियो સ્ટીરિયો", "#channelRoute543"],
       ["Auto PiP", "auto pip picture in picture floating window switch tab keep watching another app automatic local file mini window", "#lpAutoPipBtn539"],
