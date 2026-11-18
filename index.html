@@ -63235,7 +63235,14 @@ summary{min-height:28px;box-sizing:border-box}
       cv.font = cs.fontStyle + " " + cs.fontWeight + " " + cs.fontSize + " " + cs.fontFamily;
       var ls = parseFloat(cs.letterSpacing) || 0;
       var need = cv.measureText(o.text).width + ls * o.text.length + parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) * 2 + 2;
-      s.style.minWidth = Math.ceil(need) + "px"; s.style.maxWidth = "100%";
+      // Round 523 fix 1: min-width beats max-width in CSS, so the max-width:100% cap never
+      // capped anything - a long selected option (a tagged video's full title at 390px) set a
+      // min-width past the row's width and the select spilled out of its card. Cap the measured
+      // width at the row's real width instead; with flex-wrap the select then takes a full row
+      // and its siblings wrap below instead of the text overflowing the card.
+      var row423 = s.parentElement, cap423 = row423 ? row423.clientWidth : 0, px423 = Math.ceil(need);
+      if (cap423 > 0 && px423 > cap423) px423 = cap423;
+      s.style.minWidth = px423 + "px"; s.style.maxWidth = "100%";
     } catch (e) {}
   }
   function all() { tm = null; document.querySelectorAll("select").forEach(fit); }
