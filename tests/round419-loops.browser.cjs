@@ -35,7 +35,7 @@ const server = http.createServer((q, r) => {
     await page.locator('#loopLibList296').getByRole('button', { name: 'Remove this loop: Warmup', exact: true }).click();
     assert.equal(await page.locator('#loopLibList296 > .row').count(), 1);
     await page.evaluate(() => { Storage.prototype.setItem = function (key, value) { if (key === 'vp-practice-loops.v1') throw new DOMException('Full', 'QuotaExceededError'); return window._set419.call(this, key, value); }; });
-    await page.locator('#vpToast .vp-undo').click();
+    await page.getByRole('button', { name: 'Undo: Practice loop removed', exact: true }).click();
     assert.equal(await page.locator('#loopLibList296 > .row').count(), 1);
     assert.match(await page.locator('#vpToast').textContent(), /Could not save/);
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('vp-practice-loops.v1')).dQw4w9WgXcQ.length), 1);
