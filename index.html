@@ -55124,6 +55124,44 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       if (ix544 >= 0 && ix544 !== qPos) { qPos = ix544; qAfter = -1; saveLib(); renderLib(); }
     } catch (e) {}
   });
+  // Round 548: bounded, cooperative audio-envelope analysis for device files.
+(function () {
+  'use strict';
+  async function envelope(buffer, cancelled) {
+    if (!buffer || !(buffer.duration > 0) || buffer.duration > 301 || buffer.numberOfChannels < 1 || buffer.numberOfChannels > 8) throw new Error('limits');
+    var channels = [], bins = [], step = Math.max(1, Math.round(buffer.sampleRate * .02));
+    for (var c = 0; c < buffer.numberOfChannels; c++) channels.push(buffer.getChannelData(c));
+    for (var start = 0; start < buffer.length; start += step) {
+      if (cancelled && cancelled()) throw new Error('cancelled');
+      var end = Math.min(buffer.length, start + step), max = 0;
+      for (var k = 0; k < channels.length; k++) {
+        var sum = 0;
+        for (var j = start; j < end; j++) { var x = channels[k][j]; sum += Number.isFinite(x) ? x * x : 1; }
+        max = Math.max(max, Math.sqrt(sum / (end - start)));
+      }
+      bins.push(max);
+      if (bins.length % 250 === 0) await new Promise(function (resolve) { setTimeout(resolve, 0); });
+    }
+    return {bins: bins, step: step / buffer.sampleRate, duration: buffer.duration};
+  }
+  function gaps(map, db, minimum) {
+    if (!map || !Array.isArray(map.bins) || ![-50,-40,-30].includes(db) || ![.5,1,2].includes(minimum)) return [];
+    var threshold = Math.pow(10, db / 20), rows = [], from = -1;
+    for (var i = 0; i <= map.bins.length; i++) {
+      var quiet = i < map.bins.length && Number.isFinite(map.bins[i]) && map.bins[i] <= threshold;
+      if (quiet && from < 0) from = i;
+      if (!quiet && from >= 0) {
+        var a = from * map.step, b = Math.min(map.duration, i * map.step);
+        if (b - a + .000001 >= minimum) rows.push({start:a, end:b});
+        from = -1;
+      }
+    }
+    return rows;
+  }
+  window.VPQuietMap548 = {envelope:envelope, gaps:gaps};
+})();
+// End quiet engine 548
+
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
