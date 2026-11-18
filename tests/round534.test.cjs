@@ -35,7 +35,7 @@ assert((html.match(/dlWakeMsg\(/g) || []).length >= 4, 'wake message used at all
 assert(html.includes('"Still waking the free server - trying again automatically..."'), 'wake string present');
 
 // --- Round 534 new 2: Designer themes ---
-for (const p of ['sunset', 'ocean', 'forest', 'rose', 'lavender', 'amber', 'mint']) {
+for (const p of ['sunset', 'ocean', 'forest', 'rose', 'lavender', 'amber', 'mint', 'graphite']) {
   assert(html.includes(':root[data-palette="' + p + '"] body::before'), p + ' light glow');
   assert(html.includes(':root[data-theme="dark"][data-palette="' + p + '"] body::before'), p + ' dark glow');
 }
@@ -44,7 +44,7 @@ assert(html.includes('saved.palette534'), 'pref loader whitelist');
 assert(html.includes('id = "dtRow534"'), 'picker row');
 assert(html.includes('function applyPalette534()'), 'apply function');
 assert(html.includes('window.__vpWnew283("Designer themes", "#dtRow534")'), "What's new entry");
-assert(html.includes('"designer themes palette sunset ocean forest rose lavender amber mint colour background look appearance"'), 'feature finder keywords');
+assert(html.includes('"designer themes palette sunset ocean forest rose lavender amber mint graphite colour background look appearance"'), 'feature finder keywords');
 const tr2 = html.match(/"Designer themes": \[("[^"]+"), ("[^"]+")\]/);
 assert(tr2, 'Designer themes translation row');
 // Rows may be written as \uXXXX escapes in the source; decode before checking script.
