@@ -43965,6 +43965,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     anchor309b.parentNode.appendChild(btn);
     var IDS309 = ["lpNightBtn", "lpHallBtn285", "lpWideBtn287", "lpVcutBtn300", "lpDbBtn302", "lpMonoBtn"];
     function anyOn() {
+      if (window.__vpResetRoute543 && window.__vpResetRoute543(true)) return true;
       for (var i = 0; i < IDS309.length; i++) { var b = $(IDS309[i]); if (b && b.getAttribute("aria-pressed") === "true") return true; }
       var e1 = $("lpEqB"), e2 = $("lpEqM"), e3 = $("lpEqT"), bal = $("lpBal");
       if ((e1 && Number(e1.value)) || (e2 && Number(e2.value)) || (e3 && Number(e3.value))) return true;
@@ -43977,6 +43978,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     }
     btn.addEventListener("click", function () {
       if (!anyOn()) { toast(T("Sound is already at its normal settings.")); return; }
+      if (window.__vpResetRoute543) window.__vpResetRoute543(false);
       IDS309.forEach(function (id) {
         var b = $(id), guard = 0;
         while (b && b.getAttribute("aria-pressed") === "true" && guard++ < 3) b.click();
@@ -54765,6 +54767,57 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     "🖼 Auto PiP: on": ["🖼 ऑटो PiP: चालू", "🖼 ઓટો PiP: ચાલુ"],
     "While your file is playing, switching to another tab or app opens it in a small floating window on its own; coming back here closes the window. Works on files you open here, in browsers with automatic Picture-in-Picture (Chrome and Edge on computers).": ["आपकी फ़ाइल चलते समय दूसरे टैब या ऐप में जाते ही वह अपने आप एक छोटी तैरती विंडो में खुल जाती है; यहाँ वापस आते ही विंडो बंद हो जाती है. यहाँ खोली गई फ़ाइलों पर काम करता है, ऑटोमैटिक Picture-in-Picture वाले ब्राउज़र में (कंप्यूटर पर Chrome और Edge).", "તમારી ફાઇલ ચાલતી હોય ત્યારે બીજી ટૅબ કે ઍપમાં જતાં જ તે આપમેળે નાની તરતી વિન્ડોમાં ખુલી જાય છે; અહીં પાછા આવતાં જ વિન્ડો બંધ થઈ જાય છે. અહીં ખોલેલી ફાઇલો પર ચાલે છે, ઓટોમૅટિક Picture-in-Picture ધરાવતા બ્રાઉઝરમાં (કમ્પ્યુટર પર Chrome અને Edge)."]
   });
+  // ROUTER543 START
+/* Stereo routing for device media. The matrix precedes every sound effect. */
+(function (root) {
+  "use strict";
+  var matrices = { stereo: [1, 0, 0, 1], swap: [0, 1, 1, 0], left: [1, 0, 1, 0], right: [0, 1, 0, 1] };
+  function valid(mode) { return Object.prototype.hasOwnProperty.call(matrices, mode); }
+  function create(context, source, initial) {
+    // Explicit speaker upmix makes a mono file available to either source channel.
+    var input = context.createGain(); input.channelCount = 2; input.channelCountMode = "explicit"; input.channelInterpretation = "speakers";
+    var split = context.createChannelSplitter(2), output = context.createChannelMerger(2), gains = [];
+    source.connect(input); input.connect(split);
+    for (var dest = 0; dest < 2; dest++) {
+      for (var src = 0; src < 2; src++) {
+        var gain = context.createGain(); gain.gain.value = 0;
+        split.connect(gain, src); gain.connect(output, 0, dest); gains.push(gain);
+      }
+    }
+    var mode = "stereo";
+    function set(next, immediate) {
+      mode = valid(next) ? next : "stereo";
+      matrices[mode].forEach(function (value, i) {
+        var p = gains[i].gain, now = context.currentTime;
+        p.cancelScheduledValues(now);
+        if (immediate) p.setValueAtTime(value, now);
+        else p.setTargetAtTime(value, now, 0.008);
+      });
+      return mode;
+    }
+    set(initial, true);
+    return { output: output, set: set, mode: function () { return mode; } };
+  }
+  root.VPChannelRouter543 = { valid: valid, create: create };
+})(typeof window !== "undefined" ? window : globalThis);
+  // ROUTER543 END
+  Object.assign(TR_MSG, {
+    "Stereo channel routing": ["स्टीरियो चैनल रूटिंग", "સ્ટીરિયો ચેનલ રૂટિંગ"],
+    "Original stereo": ["मूल स्टीरियो", "મૂળ સ્ટીરિયો"],
+    "Swap left and right": ["बायां और दायां बदलें", "ડાબું અને જમણું બદલો"],
+    "Left channel to both ears": ["बायां चैनल दोनों कानों में", "ડાબી ચેનલ બંને કાનમાં"],
+    "Right channel to both ears": ["दायां चैनल दोनों कानों में", "જમણી ચેનલ બંને કાનમાં"],
+    "Keep the original left and right channels.": ["मूल बायां और दायां चैनल रखें.", "મૂળ ડાબી અને જમણી ચેનલ રાખો."],
+    "Exchange the channels when a recording or your headphones are reversed.": ["रिकॉर्डिंग या हेडफ़ोन उल्टे हों तो चैनल बदलें.", "રેકોર્ડિંગ કે હેડફોન ઊલટાં હોય તો ચેનલ બદલો."],
+    "Hear only the original left channel in both ears. Useful for split-language recordings or a broken right channel.": ["दोनों कानों में केवल मूल बायां चैनल सुनें. अलग-अलग भाषाओं वाली रिकॉर्डिंग या खराब दाएं चैनल के लिए उपयोगी.", "બંને કાનમાં ફક્ત મૂળ ડાબી ચેનલ સાંભળો. અલગ ભાષાઓવાળા રેકોર્ડિંગ કે ખરાબ જમણી ચેનલ માટે ઉપયોગી."],
+    "Hear only the original right channel in both ears. Useful for split-language recordings or a broken left channel.": ["दोनों कानों में केवल मूल दायां चैनल सुनें. अलग-अलग भाषाओं वाली रिकॉर्डिंग या खराब बाएं चैनल के लिए उपयोगी.", "બંને કાનમાં ફક્ત મૂળ જમણી ચેનલ સાંભળો. અલગ ભાષાઓવાળા રેકોર્ડિંગ કે ખરાબ ડાબી ચેનલ માટે ઉપયોગી."],
+    "Choose which source channel reaches each ear. Device files only; this does not change YouTube audio or edit your file.": ["चुनें कि हर कान में कौन सा मूल चैनल सुनाई दे. केवल डिवाइस की फ़ाइलों के लिए; YouTube का ऑडियो या आपकी फ़ाइल नहीं बदलती.", "દરેક કાનમાં કઈ મૂળ ચેનલ સંભળાય તે પસંદ કરો. ફક્ત ડિવાઇસની ફાઇલો માટે; YouTubeનો અવાજ કે તમારી ફાઇલ બદલાતી નથી."],
+    "Routing runs before EQ, balance and other effects. Mono combines the routed channels; Voice cut can silence a one-channel route.": ["रूटिंग EQ, बैलेंस और दूसरे इफ़ेक्ट से पहले होती है. मोनो चुने हुए चैनल मिलाता है; वॉइस कट एक-चैनल रूट का साउंड बंद कर सकता है.", "રૂટિંગ EQ, બૅલેન્સ અને બીજા ઇફેક્ટ પહેલાં થાય છે. મોનો પસંદ કરેલી ચેનલ ભેગી કરે છે; વોઇસ કટ એક-ચેનલ રૂટનો અવાજ બંધ કરી શકે છે."],
+    "Left ear": ["बायां कान", "ડાબો કાન"],
+    "Right ear": ["दायां कान", "જમણો કાન"],
+    "Left source": ["बायां स्रोत", "ડાબો સ્ત્રોત"],
+    "Right source": ["दायां स्रोत", "જમણો સ્ત્રોત"]
+  });
   // Round 541 new 1 (found live this round): a queue left playing died silently at 0:00
   // when one video's frame never came up - auto-next advanced 2/6 to a video YouTube's
   // bot check would not start, and the stuck-load watchdog card offered only
@@ -54999,6 +55052,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Original-audio download", "#dl"); }, 16520); });
   // Round 539 new 1: What's new entry (translations sit inside the main closure).
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Auto PiP", "#lpAutoPipBtn539"); }, 16620); });
+  window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Stereo channel routing", "#channelRoute543"); }, 16820); });
   // Round 541 new 1: What's new entry (translations sit inside the main closure).
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Skip a stuck queue video", "#playerSkipBtn541"); }, 16720); });
 
@@ -55489,6 +55543,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     function decodeAudioSafe345(dc, data, success, failure) { try { var pending = dc.decodeAudioData(data, success, failure); if (pending && typeof pending.catch === "function") pending.catch(function () {}); } catch (e) { failure(e); } }
   var file = $("lpFile"), vid = $("lpVideo"), ctl = $("lpCtl"), gain = $("lpGain"), gv = $("lpGainVal"), warn = $("lpWarn"), sp = $("lpSpeeds");
   var ctx = null, node = null, curUrl = null, eqNodes = null, nightNode = null, panNode = null, monoNode = null, hallConv285 = null, hallWet285 = null, wideSplit287 = null, wideMerger287 = null, wideWet287 = null, vcutSplit300 = null, vcutMatrix300 = null, dbSplit302 = null, dbMatrix302 = null;
+  var channelRouter543 = null;
   function ensureAudio() {
     if (ctx) { if (ctx.state === "suspended") ctx.resume(); return; }
     var AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
@@ -55500,7 +55555,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     var comp = ctx.createDynamicsCompressor();
     comp.knee.value = 20; comp.attack.value = 0.003; comp.release.value = 0.25;
     var pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
-    src.connect(fb); fb.connect(fm); fm.connect(ft); ft.connect(comp);
+    channelRouter543 = window.VPChannelRouter543.create(ctx, src, lp.channelRoute543);
+    channelRouter543.output.connect(fb); fb.connect(fm); fm.connect(ft); ft.connect(comp);
     if (pan) { comp.connect(pan); pan.connect(node); } else { comp.connect(node); }
     // Round 204 new: the mono fold lives in the chain from the start - one gain node
     // flipped between one and two channels at runtime (two channels is a passthrough),
@@ -55591,6 +55647,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   };
   var LK = "vp-lp.v1", PK = "vp-lp-pos.v1", lp = { gain: 100, rate: 1, lshuffle: false, lrepeat: 0, viz: false, night: false, bal: 0, fade: 0, hall: "off", wide: "off", vcut: false, eq: { b: 0, m: 0, t: 0 } };
   try { var sv = JSON.parse(localStorage.getItem(LK) || "null"); if (sv) { if (sv.gain >= 100 && sv.gain <= 300) lp.gain = sv.gain; if (sv.rate > 0 && sv.rate <= 3) lp.rate = sv.rate; if (typeof sv.lshuffle === "boolean") lp.lshuffle = sv.lshuffle; if (sv.lrepeat === true) lp.lrepeat = 1; else if (typeof sv.lrepeat === "number" && sv.lrepeat >= 0 && sv.lrepeat <= 2) lp.lrepeat = Math.round(sv.lrepeat); if (sv.ccSize === "s" || sv.ccSize === "m" || sv.ccSize === "l") lp.ccSize = sv.ccSize; if (sv.ccBg === "none" || sv.ccBg === "solid") lp.ccBg = sv.ccBg; if (sv.eq) ["b", "m", "t"].forEach(function (k) { if (typeof sv.eq[k] === "number" && sv.eq[k] >= -12 && sv.eq[k] <= 12) lp.eq[k] = Math.round(sv.eq[k]); }); if (sv.viz === true) lp.viz = true; if (sv.night === true) lp.night = true; if (typeof sv.bal === "number" && sv.bal >= -100 && sv.bal <= 100) lp.bal = Math.round(sv.bal); if (sv.mono === true) lp.mono = true; if (sv.soft === true) lp.soft = true; if ([0, 2, 4, 8].indexOf(sv.fade) >= 0) lp.fade = sv.fade; if (["off", "room", "hall"].indexOf(sv.hall) >= 0) lp.hall = sv.hall; if (["off", "wide", "extra"].indexOf(sv.wide) >= 0) lp.wide = sv.wide; if (sv.vcut === true) lp.vcut = true; if (sv.dboost === true) lp.dboost = true; } } catch (e) {}
+  lp.channelRoute543 = "stereo";
+  try { var routeSaved543 = JSON.parse(localStorage.getItem(LK) || "{}"); if (routeSaved543 && window.VPChannelRouter543.valid(routeSaved543.channelRoute543)) lp.channelRoute543 = routeSaved543.channelRoute543; } catch (e543) {}
   gain.value = lp.gain;
   function saveLp() { try { localStorage.setItem(LK, JSON.stringify(lp)); } catch (e) { if(window.vpStorageWarning276)window.vpStorageWarning276(); } }
   function setGain() { var v = Number(gain.value); lp.gain = v; saveLp(); gv.textContent = v + "%"; warn.hidden = v <= 200; if (node) node.gain.value = v / 100; }
@@ -56629,6 +56687,48 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   });
   (window.__relang = window.__relang || []).push(monoRender);
   monoRender();
+
+  // Round 543: route source channels before effects, without changing the media file.
+  (function () {
+    var translate = function (s) { return window.T ? window.T(s) : s; };
+    var modes543 = [["stereo", "Original stereo"], ["swap", "Swap left and right"], ["left", "Left channel to both ears"], ["right", "Right channel to both ears"]];
+    var descriptions543 = {
+      stereo: "Keep the original left and right channels.",
+      swap: "Exchange the channels when a recording or your headphones are reversed.",
+      left: "Hear only the original left channel in both ears. Useful for split-language recordings or a broken right channel.",
+      right: "Hear only the original right channel in both ears. Useful for split-language recordings or a broken left channel."
+    };
+    var box = document.createElement("details"); box.className = "lp-workbench"; box.id = "channelRoute543";
+    box.innerHTML = '<summary id="crTitle543"></summary><p class="hint" id="crHint543"></p><div id="crChoices543" class="cr-choices543" role="group" aria-labelledby="crTitle543"></div><div class="cr-map543" aria-hidden="true"><div><span id="crLeft543"></span><b id="crLeftOut543"></b></div><div><span id="crRight543"></span><b id="crRightOut543"></b></div></div><p id="crStatus543" class="hint" role="status"></p><p class="hint" id="crEffects543"></p>';
+    var anchor = $("lpMonoHint"); anchor.parentNode.insertBefore(box, anchor.nextSibling);
+    var style = document.createElement("style");
+    style.textContent = '#channelRoute543{margin-top:14px;overflow-wrap:anywhere}#channelRoute543 summary{cursor:pointer;font-weight:650;min-height:44px;display:flex;align-items:center}.cr-choices543{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.cr-choices543 button{min-width:0;white-space:normal;text-align:start;min-height:54px;line-height:1.4}.cr-choices543 button[aria-pressed=true]{border:2px solid var(--teal);font-weight:700;text-decoration:underline;text-underline-offset:4px}.cr-map543{margin:12px 0;padding:12px;border:1px solid var(--hairline);border-radius:16px;background:var(--chipbg);display:grid;gap:10px}.cr-map543>div{display:flex;justify-content:space-between;gap:12px}.cr-map543 b{text-align:end}@media(max-width:350px){.cr-choices543{grid-template-columns:1fr}}';
+    document.head.appendChild(style);
+    function current() { return window.VPChannelRouter543.valid(lp.channelRoute543) ? lp.channelRoute543 : "stereo"; }
+    function paint() {
+      var mode = current();
+      $("crTitle543").textContent = translate("Stereo channel routing");
+      $("crHint543").textContent = translate("Choose which source channel reaches each ear. Device files only; this does not change YouTube audio or edit your file.");
+      $("crEffects543").textContent = translate("Routing runs before EQ, balance and other effects. Mono combines the routed channels; Voice cut can silence a one-channel route.");
+      $("crStatus543").textContent = translate(descriptions543[mode]);
+      modes543.forEach(function (m, i) { var b = $("crChoices543").children[i]; b.textContent = translate(m[1]); b.setAttribute("aria-pressed", String(m[0] === mode)); });
+      $("crLeft543").textContent = translate("Left ear"); $("crRight543").textContent = translate("Right ear");
+      $("crLeftOut543").textContent = "← " + translate(mode === "right" || mode === "swap" ? "Right source" : "Left source");
+      $("crRightOut543").textContent = "← " + translate(mode === "left" || mode === "swap" ? "Left source" : "Right source");
+    }
+    function choose(mode) {
+      lp.channelRoute543 = mode;
+      if (channelRouter543) channelRouter543.set(mode);
+      saveLp(); paint();
+    }
+    modes543.forEach(function (m) { var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.dataset.route = m[0]; b.addEventListener("click", function () { choose(m[0]); }); $("crChoices543").appendChild(b); });
+    window.__vpResetRoute543 = function (check) { var changed = current() !== "stereo"; if (!check && changed) choose("stereo"); return changed; };
+    window.addEventListener("storage", function (e) {
+      if (e.key !== LK) return;
+      try { var p = JSON.parse(e.newValue || "{}"); lp.channelRoute543 = p && window.VPChannelRouter543.valid(p.channelRoute543) ? p.channelRoute543 : "stereo"; if (channelRouter543) channelRouter543.set(current()); paint(); } catch (err) {}
+    });
+    (window.__relang = window.__relang || []).push(paint); paint();
+  })();
 
   // Subtitle upload: .srt/.vtt files are converted to WebVTT on this device, never uploaded.
   var subBtn = $("lpSubBtn"), subFile = $("lpSubFile"), subOff = $("lpSubOff"), subMsg = $("lpSubMsg"), subSizes = $("lpSubSizes");
@@ -59878,6 +59978,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Cast to TV", "cast to tv chromecast android television big screen remote playback living room local file wifi", "#lpCastBtn"],
       ["Skip silence", "skip silence quiet pauses auto jump ahead lectures voice notes silent parts fast forward local file", "#lpSilBtn"],
       ["Loudness match", "loudness match auto volume leveling steady same loudness quiet loud files normalize playlist tracks local", "#lpLoudBtn"],
+      ["Stereo channel routing", "stereo channel routing swap left right both ears split language source broken ear headphones audio accessibility स्टीरियो સ્ટીરિયો", "#channelRoute543"],
       ["Auto PiP", "auto pip picture in picture floating window switch tab keep watching another app automatic local file mini window", "#lpAutoPipBtn539"],
       ["Skip a stuck queue video", "stuck slow loading not starting taking too long ready never starts skip next queue video dead frozen black screen watchdog bot sign in confirm", "#playerSkipBtn541"],
       ["Subtitle folder match", "subtitle batch folder match filenames local srt vtt languages", "#subtitleBatch276"],
