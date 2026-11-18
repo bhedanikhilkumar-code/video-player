@@ -55049,7 +55049,19 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
   // adopts the playing video's row as soon as the video is on; qAdoptPlaying292
   // already leaves an existing place, a removal spot and non-queued videos alone.
   document.addEventListener("vp-video-loaded", function () {
-    try { if (typeof qAdoptPlaying292 === "function") qAdoptPlaying292(); } catch (e) {}
+    try {
+      if (typeof qAdoptPlaying292 === "function") qAdoptPlaying292();
+      // Round 544 fix 2 (seen live): the place was restored to Costa Rica's row,
+      // then Rick Astley was replayed from Recents - the marker stayed on Costa
+      // Rica and Next after the video would have run off the queue's end instead
+      // of continuing with the row after him. When the video that comes on sits
+      // in the queue at another row, the place (and any pending removal spot)
+      // moves to the row that is actually playing. A video outside the queue
+      // still changes nothing, and an empty place is filled by the adopt above.
+      if (!curId) return;
+      var ix = findIn(lib.queue, curId);
+      if (ix >= 0 && ix !== qPos) { qPos = ix; qAfter = -1; saveLib(); renderLib(); }
+    } catch (e) {}
   });
 })();
 
