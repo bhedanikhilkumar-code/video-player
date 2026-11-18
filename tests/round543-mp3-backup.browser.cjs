@@ -1,0 +1,9 @@
+const assert=require('node:assert/strict'),fs=require('node:fs');require('./round538-harness.cjs')(async({p,c,boot,errors})=>{
+ await c.route('https://vp-downloader.onrender.com/health',r=>r.fulfill({body:'ok'}));
+ if(await p.locator('#dl').evaluate(e=>e.classList.contains('sec-collapsed')))await p.locator('#dl .sec-toggle').click();await p.locator('[data-quality="320"]').click();
+ if(await p.locator('#library').evaluate(e=>e.classList.contains('sec-collapsed')))await p.locator('#library .sec-toggle').click();
+ const [download]=await Promise.all([p.waitForEvent('download'),p.locator('#libExpSet289').click()]);const data=JSON.parse(fs.readFileSync(await download.path(),'utf8'));assert.equal(data.settings.rawKeys['vp-dl-mp3q'],'320');
+ await p.evaluate(()=>localStorage.removeItem('vp-dl-mp3q'));await boot();await p.locator('#libImportFile').setInputFiles({name:'quality-settings.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(data))});await p.waitForFunction(()=>localStorage.getItem('vp-dl-mp3q')==='320');await p.waitForEvent('load');await p.waitForFunction(()=>window.__vpMainOk325);assert.equal(await p.locator('[data-quality="320"]').getAttribute('aria-pressed'),'true');
+ if(await p.locator('#help').evaluate(e=>e.classList.contains('sec-collapsed')))await p.locator('#help .sec-toggle').click();await p.locator('#resetAllBtn').click();await p.locator('#vpAskBg .vp-ask-row button').last().click();await p.waitForEvent('load');await p.waitForFunction(()=>window.__vpMainOk325);assert.equal(await p.evaluate(()=>localStorage.getItem('vp-dl-mp3q')),null);assert.equal(await p.locator('[data-quality="192"]').getAttribute('aria-pressed'),'true');
+ assert.deepEqual(errors,[]);console.log('PASS MP3 quality settings export/import round trip and Reset to default');
+}).catch(e=>{console.error(e);process.exitCode=1;});
