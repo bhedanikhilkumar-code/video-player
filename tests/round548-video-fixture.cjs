@@ -1,0 +1,3 @@
+// Owned video with known quiet intervals, independent of a CI-supplied continuous tone.
+const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),cp=require('node:child_process');
+module.exports=()=>{const dir=fs.mkdtempSync(path.join(os.tmpdir(),'vp-quiet-video548-')),video=path.join(dir,'quiet-map.mp4');try{cp.execFileSync('ffmpeg',['-hide_banner','-loglevel','error','-f','lavfi','-i','testsrc2=size=640x360:rate=15:duration=12','-i',require('./round548-fixture.cjs')(),'-c:v','libx264','-preset','ultrafast','-crf','34','-c:a','aac','-shortest','-y',video]);return {name:'Quiet-map demo.mp4',mimeType:'video/mp4',buffer:fs.readFileSync(video)};}finally{fs.rmSync(dir,{recursive:true,force:true});}};
