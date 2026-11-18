@@ -7328,18 +7328,9 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
           return;
         }
       }
-      var emsg = ec === 100
-        ? T("This video is private, deleted, or the link is incomplete. It cannot be played.")
-        : (ec === 101 || ec === 150)
-        ? T("This video's owner has disabled playback on other sites, so it cannot be embedded here.")
-        : ec === 5
-        ? T("Your browser could not decode this video (HTML5 playback error). Reloading the page usually fixes it.")
-        : ec === 2
-        ? T("The video link looks broken, so the video cannot be played.")
-        : T("This video cannot be played here.");
       var willSkip = qPos >= 0 && queueModes.auto && !sleepPaused && (failedQueueCount + 1) < lib.queue.length;
       var permanentErr = ec === 100 || ec === 101 || ec === 150 || ec === 2;
-      playerError.textContent = emsg + (willSkip ? T(" Skipping to the next video in the queue...") : T(" Try another link."));
+      lastPlayerErr = { kind: "embed", ec: ec, willSkip: willSkip }; paintPlayerErr();
       playerError.hidden = false;
       showPlayerRetry(!willSkip && !permanentErr);
       showPlayerYt(permanentErr && !!curId);
@@ -7867,6 +7858,32 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   });
   linkInput.addEventListener("input", function () { showDlHandoff(false); linkError.hidden = true; });
 
+  // Round 525 fix 2: the player error line froze in the language of the moment it fired -
+  // an embed-disabled message written in English stayed English after a switch to Hindi,
+  // while every chip beside it repainted (found live: 150 error, then English text under a
+  // Hindi chip). The message now keeps its cause in lastPlayerErr and repaints through
+  // __relang like the rest of the card. Covers the embed-error path and the slow-load
+  // watchdog text; the same T() rows as before, so no new strings.
+  var lastPlayerErr = null;
+  function paintPlayerErr() {
+    if (!lastPlayerErr) return;
+    var le = lastPlayerErr;
+    var m = le.kind === "slow"
+      ? T("This video is taking too long to load. Check your internet, or tap Try again.")
+      : le.ec === 100
+      ? T("This video is private, deleted, or the link is incomplete. It cannot be played.")
+      : (le.ec === 101 || le.ec === 150)
+      ? T("This video's owner has disabled playback on other sites, so it cannot be embedded here.")
+      : le.ec === 5
+      ? T("Your browser could not decode this video (HTML5 playback error). Reloading the page usually fixes it.")
+      : le.ec === 2
+      ? T("The video link looks broken, so the video cannot be played.")
+      : T("This video cannot be played here.");
+    if (le.kind === "embed") m += le.willSkip ? T(" Skipping to the next video in the queue...") : T(" Try another link.");
+    playerError.textContent = m;
+  }
+  (window.__relang = window.__relang || []).push(function () { if (lastPlayerErr && playerError && !playerError.hidden) paintPlayerErr(); });
+
   /* Stuck-loading watchdog: if the video frame never reports ready (slow or dead
      network, blocked embed), say so clearly after a wait and offer a retry, instead
      of leaving a silent black box. */
@@ -7887,7 +7904,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     clearTimeout(loadWatchdog);
     loadWatchdog = setTimeout(function () {
       if (!curId || curId !== id || ready || !iframe) return;
-      playerError.textContent = T("This video is taking too long to load. Check your internet, or tap Try again.");
+      lastPlayerErr = { kind: "slow" }; paintPlayerErr();
       playerError.hidden = false;
       showPlayerRetry(true);
       skelShow(false);
