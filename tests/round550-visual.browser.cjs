@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict');
 require('./round538-harness.cjs')(async({p,errors})=>{
  await p.setViewportSize({width:390,height:1400});await p.locator('#lpFile').setInputFiles(require('./round548-video-fixture.cjs')());await p.locator('#lpVideo').evaluate(v=>{v.loop=true;return v.play();});await p.locator('#spectrogram550 summary').click();await p.locator('#sgStart550').click();
- await p.waitForFunction(()=>window.__vpSpectrogram550().count>20);await p.locator('#sgFreeze550').click();await p.locator('#sgFrequency550').fill('41');
+ await p.waitForFunction(()=>window.__vpSpectrogram550().count>20);await p.locator('#sgFreeze550').click();await p.locator('#sgFrequency550').fill('43');await p.locator('#sgSample550').fill('5');
  async function shot(name){await p.locator('#spectrogram550').evaluate(e=>e.scrollIntoView({block:'start',behavior:'instant'}));await p.waitForFunction(()=>document.querySelector('#lpViewWrap').classList.contains('lpMini447'));await p.waitForTimeout(250);assert.equal(await p.locator('#spectrogram550').evaluate(e=>e.scrollWidth<=e.clientWidth+1),true);assert.equal(await p.locator('html').evaluate(e=>e.scrollWidth<=innerWidth+1),true);const v=await p.locator('#lpVideo').boundingBox();assert.ok(v&&v.y<1400&&v.y+v.height>0);await p.screenshot({path:'/downloads/'+name+'.png'});}
  await shot('round550-en-spectrogram');
  for(const lang of ['hi','gu']){await p.locator('#langBtn').click();await p.waitForFunction(t=>document.querySelector('#spectrogram550 summary').textContent===t,lang==='hi'?'आवाज़ का स्पेक्ट्रोग्राम':'અવાજનો સ્પેક્ટ્રોગ્રામ');assert.match(await p.locator('#sgInspect550').textContent(),lang==='hi'?/सैंपल/:/સૅમ્પલ/);await shot('round550-'+lang+'-spectrogram');}
