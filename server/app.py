@@ -247,7 +247,8 @@ def playlist_feed(pid):
     req = urllib.request.Request(
         "https://www.youtube.com/feeds/videos.xml?playlist_id=" + pid,
         headers={"User-Agent": "Mozilla/5.0 (playlist reader)"})
-    with urllib.request.urlopen(req, timeout=15) as r:  # nosec B310 - fixed HTTPS YouTube URL; validated ID, no user-controlled scheme/host
+    # Fixed HTTPS YouTube URL with a validated ID, no user-controlled scheme/host.
+    with urllib.request.urlopen(req, timeout=15) as r:  # nosec B310
         root = ET.fromstring(r.read(2000000))
     ns = {"a": "http://www.w3.org/2005/Atom", "yt": "http://www.youtube.com/xml/schemas/2015"}
     vids = []
@@ -346,7 +347,8 @@ def _extract_initial_data(html):
 def fetch_chapters(vid):
     import urllib.request
     req = urllib.request.Request("https://www.youtube.com/watch?v=" + vid + "&hl=en&gl=US", headers=WATCH_HEADERS)
-    with urllib.request.urlopen(req, timeout=15) as r:  # nosec B310 - fixed HTTPS YouTube URL; validated ID, no user-controlled scheme/host
+    # Fixed HTTPS YouTube URL with a validated ID, no user-controlled scheme/host.
+    with urllib.request.urlopen(req, timeout=15) as r:  # nosec B310
         html = r.read(4000000).decode("utf-8", "replace")
     chs = []
     data = _extract_initial_data(html)
