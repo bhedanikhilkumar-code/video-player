@@ -101,8 +101,12 @@ def do_download(t, p):
     o["progress_hooks"] = [hook]
     pp = []
     if kind == "mp3":
+        # Round 536 new 1: the app can now ask for 128/192/320 kbps; 192 stays the default
+        # so older app versions behave exactly as before. Anything else is rejected.
+        q = str(p.get("quality") or "192")
+        if q not in ("128", "192", "320"): raise Bad("bad_quality", "Invalid MP3 quality.")
         o["format"] = fid or "bestaudio/best"
-        pp.append({"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": "192"})
+        pp.append({"key": "FFmpegExtractAudio", "preferredcodec": "mp3", "preferredquality": q})
     else:
         if fid and (p.get("mux") or "+" in str(fid)): o["format"] = str(fid)
         elif fid: o["format"] = f"{fid}+bestaudio/{fid}/best"
