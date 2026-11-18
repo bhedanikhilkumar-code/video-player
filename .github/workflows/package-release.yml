@@ -27,7 +27,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="v$VERSION"
+          VP_VERSION=$(node -p 'require("./package.json").version')
+          test -n "$VP_VERSION"
+          TAG="v$VP_VERSION"
           if gh release view "$TAG" >/tmp/existing-release 2>&1; then
             cat /tmp/existing-release
             echo 'This version already has a release. Bump the package version first.'
@@ -38,7 +40,7 @@ jobs:
             echo 'This version tag already exists. Bump the package version first.'
             exit 1
           fi
-          (cd dist && zip -qr "video-player-$VERSION.zip" video-player)
+          (cd dist && zip -qr "video-player-$VP_VERSION.zip" video-player)
           npm pack ./dist/video-player --pack-destination dist
           (cd dist && sha256sum *.zip *.tgz > SHA256SUMS.txt)
           cat > dist/release-notes.md <<'NOTES'
@@ -46,7 +48,7 @@ jobs:
 
           No backend, media files, native installer or credentials are bundled. Online playback needs internet; browser and downloader service restrictions still apply. See BUILD-INFO.json for the exact source commit and SHA256SUMS.txt for archive checksums.
           NOTES
-          gh release create "$TAG" --target "$GITHUB_SHA" --title "Video Player $VERSION" --notes-file dist/release-notes.md dist/*.zip dist/*.tgz dist/SHA256SUMS.txt
+          gh release create "$TAG" --target "$GITHUB_SHA" --title "Video Player $VP_VERSION" --notes-file dist/release-notes.md dist/*.zip dist/*.tgz dist/SHA256SUMS.txt
       - name: Publish GitHub npm package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
