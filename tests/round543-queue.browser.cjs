@@ -1,0 +1,9 @@
+const assert=require('node:assert/strict');require('./round538-harness.cjs')(async({p,c,boot,origin,errors})=>{
+ const a={id:'dQw4w9WgXcQ',title:'First'},b={id:'9bZkp7q19f0',title:'Second'};
+ const seed=async rows=>{await p.evaluate(rows=>{localStorage.setItem('vp-library.v1',JSON.stringify({queue:rows,favs:[],hist:[],later:[]}));localStorage.setItem('vp-queue-modes.v1',JSON.stringify({auto:false,shuffle:false,repeat:false}));},rows);await boot();await p.evaluate(()=>window.__vpWatchMs=60);};
+ const load=async id=>{await p.locator('#linkInput').fill(id);await p.locator('#loadBtn').click();await p.waitForFunction(()=>!document.querySelector('#playerRetryBtn').hidden);};
+ await seed([a,b]);await load(a.id);assert.equal(await p.locator('#playerSkipBtn541').evaluate(e=>e.hidden),false,'link-loaded video adopts queue position for recovery');await p.locator('#playerSkipBtn541').click();assert.ok((await p.locator('#frameBox iframe').getAttribute('src')).includes(b.id));
+ await seed([b]);await load(a.id);assert.equal(await p.locator('#playerSkipBtn541').evaluate(e=>e.hidden),false,'one queued video is next to a standalone video');
+ const peer=await c.newPage();await peer.goto(origin);await peer.waitForFunction(()=>window.__vpMainOk325);await peer.evaluate(()=>{const lib=JSON.parse(localStorage.getItem('vp-library.v1'));lib.queue=[];localStorage.setItem('vp-library.v1',JSON.stringify(lib));});await p.waitForFunction(()=>document.querySelector('#playerSkipBtn541').hidden);await peer.close();
+ await seed([a]);await load(a.id);assert.equal(await p.locator('#playerSkipBtn541').evaluate(e=>e.hidden),true,'last row without repeat does not promise a next video');assert.deepEqual(errors,[]);console.log('PASS stuck-video next recovery: adopted place, standalone to one queued video, live queue removal, last-row guard');
+}).catch(e=>{console.error(e);process.exitCode=1;});

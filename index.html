@@ -54841,19 +54841,23 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     if (!skipBtn541 || typeof showPlayerRetry !== "function") return;
     function hasNext541() {
       try {
-        if (qPos < 0 || !lib || !lib.queue || lib.queue.length < 2) return false;
-        if (typeof queueModes !== "undefined" && queueModes && (queueModes.repeat || queueModes.shuffle)) return true;
-        return qPos + 1 < lib.queue.length;
+        if (!lib || !lib.queue || !lib.queue.length) return false;
+        if (queueModes.repeat) return true;
+        if (queueModes.shuffle) return lib.queue.length > 1 || (qPos < 0 && lib.queue[0].id !== curId);
+        var next = typeof window.__vpQNextStart292 === "function" ? window.__vpQNextStart292() : qPos + 1;
+        return next >= 0 && next < lib.queue.length;
       } catch (e) { return false; }
     }
     function paintSkip541() { skipBtn541.textContent = "\u23ED " + T("Play next in queue"); }
     function showSkip541(show) { skipBtn541.hidden = !show; if (show) paintSkip541(); }
-    var origShowRetry541 = showPlayerRetry;
-    showPlayerRetry = function (show) {
-      origShowRetry541(show);
+    function refreshSkip541() {
       var skippable541 = !!lastPlayerErr && (lastPlayerErr.kind === "slow" || lastPlayerErr.kind === "stuck541" || (lastPlayerErr.kind === "embed" && !lastPlayerErr.willSkip));
-      showSkip541(!!show && skippable541 && hasNext541());
-    };
+      showSkip541(!!playerRetryBtn && !playerRetryBtn.hidden && skippable541 && hasNext541());
+    }
+    var origShowRetry541 = showPlayerRetry;
+    showPlayerRetry = function (show) { origShowRetry541(show); refreshSkip541(); };
+    var origRenderLib543 = renderLib;
+    renderLib = function () { origRenderLib543(); refreshSkip541(); };
     skipBtn541.addEventListener("click", function () {
       showSkip541(false);
       if (typeof playerError !== "undefined" && playerError) playerError.hidden = true;
