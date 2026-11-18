@@ -1296,7 +1296,7 @@ section.sec-noanim > .sec-body, html.low-fx .sec-body { transition: none !import
 }
 </style><style id="section-folding-all">
 .sec-all-btn { margin-left: auto; font-size: 11px; font-weight: 600; letter-spacing: 0; min-height: 30px; padding: 4px 12px; }
-</style><style id="rel-r9">#playerRetryBtn,#dlHandoffBtn{margin-top:8px}</style><style id="loading-skeletons">
+</style><style id="rel-r9">#playerRetryBtn,#playerYtBtn,#dlHandoffBtn{margin-top:8px}</style><style id="loading-skeletons">
 /* Loading skeletons: a shimmer stage over the video frame while the YouTube player warms up,
    and a shimmer on the info-card thumbnail until the real image arrives.
    Reduced-motion and Low-end mode switch the motion off through the global rules. */
@@ -1962,6 +1962,7 @@ setTimeout(done,3000);})();
       </div></div>
       <p class="error" id="playerError" role="alert" hidden></p>
       <button class="chip" id="playerRetryBtn" type="button" hidden>&#8635; Try again</button>
+      <button class="chip" id="playerYtBtn" type="button" hidden>&#9654; Open on YouTube</button>
 
       <div class="info-card" id="infoCard" hidden>
         <img id="infoThumb" alt="" width="112" height="63" loading="lazy" decoding="async">
@@ -7213,7 +7214,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
       ready = true; playBtn.disabled = false;
       if (playbackCovered345()) send("pauseVideo");
       skelShow(false);
-      clearTimeout(loadWatchdog); showPlayerRetry(false); playerError.hidden = true;
+      clearTimeout(loadWatchdog); showPlayerRetry(false); showPlayerYt(false); playerError.hidden = true;
       send("setVolume", [effVol()]);
       if (typeof startSoundApply === "function") startSoundApply();
       ccApply();
@@ -7317,7 +7318,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         if (!window.__vpRetry293[curId]) {
           window.__vpRetry293[curId] = 1;
           var retryId293 = curId, retryAt293 = curTime >= 5 ? Math.floor(curTime) : null;
-          playerError.hidden = true; showPlayerRetry(false);
+          playerError.hidden = true; showPlayerRetry(false); showPlayerYt(false);
           toast(T("Playback hiccup - trying the video again once..."));
           setTimeout(function () {
             if (curId !== retryId293) return;
@@ -7337,9 +7338,11 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
         ? T("The video link looks broken, so the video cannot be played.")
         : T("This video cannot be played here.");
       var willSkip = qPos >= 0 && queueModes.auto && !sleepPaused && (failedQueueCount + 1) < lib.queue.length;
+      var permanentErr = ec === 100 || ec === 101 || ec === 150 || ec === 2;
       playerError.textContent = emsg + (willSkip ? T(" Skipping to the next video in the queue...") : T(" Try another link."));
       playerError.hidden = false;
-      showPlayerRetry(!willSkip);
+      showPlayerRetry(!willSkip && !permanentErr);
+      showPlayerYt(permanentErr && !!curId);
       if (iframe) { iframe.remove(); iframe = null; }
       skelShow(false);
       placeholder.style.display = "";
@@ -7867,8 +7870,19 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   /* Stuck-loading watchdog: if the video frame never reports ready (slow or dead
      network, blocked embed), say so clearly after a wait and offer a retry, instead
      of leaving a silent black box. */
-  var loadWatchdog = 0, playerRetryBtn = $("playerRetryBtn");
+  var loadWatchdog = 0, playerRetryBtn = $("playerRetryBtn"), playerYtBtn = $("playerYtBtn");
   function showPlayerRetry(show) { if (playerRetryBtn) playerRetryBtn.hidden = !show; }
+  // Round 525 fix 1: a permanent embed error (private/deleted 100, embed-disabled 101/150,
+  // broken link 2) kept offering "Try again", which can never succeed on those codes - the
+  // owner switch does not flip between taps. Permanent errors now swap Retry for an
+  // "Open on YouTube" chip that takes the viewer to the one place the video does play,
+  // and Retry stays only for errors a reload can actually beat (slow load, decode hiccup).
+  function showPlayerYt(show) { if (playerYtBtn) { playerYtBtn.hidden = !show; if (show) playerYtBtn.textContent = "\u25B6 " + T("Open on YouTube"); } }
+  if (playerYtBtn) playerYtBtn.addEventListener("click", function () {
+    if (!curId) return;
+    window.open("https://www.youtube.com/watch?v=" + encodeURIComponent(curId), "_blank", "noopener");
+  });
+  (window.__relang = window.__relang || []).push(function () { if (playerYtBtn && !playerYtBtn.hidden) playerYtBtn.textContent = "\u25B6 " + T("Open on YouTube"); });
   function armLoadWatch(id) {
     clearTimeout(loadWatchdog);
     loadWatchdog = setTimeout(function () {
@@ -7881,7 +7895,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
   }
   if (playerRetryBtn) playerRetryBtn.addEventListener("click", function () {
     if (!curId) return;
-    playerError.hidden = true; showPlayerRetry(false);
+    playerError.hidden = true; showPlayerRetry(false); showPlayerYt(false);
     linkInput.value = curId;
     var t = curTime >= 5 ? Math.floor(curTime) : null;
     loadVideo(t, null, qPos >= 0 ? qPos : undefined, true);
