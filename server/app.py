@@ -1,7 +1,8 @@
 import os, re, uuid, time, threading, shutil, socket, ipaddress, tempfile, math, subprocess
 from safe_http import SafeYoutubeDL, UnsafeDestination, validate_web_url
 from urllib.parse import urlparse
-from flask import Flask, request, jsonify, send_file, abort
+from flask import Flask, request, jsonify, send_file, abort, g
+from collections import deque
 import yt_dlp
 
 ALLOWED_ORIGINS = {"https://vp-player.pages.dev", "https://video-player-eta-one.vercel.app", "http://localhost:8000", "http://127.0.0.1:8000"}
@@ -14,13 +15,50 @@ MAX_SECONDS = 3 * 3600 # refuse very long media
 TASKS = {}
 LOCK = threading.Lock()
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024
+JOBS = threading.BoundedSemaphore(MAX_TASKS)
+ADMISSIONS = deque()
+MAX_RETAINED = 8
+MAX_BYTES = 64 * 1024 * 1024
+
+@app.before_request
+def admission():
+    if request.method == 'OPTIONS': return None
+    origin = request.headers.get('Origin')
+    if origin and origin not in ALLOWED_ORIGINS:
+        return jsonify(error={'code': 'bad_origin', 'message': 'This origin is not allowed.'}), 403
+    if request.endpoint in ('create', 'playlist', 'chapters'):
+        now = time.monotonic()
+        with LOCK:
+            while ADMISSIONS and now - ADMISSIONS[0] >= 60: ADMISSIONS.popleft()
+            if len(ADMISSIONS) >= 12:
+                response = jsonify(error={'code': 'rate_limited', 'message': 'Please wait a minute before trying again.'})
+                response.headers['Retry-After'] = '60'
+                return response, 429
+            ADMISSIONS.append(now)
+        if request.endpoint != 'create':
+            if not JOBS.acquire(blocking=False):
+                return jsonify(error={'code': 'busy', 'message': 'Server is busy, try again shortly.'}), 429
+            g.job_slot = True
+
+@app.teardown_request
+def release_admission(error):
+    if g.pop('job_slot', False): JOBS.release()
+
+@app.errorhandler(413)
+def body_too_large(error):
+    return jsonify(error={'code': 'too_large', 'message': 'Request body is too large.'}), 413
 
 @app.after_request
 def cors(r):
     o = request.headers.get("Origin", "")
+    r.vary.add('Origin')
+    r.headers['Cache-Control'] = 'no-store'
+    r.headers['X-Content-Type-Options'] = 'nosniff'
+    r.headers['Content-Security-Policy'] = "default-src 'none'; frame-ancestors 'none'"
+    r.headers['X-Frame-Options'] = 'DENY'
     if o in ALLOWED_ORIGINS:
         r.headers["Access-Control-Allow-Origin"] = o
-        r.headers["Vary"] = "Origin"
         r.headers["Access-Control-Allow-Headers"] = "Content-Type"
         r.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
     return r
@@ -37,7 +75,10 @@ def is_yt(host):
 
 def check_url(u):
     if not isinstance(u, str) or len(u) > 2000: raise Bad("bad_url", "Invalid link.")
-    p = urlparse(u.strip())
+    try:
+        p = urlparse(u.strip())
+    except ValueError:
+        raise Bad('bad_url', 'Invalid link.')
     if p.scheme not in ("http", "https") or not p.hostname: raise Bad("bad_url", "Only http/https links are supported.")
     if is_yt(p.hostname): raise Bad("youtube_blocked", "YouTube links can't be downloaded. Play them in the player.")
     try:
@@ -78,7 +119,8 @@ def do_info(url):
 
 def sec(x):
     if x in (None, ""): return None
-    x = float(x)
+    try: x = float(x)
+    except (ValueError, TypeError): raise Bad('bad_range', 'Invalid time.')
     if not math.isfinite(x) or x < 0 or x > MAX_SECONDS: raise Bad("bad_range", "Invalid time.")
     return x
 
@@ -93,8 +135,11 @@ def do_download(t, p):
     o = base_opts()
     o["outtmpl"] = os.path.join(d, "out.%(ext)s")
     o["merge_output_format"] = "mp4"
-    o["max_filesize"] = 400 * 1024 * 1024
+    o["max_filesize"] = MAX_BYTES
+    deadline = time.monotonic() + 180
     def hook(h):
+        if time.monotonic() > deadline or h.get('downloaded_bytes', 0) > MAX_BYTES:
+            raise Bad('too_large', 'Download exceeded the free server limit.')
         if h["status"] == "downloading":
             tot = h.get("total_bytes") or h.get("total_bytes_estimate") or 0
             if tot: t["progress"] = min(90, int(h["downloaded_bytes"] * 90 / tot))
@@ -155,14 +200,16 @@ def run(t, fn, p):
         # generic extract_failed, which reads like a dead link. Give them their own code
         # so the app can say "try again" instead of "unsupported link".
         if re.search(r"timed out|timeout|Temporary failure|Connection reset|Connection refused|Remote end closed|Name or service|EOF occurred", m, re.I): code = "net_slow"
-        t["status"], t["error"] = "error", {"code": code, "message": re.sub(r"\x1b\[[0-9;]*m", "", m)[:300]}
+        t["status"], t["error"] = "error", {"code": code, "message": "The media request failed. Try another supported link."}
+    finally:
+        JOBS.release()
 
 def cleanup():
     while True:
         time.sleep(60)
         now = time.time()
         with LOCK:
-            for k in [k for k, v in TASKS.items() if now - v["created"] > TTL]:
+            for k in [k for k, v in TASKS.items() if v['status'] not in ('queued', 'running') and now - v["created"] > TTL]:
                 d = TASKS.pop(k).get("dir")
                 if d: shutil.rmtree(d, ignore_errors=True)
 threading.Thread(target=cleanup, daemon=True).start()
@@ -219,7 +266,7 @@ def playlist():
     except Exception as e:
         err = err or re.sub(r"\x1b\[[0-9;]*m", "", str(e))[:300]
     code = "site_blocked" if err and re.search(r"429|403|sign in|bot|Forbidden", err, re.I) else "extract_failed"
-    return jsonify(error={"code": code, "message": err or "Could not read that playlist."}), 400
+    return jsonify(error={"code": code, "message": "Could not read that playlist. Try again later."}), 400
 
 
 WATCH_HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
@@ -333,7 +380,7 @@ def chapters():
     except Exception as e:
         err = re.sub(r"\x1b\[[0-9;]*m", "", str(e))[:200]
         code = "site_blocked" if re.search(r"429|403|sign in|bot|Forbidden", err, re.I) else "extract_failed"
-        return jsonify(error={"code": code, "message": err or "Could not read chapters."}), 400
+        return jsonify(error={"code": code, "message": "Could not read chapters. Try again later."}), 400
     with LOCK:
         if len(CH_CACHE) > 200:
             CH_CACHE.clear()
@@ -342,23 +389,38 @@ def chapters():
 
 
 @app.get("/health")
-def health(): return {"ok": True, "security_revision": "egress-1", "yt_dlp": yt_dlp.version.__version__, "ffmpeg": bool(shutil.which("ffmpeg"))}
+def health(): return {"ok": True, "security_revision": "admission-1", "yt_dlp": yt_dlp.version.__version__, "ffmpeg": bool(shutil.which("ffmpeg"))}
 
 @app.post("/tasks")
 def create():
     b = request.get_json(silent=True) or {}
     try:
+        if not isinstance(b, dict): raise Bad('bad_body', 'A JSON object is required.')
         typ = b.get("type")
         if typ not in ("info", "download"): raise Bad("bad_type", "type must be info or download.")
+        if b.get('kind', 'video') not in ('video', 'audio', 'mp3'): raise Bad('bad_kind', 'Invalid download kind.')
+        if b.get('format') is not None and not re.fullmatch(r'[A-Za-z0-9_.+\-]{1,60}', str(b['format'])): raise Bad('bad_format', 'Invalid format.')
+        if str(b.get('quality') or '192') not in ('128', '192', '320'): raise Bad('bad_quality', 'Invalid MP3 quality.')
+        start, end = sec(b.get('from')), sec(b.get('to'))
+        if start is not None and end is not None and end <= start: raise Bad('bad_range', 'Invalid time range.')
         b["url"] = check_url(b.get("url"))
         with LOCK:
+            if shutil.disk_usage(WORK).free < 512 * 1024 * 1024: raise Bad('busy', 'Server storage is busy, try again later.')
+            if len(TASKS) >= MAX_RETAINED:
+                raise Bad('busy', 'Server storage is busy, try again later.')
             if sum(1 for v in TASKS.values() if v["status"] in ("queued", "running")) >= MAX_TASKS:
                 raise Bad("busy", "Server is busy, try again shortly.")
-            t = {"id": uuid.uuid4().hex[:12], "type": typ, "status": "queued", "progress": 0, "created": time.time()}
+            if not JOBS.acquire(blocking=False): raise Bad('busy', 'Server is busy, try again shortly.')
+            t = {"id": uuid.uuid4().hex, "type": typ, "status": "queued", "progress": 0, "created": time.time()}
             TASKS[t["id"]] = t
     except Bad as e:
         return jsonify(error={"code": e.code, "message": e.msg}), 400
-    threading.Thread(target=run, args=(t, None, b), daemon=True).start()
+    try:
+        threading.Thread(target=run, args=(t, None, b), daemon=True).start()
+    except Exception:
+        with LOCK: TASKS.pop(t['id'], None)
+        JOBS.release()
+        return jsonify(error={'code': 'busy', 'message': 'Could not start the task.'}), 503
     return {"id": t["id"]}
 
 @app.get("/tasks/<tid>")
