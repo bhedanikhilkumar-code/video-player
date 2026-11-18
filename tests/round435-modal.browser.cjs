@@ -23,8 +23,9 @@ const server = http.createServer((q, r) => {
     const playerEvent=async(event,info)=>page.evaluate(({event,info})=>window.dispatchEvent(new MessageEvent('message',{source:document.querySelector('#frameBox iframe').contentWindow,origin:'https://www.youtube-nocookie.com',data:{event,info}})),{event,info});
     await playerEvent('onReady');await playerEvent('infoDelivery',{currentTime:0,duration:213});await playerEvent('onStateChange',1);
     await page.setViewportSize({width:390,height:844});
+    await page.addStyleTag({content:'html{scroll-behavior:auto!important}'});
     await page.locator('#ctl-marks').evaluate(e=>e.open=true);await page.locator('#markAddBtn').scrollIntoViewIfNeeded();await page.waitForFunction(()=>document.getElementById('playerDock').classList.contains('is-mini'));
-    await page.locator('#markAddBtn').click();await page.locator('#vpAskBg').waitFor({state:'visible'});
+    await page.locator('#markAddBtn').evaluate(e=>e.scrollIntoView({block:'end',behavior:'instant'}));await page.locator('#markAddBtn').click();await page.locator('#vpAskBg').waitFor({state:'visible'});
     const visible=await page.locator('#vpAskBg .vp-ask-row button:last-child').evaluate(b=>{const r=b.getBoundingClientRect();return {top:document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.outerHTML.slice(0,150),clickable:b===document.elementFromPoint(r.x+r.width/2,r.y+r.height/2),popover:document.getElementById('vpAskBg').matches(':popover-open')};});
     console.log('Modal mini overlap:',visible);
     await page.screenshot({path:'/downloads/435-modal-'+(process.env.BEFORE?'before':'after')+'.png'});
@@ -37,12 +38,12 @@ const server = http.createServer((q, r) => {
     assert.match(await page.locator('#markList').textContent(),/A real moment/);
     await playerEvent('infoDelivery',{currentTime:7,duration:213});
     // Cancel and Escape leave the original mini player alive; prompt focus returns to its opener.
-    await page.locator('#markAddBtn').click();await page.locator('#vpAskBg .vp-ask-row button:first-child').click();assert.equal(await page.locator('#vpAskBg').count(),0);
-    await page.locator('#markAddBtn').click();await page.keyboard.press('Escape');assert.equal(await page.locator('#vpAskBg').count(),0);assert.equal(await page.locator('#markAddBtn').evaluate(e=>e===document.activeElement),true);
+    await page.locator('#markAddBtn').evaluate(e=>e.scrollIntoView({block:'end',behavior:'instant'}));await page.locator('#markAddBtn').click();await page.locator('#vpAskBg .vp-ask-row button:first-child').click();assert.equal(await page.locator('#vpAskBg').count(),0);
+    await page.locator('#markAddBtn').evaluate(e=>e.scrollIntoView({block:'end',behavior:'instant'}));await page.locator('#markAddBtn').click();await page.keyboard.press('Escape');assert.equal(await page.locator('#vpAskBg').count(),0);assert.equal(await page.locator('#markAddBtn').evaluate(e=>e===document.activeElement),true);
     assert.equal(await page.locator('#playerDock').evaluate(e=>e.matches(':popover-open')),true);
     for(const lang of ['hi','gu']){
       for(let n=0;n<3&&await page.locator('html').getAttribute('lang')!==lang;n++)await languageTap(page);
-      await page.locator('#markAddBtn').click();const message=await page.locator('#vpAskMessage').textContent();assert.ok(message&&!message.includes('Name this moment'));
+      await page.locator('#markAddBtn').evaluate(e=>e.scrollIntoView({block:'end',behavior:'instant'}));await page.locator('#markAddBtn').click();const message=await page.locator('#vpAskMessage').textContent();assert.ok(message&&!message.includes('Name this moment'));
       assert.equal(await page.getByRole('dialog',{name:message,exact:true}).count(),1);assert.equal(await page.getByRole('textbox',{name:message,exact:true}).count(),1);
       await page.locator('#vpAskBg .vp-ask-row button:first-child').click();
     }
