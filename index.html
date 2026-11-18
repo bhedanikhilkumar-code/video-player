@@ -54644,6 +54644,43 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && trial) { stop(); e.preventDefault(); } });
     document.addEventListener("visibilitychange", function () { if (document.hidden && trial) stop(); });
     window.addEventListener("pagehide", function () { if (trial) stop(); });
+    // Theme-only exchange deliberately excludes library names, wallpaper and every
+    // unrelated preference. Import only stages the reviewed candidate above.
+    var exchange = document.createElement("div"); exchange.className = "row tl-actions538"; exchange.id = "tlExchange538";
+    var exp = document.createElement("button"); exp.type = "button"; exp.className = "chip"; exp.id = "tlExport538";
+    var imp = document.createElement("button"); imp.type = "button"; imp.className = "chip"; imp.id = "tlImport538";
+    var file = document.createElement("input"); file.type = "file"; file.accept = ".vplook,.json,application/json"; file.hidden = true; file.id = "tlFile538";
+    exchange.appendChild(exp); exchange.appendChild(imp); exchange.appendChild(file); box.insertBefore(exchange, $("tlScope538"));
+    Object.assign(TR_MSG, {
+      "Portable theme files": ["थीम की पोर्टेबल फ़ाइलें", "થીમની પોર્ટેબલ ફાઇલો"],
+      "Export current theme": ["अभी की थीम निकालें", "હાલની થીમ નિકાસ કરો"],
+      "Import theme to review": ["थीम लाकर जांचें", "થીમ લાવી તપાસો"],
+      "Theme file ready. Review the candidate, then Try and Keep to apply it.": ["थीम फ़ाइल तैयार. नया लुक जांचें, फिर आज़माएं और रखें दबाकर लगाएं.", "થીમ ફાઇલ તૈયાર. નવો લુક તપાસો, પછી અજમાવો અને રાખો દબાવી લાગુ કરો."],
+      "That is not a supported theme file. Nothing changed.": ["यह समर्थित थीम फ़ाइल नहीं है. कुछ नहीं बदला.", "આ સપોર્ટેડ થીમ ફાઇલ નથી. કંઈ બદલાયું નથી."],
+      "Theme files must be 16 KB or smaller. Nothing changed.": ["थीम फ़ाइल 16 KB या छोटी होनी चाहिए. कुछ नहीं बदला.", "થીમ ફાઇલ 16 KB કે નાની હોવી જોઈએ. કંઈ બદલાયું નથી."],
+      "The exported file contains only theme colours, not your library or wallpaper.": ["निकाली फ़ाइल में केवल थीम के रंग हैं, आपकी लाइब्रेरी या वॉलपेपर नहीं.", "નિકાસ કરેલી ફાઇલમાં ફક્ત થીમના રંગો છે, તમારી લાઇબ્રેરી કે વૉલપેપર નથી."]
+    });
+    exp.addEventListener("click", function () {
+      var a = appearance(), data = { kind: "vp-theme", version: 1, theme: a.theme, accent: "custom", accentCustom: accentHex(), palette534: a.palette534 };
+      var url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+      var link = document.createElement("a"); link.href = url; link.download = "video-player-theme.vplook"; document.body.appendChild(link); link.click(); link.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      result = "The exported file contains only theme colours, not your library or wallpaper."; status();
+    });
+    imp.addEventListener("click", function () { file.click(); });
+    var importSeq = 0;
+    file.addEventListener("change", async function () {
+      var f = file.files && file.files[0], seq = ++importSeq; file.value = ""; if (!f) return;
+      if (f.size > 16384) { result = "Theme files must be 16 KB or smaller. Nothing changed."; status(); return; }
+      try {
+        var a = JSON.parse(await f.text()); if (seq !== importSeq) return;
+        var keys = ["kind", "version", "theme", "accent", "accentCustom", "palette534"];
+        if (!a || Array.isArray(a) || typeof a !== "object" || Object.keys(a).length !== keys.length || Object.keys(a).some(function (k) { return keys.indexOf(k) < 0; }) || a.kind !== "vp-theme" || a.version !== 1 || !modes.some(function (m) { return m[0] === a.theme; }) || a.accent !== "custom" || typeof a.accentCustom !== "string" || !/^#[0-9a-fA-F]{6}$/.test(a.accentCustom) || !palettes.some(function (p) { return p[0] === a.palette534; })) throw new Error("invalid theme");
+        window.__vpThemeTrial538.stage(a); box.open = true; result = "Theme file ready. Review the candidate, then Try and Keep to apply it."; status(); pal.focus();
+      } catch (e) { if (seq !== importSeq) return; result = "That is not a supported theme file. Nothing changed."; status(); }
+    });
+    function exchangePaint() { exp.textContent = T("Export current theme"); imp.textContent = T("Import theme to review"); file.setAttribute("aria-label", T("Import theme to review")); }
+    (window.__relang = window.__relang || []).push(exchangePaint); exchangePaint();
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Portable theme files", "#tlExchange538"); }, 16520); });
     function paint() {
       $("tlTrial538").setAttribute("aria-label", T("Theme trial"));
       var labels = {tlTitle538:"Theme fitting room",tlHint538:"Compare a candidate with your current colours. Try it on the page for 20 seconds; only Keep saves it. Playback and accessibility settings stay unchanged.",tlCurrentLab538:"Current look",tlCandidateLab538:"Candidate look",tlPalLab538:"Background palette",tlModeLab538:"Candidate theme",tlAccentLab538:"Candidate accent",tlCurrentBtn538:"Use current look",tlTry538:"Try for 20 seconds",tlKeep538:"Keep this look",tlRevert538:"Revert trial",tlScope538:"Colours only; wallpaper and accessibility options are not included."};
@@ -60087,6 +60124,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Export backup", "backup export json", "#libExport"],
       ["Import backup", "backup import restore json", "#libImport"],
       ["Accessibility: larger text, contrast, low-end mode", "accessibility big text contrast low end slow", "#a11yH"],
+      ["Portable theme files", "portable theme files import export share colours appearance .vplook privacy review candidate", "#tlExchange538"],
       ["Theme fitting room", "theme fitting room preview audition compare colours candidate try revert keep safe twenty seconds background palette appearance", "#themeLab538"],
       ["Designer themes", "designer themes palette sunset ocean forest rose lavender amber mint graphite colour background look appearance", "#dtRow534"],
       ["App color", "color colour accent custom", "#accentT"],
