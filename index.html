@@ -7146,6 +7146,7 @@ var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=ne
     }
     themeBtn.setAttribute("aria-label", T("Theme: ") + themeLabel + ". " + T("Activate to change theme."));
     if (typeof window.__vpApplyPalette534 === "function") window.__vpApplyPalette534();
+    if (window.__vpThemeTrial538) window.__vpThemeTrial538.reconcile();
   }
   themeBtn.addEventListener("click", function () {
     prefs.theme = prefs.theme === "auto" ? "daynight" : prefs.theme === "daynight" ? "light" : prefs.theme === "light" ? "dark" : prefs.theme === "dark" ? "midnight" : "auto";
@@ -54552,6 +54553,108 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Designer themes", "#dtRow534"); }, 16320); });
   })();
 
+  // Round 538: a non-persistent fitting room. Trial DOM never enters prefs, so
+  // unrelated settings saves and automatic backups cannot commit an audition.
+  Object.assign(TR_MSG, {
+    "Theme fitting room": ["थीम आज़माने का कमरा", "થીમ અજમાવવાનો રૂમ"],
+    "Compare a candidate with your current colours. Try it on the page for 20 seconds; only Keep saves it. Playback and accessibility settings stay unchanged.": ["नए रंगों की अभी के रंगों से तुलना करें. पेज पर 20 सेकंड आज़माएं; केवल रखें दबाने पर सेव होगा. प्लेबैक और सुलभता सेटिंग नहीं बदलेंगी.", "નવા રંગોની હાલના રંગો સાથે સરખામણી કરો. પેજ પર 20 સેકન્ડ અજમાવો; ફક્ત રાખો દબાવવાથી સાચવાશે. પ્લેબેક અને સુલભતા સેટિંગ બદલાશે નહીં."],
+    "Current look": ["अभी का लुक", "હાલનો લુક"],
+    "Theme trial": ["थीम ट्रायल", "થીમ ટ્રાયલ"],
+    "Candidate look": ["नया लुक", "નવો લુક"],
+    "Background palette": ["पृष्ठभूमि के रंग", "પૃષ્ઠભૂમિના રંગો"],
+    "Classic background": ["मूल पृष्ठभूमि", "મૂળ પૃષ્ઠભૂમિ"],
+    "Candidate theme": ["नई थीम", "નવી થીમ"],
+    "Candidate accent": ["नया मुख्य रंग", "નવો મુખ્ય રંગ"],
+    "Use current look": ["अभी का लुक लें", "હાલનો લુક લો"],
+    "Try for 20 seconds": ["20 सेकंड आज़माएं", "20 સેકન્ડ અજમાવો"],
+    "Keep this look": ["यह लुक रखें", "આ લુક રાખો"],
+    "Revert trial": ["पुराना लुक लौटाएं", "જૂનો લુક પાછો લાવો"],
+    "Not saved. {n} seconds to revert automatically.": ["सेव नहीं हुआ. {n} सेकंड बाद पुराना लुक लौटेगा.", "સાચવ્યું નથી. {n} સેકન્ડ પછી જૂનો લુક પાછો આવશે."],
+    "Trial ended. Your saved look is unchanged.": ["आज़माना खत्म. आपका सेव किया लुक नहीं बदला.", "અજમાવવાનું પૂરું. તમારો સાચવેલો લુક બદલાયો નથી."],
+    "Look kept on this device.": ["लुक इस डिवाइस पर सेव हुआ.", "લુક આ ડિવાઇસ પર સાચવ્યો."],
+    "Another appearance change ended the trial.": ["दूसरे रंग बदलाव ने ट्रायल खत्म किया.", "બીજા રંગ બદલાવે ટ્રાયલ પૂરું કર્યું."],
+    "Colours only; wallpaper and accessibility options are not included.": ["केवल रंग; वॉलपेपर और सुलभता विकल्प शामिल नहीं हैं.", "ફક્ત રંગો; વૉલપેપર અને સુલભતા વિકલ્પો સામેલ નથી."]
+  });
+  (function () {
+    var anchor = $("dtHint534"); if (!anchor) return;
+    var box = document.createElement("details"); box.className = "faq"; box.id = "themeLab538";
+    box.innerHTML = '<summary id="tlTitle538"></summary><p class="hint" id="tlHint538"></p>'
+      + '<div class="tl-compare538"><div><p class="label" id="tlCurrentLab538"></p><div class="tl-sample538" id="tlCurrent538" aria-hidden="true"><span>▶</span><i></i></div></div><div><p class="label" id="tlCandidateLab538"></p><div class="tl-sample538" id="tlCandidate538" aria-hidden="true"><span>▶</span><i></i></div></div></div>'
+      + '<div class="tl-fields538"><label><span id="tlPalLab538"></span><select id="tlPal538"></select></label><label><span id="tlModeLab538"></span><select id="tlMode538"></select></label><label><span id="tlAccentLab538"></span><input id="tlAccent538" type="color" value="#3a8a77"></label></div>'
+      + '<div class="row tl-actions538"><button class="chip" type="button" id="tlCurrentBtn538"></button><button class="chip" type="button" id="tlTry538"></button></div>'
+      + '<div class="tl-trial538" id="tlTrial538" hidden><p id="tlStatus538" role="status" aria-live="polite"></p><div class="row tl-actions538"><button class="btn" type="button" id="tlKeep538"></button><button class="chip" type="button" id="tlRevert538"></button></div></div><p class="hint" id="tlResult538" role="status"></p><p class="hint" id="tlScope538"></p>';
+    anchor.parentNode.insertBefore(box, anchor.nextSibling);
+    document.body.appendChild($("tlTrial538"));
+    $("tlTrial538").setAttribute("role", "region");
+    var st = document.createElement("style");
+    st.textContent = '#themeLab538{margin-top:14px;overflow-wrap:anywhere}.tl-compare538{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}.tl-compare538>div{min-width:0}.tl-sample538{height:100px;border-radius:18px;padding:14px;border:1px solid var(--hairline);box-sizing:border-box;display:flex;flex-direction:column;justify-content:center;gap:10px}.tl-sample538 span{display:grid;place-items:center;align-self:center;width:60%;height:42px;border-radius:10px;background:rgba(0,0,0,.75);color:white}.tl-sample538 i{height:5px;border-radius:4px;width:75%;background:var(--tl-accent538,#3a8a77)}.tl-fields538{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}.tl-fields538 label{display:flex;flex-direction:column;gap:6px;font-size:14px;min-width:0}.tl-fields538 select{width:100%;min-width:0;min-height:44px;background:var(--card);color:var(--ink);border:1px solid var(--hairline);border-radius:10px;padding:6px;font:inherit}.tl-fields538 input[type=color]{width:100%;max-width:140px;min-height:44px;border-radius:10px;border:1px solid var(--hairline);background:var(--card)}.tl-actions538{flex-wrap:wrap;margin-top:10px;gap:8px}.tl-actions538 button{white-space:normal;min-height:44px;max-width:100%}.tl-trial538{position:fixed;top:90px;left:50%;transform:translateX(-50%);width:min(480px,calc(100vw - 24px));box-sizing:border-box;z-index:85;border:2px solid var(--ink2);border-radius:18px;padding:12px;background:var(--card);box-shadow:0 10px 50px rgba(0,0,0,.35);max-height:calc(100svh - 360px);overflow:auto}.tl-trial538>p{margin:0 0 6px;font-size:14px}.tl-trial538[hidden]{display:none}html.high-contrast .tl-sample538{border:2px solid var(--ink)}@media(max-width:420px){.tl-actions538 button{flex:1 1 130px}}';
+    document.head.appendChild(st);
+    var palettes = [
+      ["", "Classic background", "light", "#3a8a77", "linear-gradient(135deg,#87dbc4,#c6b5f2)"],
+      ["sunset", "Sunset", "dark", "#e0684f", "linear-gradient(135deg,#ff7a59,#9a4dc4)"],
+      ["ocean", "Ocean", "dark", "#3fa9c9", "linear-gradient(135deg,#3fa9c9,#2f6fd0)"],
+      ["forest", "Forest", "light", "#3f9e63", "linear-gradient(135deg,#3f9e63,#8ac926)"],
+      ["rose", "Rose", "light", "#d0518a", "linear-gradient(135deg,#d0518a,#f2a7c3)"],
+      ["lavender", "Lavender", "light", "#7a5fd0", "linear-gradient(135deg,#7a5fd0,#b39df2)"],
+      ["amber", "Amber", "light", "#d98a1c", "linear-gradient(135deg,#f2b134,#d9641c)"],
+      ["mint", "Mint", "light", "#1fae9a", "linear-gradient(135deg,#1fae9a,#7bdcb5)"],
+      ["graphite", "Graphite", "dark", "#8a94a6", "linear-gradient(135deg,#8a94a6,#3b4252)"]
+    ];
+    var pal = $("tlPal538"), mode = $("tlMode538"), accent = $("tlAccent538"), trial = null, timer = null, result = "";
+    palettes.forEach(function (p) { var o = document.createElement("option"); o.value = p[0]; pal.appendChild(o); });
+    var modes = [["auto", "Auto"], ["daynight", "Day/Night"], ["light", "Light"], ["dark", "Dark"], ["midnight", "Midnight"]];
+    modes.forEach(function (m) { var o = document.createElement("option"); o.value = m[0]; mode.appendChild(o); });
+    function appearance() { return { theme: prefs.theme, accent: prefs.accent, accentCustom: prefs.accentCustom, palette534: prefs.palette534 || "" }; }
+    function stamp() { return JSON.stringify(appearance()); }
+    function candidate() { return { theme: mode.value, accent: "custom", accentCustom: accent.value, palette534: pal.value }; }
+    function pdFor(v) { return palettes.filter(function (p) { return p[0] === v; })[0] || palettes[0]; }
+    function darkFor(v) { var h = new Date().getHours(); return v === "dark" || v === "midnight" || (v === "auto" && darkQuery && darkQuery.matches) || (v === "daynight" && (h >= (prefs.nightFrom273 || 19) || h < (prefs.nightTo273 || 7))); }
+    function sample(el, a, hex) { var dark = darkFor(a.theme); el.style.background = (dark ? 'linear-gradient(#080b14aa,#080b14aa),' : 'linear-gradient(#ffffff99,#ffffff99),') + pdFor(a.palette534)[4]; el.style.setProperty("--tl-accent538", hex); el.style.boxShadow = a.theme === "midnight" ? "inset 0 0 0 6px #000" : "none"; }
+    function paintSamples() { sample($("tlCurrent538"), appearance(), accentHex()); sample($("tlCandidate538"), candidate(), accent.value); }
+    function fillCurrent() { var a = appearance(); pal.value = a.palette534; mode.value = a.theme; accent.value = accentHex(); paintSamples(); }
+    function applyTrial() {
+      if (!trial) return;
+      var a = trial.look, root = document.documentElement;
+      root.setAttribute("data-theme", darkFor(a.theme) ? "dark" : "light"); root.classList.toggle("oled", a.theme === "midnight");
+      if (a.palette534) root.setAttribute("data-palette", a.palette534); else root.removeAttribute("data-palette");
+      root.removeAttribute("data-accent"); root.style.setProperty("--teal", a.accentCustom);
+    }
+    function status() {
+      $("tlTrial538").hidden = !trial;
+      pal.disabled = mode.disabled = accent.disabled = !!trial;
+      $("tlTry538").disabled = $("tlCurrentBtn538").disabled = !!trial;
+      var text = trial ? T("Not saved. {n} seconds to revert automatically.").replace("{n}", Math.max(0, Math.ceil((trial.until - Date.now()) / 1000))) : "";
+      if ($("tlStatus538").textContent !== text) $("tlStatus538").textContent = text;
+      $("tlResult538").textContent = result ? T(result) : "";
+    }
+    function stop(message) { var returnFocus = $("tlTrial538").contains(document.activeElement); trial = null; clearInterval(timer); timer = null; result = message || "Trial ended. Your saved look is unchanged."; applyAccent(); applyTheme(); status(); paintSamples(); if (returnFocus) $("tlTry538").focus({preventScroll:true}); }
+    function reconcile() {
+      if (!trial) return;
+      if (stamp() !== trial.base) { trial = null; clearInterval(timer); timer = null; result = "Another appearance change ended the trial."; status(); paintSamples(); return; }
+      if (Date.now() >= trial.until) { stop(); return; }
+      applyTrial();
+    }
+    window.__vpThemeTrial538 = { reconcile: reconcile, stage: function (a) { if (trial) stop(); pal.value = a.palette534; mode.value = a.theme; accent.value = a.accentCustom; result = ""; status(); paintSamples(); } };
+    $("tlTry538").addEventListener("click", function () { if (trial) return; result = ""; trial = { base: stamp(), look: candidate(), until: Date.now() + 20000 }; applyTrial(); status(); $("tlKeep538").focus({preventScroll:true}); timer = setInterval(function () { if (!trial) return; if (Date.now() >= trial.until) stop(); else { reconcile(); status(); } }, 250); });
+    $("tlRevert538").addEventListener("click", function () { stop(); });
+    $("tlKeep538").addEventListener("click", function () { if (!trial) return; if (stamp() !== trial.base || Date.now() >= trial.until) { stop(); return; } var a = trial.look; trial = null; clearInterval(timer); timer = null; prefs.theme = a.theme; prefs.accent = a.accent; prefs.accentCustom = a.accentCustom; prefs.palette534 = a.palette534; savePrefs(); applyAccent(); applyTheme(); result = "Look kept on this device."; status(); paintSamples(); $("tlTry538").focus({preventScroll:true}); });
+    $("tlCurrentBtn538").addEventListener("click", function () { fillCurrent(); result = ""; status(); });
+    pal.addEventListener("change", function () { var pd = pdFor(pal.value); mode.value = pd[2]; accent.value = pd[3]; paintSamples(); });
+    mode.addEventListener("change", paintSamples); accent.addEventListener("input", paintSamples);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && trial) { stop(); e.preventDefault(); } });
+    document.addEventListener("visibilitychange", function () { if (document.hidden && trial) stop(); });
+    window.addEventListener("pagehide", function () { if (trial) stop(); });
+    function paint() {
+      $("tlTrial538").setAttribute("aria-label", T("Theme trial"));
+      var labels = {tlTitle538:"Theme fitting room",tlHint538:"Compare a candidate with your current colours. Try it on the page for 20 seconds; only Keep saves it. Playback and accessibility settings stay unchanged.",tlCurrentLab538:"Current look",tlCandidateLab538:"Candidate look",tlPalLab538:"Background palette",tlModeLab538:"Candidate theme",tlAccentLab538:"Candidate accent",tlCurrentBtn538:"Use current look",tlTry538:"Try for 20 seconds",tlKeep538:"Keep this look",tlRevert538:"Revert trial",tlScope538:"Colours only; wallpaper and accessibility options are not included."};
+      Object.keys(labels).forEach(function (k) { $(k).textContent = T(labels[k]); });
+      palettes.forEach(function (p, i) { pal.options[i].textContent = T(p[1]); }); modes.forEach(function (m, i) { mode.options[i].textContent = T(m[1]); });
+      status(); paintSamples();
+    }
+    (window.__relang = window.__relang || []).push(paint); fillCurrent(); paint();
+    window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Theme fitting room", "#themeLab538"); }, 16420); });
+  })();
+
 })();
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Save a Smart list as a playlist", "#slPlBtn479"); }, 9720); });
   window.addEventListener("load", function () { setTimeout(function () { if (window.__vpWnew283) window.__vpWnew283("Play next or queue from a Smart list row", "#smartCard478"); }, 9820); });
@@ -59984,6 +60087,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       ["Export backup", "backup export json", "#libExport"],
       ["Import backup", "backup import restore json", "#libImport"],
       ["Accessibility: larger text, contrast, low-end mode", "accessibility big text contrast low end slow", "#a11yH"],
+      ["Theme fitting room", "theme fitting room preview audition compare colours candidate try revert keep safe twenty seconds background palette appearance", "#themeLab538"],
       ["Designer themes", "designer themes palette sunset ocean forest rose lavender amber mint graphite colour background look appearance", "#dtRow534"],
       ["App color", "color colour accent custom", "#accentT"],
       ["Match the video colour", "match video colour accent thumbnail adaptive tint app color", "#accentRow"],
