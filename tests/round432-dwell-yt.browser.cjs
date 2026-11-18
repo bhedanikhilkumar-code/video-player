@@ -15,7 +15,7 @@ const server = http.createServer((q, r) => {
     const context = await browser.newContext(); const page = await context.newPage(); const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     await page.route('**/*', route => route.request().url().includes('youtube-nocookie.com/embed/') ? route.fulfill({contentType:'text/html',body:'<!doctype html><title>Test player</title>'}) : route.request().url().startsWith('http://localhost:8499') ? route.continue() : route.abort());
-    await page.addInitScript(() => { if (location.hostname !== 'localhost') return; localStorage.setItem('vp-marks.v1',JSON.stringify({dQw4w9WgXcQ:[{name:'Final phrase',t:205},{name:'Beyond video',t:500}]}));localStorage.setItem('vp-practice-loops.v1', JSON.stringify({ dQw4w9WgXcQ: [{name:'Warmup',a:5,b:10},{name:'Chorus',a:20,b:30}] })); localStorage.setItem('vp-tour.v1', '1'); localStorage.setItem('vp-prefs.v1', JSON.stringify({ lang: 'en' })); });
+    await page.addInitScript(() => { if (location.hostname !== 'localhost') return; localStorage.setItem('vp-marks.v1',JSON.stringify({dQw4w9WgXcQ:[{name:'Final phrase',t:205},{name:'Beyond video',t:500}]}));localStorage.setItem('vp-practice-loops.v1', JSON.stringify({ dQw4w9WgXcQ: [{name:'Warmup',a:5,b:10},{name:'Chorus',a:20,b:30}] })); localStorage.setItem('vp-tour.v1', '1'); localStorage.setItem('vp-prefs.v1', JSON.stringify({ lang: 'en',langPick360:true,lowFxHinted:true })); });
     await page.goto('http://localhost:8499'); await page.waitForFunction(() => window.__vpMainOk325 === true);
     // Scroll deliberately cancels dwell. Keep test navigation instant so hover is not cancelled by a pending smooth-scroll frame.
     await page.addStyleTag({content:'html{scroll-behavior:auto!important}'});
@@ -28,7 +28,14 @@ const server = http.createServer((q, r) => {
     await page.waitForFunction(()=>document.getElementById('dwellEnable432').getBoundingClientRect().top>=document.getElementById('playerDock').getBoundingClientRect().bottom+12);
     await page.locator('#dwellTime432').selectOption('1000');
     await page.locator('#dwellEnable432').click();assert.equal(await page.locator('#dwellEnable432').getAttribute('aria-pressed'),'true');
-    await page.locator('.dwell-action432').nth(3).hover();await page.waitForTimeout(1300);
+    // Enabling schedules a toolbar reveal. Settle its scroll before pointer entry,
+    // because any scroll intentionally cancels dwell in the product.
+    const quieter=page.locator('.dwell-action432').nth(3);
+    await quieter.scrollIntoViewIfNeeded();
+    await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+    await quieter.hover();
+    await page.waitForFunction(()=>document.querySelector('.dwell-action432:nth-child(4)').dataset.dwelling==='true');
+    await page.waitForFunction(()=>document.getElementById('vol').value==='75');
     assert.equal(await page.locator('#vol').inputValue(),'75');
     await page.waitForTimeout(1200);assert.equal(await page.locator('#vol').inputValue(),'75');
     // Keyboard/touch remain ordinary one-action buttons, not hover activation.
