@@ -1,0 +1,8 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');const code=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8').split('// WAV-SAMPLES555 START')[1].split('// WAV-SAMPLES555 END')[0],ctx={window:{},setTimeout,DataView,Array,Number,Math,Error};vm.runInNewContext(code,ctx);const api=ctx.window.VPWavSamples555;module.exports=api;
+function fixture(m,n,edges){const graph=Array.from({length:m+n},()=>[]);for(const[u,v]of edges){graph[u].push(v+m);graph[v+m].push(u);}return graph;}module.exports.fixture=fixture;
+function ref(edges){return edges.map(([u,v],i)=>edges.reduce((sum,[x,y],j)=>sum+(i!==j&&(u===x||v===y)?1:0),0));}module.exports.ref=ref;
+if(require.main===module){
+test('line degree excludes self and counts each original edge once',()=>{for(const[m,n,edges]of [[1,1,[]],[1,1,[[0,0]]],[3,3,[[0,0],[1,1],[2,2]]],[2,2,[[0,0],[0,1],[1,1]]],[2,2,[[0,0],[0,1],[1,0],[1,1]]]]){const g=fixture(m,n,edges),copy=JSON.stringify(g);assert.deepEqual(Array.from(api.lineDegrees714(g,m)),ref(edges));assert.equal(JSON.stringify(g),copy);}});
+test('star with n edges gives n line vertices of degree n minus one',()=>{for(const n of [2,3,8,63])assert.deepEqual(Array.from(api.lineDegrees714(fixture(1,n,Array.from({length:n},(_,i)=>[0,i])),1)),Array(n).fill(n-1));});
+test('all512 bipartite3x3 graphs match materialized edge adjacency',()=>{for(let mask=0;mask<512;mask++){const edges=[];for(let i=0;i<3;i++)for(let j=0;j<3;j++)if(mask&(1<<(3*i+j)))edges.push([i,j]);const g=fixture(3,3,edges);assert.deepEqual(Array.from(api.lineDegrees714(g,3)),ref(edges));}});
+}
