@@ -56613,7 +56613,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     'Normalize excerpt peak':['अंश का पीक नॉर्मलाइज़ करें','અંશનું પીક નોર્મલાઇઝ કરો']
   });
   window.VPAudioExcerpt549 = {
-    encode: async function (audio, start, end, fade, cancelled, direction, channelMode, peakMode) {
+    encode: async function (audio, start, end, fade, cancelled, direction, channelMode, peakMode, dcMode) {
+      if(dcMode===undefined)dcMode="keep";if(dcMode!=="keep"&&dcMode!=="remove")throw Error("dc");
       if(peakMode===undefined)peakMode="original";if(!["original","-1","-3","-6"].includes(peakMode))throw Error("peak");
       if(channelMode===undefined)channelMode="original";if(!["original","left","right","mono"].includes(channelMode))throw Error("layout");
       if(direction===undefined)direction="forward";if(direction!=="forward"&&direction!=="reverse")throw Error("direction");
@@ -56629,7 +56630,17 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       word(0,'RIFF');view.setUint32(4,buffer.byteLength-8,true);word(8,'WAVE');word(12,'fmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,channels,true);view.setUint32(24,rate,true);view.setUint32(28,rate*channels*2,true);view.setUint16(32,channels*2,true);view.setUint16(34,16,true);word(36,'data');view.setUint32(40,length*channels*2,true);
       var data=[];for(var c=0;c<inputChannels;c++)data.push(audio.getChannelData(c));
       var edge=Math.min(Math.round(fade*rate),Math.floor(length/2));
-      function sample(j,ch){var at=direction==="reverse"?last-1-j:first+j,selected=channelMode==="right"?1:channelMode==="original"?ch:0,value=data[selected][at];if(!Number.isFinite(value))value=0;if(channelMode==="mono"&&inputChannels===2){var other=data[1][at];value=(value+(Number.isFinite(other)?other:0))/2;}var gain=edge?Math.min(1,j/edge,(length-1-j)/edge):1;return Math.max(-1,Math.min(1,value))*gain;}
+      function inputSample(at,ch){var selected=channelMode==="right"?1:channelMode==="original"?ch:0,value=data[selected][at];if(!Number.isFinite(value))value=0;if(channelMode==="mono"&&inputChannels===2){var other=data[1][at];value=(value+(Number.isFinite(other)?other:0))/2;}return Math.max(-1,Math.min(1,value));}
+      var means=Array(channels).fill(0),compensation=Array(channels).fill(0);
+      if(dcMode==='remove'){
+        for(var dcBase=0;dcBase<length;dcBase+=8192){
+          if(cancelled&&cancelled())throw Error('cancelled');
+          for(var dcAt=dcBase;dcAt<Math.min(dcBase+8192,length);dcAt++)for(var dcCh=0;dcCh<channels;dcCh++){var term=inputSample(first+dcAt,dcCh)-compensation[dcCh],sum=means[dcCh]+term;compensation[dcCh]=(sum-means[dcCh])-term;means[dcCh]=sum;}
+          await new Promise(function(resolve){setTimeout(resolve,0);});
+        }
+        for(var meanCh=0;meanCh<channels;meanCh++)means[meanCh]/=length;
+      }
+      function sample(j,ch){var at=direction==="reverse"?last-1-j:first+j,value=inputSample(at,ch)-means[ch],gain=edge?Math.min(1,j/edge,(length-1-j)/edge):1;return value*gain;}
       var peak=0,target=peakMode==='original'?0:Math.pow(10,Number(peakMode)/20);
       if(peakMode!=='original')for(var scan=0;scan<length;scan+=8192){
         if(cancelled&&cancelled())throw Error('cancelled');
@@ -56639,7 +56650,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       for(var base=0;base<length;base+=8192){
         if(cancelled&&cancelled())throw Error('cancelled');
         for(var j=base;j<Math.min(base+8192,length);j++){
-          for(var ch=0;ch<channels;ch++){var value=sample(j,ch);if(target&&peak)value=value/peak*target;view.setInt16(44+(j*channels+ch)*2,Math.round(value*(value<0?32768:32767)),true);}
+          for(var ch=0;ch<channels;ch++){var value=sample(j,ch);if(target&&peak)value=value/peak*target;if(dcMode==='remove')value=Math.max(-1,Math.min(1,value));view.setInt16(44+(j*channels+ch)*2,Math.round(value*(value<0?32768:32767)),true);}
         }
         await new Promise(function(resolve){setTimeout(resolve,0);});
       }
