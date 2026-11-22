@@ -56648,12 +56648,12 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     encode: async function (audio, start, end, fade, cancelled, direction, channelMode, peakMode, dcMode) {
       if(dcMode===undefined)dcMode="keep";if(dcMode!=="keep"&&dcMode!=="remove")throw Error("dc");
       if(peakMode===undefined)peakMode="original";if(!["original","-1","-3","-6"].includes(peakMode))throw Error("peak");
-      if(channelMode===undefined)channelMode="original";if(!["original","left","right","mono"].includes(channelMode))throw Error("layout");
+      if(channelMode===undefined)channelMode="original";if(!["original","left","right","mono","side"].includes(channelMode))throw Error("layout");
       if(direction===undefined)direction="forward";if(direction!=="forward"&&direction!=="reverse")throw Error("direction");
       if (!audio || !Number.isFinite(audio.duration) || audio.duration > 300 || !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end > audio.duration + .001 || end - start < .099999 || end - start > 60.000001) throw Error('range');
       var inputChannels=audio.numberOfChannels, channels=inputChannels, rate = audio.sampleRate;
       if (channels !== 1 && channels !== 2) throw Error('channels');
-      if(channelMode==='right'&&inputChannels<2)throw Error('right');if(channelMode!=='original')channels=1;
+      if(channelMode==='right'&&inputChannels<2)throw Error('right');if(channelMode==='side'&&inputChannels<2)throw Error('side');if(channelMode!=='original')channels=1;
       if (!Number.isFinite(rate) || rate < 8000 || rate > 48000 || !Number.isFinite(fade) || fade < 0 || fade > .2) throw Error('limits');
       var first = Math.round(start * rate), last = Math.min(audio.length, Math.round(end * rate)), length = last - first;
       if (!(length > 0) || length > 60 * rate) throw Error('range');
@@ -56662,7 +56662,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       word(0,'RIFF');view.setUint32(4,buffer.byteLength-8,true);word(8,'WAVE');word(12,'fmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,channels,true);view.setUint32(24,rate,true);view.setUint32(28,rate*channels*2,true);view.setUint16(32,channels*2,true);view.setUint16(34,16,true);word(36,'data');view.setUint32(40,length*channels*2,true);
       var data=[];for(var c=0;c<inputChannels;c++)data.push(audio.getChannelData(c));
       var edge=Math.min(Math.round(fade*rate),Math.floor(length/2));
-      function inputSample(at,ch){var selected=channelMode==="right"?1:channelMode==="original"?ch:0,value=data[selected][at];if(!Number.isFinite(value))value=0;if(channelMode==="mono"&&inputChannels===2){var other=data[1][at];value=(value+(Number.isFinite(other)?other:0))/2;}return Math.max(-1,Math.min(1,value));}
+      function inputSample(at,ch){var selected=channelMode==="right"?1:channelMode==="original"?ch:0,value=data[selected][at];if(!Number.isFinite(value))value=0;if((channelMode==="mono"||channelMode==="side")&&inputChannels===2){var other=data[1][at];other=Number.isFinite(other)?other:0;value=(value+(channelMode==="side"?-other:other))/2;}return Math.max(-1,Math.min(1,value));}
       var means=Array(channels).fill(0),compensation=Array(channels).fill(0);
       if(dcMode==='remove'){
         for(var dcBase=0;dcBase<length;dcBase+=8192){
