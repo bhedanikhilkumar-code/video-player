@@ -56722,7 +56722,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     ]
 });
   window.VPAudioExcerpt549 = {
-    encode: async function (audio, start, end, fade, cancelled, direction, channelMode, peakMode, dcMode, fadeEdges) {
+    encode: async function (audio, start, end, fade, cancelled, direction, channelMode, peakMode, dcMode, fadeEdges, fadeCurve) {
+      if(fadeCurve===undefined)fadeCurve="linear";if(!["linear","cosine"].includes(fadeCurve))throw Error("fade-curve");
       if(fadeEdges===undefined)fadeEdges="both";if(!["both","start","end"].includes(fadeEdges))throw Error("fade-edges");
       if(dcMode===undefined)dcMode="keep";if(dcMode!=="keep"&&dcMode!=="remove")throw Error("dc");
       if(peakMode===undefined)peakMode="original";if(!["original","-1","-3","-6"].includes(peakMode))throw Error("peak");
@@ -56750,7 +56751,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
         }
         for(var meanCh=0;meanCh<channels;meanCh++)means[meanCh]/=length;
       }
-      function sample(j,ch){var at=direction==="reverse"?last-1-j:first+j,value=inputSample(at,ch)-means[ch],gain=edge?(fadeEdges==="start"?Math.min(1,j/edge):fadeEdges==="end"?Math.min(1,(length-1-j)/edge):Math.min(1,j/edge,(length-1-j)/edge)):1;return value*gain;}
+      function sample(j,ch){var at=direction==="reverse"?last-1-j:first+j,value=inputSample(at,ch)-means[ch],gain=edge?(fadeEdges==="start"?Math.min(1,j/edge):fadeEdges==="end"?Math.min(1,(length-1-j)/edge):Math.min(1,j/edge,(length-1-j)/edge)):1;if(edge&&fadeCurve==="cosine"&&gain>0&&gain<1)gain=(1-Math.cos(Math.PI*gain))/2;return value*gain;}
       var peak=0,target=peakMode==='original'?0:Math.pow(10,Number(peakMode)/20);
       if(peakMode!=='original')for(var scan=0;scan<length;scan+=8192){
         if(cancelled&&cancelled())throw Error('cancelled');
