@@ -56799,7 +56799,8 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
     ]
 });
   window.VPAudioExcerpt549 = {
-    encode: async function (audio, start, end, fade, cancelled, direction, channelMode, peakMode, dcMode, fadeEdges, fadeCurve, polarityMode, attenuationMode) {
+    encode: async function (audio, start, end, fade, cancelled, direction, channelMode, peakMode, dcMode, fadeEdges, fadeCurve, polarityMode, attenuationMode, balanceMode) {
+      if(balanceMode===undefined)balanceMode="center";if(!["center","left-soft","right-soft"].includes(balanceMode))throw Error("balance");
       if(attenuationMode===undefined)attenuationMode="0";if(!["0","-6","-12"].includes(attenuationMode))throw Error("attenuation");var attenuationGain=attenuationMode==="0"?1:Math.pow(10,Number(attenuationMode)/20);
       if(polarityMode===undefined)polarityMode="keep";if(!["keep","invert"].includes(polarityMode))throw Error("polarity");
       if(fadeCurve===undefined)fadeCurve="linear";if(!["linear","cosine"].includes(fadeCurve))throw Error("fade-curve");
@@ -56812,6 +56813,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       var inputChannels=audio.numberOfChannels, channels=inputChannels, rate = audio.sampleRate;
       if (channels !== 1 && channels !== 2) throw Error('channels');
       if(channelMode==='right'&&inputChannels<2)throw Error('right');if(channelMode==='side'&&inputChannels<2)throw Error('side');if(channelMode==='swap'&&inputChannels<2)throw Error('swap');if(channelMode!=='original'&&channelMode!=='swap')channels=1;
+      if(balanceMode!=='center'&&channels!==2)throw Error('balance-stereo');
       if (!Number.isFinite(rate) || rate < 8000 || rate > 48000 || !Number.isFinite(fade) || fade < 0 || fade > .2) throw Error('limits');
       var first = Math.round(start * rate), last = Math.min(audio.length, Math.round(end * rate)), length = last - first;
       if (!(length > 0) || length > 60 * rate) throw Error('range');
@@ -56840,7 +56842,7 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       for(var base=0;base<length;base+=8192){
         if(cancelled&&cancelled())throw Error('cancelled');
         for(var j=base;j<Math.min(base+8192,length);j++){
-          for(var ch=0;ch<channels;ch++){var value=sample(j,ch);if(target&&peak)value=value/peak*target;if(polarityMode==='invert')value=-value;if(attenuationMode!=='0')value*=attenuationGain;if(dcMode==='remove')value=Math.max(-1,Math.min(1,value));view.setInt16(44+(j*channels+ch)*2,Math.round(value*(value<0?32768:32767)),true);}
+          for(var ch=0;ch<channels;ch++){var value=sample(j,ch);if(target&&peak)value=value/peak*target;if(polarityMode==='invert')value=-value;if(attenuationMode!=='0')value*=attenuationGain;if((balanceMode==='left-soft'&&ch===0)||(balanceMode==='right-soft'&&ch===1))value*=Math.pow(10,-6/20);if(dcMode==='remove')value=Math.max(-1,Math.min(1,value));view.setInt16(44+(j*channels+ch)*2,Math.round(value*(value<0?32768:32767)),true);}
         }
         await new Promise(function(resolve){setTimeout(resolve,0);});
       }
