@@ -1,6 +1,11 @@
 name: Verify published package
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Published signed tenth-step tag, for example v30.7'
+        required: true
+        type: string
 permissions:
   contents: read
   packages: read
@@ -9,23 +14,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Validate tag input before checkout
+        env:
+          VP_TAG: ${{ inputs.tag }}
+        run: '[[ "$VP_TAG" =~ ^v[0-9]+\.[0-9]$ ]]'
       - uses: actions/checkout@v4
         with:
-          ref: v1.0.0
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           registry-url: 'https://npm.pkg.github.com'
           scope: '@bhedanikhilkumar-code'
-      - name: Download registry package and compare every staged file
+      - name: Verify signed tag and compare every registry file
         env:
+          GH_TOKEN: ${{ github.token }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VP_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
+          node scripts/release-version.mjs "$VP_TAG"
           npm run build:package
+          NAME=$(node -p 'require("./package.json").name')
+          VERSION=$(node -p 'require("./package.json").version')
           mkdir -p /tmp/registry-check
-          cd /tmp/registry-check
-          npm pack @bhedanikhilkumar-code/video-player@1.0.0 --registry=https://npm.pkg.github.com
-          tar -xzf ./*.tgz
-          diff -rq "$GITHUB_WORKSPACE/dist/video-player" package
-          echo 'Verified registry download: every file matches the source tag build.'
+          (cd /tmp/registry-check && npm pack "$NAME@$VERSION" --registry=https://npm.pkg.github.com && tar -xzf ./*.tgz)
+          diff -rq dist/video-player /tmp/registry-check/package
+          echo 'Verified registry download matches the signed source tag build.'
