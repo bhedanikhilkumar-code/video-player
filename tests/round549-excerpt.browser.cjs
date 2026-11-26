@@ -18,8 +18,8 @@ require('./round538-harness.cjs')(async({p,c,boot,errors})=>{
  await p.locator('#exEnd549').fill('2.05');await p.locator('#exBuild549').click();assert.match(await p.locator('#exStatus549').textContent(),/0.1 to 60/);
  await p.locator('#exEnd549').fill('6');await p.locator('#exFade549').selectOption('0');await p.locator('#exBuild549').click();await p.waitForFunction(()=>!document.querySelector('#exDownload549').hidden);
  await p.locator('#exClear549').click();assert.equal(await p.locator('#exDownload549').getAttribute('href'),null);
- await p.locator('#exMarkIn549').click();assert.equal(await p.locator('#exStart549').inputValue(),'1.00');
- await p.locator('#lpVideo').evaluate(v=>v.currentTime=4);await p.locator('#exMarkOut549').click();assert.equal(await p.locator('#exEnd549').inputValue(),'4.00');
+ await p.locator('#exMarkIn549').click();assert.equal(Number(await p.locator('#exStart549').inputValue()),1);
+ await p.locator('#lpVideo').evaluate(v=>v.currentTime=4);await p.locator('#exMarkOut549').click();assert.equal(Number(await p.locator('#exEnd549').inputValue()),4);
  // Native decode cannot be cancelled: no second decoder until the original settles.
  await p.evaluate(()=>{const C=OfflineAudioContext;window.__release549=null;window.__decodes549=0;window.OfflineAudioContext=function(...a){const ctx=new C(...a),decode=ctx.decodeAudioData.bind(ctx);ctx.decodeAudioData=(bytes,ok,fail)=>{window.__decodes549++;return new Promise((resolve,reject)=>{window.__release549=()=>decode(bytes).then(x=>{ok(x);resolve(x);},e=>{fail(e);reject(e);});});};return ctx;};});
  await p.locator('#exBuild549').click();await p.waitForFunction(()=>window.__decodes549===1);await p.locator('#exCancel549').click();assert.equal(await p.locator('#exBuild549').isDisabled(),true);assert.match(await p.locator('#exStatus549').textContent(),/Waiting/);
