@@ -58152,7 +58152,13 @@ var pt=o&&o.vpRestorePoint483;if(!pt||typeof pt!=='object'||!pt.d||typeof pt.d!=
       finally{if(mine===epoch){busy=false;box.removeAttribute('aria-busy');paint();}}
     });
     // Rounds 846-847: guard unsettled work and retain microsecond playhead marks.
-    $('exMarkIn549').addEventListener('click',function(){if(!busy&&!pending&&ready()){start.value=video.currentTime.toFixed(6);changed();}});$('exMarkOut549').addEventListener('click',function(){if(!busy&&!pending&&ready()){end.value=video.currentTime.toFixed(6);changed();}});
+    // Round 849: an unchanged mark must not discard a prepared download.
+    function markBoundary849(input){
+      if(busy||pending||!ready()||!Number.isFinite(video.currentTime))return;
+      var text=video.currentTime.toFixed(6);if(input.value.trim()&&Number(input.value)===Number(text))return;
+      input.value=text;changed();
+    }
+    $('exMarkIn549').addEventListener('click',function(){markBoundary849(start);});$('exMarkOut549').addEventListener('click',function(){markBoundary849(end);});
     $('exCenter801').addEventListener('click',function(){if(busy||pending||!ready())return;try{if(!start.value.trim()||!end.value.trim())throw Error('range');var r=window.VPExcerptCenter801(Number(start.value),Number(end.value),video.currentTime,video.duration);start.value=r.start.toFixed(3);end.value=r.end.toFixed(3);changed();message='Excerpt centered. Playback is unchanged.';paint();}catch(error){message='Choose a valid excerpt range before centering.';paint();}});
     function stepRange802(direction){if(busy||pending||!ready())return;try{if(!start.value.trim()||!end.value.trim())throw Error('range');var r=window.VPExcerptStep802(Number(start.value),Number(end.value),video.duration,direction);start.value=r.start.toFixed(3);end.value=r.end.toFixed(3);changed();message='Excerpt range moved. Playback is unchanged.';paint();}catch(error){message='Choose a valid excerpt range before moving it.';paint();}}
     $('exEarlier802').addEventListener('click',function(){stepRange802(-1);});$('exLater802').addEventListener('click',function(){stepRange802(1);});
