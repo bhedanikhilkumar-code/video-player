@@ -1,0 +1,3 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),s=fs.readFileSync(require('node:path').join(__dirname,'../index.html'),'utf8'),c={window:{}};vm.runInNewContext(s.slice(s.indexOf('  // Round 837: choose the full short source'),s.indexOf('  // Round 835: range feedback translations.')),c);const f=c.window.VPExcerptWholeDraft894;
+test('whole file draft includes zero start and precision-preserving ending',()=>{for(const d of [.1,2,59.999999,60]){const r=f(d);assert.equal(r.start,'0:00');assert.equal(c.window.VPExcerptTimestamp839(r.end),d)}});
+test('too short long missing or unsettled source cannot be staged',()=>{for(const d of [0,.099999,60.000001,NaN,Infinity,-1,undefined,'2'])assert.equal(f(d),null)});
